@@ -44,7 +44,7 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 	if !ok {
 		if authenticationRequired {
 			err := errors.New(basicAuthHeaderNotFound)
-			d.Log.Error(err)
+			d.Log.Error(err.Error())
 			c.Writer.WriteHeader(401)
 			c.Writer.WriteString(err.Error())
 			return

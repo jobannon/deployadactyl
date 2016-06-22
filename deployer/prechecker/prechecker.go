@@ -46,7 +46,7 @@ func (p Prechecker) AssertAllFoundationsUp(environment config.Environment) error
 		resp, err := insecureClient.Get(foundationURL + apiPathExtension)
 
 		if err != nil {
-			return errors.WrapPrefix(err, unavailableFoundation, 0)
+			return errors.Errorf(unavailableFoundation)
 		}
 		defer resp.Body.Close()
 

@@ -19,6 +19,7 @@ const (
 	basicAuthHeaderNotFound = "basic auth header not found"
 	invalidPostRequest      = "invalid POST request"
 	cannotDeployApplication = "cannot deploy application"
+	deployStartError        = "an error occurred in the deploy.start event"
 )
 
 type Deployadactyl struct {
@@ -43,7 +44,7 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 	if !ok {
 		if authenticationRequired {
 			err := errors.New(basicAuthHeaderNotFound)
-			logError(d.Log, err)
+			d.Log.Error(err)
 			c.Writer.WriteHeader(401)
 			c.Writer.WriteString(err.Error())
 			return
@@ -63,7 +64,7 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 
 	d.Log.Debug("Deployment properties:\n\tartifact url: %+v", deploymentInfo.ArtifactURL)
 	if err != nil {
-		logError(d.Log, errors.WrapPrefix(err, invalidPostRequest, 0))
+		d.Log.Errorf("%s: %s", invalidPostRequest, err)
 		c.Writer.WriteHeader(500)
 		c.Writer.WriteString(err.Error())
 		return
@@ -77,7 +78,7 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 
 	m, err := base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
 	if err != nil {
-		logError(d.Log, errors.WrapPrefix(err, invalidPostRequest, 0))
+		d.Log.Errorf("%s: %s", invalidPostRequest, err)
 		c.Writer.WriteHeader(500)
 		c.Writer.WriteString(err.Error())
 		return
@@ -92,16 +93,15 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 
 	err = d.EventManager.Emit(deployStartEvent)
 	if err != nil {
-		d.Log.Error(err.Error())
+		d.Log.Errorf("%s: %s", deployStartError, err)
 		c.Writer.WriteHeader(500)
 		c.Writer.WriteString(err.Error())
-		return
 		return
 	}
 
 	err = d.Deployer.Deploy(deploymentInfo, buffer)
 	if err != nil {
-		logError(d.Log, errors.WrapPrefix(err, cannotDeployApplication, 0))
+		d.Log.Errorf("%s: %s", cannotDeployApplication, err)
 		c.Writer.WriteHeader(500)
 		c.Error(err)
 	}
@@ -129,12 +129,4 @@ func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {
 		return S.DeploymentInfo{}, err
 	}
 	return deploymentInfo, nil
-}
-
-func logError(log *logging.Logger, err error) {
-	if wrappedErr, ok := err.(*errors.Error); ok {
-		log.Error(wrappedErr.ErrorStack())
-		return
-	}
-	log.Error(err.Error())
 }

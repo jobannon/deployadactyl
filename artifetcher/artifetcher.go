@@ -69,7 +69,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	err = a.Extractor.Unzip(artifactFile.Name(), unzippedPath, manifest)
 	if err != nil {
 		a.FileSystem.RemoveAll(unzippedPath)
-		return "", errors.WrapPrefix(err, cannotUnzipArtifact, 0)
+		return "", errors.Errorf("%s: %s", cannotUnzipArtifact, err)
 	}
 
 	a.Log.Info("successfully unzipped to tempdir %s", unzippedPath)

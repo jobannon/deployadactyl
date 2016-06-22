@@ -67,13 +67,13 @@ func (e *Extractor) Unzip(source, destination, manifest string) error {
 	if manifest != "" {
 		manifestFile, err := e.FileSystem.OpenFile(path.Join(destination, "manifest.yml"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
-			return errors.WrapPrefix(err, cannotOpenManifestFile, 0)
+			return errors.Errorf("%s: %s", cannotOpenManifestFile, err)
 		}
 		defer manifestFile.Close()
 
 		_, err = fmt.Fprint(manifestFile, manifest)
 		if err != nil {
-			return errors.WrapPrefix(err, cannotPrintToManifestFile, 0)
+			return errors.Errorf("%s: %s", cannotPrintToManifestFile, err)
 		}
 	}
 

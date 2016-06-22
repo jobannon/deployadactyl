@@ -53,7 +53,6 @@ func (d Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) (err er
 
 	appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, deploymentInfo.Manifest)
 	if err != nil {
-		err = errors.WrapPrefix(err, cannotFetchArtifact, 0)
 		fmt.Fprint(out, err)
 		return err
 	}

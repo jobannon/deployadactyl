@@ -1,0 +1,15 @@
+resources:
+  - name: deployadactyl
+    type: git
+    source:
+      uri: git@github.allstate.com:CompoZedPlatform/deployadactyl
+      branch: master
+      private_key: {{private-repo-key}}
+
+jobs:
+  - name: unit-tests
+    plan:
+    - get: deployadactyl
+      trigger: true
+    - task: unit-tests
+      file: deployadactyl/ci/tasks/unit_tests.yml

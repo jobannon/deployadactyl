@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+
+# setup environment
+source deployadactyl/ci/scripts/setup-image
+
+# run tests
+go test $ALL_PKGS -cover -tags unit -v

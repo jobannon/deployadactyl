@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# set proxy
+export HTTP_PROXY=http://proxy.allstate.com:8080
+export HTTPS_PROXY=$HTTP_PROXY
+
+# repair PATH
+export PATH=/usr/local/go/bin:$PATH
+
+# setup GOPATH
+export GOPATH=/go
+export PATH=$GOPATH/bin:$PATH
+
+# move repo into GOPATH
+mkdir -p $GOPATH/src/github.com/compozed
+cp -R deployadactyl $GOPATH/src/github.com/compozed
+cd $GOPATH/src/github.com/compozed/deployadactyl
+
+# install dependencies
+cp bin/cf /usr/local/bin
+
+# get a list of all packages to test
+ALL_PKGS=$(go list ./... | grep -v /vendor/)

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 
 	"github.com/compozed/deployadactyl/config"
@@ -93,7 +92,10 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 
 	err = d.EventManager.Emit(deployStartEvent)
 	if err != nil {
-		fmt.Fprint(buffer, err)
+		d.Log.Error(err.Error())
+		c.Writer.WriteHeader(500)
+		c.Writer.WriteString(err.Error())
+		return
 		return
 	}
 

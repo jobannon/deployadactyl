@@ -48,6 +48,9 @@ func New(level string, configFilename string) (Creator, error) {
 	eventManager := eventmanager.NewEventManager()
 
 	l, err := getLevel(level)
+	if err != nil {
+		return Creator{}, err
+	}
 
 	logger := logger.DefaultLogger(os.Stdout, l, "deployadactyl")
 	return Creator{

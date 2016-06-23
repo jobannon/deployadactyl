@@ -246,7 +246,7 @@ var _ = Describe("Deployadactyl", func() {
 
 				It("responds with the output of the push command", func() {
 					r.ServeHTTP(resp, req)
-					Expect(resp.Body.String()).To(Equal("push succeeded"))
+					Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
 				})
 			})
 
@@ -308,8 +308,36 @@ var _ = Describe("Deployadactyl", func() {
 
 				It("responds with the output of the push command", func() {
 					r.ServeHTTP(resp, req)
-					Expect(resp.Body.String()).To(Equal("some awesome CF error\n"))
+					Expect(resp.Body.String()).To(ContainSubstring("some awesome CF error\n"))
 				})
+			})
+		})
+
+		Context("deployment output", func() {
+			It("shows the user deployment info properties", func() {
+				jsonBuffer := bytes.NewBufferString(fmt.Sprintf(`{
+						"artifact_url": "%s"
+						}`,
+					artifactUrl,
+				))
+
+				var err error
+				req, err = http.NewRequest("POST", apiUrl, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
+				req.SetBasicAuth(username, password)
+
+				deployer.On("Deploy", deploymentInfo, mock.Anything).Return(nil).Times(1)
+
+				r.ServeHTTP(resp, req)
+				Expect(resp.Code).To(Equal(200))
+
+				result := resp.Body.String()
+				Expect(result).To(ContainSubstring(artifactUrl))
+				Expect(result).To(ContainSubstring(username))
+				Expect(result).To(ContainSubstring(environment))
+				Expect(result).To(ContainSubstring(org))
+				Expect(result).To(ContainSubstring(space))
+				Expect(result).To(ContainSubstring(appName))
 			})
 		})
 	})

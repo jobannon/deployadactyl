@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/compozed/deployadactyl/config"
@@ -20,6 +21,13 @@ const (
 	invalidPostRequest      = "invalid POST request"
 	cannotDeployApplication = "cannot deploy application"
 	deployStartError        = "an error occurred in the deploy.start event"
+	deploymentOutput        = `Deployment Parameters:
+		Artifact URL: %s,
+		Username:     %s,
+		Enviroment:   %s,
+		Org:          %s,
+		Space:        %s,
+		AppName:      %s`
 )
 
 type Deployadactyl struct {
@@ -63,6 +71,9 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 	deploymentInfo.UUID = d.Randomizer.StringRunes(128)
 
 	d.Log.Debug("Deployment properties:\n\tartifact url: %+v", deploymentInfo.ArtifactURL)
+
+	fmt.Fprintf(buffer, deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
+
 	if err != nil {
 		d.Log.Errorf("%s: %s", invalidPostRequest, err)
 		c.Writer.WriteHeader(500)

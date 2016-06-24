@@ -17,7 +17,8 @@ const (
 	cannotFetchArtifact = "cannot fetch artifact"
 	invalidArtifact     = "invalid artifact"
 	successfulDeploy    = `Your deploy was successful! (^_^)d
-If you experience any problems after this point, check that you can manually push your application to Cloud Foundry on a lower environment. It is likely that it is an error with your application and not with Deployadactyl.
+If you experience any problems after this point, check that you can manually push your application to Cloud Foundry on a lower environment.
+It is likely that it is an error with your application and not with Deployadactyl.
 Thanks for using Deployadactyl! Please push down pull up on your lap bar and exit to your left.`
 )
 
@@ -89,6 +90,10 @@ func (d Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) (err er
 		return errors.New(err)
 	}
 
+<<<<<<< 16a88b8e8e9d109020c324432d7556ae19667d11
 	fmt.Fprintln(out, successfulDeploy)
+=======
+	fmt.Fprintln(out, fmt.Sprintf("\n%s", successfulDeploy))
+>>>>>>> fix formatting
 	return err
 }

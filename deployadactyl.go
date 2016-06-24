@@ -22,6 +22,7 @@ const (
 	cannotDeployApplication = "cannot deploy application"
 	deployStartError        = "an error occurred in the deploy.start event"
 	deploymentOutput        = `Deployment Parameters:
+<<<<<<< 16a88b8e8e9d109020c324432d7556ae19667d11
 		Artifact URL: %s,
 		Username:     %s,
 		Enviroment:   %s,
@@ -29,6 +30,14 @@ const (
 		Space:        %s,
 		AppName:      %s
 `
+=======
+	Artifact URL: %s,
+	Username:     %s,
+	Enviroment:   %s,
+	Org:          %s,
+	Space:        %s,
+	AppName:      %s`
+>>>>>>> fix formatting
 )
 
 type Deployadactyl struct {
@@ -73,7 +82,7 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 
 	d.Log.Debug("Deployment properties:\n\tartifact url: %+v", deploymentInfo.ArtifactURL)
 
-	fmt.Fprintf(buffer, deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
+	fmt.Fprintf(buffer, fmt.Sprintf("%s\n\n", fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)))
 
 	if err != nil {
 		d.Log.Errorf("%s: %s", invalidPostRequest, err)

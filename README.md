@@ -4,6 +4,12 @@ Deployadactyl is a Go client library for deploying applications to multiple [Clo
 
 Deployadactyl requires Go version 1.6 or greater.
 
+**Documentation:** _godoc link/badge_
+**Build Status:** _build status badge_
+**Test Coverage:** _coverage badge_
+
+With Deployadactyl you can register your event handlers to perform any additional actions your deployment flow may require. For us, this meant adding handlers that would open and close change records, as well as notify anyone on pager duty of significant events.
+
 ### Dependencies
 
 Deployadactyl has the following dependencies:
@@ -19,8 +25,6 @@ Deployadactyl has the following dependencies:
 ```go
 import "github.com/compozed/deployadactyl/creator"
 ```
-
-Create a new Deployadactyl Creator client, then register your event handlers to perform any additional actions your deployment flow may require. For us, this meant adding handlers that would open and close change records, as well as notify anyone on pager duty of significant events.
 
 Deployadactyl needs a configuration `yaml` file and a logging level in order to run. The logging level needs to be of type `logging.LogLevel`. These values should be passed into the Creator.
 
@@ -56,6 +60,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+    // Creating this logger is optional
 	l := c.CreateLogger()
 
 	listener := c.CreateListener()
@@ -63,10 +68,10 @@ func main() {
 
 	em := c.CreateEventManager()
 
-	changeManagerHandler := mypackager.CreateChangeManagerHandler()
-	em.AddHandler(changeManagerHandler, "deploy.start")
-	em.AddHandler(changeManagerHandler, "deploy.finish")
-	em.AddHandler(changeManagerHandler, "deploy.error")
+	myPackageHandler := mypackager.CreateMyPackageHandler()
+	em.AddHandler(myPackageHandler, "deploy.start")
+	em.AddHandler(myPackageHandler, "deploy.finish")
+	em.AddHandler(myPackageHandler, "deploy.error")
 
 	hf := c.CreateHandlerFunc()
 

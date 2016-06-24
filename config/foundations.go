@@ -16,7 +16,6 @@ const (
 )
 
 func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
-
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, errors.New(err)

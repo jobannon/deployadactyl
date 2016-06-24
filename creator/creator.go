@@ -68,7 +68,7 @@ type Creator struct {
 	writer       io.Writer
 }
 
-func (c Creator) CreateHandlerFunc() *gin.Engine {
+func (c Creator) CreateDeployadactylHandler() *gin.Engine {
 	d := c.CreateDeployadactyl()
 
 	r := gin.New()

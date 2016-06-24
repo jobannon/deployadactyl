@@ -10,7 +10,11 @@ Deployadactyl requires Go version 1.6 or greater.
 
 With Deployadactyl you can register your event handlers to perform any additional actions your deployment flow may require. For us, this meant adding handlers that would open and close change records, as well as notify anyone on pager duty of significant events.
 
-### Dependencies
+## How it works
+
+Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to push your application. It grabs a list of foundations from the Deployadactyl config, logs into each one and calls `cf push`. The general flow is to fetch your artifact, unzip it, and push it. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push your application it will rollback to the previous version.
+
+## Dependencies
 
 Deployadactyl has the following dependencies:
 
@@ -76,13 +80,22 @@ func main() {
 
 ### Available logging levels
 
-### Configuration File
+The following logging levels are available through [go-logging](https://github.com/op/go-logging):
+
+- `DEBUG`
+- `INFO`
+- `NOTI`
+- `WARN`
+- `ERROR`
+- `CRIT`
+
+## Configuration File
 
 The config file is used to specify your environments.
 
-You can add in extra miscellaneous information here, and it will be added to the `Config` struct which can be accessed via `Creator.cfg`. This is useful because you can maintain one config file and still access configuration items in your event handlers.
+You can add in extra miscellaneous information here, and it will be added to the `Config` struct which can be accessed via `Creator.cfg`. This is useful because you can maintain one config file and still access configuration items from your [event handlers](#event-handling).
 
-#### Example configuration yaml file
+### Example configuration yaml file
 ```yaml
 ---
 environments:
@@ -114,7 +127,7 @@ environments:
     - https://my-env-4.foundation-1.example.com
     - https://my-env-4.foundation-2.example.com
 ```
-### Event handling
+## Event handling
 
 There are a number of events available for you to register handlers to.
 
@@ -127,9 +140,9 @@ type Event struct {
 }
 ```
 
-The `Type` string will contain the type of event that it is. Depending on the type of event `Data` interface will contain different kinds of data.
+The `Type` string will contain the type of event that it is. Depending on the type of event, the `Data` interface will will either be a `DeployEventData` struct or a `PrecheckerEventData` struct.
 
-#### Available emitted event types
+### Available emitted event types
 
 <table>
 <thead>
@@ -170,7 +183,49 @@ type PrecheckerEventData struct {
   </tr>
 </tbody>
 </table>
-#### Example event handling sample
+
+The `Writer` on `DeployEventData` is provided to allow you to write to the logs.
+
+The `DeploymentInfo` struct in `DeployEventData` looks like this:
+
+```go
+type DeploymentInfo struct {
+	ArtifactURL string `json:"artifact_url"`
+	Manifest    string `json:"manifest"`
+	Username    string
+	Password    string
+	Environment string
+	Org         string
+	Space       string
+	AppName     string
+	Data        map[string]interface{} `json:"data"`
+	UUID        string
+}
+```
+
+It should be noted that the `Data` contains the object that is passed in via the `data` key in the `JSON` `POST` request.
+
+`RequestBody` is the body response from the `*gin.Context` of the server.
+
+The `Environment` struct on the `PrecheckerEventData` struct looks like this:
+
+```go
+type Environment struct {
+	Name         string
+	Domain       string
+	Foundations  []string `yaml:",flow"`
+	Authenticate bool
+}
+```
+
+`Authenticate` is for basic auth for deployments.
+
+The extra config file values that you define in your config file will be accessible off of `Environments`.
+
+### Event handling example
+
+#### main.go server setup
+
 ```go
 package main
 
@@ -178,7 +233,7 @@ import (
   "net/http"
   "os"
 
-  "github.com/me/deployadactyl-consumer/mypackager"
+  "github.com/me/deployadactyl-consumer/myEventHandler"
   "github.com/compozed/deployadactyl/creator"
   "github.com/op/go-logging"
 )
@@ -204,28 +259,42 @@ func main() {
   // This is an optional event handling example
   em := c.CreateEventManager()
 
-  myPackageHandler := mypackager.CreateMyPackageHandler()
-  em.AddHandler(myPackageHandler, "deploy.start")
-  em.AddHandler(myPackageHandler, "deploy.finish")
-  em.AddHandler(myPackageHandler, "deploy.error")
+  myEventHandler := myEventHandler.CreateMyEventHandler()
+  em.AddHandler(myEventHandler, "deploy.start")
+  em.AddHandler(myEventHandler, "deploy.finish")
+  em.AddHandler(myEventHandler, "deploy.error")
 
-  hf := c.CreateHandlerFunc()
+  dh := c.CreateDeployadactylHandler()
 
   listener := c.CreateListener()
   l.Infof("Listening on Port %d", c.CreateConfig().Port)
 
-  err = http.Serve(listener, hf)
+  err = http.Serve(listener, dh)
   if err != nil {
     l.Fatal(err)
   }
 }
 ```
 
-## How to push your app
+#### Event handler file setup
 
-## How it works
+```go
+package myEventHandler
 
-Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to push your application. It grabs a list of foundations from the Deployadactyl config, logs into each one and calls `cf push`. The general flow is to fetch your artifact, unzip it, and push it. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push your application it will rollback to the previous version.
+import (
+	DS "github.com/compozed/deployadactyl/structs"
+)
+
+func (m myEventHandler) OnEvent(event DS.Event) error {
+  // Set in the config file with "some_extra" as the key
+  myExtraValue := m.Config.Environments[environmentName].SomeExtra
+  return nil
+}
+```
+
+If the event handler returns any error, the deploy will fail.
+
+## Environment variables
 
 ## Contributing
 

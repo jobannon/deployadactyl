@@ -31,7 +31,6 @@ Deployadactyl needs a configuration `yaml` file and a logging level in order to 
 After creating the Creator, you *can* create a default logger off of it that will format your log messages to match Deployadactyl's log format. An example has been provided below.
 
 
-
 ### Simple example usage
 
 ```go
@@ -41,7 +40,6 @@ import (
   "net/http"
   "os"
 
-  "github.com/me/deployadactyl-consumer/mypackager"
   "github.com/compozed/deployadactyl/creator"
   "github.com/op/go-logging"
 )
@@ -78,52 +76,101 @@ func main() {
 
 ### Available logging levels
 
-### Example configuration yaml file
-```
+### Configuration File
+
+The config file is used to specify your environments.
+
+You can add in extra miscellaneous information here, and it will be added to the `Config` struct which can be accessed via `Creator.cfg`. This is useful because you can maintain one config file and still access configuration items in your event handlers.
+
+#### Example configuration yaml file
+```yaml
 ---
 environments:
   - name: my-env-1
     domain: my-env-1.example.com
-    extra: value
+    some_extra: value
     foundations:
     - https://my-env-1.foundation-1.example.com
     - https://my-env-1.foundation-2.example.com
 
-  - name: preproduction
-    domain: app1.cftest.allstate.com
-    allow_page: false
-    authenticate: false
+  - name: my-env-2
+    domain: my-env-2.example.com
+    some_extra: value
     foundations:
-    - https://api.sd1.cftest.allstate.com
+    - https://my-env-2.foundation-1.example.com
+    - https://my-env-2.foundation-2.example.com
 
-  - name: prod-dmz
-    domain: cws.allstate.com
-    allow_page: true
-    authenticate: true
+  - name: my-env-3
+    domain: my-env-3.example.com
+    some_extra: value
     foundations:
-    - https://api.cf.prod-dmz.ro1.allstate.com
-    - https://api.cf.prod-dmz.ro2.allstate.com
-    - https://api.cf.prod-dmz.gl1.allstate.com
-    - https://api.cf.prod-dmz.gl2.allstate.com
+    - https://my-env-3.foundation-1.example.com
+    - https://my-env-3.foundation-2.example.com
 
-  - name: prod-mpn
-    domain: platform.allstate.com
-    allow_page: true
-    authenticate: true
+  - name: my-env-4
+    domain: my-env-4.example.com
+    some_extra: value
     foundations:
-    - https://api.cf.prod-mpn.ro1.allstate.com
-    - https://api.cf.prod-mpn.ro2.allstate.com
-    - https://api.cf.prod-mpn.gl1.allstate.com
-    - https://api.cf.prod-mpn.gl2.allstate.com
+    - https://my-env-4.foundation-1.example.com
+    - https://my-env-4.foundation-2.example.com
+```
+### Event handling
+
+There are a number of events available for you to register handlers to.
+
+Events will provide an `Event` struct:
+
+```go
+type Event struct {
+	Type string
+	Data interface{}
+}
 ```
 
-### Available emitted events
-- "deploy.start"
-- "deploy.finish"
-- "deploy.error"
-- "validate.foundationsUnavailable"
+The `Type` string will contain the type of event that it is. Depending on the type of event `Data` interface will contain different kinds of data.
 
-### Example event handling sample
+#### Available emitted event types
+
+<table>
+<thead>
+  <tr>
+    <td><strong>Event Type</strong></td>
+    <td><strong>Data</strong></td>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>
+      <p><code>deploy.start</code></p>
+      <p><code>deploy.finish</code></p>
+      <p><code>deploy.error</code></p>
+    </td>
+    <td>
+<div class="highlight highlight-source-go"><pre>
+type DeployEventData struct {
+	Writer         io.Writer
+	DeploymentInfo *DeploymentInfo
+	RequestBody    io.Reader
+}
+</pre></div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <p><code>validate.foundationsUnavailable</code></p>
+    </td>
+    <td>
+<div class="highlight highlight-source-go"><pre>
+type PrecheckerEventData struct {
+	Environment config.Environment
+	Description string
+}
+</pre></div>
+    </td>
+  </tr>
+</tbody>
+</table>
+#### Example event handling sample
 ```go
 package main
 

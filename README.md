@@ -41,7 +41,7 @@ import (
   "net/http"
   "os"
 
-	"github.com/me/deployadactyl-consumer/mypackager"
+  "github.com/me/deployadactyl-consumer/mypackager"
   "github.com/compozed/deployadactyl/creator"
   "github.com/op/go-logging"
 )
@@ -52,34 +52,27 @@ const (
 )
 
 func main() {
-	logLevel, _ := logging.LogLevel(defaultLevel)
-	log := logger.DefaultLogger(os.Stdout, logLevel, "deployadactyl-consumer")
+  // Create a temporary logger until we can create the Creator
+  logLevel, _ := logging.LogLevel(defaultLevel)
+  log := logger.DefaultLogger(os.Stdout, logLevel, "deployadactyl-consumer")
 
-	c, err := creator.New(defaultLevel, defaultConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
+  c, err := creator.New(defaultLevel, defaultConfig)
+  if err != nil {
+    log.Fatal(err)
+  }
 
-    // Creating this logger is optional
-	l := c.CreateLogger()
+  // This is an optional logger that makes logs look nice
+  l := c.CreateLogger()
 
-	listener := c.CreateListener()
-	l.Infof("Listening on Port %d", c.CreateConfig().Port)
+  listener := c.CreateListener()
+  l.Infof("Listening on Port %d", c.CreateConfig().Port)
 
-	em := c.CreateEventManager()
+  dh := c.CreateDeployadactylHandler()
 
-	myPackageHandler := mypackager.CreateMyPackageHandler()
-	em.AddHandler(myPackageHandler, "deploy.start")
-	em.AddHandler(myPackageHandler, "deploy.finish")
-	em.AddHandler(myPackageHandler, "deploy.error")
-
-	hf := c.CreateHandlerFunc()
-
-	err = http.Serve(listener, hf)
-	if err != nil {
-		l.Fatal(err)
-	}
-}
+  err = http.Serve(listener, dh)
+  if err != nil {
+    l.Fatal(err)
+  }
 }
 ```
 
@@ -91,7 +84,7 @@ func main() {
 environments:
   - name: my-env-1
     domain: my-env-1.example.com
-		extra: value
+    extra: value
     foundations:
     - https://my-env-1.foundation-1.example.com
     - https://my-env-1.foundation-2.example.com
@@ -129,6 +122,57 @@ environments:
 - "deploy.finish"
 - "deploy.error"
 - "validate.foundationsUnavailable"
+
+### Example event handling sample
+```go
+package main
+
+import (
+  "net/http"
+  "os"
+
+  "github.com/me/deployadactyl-consumer/mypackager"
+  "github.com/compozed/deployadactyl/creator"
+  "github.com/op/go-logging"
+)
+
+const (
+  defaultConfig = "./config.yml"
+  defaultLevel  = "DEBUG"
+)
+
+func main() {
+  // Create a temporary logger until we can create the Creator
+  logLevel, _ := logging.LogLevel(defaultLevel)
+  log := logger.DefaultLogger(os.Stdout, logLevel, "deployadactyl-consumer")
+
+  c, err := creator.New(defaultLevel, defaultConfig)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  // This is an optional logger that makes logs look nice
+  l := c.CreateLogger()
+
+  // This is an optional event handling example
+  em := c.CreateEventManager()
+
+  myPackageHandler := mypackager.CreateMyPackageHandler()
+  em.AddHandler(myPackageHandler, "deploy.start")
+  em.AddHandler(myPackageHandler, "deploy.finish")
+  em.AddHandler(myPackageHandler, "deploy.error")
+
+  hf := c.CreateHandlerFunc()
+
+  listener := c.CreateListener()
+  l.Infof("Listening on Port %d", c.CreateConfig().Port)
+
+  err = http.Serve(listener, hf)
+  if err != nil {
+    l.Fatal(err)
+  }
+}
+```
 
 ## How to push your app
 

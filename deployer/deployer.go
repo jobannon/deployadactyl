@@ -40,6 +40,16 @@ func (d Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) (err er
 
 	environment, found := d.Environments[deploymentInfo.Environment]
 	if !found {
+		var deployEvent = S.Event{
+			Type: "deploy.error",
+			Data: deployEventData,
+		}
+
+		err = d.EventManager.Emit(deployEvent)
+		if err != nil {
+			fmt.Fprint(out, err)
+		}
+
 		err = errors.Errorf("%s: %s", environmentNotFound, deploymentInfo.Environment)
 		fmt.Fprint(out, err)
 		return err

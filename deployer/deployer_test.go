@@ -101,6 +101,12 @@ var _ = Describe("Deployer", func() {
 	Describe("Deploy", func() {
 		Context("with no environments", func() {
 			It("returns an error", func() {
+				event.Type = "deploy.error"
+				// using `event` in this mock call causes an error that the mock
+				// isn't correct. we are going to use `mock.Anything` until we
+				// replace this mock with a hand written one
+				eventManager.On("Emit", mock.Anything).Return(nil).Times(1)
+
 				err := deployer.Deploy(deploymentInfo, buffer)
 
 				errorMessage := "environment not found: " + environmentName

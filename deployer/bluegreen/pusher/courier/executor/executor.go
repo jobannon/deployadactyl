@@ -1,3 +1,4 @@
+// Package executor runs commands against the Cloud Foundry binary.
 package executor
 
 import (
@@ -8,6 +9,7 @@ import (
 	"github.com/spf13/afero"
 )
 
+// New returns a new Executor struct.
 func New(fileSystem *afero.Afero) (Executor, error) {
 	tempDir, err := fileSystem.TempDir("", "deployadactyl-")
 	if err != nil {
@@ -25,12 +27,18 @@ type Executor struct {
 	fileSystem *afero.Afero
 }
 
+// Execute takes many args and runs them together against the cf command on the Cloud Foundry binary.
+//
+// Returns the combined standard output and standard error.
 func (e Executor) Execute(args ...string) ([]byte, error) {
 	command := exec.Command("cf", args...)
 	command.Env = setEnv(os.Environ(), "CF_HOME", e.tempDir)
 	return command.CombinedOutput()
 }
 
+// ExecuteInDirectory does the same thing as Execute does, but does it in a specific directory.
+//
+// Returns the combined standard output and standard error.
 func (e Executor) ExecuteInDirectory(directory string, args ...string) ([]byte, error) {
 	command := exec.Command("cf", args...)
 	command.Env = setEnv(os.Environ(), "CF_HOME", e.tempDir)
@@ -38,6 +46,7 @@ func (e Executor) ExecuteInDirectory(directory string, args ...string) ([]byte, 
 	return command.CombinedOutput()
 }
 
+// CleanUp removes the temporary directory of the Executor.
 func (e Executor) CleanUp() error {
 	return e.fileSystem.RemoveAll(e.tempDir)
 }

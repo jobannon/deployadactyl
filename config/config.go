@@ -1,3 +1,4 @@
+// Package config holds all specified configuration information aggregated from across all possible inputs (config yaml file and user-defined environment variables).
 package config
 
 import (
@@ -19,6 +20,7 @@ type Config struct {
 	Port         int
 }
 
+// New returns a new Config struct with information from environment variables and the config file.
 func New(getenv func(string) string, configFilename string) (Config, error) {
 	getter := geterrors.WrapFunc(getenv)
 

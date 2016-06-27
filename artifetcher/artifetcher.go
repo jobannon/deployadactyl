@@ -1,3 +1,4 @@
+// Package artifetcher downloads the artifact given a URL.
 package artifetcher
 
 import (
@@ -26,6 +27,10 @@ type Artifetcher struct {
 	Log        *logging.Logger
 }
 
+// Fetch downloads an artifact located at URL.
+// It then passes it to the extractor with the manifest for unzipping.
+//
+// Returns a string to the unzip path and an error.
 func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	a.Log.Debug("fetch URL: %s", url)
 

@@ -47,23 +47,23 @@ func (d Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) (err er
 
 		err = d.EventManager.Emit(deployEvent)
 		if err != nil {
-			fmt.Fprint(out, err)
+			fmt.Fprintln(out, err)
 		}
 
 		err = errors.Errorf("%s: %s", environmentNotFound, deploymentInfo.Environment)
-		fmt.Fprint(out, err)
+		fmt.Fprintln(out, err)
 		return err
 	}
 
 	err = d.Prechecker.AssertAllFoundationsUp(environment)
 	if err != nil {
-		fmt.Fprint(out, err)
+		fmt.Fprintln(out, err)
 		return errors.New(err)
 	}
 
 	appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, deploymentInfo.Manifest)
 	if err != nil {
-		fmt.Fprint(out, err)
+		fmt.Fprintln(out, err)
 		return err
 	}
 	defer os.RemoveAll(appPath)
@@ -80,7 +80,7 @@ func (d Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) (err er
 
 		err = d.EventManager.Emit(deployEvent)
 		if err != nil {
-			fmt.Fprint(out, err)
+			fmt.Fprintln(out, err)
 		}
 	}()
 
@@ -89,6 +89,6 @@ func (d Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) (err er
 		return errors.New(err)
 	}
 
-	fmt.Fprint(out, successfulDeploy)
+	fmt.Fprintln(out, successfulDeploy)
 	return err
 }

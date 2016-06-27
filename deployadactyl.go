@@ -27,7 +27,8 @@ const (
 		Enviroment:   %s,
 		Org:          %s,
 		Space:        %s,
-		AppName:      %s`
+		AppName:      %s
+`
 )
 
 type Deployadactyl struct {

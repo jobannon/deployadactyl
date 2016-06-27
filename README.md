@@ -5,14 +5,16 @@ Deployadactyl is a Go client library for deploying applications to multiple [Clo
 Deployadactyl requires Go version 1.6 or greater.
 
 **Documentation:** _godoc link/badge_
+
 **Build Status:** _build status badge_
+
 **Test Coverage:** _coverage badge_
 
 With Deployadactyl you can register your event handlers to perform any additional actions your deployment flow may require. For us, this meant adding handlers that would open and close change records, as well as notify anyone on pager duty of significant events.
 
 ## How it works
 
-Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to push your application. It grabs a list of foundations from the Deployadactyl config, logs into each one and calls `cf push`. The general flow is to fetch your artifact, unzip it, and push it. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push your application it will rollback to the previous version.
+Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to push your application. It grabs a list of foundations from the Deployadactyl config, logs into each one, and calls `cf push`. The general flow is to fetch your artifact, unzip it, and push it. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push your application it will rollback to the previous version.
 
 ## Dependencies
 
@@ -32,7 +34,7 @@ import "github.com/compozed/deployadactyl/creator"
 
 Deployadactyl needs a configuration `yaml` file and a logging level in order to run. The logging level needs to be of type `logging.LogLevel`. These values should be passed into the Creator.
 
-After creating the Creator, you *can* create a default logger off of it that will format your log messages to match Deployadactyl's log format. An example has been provided below.
+After creating the Creator, you *can* create a default logger off of it that will format your log messages to match Deployadactyl's log format. An example has been provided below:
 
 
 ### Simple example usage
@@ -218,9 +220,9 @@ type Environment struct {
 }
 ```
 
-`Authenticate` is for basic auth for deployments.
+`Authenticate` is for HTTP Basic Authentication for deployments. 
 
-The extra config file values that you define in your config file will be accessible off of `Environments`.
+The extra config file values that you define in your config file will be accessible off of `Environments`, which you can see an example of in the [event handler file setup](#event-handler-file-setup)
 
 ### Event handling example
 

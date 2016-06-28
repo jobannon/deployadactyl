@@ -30,11 +30,6 @@
 			"Rev": "99c3df83b51532e3615f851d8c2dbb638f5313bf"
 		},
 		{
-			"ImportPath": "github.com/compozed/conveyor/test",
-			"Comment": "0.3.0-11-g64a2af5",
-			"Rev": "64a2af517dd29910323cd6dffd101a747dfe49b4"
-		},
-		{
 			"ImportPath": "github.com/davecgh/go-spew/spew",
 			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
 		},

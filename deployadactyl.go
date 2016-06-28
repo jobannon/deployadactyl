@@ -22,22 +22,12 @@ const (
 	cannotDeployApplication = "cannot deploy application"
 	deployStartError        = "an error occurred in the deploy.start event"
 	deploymentOutput        = `Deployment Parameters:
-<<<<<<< 16a88b8e8e9d109020c324432d7556ae19667d11
-		Artifact URL: %s,
-		Username:     %s,
-		Enviroment:   %s,
-		Org:          %s,
-		Space:        %s,
-		AppName:      %s
-`
-=======
 	Artifact URL: %s,
 	Username:     %s,
 	Enviroment:   %s,
 	Org:          %s,
 	Space:        %s,
 	AppName:      %s`
->>>>>>> fix formatting
 )
 
 type Deployadactyl struct {

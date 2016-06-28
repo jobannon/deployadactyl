@@ -7,13 +7,9 @@ type Courier struct {
 	Executor I.Executor
 }
 
-<<<<<<< 509e5bea158cd9696fb413ab07a9dd7eab72afc1
 // Login runs the Cloud Foundry login command.
 //
 // Returns the combined standard output and standard error.
-func (c Courier) Login(api, username, password, org, space string) ([]byte, error) {
-	return c.Executor.Execute("login", "-a", api, "-u", username, "-p", password, "-o", org, "-s", space, "--skip-ssl-validation")
-=======
 func (c Courier) Login(api, username, password, org, space string, skipSSL bool) ([]byte, error) {
 	var s string
 	if skipSSL {
@@ -21,7 +17,6 @@ func (c Courier) Login(api, username, password, org, space string, skipSSL bool)
 	}
 
 	return c.Executor.Execute("login", "-a", api, "-u", username, "-p", password, "-o", org, "-s", space, s)
->>>>>>> Make skip-ssl-validation optional
 }
 
 // Delete runs the Cloud Foundry delete command.

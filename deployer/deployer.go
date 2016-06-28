@@ -90,10 +90,6 @@ func (d Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) (err er
 		return errors.New(err)
 	}
 
-<<<<<<< 16a88b8e8e9d109020c324432d7556ae19667d11
-	fmt.Fprintln(out, successfulDeploy)
-=======
 	fmt.Fprintln(out, fmt.Sprintf("\n%s", successfulDeploy))
->>>>>>> fix formatting
 	return err
 }

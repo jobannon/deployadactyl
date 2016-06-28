@@ -11,4 +11,5 @@ type DeploymentInfo struct {
 	AppName     string
 	Data        map[string]interface{} `json:"data"`
 	UUID        string
+	SkipSSL     bool
 }

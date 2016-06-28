@@ -58,13 +58,13 @@ func (_m *Courier) Exists(appName string) bool {
 	return r0
 }
 
-// Login provides a mock function with given fields: api, username, password, org, space
-func (_m *Courier) Login(api string, username string, password string, org string, space string) ([]byte, error) {
-	ret := _m.Called(api, username, password, org, space)
+// Login provides a mock function with given fields: api, username, password, org, space, skipSSL
+func (_m *Courier) Login(api string, username string, password string, org string, space string, skipSSL bool) ([]byte, error) {
+	ret := _m.Called(api, username, password, org, space, skipSSL)
 
 	var r0 []byte
-	if rf, ok := ret.Get(0).(func(string, string, string, string, string) []byte); ok {
-		r0 = rf(api, username, password, org, space)
+	if rf, ok := ret.Get(0).(func(string, string, string, string, string, bool) []byte); ok {
+		r0 = rf(api, username, password, org, space, skipSSL)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]byte)
@@ -72,8 +72,8 @@ func (_m *Courier) Login(api string, username string, password string, org strin
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, string, string, string, string) error); ok {
-		r1 = rf(api, username, password, org, space)
+	if rf, ok := ret.Get(1).(func(string, string, string, string, string, bool) error); ok {
+		r1 = rf(api, username, password, org, space, skipSSL)
 	} else {
 		r1 = ret.Error(1)
 	}

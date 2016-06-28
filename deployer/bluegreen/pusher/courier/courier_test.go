@@ -37,12 +37,32 @@ var _ = Describe("Courier", func() {
 				password     = "password-" + randomizer.StringRunes(10)
 				space        = "space-" + randomizer.StringRunes(10)
 				user         = "user-" + randomizer.StringRunes(10)
+				skipSSL      = false
+				expectedArgs = []string{"login", "-a", api, "-u", user, "-p", password, "-o", org, "-s", space, ""}
+			)
+
+			executor.On("Execute", expectedArgs).Return([]byte(output), nil).Times(1)
+
+			out, err := courier.Login(api, user, password, org, space, skipSSL)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(string(out)).To(Equal(output))
+		})
+
+		It("can skip ssl validation", func() {
+			var (
+				api          = "api-" + randomizer.StringRunes(10)
+				org          = "org-" + randomizer.StringRunes(10)
+				password     = "password-" + randomizer.StringRunes(10)
+				space        = "space-" + randomizer.StringRunes(10)
+				user         = "user-" + randomizer.StringRunes(10)
+				skipSSL      = true
 				expectedArgs = []string{"login", "-a", api, "-u", user, "-p", password, "-o", org, "-s", space, "--skip-ssl-validation"}
 			)
 
 			executor.On("Execute", expectedArgs).Return([]byte(output), nil).Times(1)
 
-			out, err := courier.Login(api, user, password, org, space)
+			out, err := courier.Login(api, user, password, org, space, skipSSL)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(string(out)).To(Equal(output))

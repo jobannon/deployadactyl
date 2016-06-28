@@ -45,6 +45,7 @@ var _ = Describe("Deployadactyl", func() {
 		defaultPassword string
 		apiUrl          string
 		uuid            string
+		skipSSL         bool
 	)
 
 	BeforeEach(func() {
@@ -96,9 +97,8 @@ var _ = Describe("Deployadactyl", func() {
 			Space:       space,
 			AppName:     appName,
 			UUID:        uuid,
+			SkipSSL:     skipSSL,
 		}
-
-		deployadactyl.Config.Environments[environment] = config.Environment{Authenticate: true}
 
 		eventManager.On("Emit", mock.Anything).Return(nil)
 		randomizerMock.On("StringRunes", mock.Anything).Return(uuid)

@@ -79,6 +79,7 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 	deploymentInfo.Space = c.Param("space")
 	deploymentInfo.AppName = c.Param("appName")
 	deploymentInfo.UUID = d.Randomizer.StringRunes(128)
+	deploymentInfo.SkipSSL = d.Config.Environments[environment].SkipSSL
 
 	d.Log.Debug("Deployment properties:\n\tartifact url: %+v", deploymentInfo.ArtifactURL)
 

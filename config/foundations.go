@@ -49,6 +49,7 @@ type Environment struct {
 	Domain       string
 	Foundations  []string `yaml:",flow"`
 	Authenticate bool
+	SkipSSL      bool `yaml:"skip_ssl"`
 }
 
 type configYaml struct {

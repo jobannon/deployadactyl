@@ -25,6 +25,7 @@ var _ = Describe("Pusher", func() {
 		password         string
 		org              string
 		space            string
+		skipSSL          bool
 		domain           string
 		appPath          string
 		appName          string
@@ -60,6 +61,7 @@ var _ = Describe("Pusher", func() {
 			Org:      org,
 			Space:    space,
 			AppName:  appName,
+			SkipSSL:  skipSSL,
 		}
 	})
 
@@ -70,7 +72,7 @@ var _ = Describe("Pusher", func() {
 	Describe("Login", func() {
 		Context("when it succeeds", func() {
 			It("writes the output of the courier to the Writer", func() {
-				courier.On("Login", foundationURL, username, password, org, space).Return([]byte("login succeeded"), nil).Times(1)
+				courier.On("Login", foundationURL, username, password, org, space, skipSSL).Return([]byte("login succeeded"), nil).Times(1)
 				Expect(pusher.Login(foundationURL, deploymentInfo, responseBuffer)).To(Succeed())
 				Eventually(responseBuffer).Should(gbytes.Say("login succeeded"))
 			})
@@ -78,7 +80,7 @@ var _ = Describe("Pusher", func() {
 
 		Context("when it fails", func() {
 			It("writes the output of the courier to the Writer", func() {
-				courier.On("Login", foundationURL, username, password, org, space).Return([]byte("login failed"), errors.New("bork")).Times(1)
+				courier.On("Login", foundationURL, username, password, org, space, skipSSL).Return([]byte("login failed"), errors.New("bork")).Times(1)
 				Expect(pusher.Login(foundationURL, deploymentInfo, responseBuffer)).ToNot(Succeed())
 				Eventually(responseBuffer).Should(gbytes.Say("login failed"))
 			})

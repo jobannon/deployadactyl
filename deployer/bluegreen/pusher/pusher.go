@@ -116,6 +116,7 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, out
 		deploymentInfo.Password,
 		deploymentInfo.Org,
 		deploymentInfo.Space,
+		deploymentInfo.SkipSSL,
 	)
 	out.Write(loginOutput)
 	if err != nil {

@@ -6,8 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/compozed/conveyor/test"
 	. "github.com/compozed/deployadactyl/deployer/eventmanager"
+	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/compozed/deployadactyl/test/mocks"
 )
@@ -19,8 +19,8 @@ var _ = Describe("Events", func() {
 	)
 
 	BeforeEach(func() {
-		eventType = "eventType-" + test.RandStringRunes(10)
-		eventData = "eventData-" + test.RandStringRunes(10)
+		eventType = "eventType-" + randomizer.StringRunes(10)
+		eventData = "eventData-" + randomizer.StringRunes(10)
 	})
 
 	Context("When an event handler is registered", func() {
@@ -75,7 +75,7 @@ var _ = Describe("Events", func() {
 			eventHandlerOne.On("OnEvent", event).Return(nil).Times(1)
 
 			eventManager.AddHandler(eventHandlerOne, eventType)
-			eventManager.AddHandler(eventHandlerTwo, "anotherEventType-"+test.RandStringRunes(10))
+			eventManager.AddHandler(eventHandlerTwo, "anotherEventType-"+randomizer.StringRunes(10))
 			Expect(eventManager.Emit(event)).To(Succeed())
 		})
 	})

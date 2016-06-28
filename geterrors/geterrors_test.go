@@ -1,8 +1,8 @@
 package geterrors_test
 
 import (
-	"github.com/compozed/conveyor/test"
 	. "github.com/compozed/deployadactyl/geterrors"
+	"github.com/compozed/deployadactyl/randomizer"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,10 +18,10 @@ var _ = Describe("Geterrors", func() {
 	)
 
 	BeforeEach(func() {
-		firstKey = "firstKey-" + test.RandStringRunes(10)
-		secondKey = "secondKey-" + test.RandStringRunes(10)
-		firstValue = "firstValue-" + test.RandStringRunes(10)
-		secondValue = "secondValue-" + test.RandStringRunes(10)
+		firstKey = "firstKey-" + randomizer.StringRunes(10)
+		secondKey = "secondKey-" + randomizer.StringRunes(10)
+		firstValue = "firstValue-" + randomizer.StringRunes(10)
+		secondValue = "secondValue-" + randomizer.StringRunes(10)
 
 		get = func(key string) string {
 			data := map[string]string{

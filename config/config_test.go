@@ -7,8 +7,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/compozed/conveyor/test"
 	. "github.com/compozed/deployadactyl/config"
+	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/test/mocks"
 )
 
@@ -40,8 +40,8 @@ var _ = Describe("Config", func() {
 	)
 
 	BeforeEach(func() {
-		cfUsername = "cfUsername-" + test.RandStringRunes(10)
-		cfPassword = "cfPassword-" + test.RandStringRunes(10)
+		cfUsername = "cfUsername-" + randomizer.StringRunes(10)
+		cfPassword = "cfPassword-" + randomizer.StringRunes(10)
 
 		env = &mocks.Env{}
 

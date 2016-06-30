@@ -1,3 +1,4 @@
+// Package logger is used for logging.
 package logger
 
 import (
@@ -6,6 +7,7 @@ import (
 	"github.com/op/go-logging"
 )
 
+// DefaultLogger returns a logging.Logger with a specific logging format.
 func DefaultLogger(out io.Writer, level logging.Level, module string) *logging.Logger {
 
 	var log = logging.MustGetLogger(module)

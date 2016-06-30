@@ -1,3 +1,4 @@
+// Package creator creates dependencies upon initialization.
 package creator
 
 import (
@@ -27,13 +28,16 @@ import (
 	"github.com/spf13/afero"
 )
 
+// ENDPOINT is used by the handler to define the deployment endpoint.
 const ENDPOINT = "/v1/apps/:environment/:org/:space/:appName"
 
+// EnsureCLI looks for the Cloud Foundary binary, otherwise it returns an error.
 func EnsureCLI() error {
 	_, err := exec.LookPath("cf")
 	return err
 }
 
+// New returns a Creator and an Error.
 func New(level string, configFilename string) (Creator, error) {
 	err := EnsureCLI()
 	if err != nil {
@@ -68,6 +72,8 @@ type Creator struct {
 	writer       io.Writer
 }
 
+// CreateDeployadactylHandler returns a gin.Engine that implements http.Handler.
+// Sets up the deployadactyl endpoint.
 func (c Creator) CreateDeployadactylHandler() *gin.Engine {
 	d := c.CreateDeployadactyl()
 
@@ -81,6 +87,7 @@ func (c Creator) CreateDeployadactylHandler() *gin.Engine {
 	return r
 }
 
+// CreateDeployadactyl returns a Deployadactyl.
 func (c Creator) CreateDeployadactyl() deployadactyl.Deployadactyl {
 	return deployadactyl.Deployadactyl{
 		Deployer:     c.CreateDeployer(),
@@ -91,10 +98,12 @@ func (c Creator) CreateDeployadactyl() deployadactyl.Deployadactyl {
 	}
 }
 
+// CreateRandomizer returns a randomizer.
 func (c Creator) CreateRandomizer() I.Randomizer {
 	return randomizer.Randomizer{}
 }
 
+// CreateListener creates a listener TCP and listens for all incoming requests.
 func (c Creator) CreateListener() net.Listener {
 	ls, err := net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   net.IPv4(0, 0, 0, 0),
@@ -107,6 +116,7 @@ func (c Creator) CreateListener() net.Listener {
 	return ls
 }
 
+// CreateDeployer creates and returns a deployer.
 func (c Creator) CreateDeployer() I.Deployer {
 	return deployer.Deployer{
 		Environments: c.config.Environments,
@@ -125,6 +135,9 @@ func (c Creator) CreateDeployer() I.Deployer {
 	}
 }
 
+// CreatePusher is used by the BlueGreener.
+//
+// Returns a pusher and error.
 func (c Creator) CreatePusher() (I.Pusher, error) {
 	fs := &afero.Afero{Fs: afero.NewOsFs()}
 	ex, err := executor.New(fs)
@@ -142,26 +155,33 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 	return p, nil
 }
 
+// CreateEventManager returns an EventManager.
 func (c Creator) CreateEventManager() I.EventManager {
 	return c.eventManager
 }
 
+// CreateLogger returns a Logger.
 func (c Creator) CreateLogger() *logging.Logger {
 	return c.logger
 }
 
+// CreateConfig returns a Config.
 func (c Creator) CreateConfig() config.Config {
 	return c.config
 }
 
+// CreatePrechecker returns a Prechecker.
+// EventManager is used to handle events within the prechecker.
 func (c Creator) CreatePrechecker() I.Prechecker {
 	return prechecker.Prechecker{c.CreateEventManager()}
 }
 
+// CreateWriter returns a Writer.
 func (c Creator) CreateWriter() io.Writer {
 	return c.writer
 }
 
+// CreateBlueGreener returns a BlueGreener.
 func (c Creator) CreateBlueGreener() I.BlueGreener {
 	return bluegreen.BlueGreen{
 		PusherCreator: c,

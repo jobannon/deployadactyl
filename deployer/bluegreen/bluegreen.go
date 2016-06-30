@@ -1,3 +1,4 @@
+// Package bluegreen is responsible for concurrently pushing an application to multiple Cloud Foundry instances.
 package bluegreen
 
 import (
@@ -21,6 +22,8 @@ type BlueGreen struct {
 	Log           *logging.Logger
 }
 
+// Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
+// If the application fails to start in any of the instances it handles rolling back the application in every instance.
 func (bg BlueGreen) Push(environment config.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
 	actors := make([]actor, len(environment.Foundations))
 	buffers := make([]*bytes.Buffer, len(actors))

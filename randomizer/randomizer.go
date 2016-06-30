@@ -1,3 +1,4 @@
+// Package randomizer is used for generating random strings.
 package randomizer
 
 import (
@@ -11,10 +12,14 @@ func init() {
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
+// StringRunes generates a random string of runes of a specified length.
 func StringRunes(n int) string {
 	return generateRunes(n)
 }
 
+type Randomizer struct{}
+
+// StringRunes generates a random string of runes of a specified length from a Randomizer struct.
 func (r Randomizer) StringRunes(n int) string {
 	return generateRunes(n)
 }
@@ -26,5 +31,3 @@ func generateRunes(n int) string {
 	}
 	return string(b)
 }
-
-type Randomizer struct{}

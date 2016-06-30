@@ -1,3 +1,4 @@
+// Package deployer will deploy your application.
 package deployer
 
 import (
@@ -31,6 +32,7 @@ type Deployer struct {
 	EventManager I.EventManager
 }
 
+// Deploy takes the deployment information, checks the foundations, fetches the artifact and deploys the application.
 func (d Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) (err error) {
 	var appPath string
 

@@ -47,9 +47,9 @@ func (c Courier) MapRoute(appName, domain string) ([]byte, error) {
 	return c.Executor.Execute("map-route", appName, domain, "-n", appName)
 }
 
-// Exists checks to see whether the app name exists already.
+// Exists checks to see whether the application name exists already.
 //
-// Returns true if the app exists.
+// Returns true if the application exists.
 func (c Courier) Exists(appName string) bool {
 	_, err := c.Executor.Execute("app", appName)
 	return err == nil

@@ -27,7 +27,7 @@ type Executor struct {
 	fileSystem *afero.Afero
 }
 
-// Execute takes many args and runs them together against the cf command on the Cloud Foundry binary.
+// Execute takes a slice of string args and runs them together against the cf command on the Cloud Foundry binary.
 //
 // Returns the combined standard output and standard error.
 func (e Executor) Execute(args ...string) ([]byte, error) {

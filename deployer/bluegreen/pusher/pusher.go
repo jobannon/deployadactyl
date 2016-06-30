@@ -1,3 +1,4 @@
+// Package pusher handles pushing to individual Cloud Foundry instances.
 package pusher
 
 import (
@@ -31,6 +32,9 @@ type Pusher struct {
 	Log     *logging.Logger
 }
 
+// Push pushes a single application to a Clound Foundry instance using blue green deployment.
+// Blue green is done by renaming the current application to appName-venerable.
+// Pushes the new application to the existing appName route with an included load balanced domain if provided.
 func (p Pusher) Push(appPath, foundationURL, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
 	p.Log.Debug(renamingApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	renameOutput, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
@@ -63,6 +67,7 @@ func (p Pusher) Push(appPath, foundationURL, domain string, deploymentInfo S.Dep
 	return nil
 }
 
+// FinishPush will delete the venerable instance of your application.
 func (p Pusher) FinishPush(foundationURL string, deploymentInfo S.DeploymentInfo) error {
 	venerableName := deploymentInfo.AppName + "-venerable"
 
@@ -76,6 +81,8 @@ func (p Pusher) FinishPush(foundationURL string, deploymentInfo S.DeploymentInfo
 	return nil
 }
 
+// Unpush will rollback Push.
+// Deletes the new application and renames the appName-venerable to appName.
 func (p Pusher) Unpush(foundationURL string, deploymentInfo S.DeploymentInfo) error {
 	p.Log.Errorf(rollingBackDeploy, deploymentInfo.AppName)
 
@@ -96,10 +103,12 @@ func (p Pusher) Unpush(foundationURL string, deploymentInfo S.DeploymentInfo) er
 	return nil
 }
 
+// CleanUp removes the temporary directory created by the Executor.
 func (p Pusher) CleanUp() error {
 	return p.Courier.CleanUp()
 }
 
+// Login will login to a Cloud Foundry instance.
 func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
 	p.Log.Debug(
 		`logging into cloud foundry with parameters:

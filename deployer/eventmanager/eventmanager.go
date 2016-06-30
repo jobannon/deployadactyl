@@ -1,3 +1,4 @@
+// Package eventmanager emits events.
 package eventmanager
 
 import (
@@ -10,12 +11,14 @@ type EventManager struct {
 	handlers map[string][]I.Handler
 }
 
+// NewEventManager returns an EventManager.
 func NewEventManager() *EventManager {
 	return &EventManager{
 		handlers: make(map[string][]I.Handler),
 	}
 }
 
+// AddHandler	takes a handler and eventType and returns an error if a handler is not provided.
 func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 	if handler == nil {
 		return errors.Errorf("Invalid argument: error handler does not exist")
@@ -24,6 +27,7 @@ func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 	return nil
 }
 
+// Emit emits an event.
 func (e *EventManager) Emit(event S.Event) error {
 	for _, handler := range e.handlers[event.Type] {
 		err := handler.OnEvent(event)

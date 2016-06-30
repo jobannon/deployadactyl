@@ -1,3 +1,4 @@
+// Package prechecker checks that all the Cloud Foundry instances are running before a deploy.
 package prechecker
 
 import (
@@ -22,6 +23,7 @@ type Prechecker struct {
 	EventManager I.EventManager
 }
 
+// AssertAllFoundationsUp will send a request to each Cloud Foundry instance and check that the response status code is 200 OK.
 func (p Prechecker) AssertAllFoundationsUp(environment config.Environment) error {
 	var insecureClient = &http.Client{
 		Transport: &http.Transport{

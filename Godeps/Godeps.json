@@ -20,9 +20,9 @@
 		"github.com/compozed/deployadactyl/logger",
 		"github.com/compozed/deployadactyl/randomizer",
 		"github.com/compozed/deployadactyl/structs",
-		"github.com/compozed/deployadactyl/test",
 		"github.com/compozed/deployadactyl/test/interfaces",
-		"github.com/compozed/deployadactyl/test/mocks"
+		"github.com/compozed/deployadactyl/test/mocks",
+		"github.com/compozed/deployadactyl/test/service"
 	],
 	"Deps": [
 		{

@@ -2,15 +2,22 @@
 package config
 
 import (
+	"io/ioutil"
 	"strconv"
+	"strings"
 
+	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/compozed/deployadactyl/geterrors"
 	"github.com/go-errors/errors"
 )
 
 const (
-	unableToGetLogLevel = "unable to get log level"
-	cannotParsePort     = "cannot parse $PORT"
+	unableToGetLogLevel    = "unable to get log level"
+	cannotParsePort        = "cannot parse $PORT"
+	cannotCreateGetRequest = "cannot create GET request"
+	cannotSendGetRequest   = "cannot send GET request"
+	cannotReadResponseBody = "cannot read response body"
+	cannotParseYamlFile    = "cannot parse yaml file"
 )
 
 type Config struct {
@@ -18,6 +25,22 @@ type Config struct {
 	Password     string
 	Environments map[string]Environment
 	Port         int
+}
+
+type Environment struct {
+	Name         string
+	Domain       string
+	Foundations  []string `yaml:",flow"`
+	Authenticate bool
+	SkipSSL      bool `yaml:"skip_ssl"`
+}
+
+type configYaml struct {
+	Environments []Environment `yaml:",flow"`
+}
+
+type foundationYaml struct {
+	Foundations []string
 }
 
 // New returns a new Config struct with information from environment variables and the config file.
@@ -62,4 +85,33 @@ func getPortFromEnv(getenv func(string) string) (int, error) {
 	}
 
 	return cfgPort, nil
+}
+
+func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	foundationConfig, err := parseYamlFromBody(file)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	environments := map[string]Environment{}
+	for _, environment := range foundationConfig.Environments {
+		environments[strings.ToLower(environment.Name)] = environment
+	}
+
+	return environments, nil
+}
+
+func parseYamlFromBody(data []byte) (configYaml, error) {
+	var foundationConfig configYaml
+	err := candiedyaml.Unmarshal(data, &foundationConfig)
+	if err != nil {
+		return configYaml{}, errors.Errorf("%s: %s", cannotParseYamlFile, err)
+	}
+
+	return foundationConfig, nil
 }

@@ -13,19 +13,19 @@ func init() {
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 // StringRunes generates a random string of runes of a specified length.
-func StringRunes(n int) string {
-	return generateRunes(n)
+func StringRunes(length int) string {
+	return generateRunes(length)
 }
 
 type Randomizer struct{}
 
 // StringRunes generates a random string of runes of a specified length from a Randomizer struct.
-func (r Randomizer) StringRunes(n int) string {
-	return generateRunes(n)
+func (r Randomizer) StringRunes(length int) string {
+	return generateRunes(length)
 }
 
-func generateRunes(n int) string {
-	b := make([]rune, n)
+func generateRunes(length int) string {
+	b := make([]rune, length)
 	for i := range b {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}

@@ -28,8 +28,11 @@ import (
 	"github.com/spf13/afero"
 )
 
-// ENDPOINT is used by the handler to define the deployment endpoint.
-const ENDPOINT = "/v1/apps/:environment/:org/:space/:appName"
+const (
+	ENDPOINT      = "/v1/apps/:environment/:org/:space/:appName" // ENDPOINT is used by the handler to define the deployment endpoint.
+	defaultConfig = "./config.yml"
+	defaultLevel  = "DEBUG"
+)
 
 // EnsureCLI looks for the Cloud Foundary binary, otherwise it returns an error.
 func EnsureCLI() error {
@@ -37,32 +40,32 @@ func EnsureCLI() error {
 	return err
 }
 
-// New returns a Creator and an Error.
-func New(level string, configFilename string) (Creator, error) {
-	err := EnsureCLI()
+// Default returns a default Creator and an Error.
+func Default() (Creator, error) {
+	l, err := getLevel(defaultLevel)
 	if err != nil {
 		return Creator{}, err
 	}
 
-	cfg, err := config.New(os.Getenv, configFilename)
+	cfg, err := config.Default(os.Getenv)
 	if err != nil {
 		return Creator{}, err
 	}
+	return createCreator(l, cfg)
+}
 
-	eventManager := eventmanager.NewEventManager()
-
+// Custom returns a custom Creator with an Error.
+func Custom(level string, configFilename string) (Creator, error) {
 	l, err := getLevel(level)
 	if err != nil {
 		return Creator{}, err
 	}
 
-	logger := logger.DefaultLogger(os.Stdout, l, "deployadactyl")
-	return Creator{
-		cfg,
-		eventManager,
-		logger,
-		os.Stdout,
-	}, nil
+	cfg, err := config.Custom(os.Getenv, configFilename)
+	if err != nil {
+		return Creator{}, err
+	}
+	return createCreator(l, cfg)
 }
 
 type Creator struct {
@@ -189,6 +192,23 @@ func (c Creator) CreateBlueGreener() I.BlueGreener {
 	}
 }
 
+func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
+	err := EnsureCLI()
+	if err != nil {
+		return Creator{}, err
+	}
+
+	eventManager := eventmanager.NewEventManager()
+
+	logger := logger.DefaultLogger(os.Stdout, l, "deployadactyl")
+	return Creator{
+		cfg,
+		eventManager,
+		logger,
+		os.Stdout,
+	}, nil
+
+}
 func getLevel(level string) (logging.Level, error) {
 	if level != "" {
 		l, err := logging.LogLevel(level)

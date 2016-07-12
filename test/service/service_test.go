@@ -33,7 +33,7 @@ import (
 
 const (
 	ENDPOINT        = "/v1/apps/:environment/:org/:space/:appName"
-	CONFIGPATH      = "test_config.yml"
+	CONFIGPATH      = "./test_config.yml"
 	ENVIRONMENTNAME = "test"
 	TESTCONFIG      = `---
 environments:
@@ -117,7 +117,7 @@ type Creator struct {
 }
 
 func New(level string, configFilename string) (Creator, error) {
-	cfg, err := config.New(os.Getenv, configFilename)
+	cfg, err := config.Custom(os.Getenv, configFilename)
 	if err != nil {
 		return Creator{}, err
 	}

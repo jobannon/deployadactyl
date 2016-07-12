@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	configPath = "./test_config.yml"
-	testConfig = `---
+	customConfigPath = "./custom_test_config.yml"
+	testConfig       = `---
 environments:
 - name: Test
   domain: test.example.com
@@ -60,11 +60,11 @@ var _ = Describe("Config", func() {
 			},
 		}
 
-		Expect(ioutil.WriteFile(configPath, []byte(testConfig), 0644)).To(Succeed())
+		Expect(ioutil.WriteFile(customConfigPath, []byte(testConfig), 0644)).To(Succeed())
 	})
 
 	AfterEach(func() {
-		Expect(os.RemoveAll(configPath)).To(Succeed())
+		Expect(os.RemoveAll(customConfigPath)).To(Succeed())
 	})
 
 	Context("when all environment variables are present", func() {
@@ -75,7 +75,7 @@ var _ = Describe("Config", func() {
 		})
 
 		It("returns a valid Config", func() {
-			config, err := New(env.Get, configPath)
+			config, err := Custom(env.Get, customConfigPath)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(config.Username).To(Equal(cfUsername))
@@ -90,7 +90,7 @@ var _ = Describe("Config", func() {
 			})
 
 			It("uses the value as the Port", func() {
-				config, err := New(env.Get, configPath)
+				config, err := Custom(env.Get, customConfigPath)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(config.Port).To(Equal(42))
 			})
@@ -104,8 +104,26 @@ var _ = Describe("Config", func() {
 		})
 
 		It("returns an error", func() {
-			_, err := New(env.Get, configPath)
+			_, err := Custom(env.Get, customConfigPath)
 			Expect(err).To(MatchError("missing environment variables: CF_USERNAME"))
+		})
+	})
+
+	Context("when a custom config filepath is used", func() {
+		BeforeEach(func() {
+			env.On("Get", "CF_USERNAME").Return(cfUsername)
+			env.On("Get", "CF_PASSWORD").Return(cfPassword)
+			env.On("Get", "PORT").Return("")
+		})
+
+		It("returns a valid Config", func() {
+			customConfig, err := Custom(env.Get, customConfigPath)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(customConfig.Username).To(Equal(cfUsername))
+			Expect(customConfig.Password).To(Equal(cfPassword))
+			Expect(customConfig.Environments).To(Equal(envMap))
+			Expect(customConfig.Port).To(Equal(8080))
 		})
 	})
 })

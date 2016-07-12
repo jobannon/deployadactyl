@@ -18,6 +18,7 @@ const (
 	cannotSendGetRequest   = "cannot send GET request"
 	cannotReadResponseBody = "cannot read response body"
 	cannotParseYamlFile    = "cannot parse yaml file"
+	defaultConfigPath      = "./config.yml"
 )
 
 type Config struct {
@@ -43,8 +44,25 @@ type foundationYaml struct {
 	Foundations []string
 }
 
-// New returns a new Config struct with information from environment variables and the config file.
-func New(getenv func(string) string, configFilename string) (Config, error) {
+// Default returns a new Config struct with information from environment variables and the default config file (./config.yml).
+func Default(getenv func(string) string) (Config, error) {
+	environments, err := getEnvironmentsFromFile(defaultConfigPath)
+	if err != nil {
+		return Config{}, errors.New(err)
+	}
+	return createConfig(getenv, environments)
+}
+
+// Custom returns a new Config struct with information from environment variables and a custom config file.
+func Custom(getenv func(string) string, configPath string) (Config, error) {
+	environments, err := getEnvironmentsFromFile(configPath)
+	if err != nil {
+		return Config{}, errors.New(err)
+	}
+	return createConfig(getenv, environments)
+}
+
+func createConfig(getenv func(string) string, environments map[string]Environment) (Config, error) {
 	getter := geterrors.WrapFunc(getenv)
 
 	username := getter.Get("CF_USERNAME")
@@ -55,11 +73,6 @@ func New(getenv func(string) string, configFilename string) (Config, error) {
 	}
 
 	port, err := getPortFromEnv(getenv)
-	if err != nil {
-		return Config{}, errors.New(err)
-	}
-
-	environments, err := getEnvironmentsFromFile(configFilename)
 	if err != nil {
 		return Config{}, errors.New(err)
 	}

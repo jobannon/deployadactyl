@@ -153,8 +153,8 @@ var _ = Describe("Deployer", func() {
 				prechecker.On("AssertAllFoundationsUp", environments[environmentName]).Return(nil)
 			})
 
-			It("emits deploy.finish event", func() {
-				event.Type = "deploy.finish"
+			It("emits deploy.success event", func() {
+				event.Type = "deploy.success"
 				// using `event` in this mock call causes an error that the mock
 				// isn't correct. we are going to use `mock.Anything` until we
 				// replace this mock with a hand written one
@@ -185,8 +185,8 @@ var _ = Describe("Deployer", func() {
 				prechecker.On("AssertAllFoundationsUp", environments[environmentName]).Return(nil)
 			})
 
-			It("emits a deploy.error event", func() {
-				event.Type = "deploy.error"
+			It("emits a deploy.failure event", func() {
+				event.Type = "deploy.failure"
 				eventManager.On("Emit", event).Return(errors.New("bork")).Times(1)
 
 				err := deployer.Deploy(deploymentInfo, buffer)
@@ -219,13 +219,13 @@ var _ = Describe("Deployer", func() {
 				).Return(nil)
 			})
 
-			It("returns an error on deploy.finish", func() {
+			It("returns an error on deploy.success", func() {
 				eventFinish := S.Event{
 					Data: S.DeployEventData{
 						Writer:         buffer,
 						DeploymentInfo: &deploymentInfo,
 					},
-					Type: "deploy.finish",
+					Type: "deploy.success",
 				}
 
 				eventManager.On("Emit", eventFinish).Return(errors.New("bork"))

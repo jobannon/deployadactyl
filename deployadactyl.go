@@ -62,6 +62,13 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 	}
 
 	deploymentInfo, err := getDeploymentInfo(c.Request.Body)
+	if err != nil {
+		d.Log.Error(err.Error())
+		c.Writer.WriteHeader(500)
+		c.Writer.WriteString(err.Error())
+		return
+	}
+
 	deploymentInfo.Username = username
 	deploymentInfo.Password = password
 	deploymentInfo.Environment = environment
@@ -72,15 +79,7 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 	deploymentInfo.SkipSSL = d.Config.Environments[environment].SkipSSL
 
 	d.Log.Debug("Deployment properties:\n\tartifact url: %+v", deploymentInfo.ArtifactURL)
-
 	fmt.Fprintf(buffer, fmt.Sprintf("%s\n\n", fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)))
-
-	if err != nil {
-		d.Log.Errorf("%s: %s", invalidPostRequest, err)
-		c.Writer.WriteHeader(500)
-		c.Writer.WriteString(err.Error())
-		return
-	}
 
 	deployEventData := S.DeployEventData{
 		Writer:         buffer,
@@ -97,6 +96,20 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 	}
 
 	deploymentInfo.Manifest = string(m)
+
+	defer func() {
+		deployFinishEvent := S.Event{
+			Type: "deploy.finish",
+			Data: deployEventData,
+		}
+
+		err = d.EventManager.Emit(deployFinishEvent)
+		if err != nil {
+			d.Log.Errorf("%s: %s", deployStartError, err)
+			c.Writer.WriteHeader(500)
+			c.Writer.WriteString(err.Error())
+		}
+	}()
 
 	deployStartEvent := S.Event{
 		Type: "deploy.start",

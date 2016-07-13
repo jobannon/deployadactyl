@@ -134,8 +134,9 @@ With Deployadactyl you can optionally register event handlers to perform any add
 |**Event Type**|**Returned Struct**|**Emitted**|
 |---|---|---|---|---|
 |`deploy.start`|[DeployEventData](structs/deploy_event_data.go)|Before deployment starts
-|`deploy.finish`|[DeployEventData](structs/deploy_event_data.go)|After a successful deployment
-|`deploy.error`|[DeployEventData](structs/deploy_event_data.go)|After a deployment fails
+|`deploy.success`|[DeployEventData](structs/deploy_event_data.go)|When a deployment succeeds
+|`deploy.failure`|[DeployEventData](structs/deploy_event_data.go)|When a deployment fails
+|`deploy.finish`|[DeployEventData](structs/deploy_event_data.go)|When a deployment finishes, regardless of success or failure
 |`validate.foundationsUnavailable`|[PrecheckerEventData](structs/prechecker_event_data.go)|When a foundation you're deploying to is down
 
 ### Event handler example
@@ -193,8 +194,9 @@ func (p *Page) Page(description string) {
 
   em := creator.CreateEventManager()
   em.AddHandler(p, "deploy.start")
+  em.AddHandler(p, "deploy.success")
+  em.AddHandler(p, "deploy.failure")
   em.AddHandler(p, "deploy.finish")
-  em.AddHandler(p, "deploy.error")
 ```
 
 ## Contributing

@@ -73,12 +73,12 @@ func (d Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) (err er
 
 	defer func() {
 		var deployEvent = S.Event{
-			Type: "deploy.finish",
+			Type: "deploy.success",
 			Data: deployEventData,
 		}
 
 		if err != nil {
-			deployEvent.Type = "deploy.error"
+			deployEvent.Type = "deploy.failure"
 		}
 
 		err = d.EventManager.Emit(deployEvent)

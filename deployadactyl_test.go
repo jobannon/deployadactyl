@@ -100,7 +100,7 @@ var _ = Describe("Deployadactyl", func() {
 			SkipSSL:     skipSSL,
 		}
 
-		eventManager.On("Emit", mock.Anything).Return(nil)
+		// eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
 		randomizerMock.On("StringRunes", mock.Anything).Return(uuid)
 
 		r = gin.New()
@@ -109,6 +109,7 @@ var _ = Describe("Deployadactyl", func() {
 
 	AfterEach(func() {
 		Expect(deployer.AssertExpectations(GinkgoT())).To(BeTrue())
+		Expect(eventManager.AssertExpectations(GinkgoT())).To(BeTrue())
 	})
 
 	Describe("Deploy", func() {
@@ -142,6 +143,7 @@ var _ = Describe("Deployadactyl", func() {
 
 				Context("username and password are provided", func() {
 					It("accepts the request with a 200 status", func() {
+						eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
 						deployer.On("Deploy", deploymentInfo, mock.Anything).Run(writeToOut("push succeeded")).Return(nil).Times(1)
 
 						jsonBuffer := bytes.NewBufferString(fmt.Sprintf(`{
@@ -179,6 +181,7 @@ var _ = Describe("Deployadactyl", func() {
 
 				Context("username and password are provided", func() {
 					It("accepts the request with a 200 status", func() {
+						eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
 						deployer.On("Deploy", deploymentInfo, mock.Anything).Run(writeToOut("push succeeded")).Return(nil).Times(1)
 
 						jsonBuffer := bytes.NewBufferString(fmt.Sprintf(`{
@@ -199,6 +202,8 @@ var _ = Describe("Deployadactyl", func() {
 
 				Context("username and password are not provided", func() {
 					It("accepts the request with a 200 status", func() {
+						eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
+
 						deploymentInfo.Username = defaultUsername
 						deploymentInfo.Password = defaultPassword
 						deployer.On("Deploy", deploymentInfo, mock.Anything).Run(writeToOut("push succeeded")).Return(nil).Times(1)
@@ -236,6 +241,7 @@ var _ = Describe("Deployadactyl", func() {
 
 			Context("when deployer succeeds", func() {
 				BeforeEach(func() {
+					eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
 					deployer.On("Deploy", deploymentInfo, mock.Anything).Run(writeToOut("push succeeded")).Return(nil).Times(1)
 				})
 
@@ -252,6 +258,8 @@ var _ = Describe("Deployadactyl", func() {
 
 			Context("when custom manifest information is given in the request body", func() {
 				It("properly decodes base64 encoding of that manifest information", func() {
+					eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
+
 					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
 					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
 
@@ -298,6 +306,7 @@ var _ = Describe("Deployadactyl", func() {
 
 			Context("when deployer fails", func() {
 				BeforeEach(func() {
+					eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
 					deployer.On("Deploy", deploymentInfo, mock.Anything).Run(writeToOut("some awesome CF error\n")).Return(errors.New("bork")).Times(1)
 				})
 
@@ -315,6 +324,7 @@ var _ = Describe("Deployadactyl", func() {
 
 		Context("deployment output", func() {
 			It("shows the user deployment info properties", func() {
+				eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
 				jsonBuffer := bytes.NewBufferString(fmt.Sprintf(`{
 						"artifact_url": "%s"
 						}`,

@@ -63,6 +63,9 @@ var _ = Describe("Service", func() {
 	)
 
 	BeforeEach(func() {
+		os.Setenv("CF_USERNAME", randomizer.StringRunes(10))
+		os.Setenv("CF_PASSWORD", randomizer.StringRunes(10))
+
 		Expect(ioutil.WriteFile(CONFIGPATH, []byte(TESTCONFIG), 0644)).To(Succeed())
 
 		creator, err = New("debug", CONFIGPATH)

@@ -176,9 +176,9 @@ func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
 		return Creator{}, err
 	}
 
-	eventManager := eventmanager.NewEventManager()
-
 	logger := logger.DefaultLogger(os.Stdout, l, "deployadactyl")
+	eventManager := eventmanager.NewEventManager(logger)
+
 	return Creator{
 		cfg,
 		eventManager,

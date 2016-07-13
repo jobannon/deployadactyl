@@ -5,16 +5,19 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/go-errors/errors"
+	"github.com/op/go-logging"
 )
 
 type EventManager struct {
 	handlers map[string][]I.Handler
+	Log      *logging.Logger
 }
 
 // NewEventManager returns an EventManager.
-func NewEventManager() *EventManager {
+func NewEventManager(l *logging.Logger) *EventManager {
 	return &EventManager{
 		handlers: make(map[string][]I.Handler),
+		Log:      l,
 	}
 }
 
@@ -34,6 +37,7 @@ func (e *EventManager) Emit(event S.Event) error {
 		if err != nil {
 			return err
 		}
+		e.Log.Debug("An event %s has been emitted", event.Type)
 	}
 	return nil
 }

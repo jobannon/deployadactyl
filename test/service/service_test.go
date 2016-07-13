@@ -122,14 +122,15 @@ func New(level string, configFilename string) (Creator, error) {
 		return Creator{}, err
 	}
 
-	eventManager := eventmanager.NewEventManager()
-
 	l, err := getLevel(level)
 	if err != nil {
 		return Creator{}, err
 	}
 
 	logger := logger.DefaultLogger(GinkgoWriter, l, "deployadactyl")
+
+	eventManager := eventmanager.NewEventManager(logger)
+
 	return Creator{
 		config:       cfg,
 		eventManager: eventManager,

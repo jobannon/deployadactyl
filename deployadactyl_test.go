@@ -100,7 +100,6 @@ var _ = Describe("Deployadactyl", func() {
 			SkipSSL:     skipSSL,
 		}
 
-		// eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
 		randomizerMock.On("StringRunes", mock.Anything).Return(uuid)
 
 		r = gin.New()

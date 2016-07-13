@@ -28,30 +28,22 @@ import (
 	"github.com/spf13/afero"
 )
 
-const (
-	ENDPOINT      = "/v1/apps/:environment/:org/:space/:appName" // ENDPOINT is used by the handler to define the deployment endpoint.
-	defaultConfig = "./config.yml"
-	defaultLevel  = "DEBUG"
-)
+const ENDPOINT = "/v1/apps/:environment/:org/:space/:appName" // ENDPOINT is used by the handler to define the deployment endpoint.
 
-// EnsureCLI looks for the Cloud Foundary binary, otherwise it returns an error.
-func EnsureCLI() error {
-	_, err := exec.LookPath("cf")
-	return err
+type Creator struct {
+	config       config.Config
+	eventManager I.EventManager
+	logger       *logging.Logger
+	writer       io.Writer
 }
 
 // Default returns a default Creator and an Error.
 func Default() (Creator, error) {
-	l, err := getLevel(defaultLevel)
-	if err != nil {
-		return Creator{}, err
-	}
-
 	cfg, err := config.Default(os.Getenv)
 	if err != nil {
 		return Creator{}, err
 	}
-	return createCreator(l, cfg)
+	return createCreator(logging.DEBUG, cfg)
 }
 
 // Custom returns a custom Creator with an Error.
@@ -68,42 +60,19 @@ func Custom(level string, configFilename string) (Creator, error) {
 	return createCreator(l, cfg)
 }
 
-type Creator struct {
-	config       config.Config
-	eventManager I.EventManager
-	logger       *logging.Logger
-	writer       io.Writer
-}
-
 // CreateDeployadactylHandler returns a gin.Engine that implements http.Handler.
 // Sets up the deployadactyl endpoint.
 func (c Creator) CreateDeployadactylHandler() *gin.Engine {
-	d := c.CreateDeployadactyl()
+	d := c.createDeployadactyl()
 
 	r := gin.New()
 	r.Use(gin.Recovery())
-	r.Use(gin.LoggerWithWriter(c.CreateWriter()))
+	r.Use(gin.LoggerWithWriter(c.createWriter()))
 	r.Use(gin.ErrorLogger())
 
 	r.POST(ENDPOINT, d.Deploy)
 
 	return r
-}
-
-// CreateDeployadactyl returns a Deployadactyl.
-func (c Creator) CreateDeployadactyl() deployadactyl.Deployadactyl {
-	return deployadactyl.Deployadactyl{
-		Deployer:     c.CreateDeployer(),
-		Log:          c.CreateLogger(),
-		Config:       c.CreateConfig(),
-		EventManager: c.CreateEventManager(),
-		Randomizer:   c.CreateRandomizer(),
-	}
-}
-
-// CreateRandomizer returns a randomizer.
-func (c Creator) CreateRandomizer() I.Randomizer {
-	return randomizer.Randomizer{}
 }
 
 // CreateListener creates a listener TCP and listens for all incoming requests.
@@ -117,25 +86,6 @@ func (c Creator) CreateListener() net.Listener {
 		log.Fatal(err)
 	}
 	return ls
-}
-
-// CreateDeployer creates and returns a deployer.
-func (c Creator) CreateDeployer() I.Deployer {
-	return deployer.Deployer{
-		Environments: c.config.Environments,
-		BlueGreener:  c.CreateBlueGreener(),
-		Fetcher: &artifetcher.Artifetcher{
-			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
-			Extractor: &extractor.Extractor{
-				Log:        c.CreateLogger(),
-				FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
-			},
-			Log: c.CreateLogger(),
-		},
-		Prechecker:   c.CreatePrechecker(),
-		EventManager: c.CreateEventManager(),
-		Log:          c.CreateLogger(),
-	}
 }
 
 // CreatePusher is used by the BlueGreener.
@@ -152,48 +102,73 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 		Courier: courier.Courier{
 			Executor: ex,
 		},
-		Log: c.CreateLogger(),
+		Log: c.createLogger(),
 	}
 
 	return p, nil
 }
 
-// CreateEventManager returns an EventManager.
-func (c Creator) CreateEventManager() I.EventManager {
-	return c.eventManager
+func (c Creator) createDeployadactyl() deployadactyl.Deployadactyl {
+	return deployadactyl.Deployadactyl{
+		Deployer:     c.createDeployer(),
+		Log:          c.createLogger(),
+		Config:       c.createConfig(),
+		EventManager: c.createEventManager(),
+		Randomizer:   c.createRandomizer(),
+	}
 }
 
-// CreateLogger returns a Logger.
-func (c Creator) CreateLogger() *logging.Logger {
+func (c Creator) createDeployer() I.Deployer {
+	return deployer.Deployer{
+		Environments: c.config.Environments,
+		BlueGreener:  c.createBlueGreener(),
+		Fetcher: &artifetcher.Artifetcher{
+			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+			Extractor: &extractor.Extractor{
+				Log:        c.createLogger(),
+				FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+			},
+			Log: c.createLogger(),
+		},
+		Prechecker:   c.createPrechecker(),
+		EventManager: c.createEventManager(),
+		Log:          c.createLogger(),
+	}
+}
+
+func (c Creator) createLogger() *logging.Logger {
 	return c.logger
 }
 
-// CreateConfig returns a Config.
-func (c Creator) CreateConfig() config.Config {
+func (c Creator) createConfig() config.Config {
 	return c.config
 }
 
-// CreatePrechecker returns a Prechecker.
-// EventManager is used to handle events within the prechecker.
-func (c Creator) CreatePrechecker() I.Prechecker {
-	return prechecker.Prechecker{c.CreateEventManager()}
+func (c Creator) createEventManager() I.EventManager {
+	return c.eventManager
 }
 
-// CreateWriter returns a Writer.
-func (c Creator) CreateWriter() io.Writer {
+func (c Creator) createRandomizer() I.Randomizer {
+	return randomizer.Randomizer{}
+}
+
+func (c Creator) createPrechecker() I.Prechecker {
+	return prechecker.Prechecker{c.createEventManager()}
+}
+
+func (c Creator) createWriter() io.Writer {
 	return c.writer
 }
 
-// CreateBlueGreener returns a BlueGreener.
-func (c Creator) CreateBlueGreener() I.BlueGreener {
+func (c Creator) createBlueGreener() I.BlueGreener {
 	return bluegreen.BlueGreen{
 		PusherCreator: c,
-		Log:           c.CreateLogger(),
+		Log:           c.createLogger(),
 	}
 }
 
 func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
-	err := EnsureCLI()
+	err := ensureCLI()
 	if err != nil {
 		return Creator{}, err
 	}
@@ -209,6 +184,12 @@ func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
 	}, nil
 
 }
+
+func ensureCLI() error {
+	_, err := exec.LookPath("cf")
+	return err
+}
+
 func getLevel(level string) (logging.Level, error) {
 	if level != "" {
 		l, err := logging.LogLevel(level)

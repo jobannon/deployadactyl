@@ -102,18 +102,33 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 		Courier: courier.Courier{
 			Executor: ex,
 		},
-		Log: c.createLogger(),
+		Log: c.CreateLogger(),
 	}
 
 	return p, nil
 }
 
+// CreateLogger returns a Logger.
+func (c Creator) CreateLogger() *logging.Logger {
+	return c.logger
+}
+
+// CreateConfig returns a Config.
+func (c Creator) CreateConfig() config.Config {
+	return c.config
+}
+
+// CreateEventManager returns an EventManager.
+func (c Creator) CreateEventManager() I.EventManager {
+	return c.eventManager
+}
+
 func (c Creator) createDeployadactyl() deployadactyl.Deployadactyl {
 	return deployadactyl.Deployadactyl{
 		Deployer:     c.createDeployer(),
-		Log:          c.createLogger(),
-		Config:       c.createConfig(),
-		EventManager: c.createEventManager(),
+		Log:          c.CreateLogger(),
+		Config:       c.CreateConfig(),
+		EventManager: c.CreateEventManager(),
 		Randomizer:   c.createRandomizer(),
 	}
 }
@@ -125,27 +140,15 @@ func (c Creator) createDeployer() I.Deployer {
 		Fetcher: &artifetcher.Artifetcher{
 			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
 			Extractor: &extractor.Extractor{
-				Log:        c.createLogger(),
+				Log:        c.CreateLogger(),
 				FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
 			},
-			Log: c.createLogger(),
+			Log: c.CreateLogger(),
 		},
 		Prechecker:   c.createPrechecker(),
-		EventManager: c.createEventManager(),
-		Log:          c.createLogger(),
+		EventManager: c.CreateEventManager(),
+		Log:          c.CreateLogger(),
 	}
-}
-
-func (c Creator) createLogger() *logging.Logger {
-	return c.logger
-}
-
-func (c Creator) createConfig() config.Config {
-	return c.config
-}
-
-func (c Creator) createEventManager() I.EventManager {
-	return c.eventManager
 }
 
 func (c Creator) createRandomizer() I.Randomizer {
@@ -153,7 +156,7 @@ func (c Creator) createRandomizer() I.Randomizer {
 }
 
 func (c Creator) createPrechecker() I.Prechecker {
-	return prechecker.Prechecker{c.createEventManager()}
+	return prechecker.Prechecker{c.CreateEventManager()}
 }
 
 func (c Creator) createWriter() io.Writer {
@@ -163,7 +166,7 @@ func (c Creator) createWriter() io.Writer {
 func (c Creator) createBlueGreener() I.BlueGreener {
 	return bluegreen.BlueGreen{
 		PusherCreator: c,
-		Log:           c.createLogger(),
+		Log:           c.CreateLogger(),
 	}
 }
 

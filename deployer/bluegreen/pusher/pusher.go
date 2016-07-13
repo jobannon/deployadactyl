@@ -36,33 +36,33 @@ type Pusher struct {
 // Blue green is done by renaming the current application to appName-venerable.
 // Pushes the new application to the existing appName route with an included load balanced domain if provided.
 func (p Pusher) Push(appPath, foundationURL, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
-	p.Log.Debug(renamingApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
+	p.Log.Debugf(renamingApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	renameOutput, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	if err != nil {
 		if p.Courier.Exists(deploymentInfo.AppName) {
 			p.Log.Errorf(cannotRenameApp)
 			return errors.New(string(renameOutput))
 		} else {
-			p.Log.Info(notRenamingNewApp)
+			p.Log.Infof(notRenamingNewApp)
 		}
 	}
-	p.Log.Info(renamedApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
+	p.Log.Infof(renamedApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 
-	p.Log.Debug(pushingNewApp, deploymentInfo.AppName, appPath)
+	p.Log.Debugf(pushingNewApp, deploymentInfo.AppName, appPath)
 	pushOutput, err := p.Courier.Push(deploymentInfo.AppName, appPath)
 	fmt.Fprint(out, string(pushOutput))
 	if err != nil {
 		return errors.New(string(pushOutput))
 	}
-	p.Log.Info(string(pushOutput))
+	p.Log.Infof(string(pushOutput))
 
-	p.Log.Debug(mappingRoute, deploymentInfo.AppName, domain)
+	p.Log.Debugf(mappingRoute, deploymentInfo.AppName, domain)
 	mapRouteOutput, err := p.Courier.MapRoute(deploymentInfo.AppName, domain)
 	fmt.Fprint(out, string(mapRouteOutput))
 	if err != nil {
 		return errors.New(string(mapRouteOutput))
 	}
-	p.Log.Info(string(mapRouteOutput))
+	p.Log.Infof(string(mapRouteOutput))
 
 	return nil
 }
@@ -76,7 +76,7 @@ func (p Pusher) FinishPush(foundationURL string, deploymentInfo S.DeploymentInfo
 		return errors.Errorf("%s %s: %s", cannotDelete, venerableName, err)
 	}
 
-	p.Log.Info(deletedApp, venerableName)
+	p.Log.Infof(deletedApp, venerableName)
 
 	return nil
 }
@@ -90,15 +90,15 @@ func (p Pusher) Unpush(foundationURL string, deploymentInfo S.DeploymentInfo) er
 
 	_, err := p.Courier.Delete(deploymentInfo.AppName)
 	if err != nil {
-		p.Log.Info(unableToDelete, deploymentInfo.AppName, err)
+		p.Log.Infof(unableToDelete, deploymentInfo.AppName, err)
 	}
-	p.Log.Info(deletedApp, deploymentInfo.AppName)
+	p.Log.Infof(deletedApp, deploymentInfo.AppName)
 
 	_, err = p.Courier.Rename(venerableName, deploymentInfo.AppName)
 	if err != nil {
-		p.Log.Info(unableToRenameVenerable, venerableName, err)
+		p.Log.Infof(unableToRenameVenerable, venerableName, err)
 	}
-	p.Log.Info(renamedApp, venerableName, deploymentInfo.AppName)
+	p.Log.Infof(renamedApp, venerableName, deploymentInfo.AppName)
 
 	return nil
 }
@@ -110,7 +110,7 @@ func (p Pusher) CleanUp() error {
 
 // Login will login to a Cloud Foundry instance.
 func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
-	p.Log.Debug(
+	p.Log.Debugf(
 		`logging into cloud foundry with parameters:
 		foundation URL: %+v
 		username: %+v
@@ -131,7 +131,7 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, out
 	if err != nil {
 		return errors.Errorf("%s %s: %s", cannotLogin, foundationURL, err)
 	}
-	p.Log.Info(loggedIntoCloudFoundry)
+	p.Log.Infof(loggedIntoCloudFoundry)
 
 	return nil
 }

@@ -37,7 +37,7 @@ func (e *EventManager) Emit(event S.Event) error {
 		if err != nil {
 			return err
 		}
-		e.Log.Debug("An event %s has been emitted", event.Type)
+		e.Log.Debugf("An event %s has been emitted", event.Type)
 	}
 	return nil
 }

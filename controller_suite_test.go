@@ -1,4 +1,4 @@
-package deployadactyl_test
+package controller_test
 
 import (
 	"github.com/gin-gonic/gin"
@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-func TestDeployadactyl(t *testing.T) {
+func TestController(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Deployadactyl Suite")
+	RunSpecs(t, "Controller Suite")
 }
 
 var _ = BeforeSuite(func() {

@@ -1,4 +1,4 @@
-package deployadactyl
+package controller
 
 import (
 	"bytes"
@@ -30,7 +30,7 @@ const (
 	AppName:      %s`
 )
 
-type Deployadactyl struct {
+type Controller struct {
 	Deployer     I.Deployer
 	Log          *logging.Logger
 	Config       config.Config
@@ -38,60 +38,60 @@ type Deployadactyl struct {
 	Randomizer   I.Randomizer
 }
 
-func (d *Deployadactyl) Deploy(c *gin.Context) {
-	d.Log.Debug("Request originated from: %+v", c.Request.RemoteAddr)
+func (c *Controller) Deploy(g *gin.Context) {
+	c.Log.Debug("Request originated from: %+v", g.Request.RemoteAddr)
 
 	var (
-		environment            = c.Param("environment")
-		authenticationRequired = d.Config.Environments[environment].Authenticate
+		environment            = g.Param("environment")
+		authenticationRequired = c.Config.Environments[environment].Authenticate
 		buffer                 = &bytes.Buffer{}
 	)
 
-	username, password, ok := c.Request.BasicAuth()
+	username, password, ok := g.Request.BasicAuth()
 
 	if !ok {
 		if authenticationRequired {
 			err := errors.New(basicAuthHeaderNotFound)
-			d.Log.Error(err.Error())
-			c.Writer.WriteHeader(401)
-			c.Writer.WriteString(err.Error())
+			c.Log.Error(err.Error())
+			g.Writer.WriteHeader(401)
+			g.Writer.WriteString(err.Error())
 			return
 		}
-		username = d.Config.Username
-		password = d.Config.Password
+		username = c.Config.Username
+		password = c.Config.Password
 	}
 
-	deploymentInfo, err := getDeploymentInfo(c.Request.Body)
+	deploymentInfo, err := getDeploymentInfo(g.Request.Body)
 	if err != nil {
-		d.Log.Error(err.Error())
-		c.Writer.WriteHeader(500)
-		c.Writer.WriteString(err.Error())
+		c.Log.Error(err.Error())
+		g.Writer.WriteHeader(500)
+		g.Writer.WriteString(err.Error())
 		return
 	}
 
 	deploymentInfo.Username = username
 	deploymentInfo.Password = password
 	deploymentInfo.Environment = environment
-	deploymentInfo.Org = c.Param("org")
-	deploymentInfo.Space = c.Param("space")
-	deploymentInfo.AppName = c.Param("appName")
-	deploymentInfo.UUID = d.Randomizer.StringRunes(128)
-	deploymentInfo.SkipSSL = d.Config.Environments[environment].SkipSSL
+	deploymentInfo.Org = g.Param("org")
+	deploymentInfo.Space = g.Param("space")
+	deploymentInfo.AppName = g.Param("appName")
+	deploymentInfo.UUID = c.Randomizer.StringRunes(128)
+	deploymentInfo.SkipSSL = c.Config.Environments[environment].SkipSSL
 
-	d.Log.Debug("Deployment properties:\n\tartifact url: %+v", deploymentInfo.ArtifactURL)
+	c.Log.Debug("Deployment properties:\n\tartifact url: %+v", deploymentInfo.ArtifactURL)
 	fmt.Fprintf(buffer, fmt.Sprintf("%s\n\n", fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)))
 
 	deployEventData := S.DeployEventData{
 		Writer:         buffer,
 		DeploymentInfo: &deploymentInfo,
-		RequestBody:    c.Request.Body,
+		RequestBody:    g.Request.Body,
 	}
 
 	m, err := base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
 	if err != nil {
-		d.Log.Errorf("%s: %s", invalidPostRequest, err)
-		c.Writer.WriteHeader(500)
-		c.Writer.WriteString(err.Error())
+		c.Log.Errorf("%s: %s", invalidPostRequest, err)
+		g.Writer.WriteHeader(500)
+		g.Writer.WriteString(err.Error())
 		return
 	}
 
@@ -103,11 +103,11 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 			Data: deployEventData,
 		}
 
-		err = d.EventManager.Emit(deployFinishEvent)
+		err = c.EventManager.Emit(deployFinishEvent)
 		if err != nil {
-			d.Log.Errorf("%s: %s", deployStartError, err)
-			c.Writer.WriteHeader(500)
-			c.Writer.WriteString(err.Error())
+			c.Log.Errorf("%s: %s", deployStartError, err)
+			g.Writer.WriteHeader(500)
+			g.Writer.WriteString(err.Error())
 		}
 	}()
 
@@ -116,22 +116,22 @@ func (d *Deployadactyl) Deploy(c *gin.Context) {
 		Data: deployEventData,
 	}
 
-	err = d.EventManager.Emit(deployStartEvent)
+	err = c.EventManager.Emit(deployStartEvent)
 	if err != nil {
-		d.Log.Errorf("%s: %s", deployStartError, err)
-		c.Writer.WriteHeader(500)
-		c.Writer.WriteString(err.Error())
+		c.Log.Errorf("%s: %s", deployStartError, err)
+		g.Writer.WriteHeader(500)
+		g.Writer.WriteString(err.Error())
 		return
 	}
 
-	err = d.Deployer.Deploy(deploymentInfo, buffer)
+	err = c.Deployer.Deploy(deploymentInfo, buffer)
 	if err != nil {
-		d.Log.Errorf("%s: %s", cannotDeployApplication, err)
-		c.Writer.WriteHeader(500)
-		c.Error(err)
+		c.Log.Errorf("%s: %s", cannotDeployApplication, err)
+		g.Writer.WriteHeader(500)
+		g.Error(err)
 	}
 
-	io.Copy(c.Writer, buffer)
+	io.Copy(g.Writer, buffer)
 }
 
 func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {

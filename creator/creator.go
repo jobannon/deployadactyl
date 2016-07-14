@@ -8,10 +8,10 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/compozed/deployadactyl"
 	"github.com/compozed/deployadactyl/artifetcher"
 	"github.com/compozed/deployadactyl/artifetcher/extractor"
 	"github.com/compozed/deployadactyl/config"
+	"github.com/compozed/deployadactyl/controller"
 	"github.com/compozed/deployadactyl/deployer"
 	"github.com/compozed/deployadactyl/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/deployer/bluegreen/pusher"
@@ -60,10 +60,10 @@ func Custom(level string, configFilename string) (Creator, error) {
 	return createCreator(l, cfg)
 }
 
-// CreateDeployadactylHandler returns a gin.Engine that implements http.Handler.
-// Sets up the deployadactyl endpoint.
-func (c Creator) CreateDeployadactylHandler() *gin.Engine {
-	d := c.createDeployadactyl()
+// CreateControllerHandler returns a gin.Engine that implements http.Handler.
+// Sets up the controller endpoint.
+func (c Creator) CreateControllerHandler() *gin.Engine {
+	d := c.createController()
 
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -123,8 +123,8 @@ func (c Creator) CreateEventManager() I.EventManager {
 	return c.eventManager
 }
 
-func (c Creator) createDeployadactyl() deployadactyl.Deployadactyl {
-	return deployadactyl.Deployadactyl{
+func (c Creator) createController() controller.Controller {
+	return controller.Controller{
 		Deployer:     c.createDeployer(),
 		Log:          c.CreateLogger(),
 		Config:       c.CreateConfig(),
@@ -176,7 +176,7 @@ func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
 		return Creator{}, err
 	}
 
-	logger := logger.DefaultLogger(os.Stdout, l, "deployadactyl")
+	logger := logger.DefaultLogger(os.Stdout, l, "controller")
 	eventManager := eventmanager.NewEventManager(logger)
 
 	return Creator{

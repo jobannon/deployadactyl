@@ -100,7 +100,7 @@ func main() {
   // event handling would be registered here
 
   l := c.CreateListener()
-  dh := c.CreateDeployadactylHandler()
+  dh := c.CreateControllerHandler()
 
   err = http.Serve(l, dh)
   if err != nil {

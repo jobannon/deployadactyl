@@ -1,4 +1,4 @@
-package deployadactyl_test
+package controller_test
 
 import (
 	"bytes"
@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	. "github.com/compozed/deployadactyl"
 	"github.com/compozed/deployadactyl/config"
+	. "github.com/compozed/deployadactyl/controller"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"
@@ -22,10 +22,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-var _ = Describe("Deployadactyl", func() {
+var _ = Describe("Controller", func() {
 
 	var (
-		deployadactyl  *Deployadactyl
+		controller     *Controller
 		deployer       *mocks.Deployer
 		deploymentInfo S.DeploymentInfo
 		r              *gin.Engine
@@ -73,7 +73,7 @@ var _ = Describe("Deployadactyl", func() {
 			Environments: envMap,
 		}
 
-		deployadactyl = &Deployadactyl{
+		controller = &Controller{
 			Deployer:     deployer,
 			Log:          logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "api_test"),
 			Config:       c,
@@ -113,7 +113,7 @@ var _ = Describe("Deployadactyl", func() {
 
 	Describe("Deploy", func() {
 		BeforeEach(func() {
-			r.POST("/v1/apps/:environment/:org/:space/:appName", deployadactyl.Deploy)
+			r.POST("/v1/apps/:environment/:org/:space/:appName", controller.Deploy)
 		})
 
 		Context("when the request is missing properties", func() {
@@ -137,7 +137,7 @@ var _ = Describe("Deployadactyl", func() {
 		Describe("Authentication", func() {
 			Context("Authenticate is true", func() {
 				BeforeEach(func() {
-					deployadactyl.Config.Environments[environment] = config.Environment{Authenticate: true}
+					controller.Config.Environments[environment] = config.Environment{Authenticate: true}
 				})
 
 				Context("username and password are provided", func() {
@@ -175,7 +175,7 @@ var _ = Describe("Deployadactyl", func() {
 
 			Context("Authenticate is false", func() {
 				BeforeEach(func() {
-					deployadactyl.Config.Environments[environment] = config.Environment{Authenticate: false}
+					controller.Config.Environments[environment] = config.Environment{Authenticate: false}
 				})
 
 				Context("username and password are provided", func() {

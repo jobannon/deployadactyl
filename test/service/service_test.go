@@ -10,10 +10,10 @@ import (
 	"net/http/httptest"
 	"os"
 
-	"github.com/compozed/deployadactyl"
 	"github.com/compozed/deployadactyl/artifetcher"
 	"github.com/compozed/deployadactyl/artifetcher/extractor"
 	"github.com/compozed/deployadactyl/config"
+	"github.com/compozed/deployadactyl/controller"
 	"github.com/compozed/deployadactyl/deployer"
 	"github.com/compozed/deployadactyl/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/deployer/bluegreen/pusher"
@@ -71,7 +71,7 @@ var _ = Describe("Service", func() {
 		creator, err = New("debug", CONFIGPATH)
 		Expect(err).ToNot(HaveOccurred())
 
-		deployadactylHandler := creator.CreateDeployadactylHandler()
+		deployadactylHandler := creator.CreateControllerHandler()
 
 		deployadactylServer = httptest.NewServer(deployadactylHandler)
 
@@ -130,7 +130,7 @@ func New(level string, configFilename string) (Creator, error) {
 		return Creator{}, err
 	}
 
-	logger := logger.DefaultLogger(GinkgoWriter, l, "deployadactyl")
+	logger := logger.DefaultLogger(GinkgoWriter, l, "creator")
 
 	eventManager := eventmanager.NewEventManager(logger)
 
@@ -142,8 +142,8 @@ func New(level string, configFilename string) (Creator, error) {
 	}, nil
 }
 
-func (c Creator) CreateDeployadactylHandler() *gin.Engine {
-	d := c.CreateDeployadactyl()
+func (c Creator) CreateControllerHandler() *gin.Engine {
+	d := c.CreateController()
 
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -155,8 +155,8 @@ func (c Creator) CreateDeployadactylHandler() *gin.Engine {
 	return r
 }
 
-func (c Creator) CreateDeployadactyl() deployadactyl.Deployadactyl {
-	return deployadactyl.Deployadactyl{
+func (c Creator) CreateController() controller.Controller {
+	return controller.Controller{
 		Deployer:     c.CreateDeployer(),
 		Log:          c.CreateLogger(),
 		Config:       c.CreateConfig(),

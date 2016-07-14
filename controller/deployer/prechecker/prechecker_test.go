@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/compozed/deployadactyl/config"
-	. "github.com/compozed/deployadactyl/deployer/prechecker"
+	. "github.com/compozed/deployadactyl/controller/deployer/prechecker"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/compozed/deployadactyl/test/mocks"
 

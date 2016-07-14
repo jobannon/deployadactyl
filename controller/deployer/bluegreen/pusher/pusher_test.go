@@ -3,7 +3,7 @@ package pusher_test
 import (
 	"errors"
 
-	. "github.com/compozed/deployadactyl/deployer/bluegreen/pusher"
+	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"

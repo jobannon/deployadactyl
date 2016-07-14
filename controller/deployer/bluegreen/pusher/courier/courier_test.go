@@ -1,7 +1,7 @@
 package courier_test
 
 import (
-	. "github.com/compozed/deployadactyl/deployer/bluegreen/pusher/courier"
+	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/test/mocks"
 	. "github.com/onsi/ginkgo"

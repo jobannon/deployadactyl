@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/compozed/deployadactyl/config"
-	. "github.com/compozed/deployadactyl/deployer"
+	. "github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"

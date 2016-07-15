@@ -7,7 +7,7 @@
 
 Deployadactyl is a Go library for deploying applications to multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push your application it will rollback to the previous version. Deployadactyl utilizes Gochannels for concurrent deployments across the multiple Cloud Foundry instances.
 
-## How it works
+## How It Works
 
 Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to push your application. The general flow is to get a list of Cloud Foundry instances, check that the instances are available, download your artifact, log into each instance, and concurrently call `cf push` in the deploying applications directory. If your application fails to deploy on any instance, Deployadactyl will automatically roll the application back to the previous version.
 
@@ -38,7 +38,7 @@ The configuration file can be placed anywhere within your project directory as l
 
 
 
-#### Example configuration yaml
+#### Example Configuration Yaml
 
 ```yaml
 ---
@@ -71,47 +71,33 @@ $ export CF_USERNAME=some-username
 $ export CF_PASSWORD=some-password
 ```
 
-## Server
+## How To Run Deployadactyl
 
-### Setup
+After a configuration yaml has been created and environment variables have been set, the server can be run using the following commands:
 
-Deployadactyl requires a server set up using the provided HTTP handler from the [creator package](creator/creator.go).
-
-#### Example
-
-```go
-package main
-
-import (
-  "log"
-  "net/http"
-  "os"
-
-  "github.com/compozed/deployadactyl/creator"
-)
-
-func main() {
-
-  c, err := creator.New("DEBUG", "./config.yml")
-  if err != nil {
-    log.Fatal(err)
-  }
-
-  // event handling would be registered here
-
-  l := c.CreateListener()
-  dh := c.CreateControllerHandler()
-
-  err = http.Serve(l, dh)
-  if err != nil {
-    log.Fatal(err)
-  }
-}
+```bash
+$ go run server.go
 ```
 
-The server is started using `go run main.go` and `curl` is used to start a deployment.
+or
 
-#### Example curl
+```bash
+$ go build && ./deployadactyl
+```
+
+#### Available Flags
+
+|**Flag**|**Usage**|
+|---|---|
+|`-config`|location of the config file (default "./config.yml")|
+|`-loglevel`|available levels: DEBUG, INFO, NOTI, WARN, ERROR, CRIT (default "DEBUG")|
+
+### API
+
+A deployment by hitting the API using `curl` or other means. For more information on using the Deployadactyl API visit the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) in the wiki.
+
+
+#### Example Curl
 
 ```bash
 curl -X POST \
@@ -122,16 +108,11 @@ curl -X POST \
      https://preproduction.example.com/v1/apps/environment/org/space/t-rex
 ```
 
-### API
-
-For more information on using the Deployadactyl API visit the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) in the wiki.
-
-
-## Event handling
+## Event Handling
 
 With Deployadactyl you can optionally register event handlers to perform any additional actions your deployment flow may require. For us, this meant adding handlers that would open and close change records, as well as notify anyone on pager duty of significant events.
 
-### Available emitted event types
+### Available Emitted Event Types
 
 |**Event Type**|**Returned Struct**|**Emitted**|
 |---|---|---|---|---|
@@ -141,7 +122,7 @@ With Deployadactyl you can optionally register event handlers to perform any add
 |`deploy.finish`|[DeployEventData](structs/deploy_event_data.go)|When a deployment finishes, regardless of success or failure
 |`validate.foundationsUnavailable`|[PrecheckerEventData](structs/prechecker_event_data.go)|When a foundation you're deploying to is down
 
-### Event handler example
+### Event Handler Example
 
 ```go
 package pagehandler
@@ -187,7 +168,7 @@ func (p *Page) Page(description string) {
 }
 ```
 
-### Event handling example
+### Event Handling Example
 
 ```go
   // server.go

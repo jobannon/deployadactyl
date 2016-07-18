@@ -109,6 +109,8 @@ func (c *Controller) Deploy(g *gin.Context) {
 			g.Writer.WriteHeader(500)
 			g.Writer.WriteString(err.Error())
 		}
+
+		io.Copy(g.Writer, buffer)
 	}()
 
 	deployStartEvent := S.Event{
@@ -130,8 +132,6 @@ func (c *Controller) Deploy(g *gin.Context) {
 		g.Writer.WriteHeader(500)
 		g.Error(err)
 	}
-
-	io.Copy(g.Writer, buffer)
 }
 
 func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {

@@ -2,3 +2,4 @@ deployadactyl
 .envrc
 vendor
 .agignore
+coverage.txt

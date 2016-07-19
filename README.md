@@ -37,7 +37,6 @@ The configuration file can be placed anywhere within your project directory as l
 |`skip_ssl` |*Optional*|`bool`| Used to skip SSL verification when Deployadactyl logs into Cloud Foundry.|
 
 
-
 #### Example Configuration Yaml
 
 ```yaml
@@ -71,6 +70,8 @@ $ export CF_USERNAME=some-username
 $ export CF_PASSWORD=some-password
 ```
 
+*Optional:* The log level can be changed by defining `DEPLOYADACTYL_LOGLEVEL`. `DEBUG` is the default log level.
+
 ## How To Run Deployadactyl
 
 After a configuration yaml has been created and environment variables have been set, the server can be run using the following commands:
@@ -90,12 +91,10 @@ $ go build && ./deployadactyl
 |**Flag**|**Usage**|
 |---|---|
 |`-config`|location of the config file (default "./config.yml")|
-|`-loglevel`|available levels: DEBUG, INFO, NOTI, WARN, ERROR, CRIT (default "DEBUG")|
 
 ### API
 
 A deployment by hitting the API using `curl` or other means. For more information on using the Deployadactyl API visit the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) in the wiki.
-
 
 #### Example Curl
 

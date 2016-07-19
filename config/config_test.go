@@ -29,6 +29,7 @@ environments:
   - api4.example.com
   skip_ssl: false
 `
+	badConfigPath = "./test_bad_config.yml"
 )
 
 var _ = Describe("Config", func() {
@@ -65,6 +66,7 @@ var _ = Describe("Config", func() {
 
 	AfterEach(func() {
 		Expect(os.RemoveAll(customConfigPath)).To(Succeed())
+		Expect(os.RemoveAll(badConfigPath)).To(Succeed())
 	})
 
 	Context("when all environment variables are present", func() {
@@ -109,21 +111,48 @@ var _ = Describe("Config", func() {
 		})
 	})
 
-	Context("when a custom config filepath is used", func() {
+	Context("when a bad config is given", func() {
 		BeforeEach(func() {
 			env.On("Get", "CF_USERNAME").Return(cfUsername)
 			env.On("Get", "CF_PASSWORD").Return(cfPassword)
-			env.On("Get", "PORT").Return("")
+			env.On("Get", "PORT").Return("42")
 		})
 
-		It("returns a valid Config", func() {
-			customConfig, err := Custom(env.Get, customConfigPath)
-			Expect(err).ToNot(HaveOccurred())
+		It("returns an error when empty", func() {
+			testBadConfig := `--- ~`
+			Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 
-			Expect(customConfig.Username).To(Equal(cfUsername))
-			Expect(customConfig.Password).To(Equal(cfPassword))
-			Expect(customConfig.Environments).To(Equal(envMap))
-			Expect(customConfig.Port).To(Equal(8080))
+			badConfig, err := Custom(env.Get, badConfigPath)
+			Expect(err).To(MatchError("environments key not specified in the configuration"))
+
+			Expect(badConfig.Environments).To(BeEmpty())
+		})
+
+		It("returns an error when environments does not contain a name", func() {
+			testBadConfig := `---
+environments:
+- invalidKey: invalidValue
+`
+			Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
+
+			badConfig, err := Custom(env.Get, badConfigPath)
+			Expect(err).To(MatchError("missing required environment parameter in the configuration"))
+
+			Expect(badConfig.Environments).To(BeEmpty())
+		})
+
+		It("returns an error when environment is missing required parameters", func() {
+			testBadConfig := `---
+environments:
+- name: production
+  foundations: []
+`
+			Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
+
+			badConfig, err := Custom(env.Get, badConfigPath)
+			Expect(err).To(MatchError("missing required environment parameter in the configuration"))
+
+			Expect(badConfig.Environments).To(BeEmpty())
 		})
 	})
 })

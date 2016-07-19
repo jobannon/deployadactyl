@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"log"
 	"net/http"
 	"os"
 
@@ -17,13 +18,22 @@ const (
 
 func main() {
 	config := flag.String("config", defaultConfig, "location of the config file")
-	level := flag.String("loglevel", defaultLevel, "available levels: DEBUG, INFO, NOTI, WARN, ERROR, CRIT")
 	flag.Parse()
 
-	logLevel, _ := logging.LogLevel(*level)
-	log := logger.DefaultLogger(os.Stdout, logLevel, "deployadactyl")
+	level := os.Getenv("DEPLOYADACTYL_LOGLEVEL")
+	if level == "" {
+		level = defaultLevel
+	}
 
-	c, err := creator.Custom(defaultLevel, *config)
+	logLevel, err := logging.LogLevel(level)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log := logger.DefaultLogger(os.Stdout, logLevel, "deployadactyl")
+	log.Infof("log level: %s", level)
+
+	c, err := creator.Custom(level, *config)
 	if err != nil {
 		log.Fatal(err)
 	}

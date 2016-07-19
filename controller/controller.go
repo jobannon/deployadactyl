@@ -27,7 +27,9 @@ const (
 	Enviroment:   %s,
 	Org:          %s,
 	Space:        %s,
-	AppName:      %s`
+	AppName:      %s
+
+`
 )
 
 type Controller struct {
@@ -78,8 +80,9 @@ func (c *Controller) Deploy(g *gin.Context) {
 	deploymentInfo.UUID = c.Randomizer.StringRunes(128)
 	deploymentInfo.SkipSSL = c.Config.Environments[environment].SkipSSL
 
-	c.Log.Debug("Deployment properties:\n\tartifact url: %+v", deploymentInfo.ArtifactURL)
-	fmt.Fprintf(buffer, fmt.Sprintf("%s\n\n", fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)))
+	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
+	c.Log.Debug(deploymentMessage)
+	fmt.Fprintf(buffer, deploymentMessage)
 
 	deployEventData := S.DeployEventData{
 		Writer:         buffer,

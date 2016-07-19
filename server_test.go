@@ -71,7 +71,6 @@ var _ = Describe("Server", func() {
 
 		Eventually(session.Err).Should(gbytes.Say("invalid log level"))
 
-		Expect(session).To(gexec.Exit())
 		os.Setenv("DEPLOYADACTYL_LOGLEVEL", level)
 	})
 

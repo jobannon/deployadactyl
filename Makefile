@@ -1,4 +1,4 @@
-.PHONY: install build doc fmt lint test watch godep
+.PHONY: install build doc fmt lint test watch godep server
 
 install:
 	go get -t -v ./...
@@ -16,10 +16,13 @@ lint:
 	golint ./...
 
 test:
-	ginkgo -r -slowSpecThreshold 60 -tags all
+	ginkgo -r
 
 watch:
-	ginkgo watch -r -tags all
+	ginkgo watch -r
 
 godep:
-	godep save $(go list ./... | ag -v /vendor/)
+	godep save $(go list ./... | grep /vendor/)
+
+server:
+	go run server.go

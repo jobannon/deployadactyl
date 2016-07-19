@@ -1,8 +1,11 @@
 # Deployadactyl
 
+[![Release](https://img.shields.io/github/release/compozed/deployadactyl.svg)](https://github.com/compozed/deployadactyl/releases/latest)
 [![CircleCI](https://circleci.com/gh/compozed/deployadactyl.svg?style=svg)](https://circleci.com/gh/compozed/deployadactyl)
+**Test Coverage:** _coverage badge_
+[![Stories in Ready](https://badge.waffle.io/compozed/deployadactyl.png?label=ready&title=Ready)](https://waffle.io/compozed/deployadactyl)
+[![GoDoc](https://godoc.org/github.com/compozed/deployadactyl?status.svg)](https://godoc.org/github.com/compozed/deployadactyl)
 
-**Documentation:** _godoc link/badge_ **Test Coverage:** _coverage badge_
 
 
 Deployadactyl is a Go library for deploying applications to multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push your application it will rollback to the previous version. Deployadactyl utilizes Gochannels for concurrent deployments across the multiple Cloud Foundry instances.

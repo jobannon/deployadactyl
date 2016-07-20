@@ -186,8 +186,8 @@ func (p *Page) Page(description string) {
 
 ## Contributing
 
-- Fork the project
+- Fork Deployadactyl
 - Make a branch
 - Commit to the branch
 - Send us a Pull Request
-- Sign our Contributing License Agreement (CLA) [Link Coming Soon...]()
+- Sign our [Contributing License Agreement](https://compozed-cla.cfapps.io/) (CLA)

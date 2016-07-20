@@ -80,6 +80,7 @@ var _ = Describe("Extracting", func() {
 		file := "../fixtures/bad-deployadactyl-fixture.tgz"
 		destination = "../fixtures/bad-deployadactyl-fixture"
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
+
 		extractor := Extractor{logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "extractor_test"), af}
 
 		Expect(extractor.Unzip(file, destination, "")).ToNot(Succeed())

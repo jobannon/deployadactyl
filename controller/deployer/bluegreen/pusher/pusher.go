@@ -42,9 +42,8 @@ func (p Pusher) Push(appPath, foundationURL, domain string, deploymentInfo S.Dep
 		if p.Courier.Exists(deploymentInfo.AppName) {
 			p.Log.Errorf(cannotRenameApp)
 			return errors.New(string(renameOutput))
-		} else {
-			p.Log.Infof(notRenamingNewApp)
 		}
+		p.Log.Infof(notRenamingNewApp)
 	}
 	p.Log.Infof(renamedApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 

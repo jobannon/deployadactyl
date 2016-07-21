@@ -16,7 +16,7 @@ const (
 	apiPathExtension        = "/v2/info"
 	unavailableFoundation   = "deploy aborted, one or more CF foundations unavailable"
 	noFoundationsConfigured = "no foundations configured"
-	anApiEndpointFailed     = "An api endpoint failed"
+	anAPIEndpointFailed     = "An api endpoint failed"
 )
 
 type Prechecker struct {
@@ -56,7 +56,7 @@ func (p Prechecker) AssertAllFoundationsUp(environment config.Environment) error
 			precheckerEventData.Description = unavailableFoundation
 
 			p.EventManager.Emit(S.Event{Type: "validate.foundationsUnavailable", Data: precheckerEventData})
-			return errors.Errorf("%s: %s: %s", anApiEndpointFailed, foundationURL, resp.Status)
+			return errors.Errorf("%s: %s: %s", anAPIEndpointFailed, foundationURL, resp.Status)
 		}
 	}
 	return nil

@@ -15,7 +15,7 @@ import (
 
 const (
 	cannotCreateTempFile      = "cannot create temp file"
-	cannotGetUrl              = "cannot GET url"
+	cannotGetURL              = "cannot GET url"
 	cannotWriteResponseToFile = "cannot write response to file"
 	cannotCreateTempDirectory = "cannot create temp directory"
 	cannotUnzipArtifact       = "cannot unzip artifact"
@@ -53,12 +53,12 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	response, err := proxyClient.Get(url)
 	if err != nil {
-		return "", errors.Errorf("%s: %s: %s", cannotGetUrl, url, err)
+		return "", errors.Errorf("%s: %s: %s", cannotGetURL, url, err)
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return "", errors.Errorf("%s: %s: %s", cannotGetUrl, url, response.Status)
+		return "", errors.Errorf("%s: %s: %s", cannotGetURL, url, response.Status)
 	}
 
 	_, err = io.Copy(artifactFile, response.Body)

@@ -21,7 +21,7 @@ func NewEventManager(l *logging.Logger) *EventManager {
 	}
 }
 
-// AddHandler	takes a handler and eventType and returns an error if a handler is not provided.
+// AddHandler takes a handler and eventType and returns an error if a handler is not provided.
 func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 	if handler == nil {
 		return errors.Errorf("Invalid argument: error handler does not exist")

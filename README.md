@@ -1,4 +1,4 @@
-# Deployadactyl
+![](https://raw.githubusercontent.com/compozed/images/master/deployadactyl_logo.png)
 
 [![Release](https://img.shields.io/github/release/compozed/deployadactyl.svg)](https://github.com/compozed/deployadactyl/releases/latest)
 [![CircleCI](https://circleci.com/gh/compozed/deployadactyl.svg?style=svg)](https://circleci.com/gh/compozed/deployadactyl)

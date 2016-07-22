@@ -25,10 +25,6 @@ var _ = Describe("Courier", func() {
 		}
 	})
 
-	AfterEach(func() {
-		Expect(executor.AssertExpectations(GinkgoT())).To(BeTrue())
-	})
-
 	Describe("Login", func() {
 		It("should get a valid Cloud Foundry login command", func() {
 			var (
@@ -41,11 +37,12 @@ var _ = Describe("Courier", func() {
 				expectedArgs = []string{"login", "-a", api, "-u", user, "-p", password, "-o", org, "-s", space, ""}
 			)
 
-			executor.On("Execute", expectedArgs).Return([]byte(output), nil).Times(1)
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
 
-			out, err := courier.Login(api, user, password, org, space, skipSSL)
-			Expect(err).ToNot(HaveOccurred())
+			out, _ := courier.Login(api, user, password, org, space, skipSSL)
 
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
 			Expect(string(out)).To(Equal(output))
 		})
 
@@ -60,11 +57,13 @@ var _ = Describe("Courier", func() {
 				expectedArgs = []string{"login", "-a", api, "-u", user, "-p", password, "-o", org, "-s", space, "--skip-ssl-validation"}
 			)
 
-			executor.On("Execute", expectedArgs).Return([]byte(output), nil).Times(1)
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
 
 			out, err := courier.Login(api, user, password, org, space, skipSSL)
 			Expect(err).ToNot(HaveOccurred())
 
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
 			Expect(string(out)).To(Equal(output))
 		})
 	})
@@ -73,11 +72,13 @@ var _ = Describe("Courier", func() {
 		It("should get a valid Cloud Foundry delete command", func() {
 			expectedArgs := []string{"delete", appName, "-f"}
 
-			executor.On("Execute", expectedArgs).Return([]byte(output), nil).Times(1)
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
 
 			out, err := courier.Delete(appName)
 			Expect(err).ToNot(HaveOccurred())
 
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
 			Expect(string(out)).To(Equal(output))
 		})
 	})
@@ -86,16 +87,16 @@ var _ = Describe("Courier", func() {
 		It("should get a valid Cloud Foundry push command", func() {
 			var (
 				appLocation  = "appLocation-" + randomizer.StringRunes(10)
-				expectedArgs = []string{
-					"push", appName,
-				}
+				expectedArgs = []string{"push", appName}
 			)
 
-			executor.On("ExecuteInDirectory", appLocation, expectedArgs).Return([]byte(output), nil).Times(1)
+			executor.ExecuteInDirectoryCall.Returns.Output = []byte(output)
+			executor.ExecuteInDirectoryCall.Returns.Error = nil
 
 			out, err := courier.Push(appName, appLocation)
 			Expect(err).ToNot(HaveOccurred())
 
+			Expect(executor.ExecuteInDirectoryCall.Received.Args).To(Equal(expectedArgs))
 			Expect(string(out)).To(Equal(output))
 		})
 	})
@@ -107,11 +108,13 @@ var _ = Describe("Courier", func() {
 				expectedArgs = []string{"rename", appName, newAppName}
 			)
 
-			executor.On("Execute", expectedArgs).Return([]byte(output), nil).Times(1)
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
 
 			out, err := courier.Rename(appName, newAppName)
 			Expect(err).ToNot(HaveOccurred())
 
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
 			Expect(string(out)).To(Equal(output))
 		})
 	})
@@ -123,11 +126,13 @@ var _ = Describe("Courier", func() {
 				expectedArgs = []string{"map-route", appName, domain, "-n", appName}
 			)
 
-			executor.On("Execute", expectedArgs).Return([]byte(output), nil).Times(1)
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
 
 			out, err := courier.MapRoute(appName, domain)
 			Expect(err).ToNot(HaveOccurred())
 
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
 			Expect(string(out)).To(Equal(output))
 		})
 	})
@@ -136,15 +141,19 @@ var _ = Describe("Courier", func() {
 		It("should get a valid cloud foundry exists command", func() {
 			expectedArgs := []string{"app", appName}
 
-			executor.On("Execute", expectedArgs).Return([]byte(output), nil).Times(1)
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
 
 			Expect(courier.Exists(appName)).To(BeTrue())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
 		})
 	})
 
 	Describe("CleanUp", func() {
 		It("calls CleanUp on the executor", func() {
-			executor.On("CleanUp").Return(nil)
+			executor.CleanUpCall.Returns.Error = nil
+
 			Expect(courier.CleanUp()).To(Succeed())
 		})
 	})

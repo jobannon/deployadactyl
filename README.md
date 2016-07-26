@@ -183,11 +183,3 @@ func (p *Page) Page(description string) {
   em.AddHandler(p, "deploy.failure")
   em.AddHandler(p, "deploy.finish")
 ```
-
-## Contributing
-
-- Fork Deployadactyl
-- Make a branch
-- Commit to the branch
-- Send us a Pull Request
-- Sign our [Contributing License Agreement](https://compozed-cla.cfapps.io/) (CLA)

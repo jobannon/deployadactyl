@@ -2,8 +2,7 @@ package bluegreen_test
 
 import (
 	"bytes"
-	"fmt"
-	"io"
+	"errors"
 
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen"
@@ -11,9 +10,7 @@ import (
 	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/compozed/deployadactyl/test/mocks"
-	"github.com/go-errors/errors"
 	"github.com/op/go-logging"
-	"github.com/stretchr/testify/mock"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -75,34 +72,33 @@ var _ = Describe("Bluegreen", func() {
 		}
 	})
 
-	AfterEach(func() {
-		Expect(pusherFactory.AssertExpectations(GinkgoT())).To(BeTrue())
-		for _, pusher := range pushers {
-			Expect(pusher.AssertExpectations(GinkgoT())).To(BeTrue())
-		}
-	})
-
 	Context("when any logins fail", func() {
 		It("should not start to deploy", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
-			for index, foundationURL := range environment.Foundations {
+			for index, _ := range environment.Foundations {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
-				pusherFactory.On("CreatePusher").Return(pusher, nil).Times(1)
+				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
 
 				if index == 0 {
-					pusher.On("Login", foundationURL, deploymentInfo, mock.Anything).
-						Run(writeToLoginOut(loginOutput)).Return(errors.New("bork"))
+					pusher.LoginCall.Write.Output = loginOutput
+					pusher.LoginCall.Returns.Error = errors.New("bork")
 				} else {
-					pusher.On("Login", foundationURL, deploymentInfo, mock.Anything).
-						Run(writeToLoginOut(loginOutput)).Return(nil)
+					pusher.LoginCall.Write.Output = loginOutput
+					pusher.LoginCall.Returns.Error = nil
 				}
 
-				pusher.On("CleanUp").Return(nil).Times(1)
+				pusher.CleanUpCall.Returns.Error = nil
 			}
 
 			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).ToNot(Succeed())
+
+			for i, pusher := range pushers {
+				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
+				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			}
+
 			Expect(buffer.String()).To(Equal(loginOutput + loginOutput))
 		})
 	})
@@ -114,36 +110,60 @@ var _ = Describe("Bluegreen", func() {
 
 			pusher := &mocks.Pusher{}
 			pushers = append(pushers, pusher)
-			pusherFactory.On("CreatePusher").Return(pusher, nil)
+			pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
 
-			pusher.On("Login", foundationURL, deploymentInfo, mock.Anything).
-				Run(writeToLoginOut(loginOutput)).Return(nil)
-			pusher.On("Push", appPath, foundationURL, domainName, deploymentInfo, mock.Anything).
-				Run(writeToOut(pushOutput)).Return(nil).Times(1)
-			pusher.On("FinishPush", foundationURL, deploymentInfo).Return(nil).Times(1)
-			pusher.On("CleanUp").Return(nil).Times(1)
+			pusher.LoginCall.Write.Output = loginOutput
+			pusher.LoginCall.Returns.Error = nil
+			pusher.PushCall.Write.Output = pushOutput
+			pusher.PushCall.Returns.Error = nil
+			pusher.FinishPushCall.Returns.Error = nil
+			pusher.CleanUpCall.Returns.Error = nil
 
 			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).To(Succeed())
+
+			Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
+			Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
+			Expect(pusher.PushCall.Received.FoundationURL).To(Equal(foundationURL))
+			Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
+			Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			Expect(pusher.FinishPushCall.Received.FoundationURL).To(Equal(foundationURL))
+			Expect(pusher.FinishPushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+
 			Expect(buffer.String()).To(Equal(loginOutput + pushOutput))
 		})
 
 		It("can push an app to multiple foundations", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
-			for _, foundationURL := range environment.Foundations {
+			for range environment.Foundations {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
-				pusherFactory.On("CreatePusher").Return(pusher, nil).Times(1)
+				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
 
-				pusher.On("Login", foundationURL, deploymentInfo, mock.Anything).
-					Run(writeToLoginOut(loginOutput)).Return(nil)
-				pusher.On("Push", appPath, foundationURL, domainName, deploymentInfo, mock.Anything).
-					Run(writeToOut(pushOutput)).Return(nil).Times(1)
-				pusher.On("FinishPush", foundationURL, deploymentInfo).Return(nil).Times(1)
-				pusher.On("CleanUp").Return(nil).Times(1)
+				pusher.LoginCall.Write.Output = loginOutput
+				pusher.LoginCall.Returns.Error = nil
+				pusher.PushCall.Write.Output = pushOutput
+				pusher.PushCall.Returns.Error = nil
+				pusher.FinishPushCall.Returns.Error = nil
+				pusher.CleanUpCall.Returns.Error = nil
 			}
 
 			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).To(Succeed())
+
+			for i, pusher := range pushers {
+				foundationURL := environment.Foundations[i]
+
+				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
+				Expect(pusher.PushCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
+				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.FinishPushCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.FinishPushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			}
+
 			Expect(buffer.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
 		})
 	})
@@ -152,40 +172,42 @@ var _ = Describe("Bluegreen", func() {
 		It("should rollback all recent pushes", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
-			for index, foundationURL := range environment.Foundations {
+			for index, _ := range environment.Foundations {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
-				pusherFactory.On("CreatePusher").Return(pusher, nil).Times(1)
+				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
 
-				pusher.On("Login", foundationURL, deploymentInfo, mock.Anything).
-					Run(writeToLoginOut(loginOutput)).Return(nil)
+				pusher.LoginCall.Write.Output = loginOutput
+				pusher.LoginCall.Returns.Error = nil
 
 				if index == 0 {
-					pusher.On("Push", appPath, foundationURL, domainName, deploymentInfo, mock.Anything).
-						Run(writeToOut(pushOutput)).Return(nil).Times(1)
+					pusher.PushCall.Write.Output = pushOutput
+					pusher.PushCall.Returns.Error = nil
 				} else {
-					pusher.On("Push", appPath, foundationURL, domainName, deploymentInfo, mock.Anything).
-						Run(writeToOut(pushOutput)).Return(errors.New("bork")).Times(1)
+					pusher.PushCall.Write.Output = pushOutput
+					pusher.PushCall.Returns.Error = errors.New("bork")
 				}
 
-				pusher.On("Unpush", foundationURL, deploymentInfo).Return(nil).Times(1)
-				pusher.On("CleanUp").Return(nil).Times(1)
+				pusher.UnpushCall.Returns.Error = nil
+				pusher.CleanUpCall.Returns.Error = nil
 			}
 
 			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).ToNot(Succeed())
+
+			for i, pusher := range pushers {
+				foundationURL := environment.Foundations[i]
+
+				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
+				Expect(pusher.PushCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
+				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.UnpushCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.UnpushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			}
+
 			Expect(buffer.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
 		})
 	})
 })
-
-func writeToOut(str string) func(args mock.Arguments) {
-	return func(args mock.Arguments) {
-		fmt.Fprint(args.Get(4).(io.Writer), str)
-	}
-}
-
-func writeToLoginOut(str string) func(args mock.Arguments) {
-	return func(args mock.Arguments) {
-		fmt.Fprint(args.Get(2).(io.Writer), str)
-	}
-}

@@ -2,6 +2,8 @@ package deployer_test
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer"
@@ -9,11 +11,9 @@ import (
 	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/compozed/deployadactyl/test/mocks"
-	"github.com/go-errors/errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/op/go-logging"
-	"github.com/stretchr/testify/mock"
 )
 
 const (
@@ -41,11 +41,12 @@ var _ = Describe("Deployer", func() {
 		password        string
 		buffer          *bytes.Buffer
 
-		deploymentInfo S.DeploymentInfo
-		event          S.Event
-		foundations    []string
-		environments   = map[string]config.Environment{}
-		log            = logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "test")
+		deploymentInfo  S.DeploymentInfo
+		event           S.Event
+		deployEventData S.DeployEventData
+		foundations     []string
+		environments    = map[string]config.Environment{}
+		log             = logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "test")
 	)
 
 	BeforeEach(func() {
@@ -76,180 +77,153 @@ var _ = Describe("Deployer", func() {
 			UUID:        uuid,
 		}
 
+		deployEventData = S.DeployEventData{
+			Writer:         &bytes.Buffer{},
+			DeploymentInfo: &deploymentInfo,
+		}
+
 		event = S.Event{
-			Data: S.DeployEventData{
-				Writer:         &bytes.Buffer{},
-				DeploymentInfo: &deploymentInfo,
-			},
+			Data: deployEventData,
 		}
 
 		foundations = []string{randomizer.StringRunes(10)}
 		buffer = &bytes.Buffer{}
+
+		environments = map[string]config.Environment{}
+		environments[environmentName] = config.Environment{
+			Name:        environmentName,
+			Domain:      domain,
+			Foundations: foundations,
+		}
 	})
 
 	JustBeforeEach(func() {
 		deployer = Deployer{blueGreener, environments, fetcher, log, prechecker, eventManager}
 	})
 
-	AfterEach(func() {
-		Expect(blueGreener.AssertExpectations(GinkgoT())).To(BeTrue())
-		Expect(fetcher.AssertExpectations(GinkgoT())).To(BeTrue())
-		Expect(prechecker.AssertExpectations(GinkgoT())).To(BeTrue())
-		Expect(eventManager.AssertExpectations(GinkgoT())).To(BeTrue())
-	})
-
 	Describe("Deploy", func() {
 		Context("with no environments", func() {
 			It("returns an error", func() {
 				event.Type = "deploy.error"
-				// using `event` in this mock call causes an error that the mock
-				// isn't correct. we are going to use `mock.Anything` until we
-				// replace this mock with a hand written one
-				eventManager.On("Emit", mock.Anything).Return(nil).Times(1)
+				errorMessage := "environment not found: " + environmentName
+
+				environments = nil
+				deployer = Deployer{blueGreener, environments, fetcher, log, prechecker, eventManager}
+
+				eventManager.EmitCall.Returns.Error = nil
 
 				err := deployer.Deploy(deploymentInfo, buffer)
-
-				errorMessage := "environment not found: " + environmentName
 				Expect(buffer).To(ContainSubstring(errorMessage))
 				Expect(err).To(MatchError(errorMessage))
+
+				fmt.Fprint(deployEventData.Writer, buffer.String())
+				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
 			})
 		})
 
-		Context("with at least one bad foundation", func() {
-			BeforeEach(func() {
-				environments[environmentName] = config.Environment{
-					Name:        environmentName,
-					Foundations: foundations,
-				}
-
-				prechecker.On("AssertAllFoundationsUp", environments[environmentName]).
-					Return(errors.New(deployAborted))
-			})
-
-			It("returns an error message", func() {
-				err := deployer.Deploy(deploymentInfo, buffer)
-
-				Expect(err).To(MatchError("Deploy aborted, one or more CF foundations unavailable"))
-			})
-		})
-
-		Context("when apps start correctly", func() {
-			BeforeEach(func() {
-				environments[environmentName] = config.Environment{
-					Name:        environmentName,
-					Domain:      domain,
-					Foundations: foundations,
-				}
-
-				fetcher.On("Fetch", artifactURL, "").Return(appPath, nil)
-
-				blueGreener.On("Push",
-					environments[environmentName],
-					appPath,
-					deploymentInfo,
-					buffer,
-				).Return(nil)
-
-				prechecker.On("AssertAllFoundationsUp", environments[environmentName]).Return(nil)
-			})
-
-			It("emits deploy.success event", func() {
-				event.Type = "deploy.success"
-				// using `event` in this mock call causes an error that the mock
-				// isn't correct. we are going to use `mock.Anything` until we
-				// replace this mock with a hand written one
-				eventManager.On("Emit", mock.Anything).Return(nil).Times(1)
-
-				err := deployer.Deploy(deploymentInfo, buffer)
-				Expect(err).ToNot(HaveOccurred())
-			})
-		})
-
-		Context("when an app fails to start", func() {
-			BeforeEach(func() {
-				environments[environmentName] = config.Environment{
-					Name:        environmentName,
-					Domain:      domain,
-					Foundations: foundations,
-				}
-
-				fetcher.On("Fetch", artifactURL, "").Return(appPath, nil)
-
-				blueGreener.On("Push",
-					environments[environmentName],
-					appPath,
-					deploymentInfo,
-					buffer,
-				).Return(errors.New("bork"))
-
-				prechecker.On("AssertAllFoundationsUp", environments[environmentName]).Return(nil)
-			})
-
-			It("emits a deploy.failure event", func() {
-				event.Type = "deploy.failure"
-				eventManager.On("Emit", event).Return(errors.New("bork")).Times(1)
-
-				err := deployer.Deploy(deploymentInfo, buffer)
-				Expect(err).To(HaveOccurred())
-			})
-		})
-
-		Context("when EventManager emits events", func() {
-			var (
-				buffer *bytes.Buffer
-			)
-
-			BeforeEach(func() {
-				environments[environmentName] = config.Environment{
-					Name:        environmentName,
-					Domain:      domain,
-					Foundations: foundations,
-				}
-
-				prechecker.On("AssertAllFoundationsUp", environments[environmentName]).Return(nil)
-				fetcher.On("Fetch", artifactURL, "").Return(appPath, nil)
-
-				buffer = &bytes.Buffer{}
-
-				blueGreener.On("Push",
-					environments[environmentName],
-					appPath,
-					deploymentInfo,
-					buffer,
-				).Return(nil)
-			})
-
-			It("returns an error on deploy.success", func() {
-				eventFinish := S.Event{
-					Data: S.DeployEventData{
-						Writer:         buffer,
-						DeploymentInfo: &deploymentInfo,
-					},
-					Type: "deploy.success",
-				}
-
-				eventManager.On("Emit", eventFinish).Return(errors.New("bork"))
-
-				err := deployer.Deploy(deploymentInfo, buffer)
-				Expect(err).To(HaveOccurred())
-				Expect(buffer).To(ContainSubstring("bork"))
-			})
-		})
-
-		Context("when fetcher returns an error", func() {
+		Context("when prechecker fails", func() {
 			It("returns an error", func() {
-				environments[environmentName] = config.Environment{
-					Name:        environmentName,
-					Domain:      domain,
-					Foundations: foundations,
-				}
+				prechecker.AssertAllFoundationsUpCall.Returns.Error = errors.New(deployAborted)
 
-				prechecker.On("AssertAllFoundationsUp", environments[environmentName]).Return(nil)
-				fetcher.On("Fetch", artifactURL, "").Return("", errors.New("bork")).Times(1)
+				err := deployer.Deploy(deploymentInfo, buffer)
+				Expect(err).To(MatchError("Deploy aborted, one or more CF foundations unavailable"))
+
+				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
+			})
+		})
+
+		Context("when fetcher fails", func() {
+			It("returns an error", func() {
+				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
+
+				fetcher.FetchCall.Returns.Error = errors.New("bork")
+				fetcher.FetchCall.Returns.AppPath = appPath
 
 				err := deployer.Deploy(deploymentInfo, buffer)
 				Expect(err).To(HaveOccurred())
 				Expect(buffer).To(ContainSubstring("bork"))
+
+				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
+				Expect(fetcher.FetchCall.Received.URL).To(Equal(artifactURL))
+				Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
+			})
+		})
+
+		Describe("bluegreener", func() {
+			Context("when all applications start correctly", func() {
+				It("is successful", func() {
+					event.Type = "deploy.success"
+
+					eventManager.EmitCall.Returns.Error = nil
+					fetcher.FetchCall.Returns.Error = nil
+					fetcher.FetchCall.Returns.AppPath = appPath
+					blueGreener.PushCall.Returns.Error = nil
+					prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
+
+					err := deployer.Deploy(deploymentInfo, buffer)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(buffer).To(ContainSubstring("deploy was successful"))
+
+					fmt.Fprint(deployEventData.Writer, buffer.String())
+					Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
+					Expect(fetcher.FetchCall.Received.URL).To(Equal(artifactURL))
+					Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
+					Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environmentName]))
+					Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
+					Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+					Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
+				})
+			})
+		})
+
+		Context("when an application fails to start", func() {
+			It("returns an error", func() {
+				event.Type = "deploy.failure"
+
+				eventManager.EmitCall.Returns.Error = errors.New("bork")
+				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
+				fetcher.FetchCall.Returns.Error = nil
+				fetcher.FetchCall.Returns.AppPath = appPath
+				blueGreener.PushCall.Returns.Error = errors.New("bork")
+
+				err := deployer.Deploy(deploymentInfo, buffer)
+				Expect(err).To(HaveOccurred())
+
+				fmt.Fprint(deployEventData.Writer, buffer.String())
+				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
+				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
+				Expect(fetcher.FetchCall.Received.URL).To(Equal(artifactURL))
+				Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
+				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environmentName]))
+				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
+				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			})
+		})
+
+		Context("when eventmanager fails", func() {
+			It("returns an error", func() {
+				event.Type = "deploy.success"
+
+				eventManager.EmitCall.Returns.Error = errors.New("bork")
+				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
+				fetcher.FetchCall.Returns.Error = nil
+				fetcher.FetchCall.Returns.AppPath = appPath
+				blueGreener.PushCall.Returns.Error = nil
+
+				err := deployer.Deploy(deploymentInfo, buffer)
+				Expect(err).To(HaveOccurred())
+
+				Expect(buffer).To(ContainSubstring("bork"))
+
+				fmt.Fprint(deployEventData.Writer, buffer.String())
+				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
+				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
+				Expect(fetcher.FetchCall.Received.URL).To(Equal(artifactURL))
+				Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
+				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environmentName]))
+				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
+				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			})
 		})
 	})

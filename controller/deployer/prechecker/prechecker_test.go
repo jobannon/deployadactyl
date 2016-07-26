@@ -30,16 +30,12 @@ var _ = Describe("Prechecker", func() {
 			foundationApiURLs = []string{}
 
 			eventManager = &mocks.EventManager{}
-			prechecker = Prechecker{eventManager}
+			prechecker = Prechecker{EventManager: eventManager}
 
-		})
-
-		JustBeforeEach(func() {
 			configServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				foundationApiURLs = append(foundationApiURLs, r.URL.Path)
 				w.WriteHeader(httpStatus)
 			}))
-
 			environment = config.Environment{
 				Foundations: []string{configServer.URL},
 			}
@@ -50,68 +46,57 @@ var _ = Describe("Prechecker", func() {
 		})
 
 		Context("when no foundations are given", func() {
-			JustBeforeEach(func() {
-				environment.Foundations = nil
-			})
-
 			It("returns an error and emits an event", func() {
+				environment.Foundations = nil
+
 				precheckerEventData := S.PrecheckerEventData{
 					Environment: environment,
 					Description: "no foundations configured",
 				}
-
 				event = S.Event{
 					Type: "validate.foundationsUnavailable",
 					Data: precheckerEventData,
 				}
-				eventManager.On("Emit", event).Return(nil).Times(1)
+				eventManager.EmitCall.Returns.Error = nil
 
 				Expect(prechecker.AssertAllFoundationsUp(environment)).ToNot(Succeed())
+				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
 			})
 		})
 
-		Context("when all foundations are up", func() {
-			BeforeEach(func() {
-				httpStatus = http.StatusOK
-			})
-
+		Context("when all foundations return a 200 OK", func() {
 			It("returns a nil error", func() {
-				err = prechecker.AssertAllFoundationsUp(environment)
+				httpStatus = http.StatusOK
 
+				err = prechecker.AssertAllFoundationsUp(environment)
 				Expect(err).ToNot(HaveOccurred())
+
 				Expect(foundationApiURLs).To(ConsistOf("/v2/info"))
 			})
 		})
 
-		Context("when the http returns a 500", func() {
-			BeforeEach(func() {
+		Context("when a foundation returns a 500 internal server error", func() {
+			It("returns an error and emits an event", func() {
+				precheckerEventData := S.PrecheckerEventData{
+					Environment: environment,
+					Description: "deploy aborted, one or more CF foundations unavailable",
+				}
+				event = S.Event{
+					Type: "validate.foundationsUnavailable",
+					Data: precheckerEventData,
+				}
+				eventManager.EmitCall.Returns.Error = nil
+
 				httpStatus = http.StatusInternalServerError
-			})
-
-			It("returns an error and emits an event", func() {
-				precheckerEventData := S.PrecheckerEventData{
-					Environment: environment,
-					Description: "deploy aborted, one or more CF foundations unavailable",
-				}
-
-				event = S.Event{
-					Type: "validate.foundationsUnavailable",
-					Data: precheckerEventData,
-				}
-				eventManager.On("Emit", event).Return(nil).Times(1)
-
 				err = prechecker.AssertAllFoundationsUp(environment)
-
 				Expect(err).To(HaveOccurred())
+
 				Expect(foundationApiURLs).To(ConsistOf("/v2/info"))
+				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
 			})
 		})
 
-		Context("when a foundation is down", func() {
-			BeforeEach(func() {
-				httpStatus = http.StatusNotFound
-			})
-
+		Context("when a foundation returns a 404 not found", func() {
 			It("returns an error and emits an event", func() {
 				precheckerEventData := S.PrecheckerEventData{
 					Environment: environment,
@@ -121,11 +106,14 @@ var _ = Describe("Prechecker", func() {
 					Type: "validate.foundationsUnavailable",
 					Data: precheckerEventData,
 				}
-				eventManager.On("Emit", event).Return(nil).Times(1)
+				eventManager.EmitCall.Returns.Error = nil
+
+				httpStatus = http.StatusNotFound
 
 				err = prechecker.AssertAllFoundationsUp(environment)
-
 				Expect(err).To(HaveOccurred())
+
+				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
 			})
 		})
 	})

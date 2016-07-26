@@ -65,23 +65,39 @@ var _ = Describe("Pusher", func() {
 		}
 	})
 
-	AfterEach(func() {
-		Expect(courier.AssertExpectations(GinkgoT())).To(BeTrue())
-	})
-
 	Describe("Login", func() {
 		Context("when it succeeds", func() {
 			It("writes the output of the courier to the Writer", func() {
-				courier.On("Login", foundationURL, username, password, org, space, skipSSL).Return([]byte("login succeeded"), nil).Times(1)
+				courier.LoginCall.Returns.Output = []byte("login succeeded")
+				courier.LoginCall.Returns.Error = nil
+
 				Expect(pusher.Login(foundationURL, deploymentInfo, responseBuffer)).To(Succeed())
+
+				Expect(courier.LoginCall.Received.API).To(Equal(foundationURL))
+				Expect(courier.LoginCall.Received.Username).To(Equal(username))
+				Expect(courier.LoginCall.Received.Password).To(Equal(password))
+				Expect(courier.LoginCall.Received.Org).To(Equal(org))
+				Expect(courier.LoginCall.Received.Space).To(Equal(space))
+				Expect(courier.LoginCall.Received.SkipSSL).To(Equal(skipSSL))
+
 				Eventually(responseBuffer).Should(gbytes.Say("login succeeded"))
 			})
 		})
 
 		Context("when it fails", func() {
 			It("writes the output of the courier to the Writer", func() {
-				courier.On("Login", foundationURL, username, password, org, space, skipSSL).Return([]byte("login failed"), errors.New("bork")).Times(1)
+				courier.LoginCall.Returns.Output = []byte("login failed")
+				courier.LoginCall.Returns.Error = errors.New("bork")
+
 				Expect(pusher.Login(foundationURL, deploymentInfo, responseBuffer)).ToNot(Succeed())
+
+				Expect(courier.LoginCall.Received.API).To(Equal(foundationURL))
+				Expect(courier.LoginCall.Received.Username).To(Equal(username))
+				Expect(courier.LoginCall.Received.Password).To(Equal(password))
+				Expect(courier.LoginCall.Received.Org).To(Equal(org))
+				Expect(courier.LoginCall.Received.Space).To(Equal(space))
+				Expect(courier.LoginCall.Received.SkipSSL).To(Equal(skipSSL))
+
 				Eventually(responseBuffer).Should(gbytes.Say("login failed"))
 			})
 		})
@@ -89,11 +105,21 @@ var _ = Describe("Pusher", func() {
 
 	Describe("Push", func() {
 		It("renames, pushes, and maps route", func() {
-			courier.On("Rename", appName, appNameVenerable).Return(nil, nil).Times(1)
-			courier.On("Push", appName, appPath).Return([]byte("push succeeded"), nil).Times(1)
-			courier.On("MapRoute", appName, domain).Return([]byte("mapped route"), nil).Times(1)
+			courier.RenameCall.Returns.Output = nil
+			courier.RenameCall.Returns.Error = nil
+			courier.PushCall.Returns.Output = []byte("push succeeded")
+			courier.PushCall.Returns.Error = nil
+			courier.MapRouteCall.Returns.Output = []byte("mapped route")
+			courier.MapRouteCall.Returns.Error = nil
 
 			Expect(pusher.Push(appPath, foundationURL, domain, deploymentInfo, responseBuffer)).To(Succeed())
+
+			Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
+			Expect(courier.RenameCall.Received.NewAppName).To(Equal(appNameVenerable))
+			Expect(courier.PushCall.Received.AppName).To(Equal(appName))
+			Expect(courier.PushCall.Received.AppLocation).To(Equal(appPath))
+			Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName))
+			Expect(courier.MapRouteCall.Received.Domain).To(Equal(domain))
 
 			Eventually(responseBuffer).Should(gbytes.Say("push succeeded"))
 			Eventually(responseBuffer).Should(gbytes.Say("mapped route"))
@@ -106,22 +132,38 @@ var _ = Describe("Pusher", func() {
 
 		Context("when renaming", func() {
 			It("fails when it's not a new app", func() {
-				courier.On("Rename", appName, appNameVenerable).Return([]byte("rename failed"), errors.New("bork")).Times(1)
-				courier.On("Exists", appName).Return(true).Times(1)
+				courier.RenameCall.Returns.Output = []byte("rename failed")
+				courier.RenameCall.Returns.Error = errors.New("bork")
+				courier.ExistsCall.Returns.Bool = true
 
 				Expect(pusher.Push(appPath, foundationURL, domain, deploymentInfo, responseBuffer)).ToNot(Succeed())
+
+				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
+				Expect(courier.RenameCall.Received.NewAppName).To(Equal(appNameVenerable))
+				Expect(courier.ExistsCall.Received.AppName).To(Equal(appName))
 
 				Eventually(logBuffer).Should(gbytes.Say("renaming app from " + appName + " to " + appNameVenerable))
 				Eventually(logBuffer).Should(gbytes.Say("rename failed"))
 			})
 
 			It("doesn't fail when it's a new app", func() {
-				courier.On("Rename", appName, appNameVenerable).Return([]byte("rename failed"), errors.New("bork")).Times(1)
-				courier.On("Exists", appName).Return(false).Times(1)
-				courier.On("Push", appName, appPath).Return([]byte("push succeeded"), nil).Times(1)
-				courier.On("MapRoute", appName, domain).Return([]byte("mapped route"), nil).Times(1)
+				courier.RenameCall.Returns.Output = []byte("rename failed")
+				courier.RenameCall.Returns.Error = errors.New("bork")
+				courier.ExistsCall.Returns.Bool = false
+				courier.PushCall.Returns.Output = []byte("push succeeded")
+				courier.PushCall.Returns.Error = nil
+				courier.MapRouteCall.Returns.Output = []byte("mapped route")
+				courier.MapRouteCall.Returns.Error = nil
 
 				Expect(pusher.Push(appPath, foundationURL, domain, deploymentInfo, responseBuffer)).To(Succeed())
+
+				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
+				Expect(courier.RenameCall.Received.NewAppName).To(Equal(appNameVenerable))
+				Expect(courier.ExistsCall.Received.AppName).To(Equal(appName))
+				Expect(courier.PushCall.Received.AppName).To(Equal(appName))
+				Expect(courier.PushCall.Received.AppLocation).To(Equal(appPath))
+				Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName))
+				Expect(courier.MapRouteCall.Received.Domain).To(Equal(domain))
 
 				Eventually(responseBuffer).Should(gbytes.Say("push succeeded"))
 				Eventually(responseBuffer).Should(gbytes.Say("mapped route"))
@@ -137,10 +179,16 @@ var _ = Describe("Pusher", func() {
 
 	Describe("Unpush", func() {
 		It("logs in, deletes, and renames", func() {
-			courier.On("Rename", appNameVenerable, appName).Return(nil, nil).Times(1)
-			courier.On("Delete", appName).Return(nil, nil).Times(1)
+			courier.RenameCall.Returns.Output = nil
+			courier.RenameCall.Returns.Error = nil
+			courier.DeleteCall.Returns.Output = nil
+			courier.DeleteCall.Returns.Error = nil
 
 			Expect(pusher.Unpush(foundationURL, deploymentInfo)).To(Succeed())
+
+			Expect(courier.RenameCall.Received.AppName).To(Equal(appNameVenerable))
+			Expect(courier.RenameCall.Received.NewAppName).To(Equal(appName))
+			Expect(courier.DeleteCall.Received.AppName).To(Equal(appName))
 
 			Eventually(logBuffer).Should(gbytes.Say("rolling back deploy of " + appName))
 			Eventually(logBuffer).Should(gbytes.Say("deleted " + appName))
@@ -148,11 +196,14 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("FinishPush ", func() {
-		It("uh logs in, and deletes venerable", func() {
-			courier.On("Delete", appNameVenerable).Return(nil, nil).Times(1)
+	Describe("FinishPush", func() {
+		It("deletes venerable", func() {
+			courier.DeleteCall.Returns.Output = nil
+			courier.DeleteCall.Returns.Error = nil
 
 			Expect(pusher.FinishPush(foundationURL, deploymentInfo)).To(Succeed())
+
+			Expect(courier.DeleteCall.Received.AppName).To(Equal(appNameVenerable))
 
 			Eventually(logBuffer).Should(gbytes.Say("deleted " + appNameVenerable))
 		})
@@ -160,7 +211,8 @@ var _ = Describe("Pusher", func() {
 
 	Describe("CleanUp", func() {
 		It("deletes the temporary directory", func() {
-			courier.On("CleanUp").Return(nil)
+			courier.CleanUpCall.Returns.Error = nil
+
 			Expect(pusher.CleanUp()).To(Succeed())
 		})
 	})

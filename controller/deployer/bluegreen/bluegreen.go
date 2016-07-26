@@ -81,7 +81,6 @@ func (bg BlueGreen) loginAll(actors []actor, buffers []*bytes.Buffer, deployment
 	for _, a := range actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
-			bg.Log.Error(err.(*errors.Error).ErrorStack())
 			failed = true
 		}
 	}
@@ -101,7 +100,6 @@ func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, do
 	for _, a := range actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
-			bg.Log.Error(err.(*errors.Error).ErrorStack())
 			failed = true
 		}
 	}
@@ -118,7 +116,6 @@ func (bg BlueGreen) unpushAll(actors []actor, deploymentInfo S.DeploymentInfo) {
 	for _, a := range actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
-			bg.Log.Error(err.(*errors.Error).ErrorStack())
 		}
 	}
 }
@@ -132,7 +129,6 @@ func (bg BlueGreen) finishPushAll(actors []actor, deploymentInfo S.DeploymentInf
 	for _, a := range actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
-			bg.Log.Error(err.(*errors.Error).ErrorStack())
 		}
 	}
 }

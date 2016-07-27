@@ -1,5 +1,5 @@
 package interfaces
 
 type Randomizer interface {
-	StringRunes(n int) string
+	StringRunes(length int) string
 }

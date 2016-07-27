@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 
@@ -19,7 +18,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/op/go-logging"
-	"github.com/stretchr/testify/mock"
 )
 
 var _ = Describe("Controller", func() {
@@ -27,12 +25,14 @@ var _ = Describe("Controller", func() {
 	var (
 		controller     *Controller
 		deployer       *mocks.Deployer
-		deploymentInfo S.DeploymentInfo
-		r              *gin.Engine
+		router         *gin.Engine
 		resp           *httptest.ResponseRecorder
-		req            *http.Request
 		eventManager   *mocks.EventManager
 		randomizerMock *mocks.Randomizer
+
+		jsonBuffer *bytes.Buffer
+
+		deploymentInfo S.DeploymentInfo
 
 		artifactUrl     string
 		environment     string
@@ -52,6 +52,9 @@ var _ = Describe("Controller", func() {
 		deployer = &mocks.Deployer{}
 		eventManager = &mocks.EventManager{}
 		randomizerMock = &mocks.Randomizer{}
+
+		jsonBuffer = &bytes.Buffer{}
+
 		envMap := map[string]config.Environment{}
 		envMap["Test"] = config.Environment{Foundations: []string{"api1.example.com", "api2.example.com"}}
 		envMap["Prod"] = config.Environment{Foundations: []string{"api3.example.com", "api4.example.com"}}
@@ -100,260 +103,250 @@ var _ = Describe("Controller", func() {
 			SkipSSL:     skipSSL,
 		}
 
-		randomizerMock.On("StringRunes", mock.Anything).Return(uuid)
+		randomizerMock.RandomizeCall.Returns.Runes = uuid
 
-		r = gin.New()
+		router = gin.New()
 		resp = httptest.NewRecorder()
+
+		router.POST("/v1/apps/:environment/:org/:space/:appName", controller.Deploy)
+
+		jsonBuffer = bytes.NewBufferString(fmt.Sprintf(`{
+				"artifact_url": "%s"
+			}`,
+			artifactUrl,
+		))
 	})
 
-	AfterEach(func() {
-		Expect(deployer.AssertExpectations(GinkgoT())).To(BeTrue())
-		Expect(eventManager.AssertExpectations(GinkgoT())).To(BeTrue())
-	})
+	Describe("missing properties in the JSON", func() {
+		It("returns an error", func() {
+			By("sending empty JSON")
+			jsonBuffer = bytes.NewBufferString("{}")
 
-	Describe("Deploy", func() {
-		BeforeEach(func() {
-			r.POST("/v1/apps/:environment/:org/:space/:appName", controller.Deploy)
+			req, err := http.NewRequest("POST", "/v1/apps/someEnv/someOrg/someSpace/someApp", jsonBuffer)
+			Expect(err).ToNot(HaveOccurred())
+
+			req.SetBasicAuth(username, password)
+
+			router.ServeHTTP(resp, req)
+
+			Expect(resp.Code).To(Equal(500))
+			Expect(resp.Body.String()).To(Equal("The following properties are missing: artifact_url"))
 		})
+	})
 
-		Context("when the request is missing properties", func() {
-			It("returns an error", func() {
-				jsonBuffer := bytes.NewBufferString("{}")
+	Describe("authentication", func() {
+		Context("username and password are provided", func() {
+			It("accepts the request with a 200 OK", func() {
+				eventManager.EmitCall.Returns.Error = nil
+				deployer.DeployCall.Write.Output = "push succeeded"
+				deployer.DeployCall.Returns.Error = nil
 
-				req, err := http.NewRequest("POST", "/v1/apps/someEnv/someOrg/someSpace/someApp", jsonBuffer)
+				By("setting authenticate to true")
+				controller.Config.Environments[environment] = config.Environment{Authenticate: true}
+
+				req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 
-				req.Header.Set("Content-Type", "application/json")
-
+				By("setting basic auth")
 				req.SetBasicAuth(username, password)
 
-				r.ServeHTTP(resp, req)
+				router.ServeHTTP(resp, req)
 
-				Expect(resp.Code).To(Equal(500))
-				Expect(resp.Body.String()).To(Equal("The following properties are missing: artifact_url"))
+				Expect(resp.Code).To(Equal(200))
+				Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
+				Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+				Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			})
 		})
 
-		Describe("Authentication", func() {
-			Context("Authenticate is true", func() {
-				BeforeEach(func() {
-					controller.Config.Environments[environment] = config.Environment{Authenticate: true}
-				})
+		Context("when username and password are not provided", func() {
+			It("rejects the request with a 401 unauthorized", func() {
+				By("setting authenticate to true")
+				controller.Config.Environments[environment] = config.Environment{Authenticate: true}
 
-				Context("username and password are provided", func() {
-					It("accepts the request with a 200 status", func() {
-						eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
-						deployer.On("Deploy", deploymentInfo, mock.Anything).Run(writeToOut("push succeeded")).Return(nil).Times(1)
+				req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
 
-						jsonBuffer := bytes.NewBufferString(fmt.Sprintf(`{
-							"artifact_url": "%s"
-							}`,
-							artifactUrl,
-						))
+				By("not setting basic auth")
 
-						req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
-						Expect(err).ToNot(HaveOccurred())
+				router.ServeHTTP(resp, req)
+				Expect(resp.Code).To(Equal(401))
+			})
+		})
 
-						req.SetBasicAuth(username, password)
-						r.ServeHTTP(resp, req)
+		Context("username and password are provided", func() {
+			It("accepts the request with a 200 OK", func() {
+				eventManager.EmitCall.Returns.Error = nil
+				deployer.DeployCall.Write.Output = "push succeeded"
+				deployer.DeployCall.Returns.Error = nil
 
-						Expect(resp.Code).To(Equal(200))
-					})
-				})
+				By("setting authenticate to false")
+				controller.Config.Environments[environment] = config.Environment{Authenticate: false}
 
-				Context("when username and password are not provided", func() {
-					It("rejects the request with a 401 status", func() {
-						jsonBuffer := bytes.NewBufferString("{}")
-						req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
-						Expect(err).ToNot(HaveOccurred())
+				req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
 
-						r.ServeHTTP(resp, req)
-						Expect(resp.Code).To(Equal(401))
-					})
-				})
+				By("setting basic auth")
+				req.SetBasicAuth(username, password)
+
+				router.ServeHTTP(resp, req)
+
+				Expect(resp.Code).To(Equal(200))
+				Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
+				Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+				Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+
 			})
 
-			Context("Authenticate is false", func() {
-				BeforeEach(func() {
+			Context("username and password are not provided", func() {
+				It("accepts the request with a 200 OK", func() {
+					eventManager.EmitCall.Returns.Error = nil
+					deployer.DeployCall.Write.Output = "push succeeded"
+					deployer.DeployCall.Returns.Error = nil
+
+					By("setting authenticate to false")
 					controller.Config.Environments[environment] = config.Environment{Authenticate: false}
-				})
 
-				Context("username and password are provided", func() {
-					It("accepts the request with a 200 status", func() {
-						eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
-						deployer.On("Deploy", deploymentInfo, mock.Anything).Run(writeToOut("push succeeded")).Return(nil).Times(1)
+					req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+					Expect(err).ToNot(HaveOccurred())
 
-						jsonBuffer := bytes.NewBufferString(fmt.Sprintf(`{
-							"artifact_url": "%s"
-							}`,
-							artifactUrl,
-						))
+					By("not setting basic auth and setting the default username and password")
+					deploymentInfo.Username = defaultUsername
+					deploymentInfo.Password = defaultPassword
 
-						req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
-						Expect(err).ToNot(HaveOccurred())
+					router.ServeHTTP(resp, req)
 
-						req.SetBasicAuth(username, password)
-						r.ServeHTTP(resp, req)
-
-						Expect(resp.Code).To(Equal(200))
-					})
-				})
-
-				Context("username and password are not provided", func() {
-					It("accepts the request with a 200 status", func() {
-						eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
-
-						deploymentInfo.Username = defaultUsername
-						deploymentInfo.Password = defaultPassword
-						deployer.On("Deploy", deploymentInfo, mock.Anything).Run(writeToOut("push succeeded")).Return(nil).Times(1)
-
-						jsonBuffer := bytes.NewBufferString(fmt.Sprintf(`{
-							"artifact_url": "%s"
-							}`,
-							artifactUrl,
-						))
-
-						req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
-						Expect(err).ToNot(HaveOccurred())
-
-						r.ServeHTTP(resp, req)
-
-						Expect(resp.Code).To(Equal(200))
-					})
+					Expect(resp.Code).To(Equal(200))
+					Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+					Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				})
 			})
 		})
+	})
 
-		Context("when the request has all necessary parameters", func() {
-			BeforeEach(func() {
-				jsonBuffer := bytes.NewBufferString(fmt.Sprintf(`{
-					"artifact_url": "%s"
+	Describe("successful deployments without missing properties", func() {
+		It("returns a 200 OK and responds with the output of the push command", func() {
+			eventManager.EmitCall.Returns.Error = nil
+			deployer.DeployCall.Write.Output = "push succeeded"
+			deployer.DeployCall.Returns.Error = nil
+
+			req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+			Expect(err).ToNot(HaveOccurred())
+
+			req.SetBasicAuth(username, password)
+
+			router.ServeHTTP(resp, req)
+
+			Expect(resp.Code).To(Equal(200))
+			Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
+			Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+			Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+		})
+
+		Context("when custom manifest information is given in the request body", func() {
+			It("properly decodes base64 encoding of the provided manifest information", func() {
+				eventManager.EmitCall.Returns.Error = nil
+				deployer.DeployCall.Write.Output = "push succeeded"
+				deployer.DeployCall.Returns.Error = nil
+
+				deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+
+				By("base64 encoding a manifest")
+				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+				By("including manifest in the JSON")
+				jsonBuffer = bytes.NewBufferString(fmt.Sprintf(`{
+						"artifact_url": "%s",
+						"manifest": "%s"
 					}`,
 					artifactUrl,
+					base64Manifest,
 				))
 
-				var err error
-				req, err = http.NewRequest("POST", apiUrl, jsonBuffer)
+				req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
+
 				req.SetBasicAuth(username, password)
+
+				router.ServeHTTP(resp, req)
+
+				Expect(resp.Code).To(Equal(200))
+				Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
+				Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+				Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			})
 
-			Context("when deployer succeeds", func() {
-				BeforeEach(func() {
-					eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
-					deployer.On("Deploy", deploymentInfo, mock.Anything).Run(writeToOut("push succeeded")).Return(nil).Times(1)
-				})
+			It("returns an error if the provided manifest information is not base64 encoded", func() {
+				deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
 
-				It("returns a 200 status code", func() {
-					r.ServeHTTP(resp, req)
-					Expect(resp.Code).To(Equal(200))
-				})
+				By("not base64 encoding a manifest")
 
-				It("responds with the output of the push command", func() {
-					r.ServeHTTP(resp, req)
-					Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
-				})
-			})
+				By("including manifest in the JSON")
+				jsonBuffer = bytes.NewBufferString(fmt.Sprintf(`{
+						"artifact_url": "%s",
+						"manifest": "%s"
+					}`,
+					artifactUrl,
+					deploymentInfo.Manifest,
+				))
 
-			Context("when custom manifest information is given in the request body", func() {
-				It("properly decodes base64 encoding of that manifest information", func() {
-					eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
+				req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
 
-					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
-					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+				req.SetBasicAuth(username, password)
 
-					jsonBuffer := bytes.NewBufferString(fmt.Sprintf(`{
-							"artifact_url": "%s",
-							"manifest": "%s"
-							}`,
-						artifactUrl,
-						base64Manifest,
-					))
-
-					var err error
-					req, err = http.NewRequest("POST", apiUrl, jsonBuffer)
-					Expect(err).ToNot(HaveOccurred())
-
-					req.SetBasicAuth(username, password)
-					deployer.On("Deploy", deploymentInfo, mock.Anything).Run(writeToOut("successful push")).Return(nil).Times(1)
-
-					r.ServeHTTP(resp, req)
-					Expect(resp.Code).To(Equal(200))
-				})
-
-				It("returns an error if manifest information is not base64 encoded", func() {
-					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
-
-					jsonBuffer := bytes.NewBufferString(fmt.Sprintf(`{
-							"artifact_url": "%s",
-							"manifest": "%s"
-							}`,
-						artifactUrl,
-						deploymentInfo.Manifest,
-					))
-
-					var err error
-					req, err = http.NewRequest("POST", apiUrl, jsonBuffer)
-					Expect(err).ToNot(HaveOccurred())
-
-					req.SetBasicAuth(username, password)
-
-					r.ServeHTTP(resp, req)
-					Expect(resp.Code).To(Equal(500))
-				})
-			})
-
-			Context("when deployer fails", func() {
-				BeforeEach(func() {
-					eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
-					deployer.On("Deploy", deploymentInfo, mock.Anything).Run(writeToOut("some awesome CF error\n")).Return(errors.New("bork")).Times(1)
-				})
-
-				It("returns a 500 status code", func() {
-					r.ServeHTTP(resp, req)
-					Expect(resp.Code).To(Equal(500))
-				})
-
-				It("responds with the output of the push command", func() {
-					r.ServeHTTP(resp, req)
-					Expect(resp.Body.String()).To(ContainSubstring("some awesome CF error\n"))
-				})
+				router.ServeHTTP(resp, req)
+				Expect(resp.Code).To(Equal(500))
+				Expect(eventManager.EmitCall.TimesCalled).To(Equal(0))
 			})
 		})
+	})
 
-		Context("deployment output", func() {
-			It("shows the user deployment info properties", func() {
-				eventManager.On("Emit", mock.Anything).Return(nil).Times(2)
-				jsonBuffer := bytes.NewBufferString(fmt.Sprintf(`{
-						"artifact_url": "%s"
-						}`,
-					artifactUrl,
-				))
+	Describe("when deployer fails", func() {
+		It("returns a 500 internal server error and responds with the output of the push command", func() {
+			eventManager.EmitCall.Returns.Error = nil
 
-				var err error
-				req, err = http.NewRequest("POST", apiUrl, jsonBuffer)
-				Expect(err).ToNot(HaveOccurred())
-				req.SetBasicAuth(username, password)
+			By("making deployer return an error")
+			deployer.DeployCall.Write.Output = "some awesome CF error\n"
+			deployer.DeployCall.Returns.Error = errors.New("bork")
 
-				deployer.On("Deploy", deploymentInfo, mock.Anything).Return(nil).Times(1)
+			req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+			Expect(err).ToNot(HaveOccurred())
 
-				r.ServeHTTP(resp, req)
-				Expect(resp.Code).To(Equal(200))
+			req.SetBasicAuth(username, password)
 
-				result := resp.Body.String()
-				Expect(result).To(ContainSubstring(artifactUrl))
-				Expect(result).To(ContainSubstring(username))
-				Expect(result).To(ContainSubstring(environment))
-				Expect(result).To(ContainSubstring(org))
-				Expect(result).To(ContainSubstring(space))
-				Expect(result).To(ContainSubstring(appName))
-			})
+			router.ServeHTTP(resp, req)
+
+			Expect(resp.Code).To(Equal(500))
+			Expect(resp.Body.String()).To(ContainSubstring("some awesome CF error\n"))
+			Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+			Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+		})
+	})
+
+	Describe("deployment output", func() {
+		It("shows the user deployment info properties", func() {
+			eventManager.EmitCall.Returns.Error = nil
+			deployer.DeployCall.Returns.Error = nil
+
+			req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+			Expect(err).ToNot(HaveOccurred())
+
+			req.SetBasicAuth(username, password)
+
+			router.ServeHTTP(resp, req)
+			Expect(resp.Code).To(Equal(200))
+
+			result := resp.Body.String()
+			Expect(result).To(ContainSubstring(artifactUrl))
+			Expect(result).To(ContainSubstring(username))
+			Expect(result).To(ContainSubstring(environment))
+			Expect(result).To(ContainSubstring(org))
+			Expect(result).To(ContainSubstring(space))
+			Expect(result).To(ContainSubstring(appName))
+
+			Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+			Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 		})
 	})
 })
-
-func writeToOut(str string) func(args mock.Arguments) {
-	return func(args mock.Arguments) {
-		fmt.Fprint(args.Get(1).(io.Writer), str)
-	}
-}

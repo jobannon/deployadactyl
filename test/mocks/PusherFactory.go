@@ -3,9 +3,9 @@ package mocks
 import "github.com/compozed/deployadactyl/interfaces"
 
 type PusherFactory struct {
-	Iterator         int
 	CreatePusherCall struct {
-		Returns struct {
+		TimesCalled int
+		Returns     struct {
 			Pushers []interfaces.Pusher
 			Error   error
 		}
@@ -13,6 +13,6 @@ type PusherFactory struct {
 }
 
 func (p *PusherFactory) CreatePusher() (interfaces.Pusher, error) {
-	defer func() { p.Iterator++ }()
-	return p.CreatePusherCall.Returns.Pushers[p.Iterator], p.CreatePusherCall.Returns.Error
+	defer func() { p.CreatePusherCall.TimesCalled++ }()
+	return p.CreatePusherCall.Returns.Pushers[p.CreatePusherCall.TimesCalled], p.CreatePusherCall.Returns.Error
 }

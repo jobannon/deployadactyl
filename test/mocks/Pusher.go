@@ -63,6 +63,15 @@ type Pusher struct {
 			Error error
 		}
 	}
+
+	AppExistsCall struct {
+		Received struct {
+			AppName string
+		}
+		Returns struct {
+			Exists bool
+		}
+	}
 }
 
 func (p *Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
@@ -103,4 +112,10 @@ func (p *Pusher) FinishPush(foundationURL string, deploymentInfo S.DeploymentInf
 
 func (p *Pusher) CleanUp() error {
 	return p.CleanUpCall.Returns.Error
+}
+
+func (p *Pusher) AppExists(appName string) bool {
+	p.AppExistsCall.Received.AppName = appName
+
+	return p.AppExistsCall.Returns.Exists
 }

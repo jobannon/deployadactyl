@@ -3,3 +3,4 @@ deployadactyl
 vendor
 .agignore
 coverage.txt
+config.yml

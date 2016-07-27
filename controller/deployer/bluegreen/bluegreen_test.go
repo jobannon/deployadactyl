@@ -123,6 +123,7 @@ var _ = Describe("Bluegreen", func() {
 
 			Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 			Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			Expect(pusher.AppExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 			Expect(pusher.PushCall.Received.FoundationURL).To(Equal(foundationURL))
 			Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
@@ -156,12 +157,14 @@ var _ = Describe("Bluegreen", func() {
 
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.AppExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 				Expect(pusher.PushCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.FinishPushCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(pusher.FinishPushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.AppExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			}
 
 			Expect(buffer.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
@@ -170,6 +173,51 @@ var _ = Describe("Bluegreen", func() {
 
 	Context("when at least one push is unsuccessful", func() {
 		It("should rollback all recent pushes", func() {
+			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
+
+			for index, _ := range environment.Foundations {
+				pusher := &mocks.Pusher{}
+				pushers = append(pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+
+				pusher.LoginCall.Write.Output = loginOutput
+				pusher.LoginCall.Returns.Error = nil
+				pusher.AppExistsCall.Returns.Exists = true
+
+				if index == 0 {
+					pusher.PushCall.Write.Output = pushOutput
+					pusher.PushCall.Returns.Error = nil
+				} else {
+					pusher.PushCall.Write.Output = pushOutput
+					pusher.PushCall.Returns.Error = errors.New("bork")
+				}
+
+				pusher.UnpushCall.Returns.Error = nil
+				pusher.CleanUpCall.Returns.Error = nil
+			}
+
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).ToNot(Succeed())
+
+			for i, pusher := range pushers {
+				foundationURL := environment.Foundations[i]
+
+				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.AppExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
+				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
+				Expect(pusher.PushCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
+				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.UnpushCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.UnpushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			}
+
+			Expect(buffer.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
+		})
+
+		It("should not rollback any pushes on the first deploy when first deploy rollback is disabled", func() {
+			environment.DisableFirstDeployRollback = true
+
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
 			for index, _ := range environment.Foundations {
@@ -199,12 +247,13 @@ var _ = Describe("Bluegreen", func() {
 
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.AppExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 				Expect(pusher.PushCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.UnpushCall.Received.FoundationURL).To(Equal(foundationURL))
-				Expect(pusher.UnpushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.UnpushCall.Received.FoundationURL).ToNot(Equal(foundationURL))
+				Expect(pusher.UnpushCall.Received.DeploymentInfo).ToNot(Equal(deploymentInfo))
 			}
 
 			Expect(buffer.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))

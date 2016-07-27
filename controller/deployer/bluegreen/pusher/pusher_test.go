@@ -216,4 +216,12 @@ var _ = Describe("Pusher", func() {
 			Expect(pusher.CleanUp()).To(Succeed())
 		})
 	})
+
+	Describe("AppExists", func() {
+		It("checks that app exists", func() {
+			courier.ExistsCall.Returns.Bool = true
+
+			Expect(pusher.AppExists(appName)).To(Equal(true))
+		})
+	})
 })

@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	pushFailedRollbackTriggered = "push failed: rollback triggered"
-	loginFailed                 = "push failed: login failed"
+	pushFailedRollbackTriggered     = "push failed: rollback triggered"
+	pushFailedNoRollbackFirstDeploy = "push failed: first deploy, rollback not enabled"
+	loginFailed                     = "push failed: login failed"
 )
 
 type BlueGreen struct {
@@ -67,6 +68,11 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 	}
 
 	bg.finishPushAll(actors, deploymentInfo)
+
+	if failed {
+		return errors.Errorf(pushFailedNoRollbackFirstDeploy + "\n" + combinedOutput.String())
+	}
+
 	return nil
 }
 

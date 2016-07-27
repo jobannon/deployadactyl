@@ -17,23 +17,34 @@ import (
 
 var _ = Describe("Events", func() {
 	var (
-		eventType string
-		eventData string
-		logBuffer *gbytes.Buffer
-		log       *logging.Logger
+		eventType       string
+		eventData       string
+		eventHandler    *mocks.Handler
+		eventHandlerOne *mocks.Handler
+		eventHandlerTwo *mocks.Handler
+		eventManager    *EventManager
+		logBuffer       *gbytes.Buffer
+		log             *logging.Logger
 	)
 
 	BeforeEach(func() {
 		eventType = "eventType-" + randomizer.StringRunes(10)
 		eventData = "eventData-" + randomizer.StringRunes(10)
+
+		eventHandler = &mocks.Handler{}
+		eventHandlerOne = &mocks.Handler{}
+		eventHandlerTwo = &mocks.Handler{}
+
+		eventManager = NewEventManager(log)
+
 		logBuffer = gbytes.NewBuffer()
+
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "eventmanager_test")
 	})
 
-	Context("When an event handler is registered", func() {
+	Context("when an event handler is registered", func() {
 		It("should be successful", func() {
 			eventManager := NewEventManager(log)
-			eventHandler := &mocks.Handler{}
 
 			Expect(eventManager.AddHandler(eventHandler, eventType)).To(Succeed())
 		})
@@ -45,55 +56,62 @@ var _ = Describe("Events", func() {
 		})
 	})
 
-	Context("When an event is emitted", func() {
+	Context("when an event is emitted", func() {
 		It("should call all event handlers", func() {
+			eventHandlerOne.OnEventCall.Returns.Error = nil
+			eventHandlerTwo.OnEventCall.Returns.Error = nil
+
 			event := S.Event{Type: eventType, Data: eventData}
-			eventHandlerOne := &mocks.Handler{}
-			eventHandlerOne.On("OnEvent", event).Return(nil).Times(1)
-			eventHandlerTwo := &mocks.Handler{}
-			eventHandlerTwo.On("OnEvent", event).Return(nil).Times(1)
-			eventManager := NewEventManager(log)
 
 			eventManager.AddHandler(eventHandlerOne, eventType)
 			eventManager.AddHandler(eventHandlerTwo, eventType)
+
 			Expect(eventManager.Emit(event)).To(Succeed())
-			Expect(eventHandlerOne.AssertExpectations(GinkgoT())).To(BeTrue())
-			Expect(eventHandlerTwo.AssertExpectations(GinkgoT())).To(BeTrue())
+
+			Expect(eventHandlerOne.OnEventCall.Received.Event).To(Equal(event))
+			Expect(eventHandlerTwo.OnEventCall.Received.Event).To(Equal(event))
 		})
 
 		It("should return an error if the handler returns an error", func() {
+			eventHandler.OnEventCall.Returns.Error = errors.New("bork")
+
 			event := S.Event{Type: eventType, Data: eventData}
-			eventHandler := &mocks.Handler{}
-			eventHandler.On("OnEvent", event).Return(errors.New("bork")).Times(1)
-			eventManager := NewEventManager(log)
 
 			eventManager.AddHandler(eventHandler, eventType)
+
 			Expect(eventManager.Emit(event)).ToNot(Succeed())
-			Expect(eventHandler.AssertExpectations(GinkgoT())).To(BeTrue())
+
+			Expect(eventHandler.OnEventCall.Received.Event).To(Equal(event))
 		})
 
 		It("should log that the event is emitted", func() {
+			eventHandler.OnEventCall.Returns.Error = nil
+
 			event := S.Event{Type: eventType, Data: eventData}
-			eventHandler := &mocks.Handler{}
-			eventHandler.On("OnEvent", event).Return(nil).Times(1)
-			eventManager := NewEventManager(log)
+
 			eventManager.AddHandler(eventHandler, eventType)
+
 			Expect(eventManager.Emit(event)).To(Succeed())
+
+			Expect(eventHandler.OnEventCall.Received.Event).To(Equal(event))
 			Eventually(logBuffer).Should(gbytes.Say("An event %s has been emitted", eventType))
 		})
 	})
 
 	Context("when there are handlers registered for two different types of events", func() {
 		It("only emits to the specified event", func() {
+			eventHandlerOne.OnEventCall.Returns.Error = nil
+			eventHandlerTwo.OnEventCall.Returns.Error = nil
+
 			event := S.Event{Type: eventType, Data: eventData}
-			eventManager := NewEventManager(log)
-			eventHandlerOne := &mocks.Handler{}
-			eventHandlerTwo := &mocks.Handler{}
-			eventHandlerOne.On("OnEvent", event).Return(nil).Times(1)
 
 			eventManager.AddHandler(eventHandlerOne, eventType)
 			eventManager.AddHandler(eventHandlerTwo, "anotherEventType-"+randomizer.StringRunes(10))
+
 			Expect(eventManager.Emit(event)).To(Succeed())
+
+			Expect(eventHandlerOne.OnEventCall.Received.Event).To(Equal(event))
+			Expect(eventHandlerTwo.OnEventCall.Received.Event).ToNot(Equal(event))
 		})
 	})
 })

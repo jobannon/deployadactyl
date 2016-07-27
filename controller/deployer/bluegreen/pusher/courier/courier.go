@@ -1,7 +1,9 @@
 // Package courier interfaces with the Executor to run specific Cloud Foundry CLI commands.
 package courier
 
-import I "github.com/compozed/deployadactyl/interfaces"
+import (
+	I "github.com/compozed/deployadactyl/interfaces"
+)
 
 type Courier struct {
 	Executor I.Executor

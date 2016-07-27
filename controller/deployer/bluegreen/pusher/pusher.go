@@ -134,3 +134,8 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, out
 
 	return nil
 }
+
+// AppExists uses the courier to check if the application exists.
+func (p Pusher) AppExists(appName string) bool {
+	return p.Courier.Exists(appName)
+}

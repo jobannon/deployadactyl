@@ -23,10 +23,11 @@ type BlueGreen struct {
 }
 
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
-// If the application fails to start in any of the instances it handles rolling back the application in every instance.
+// If the application fails to start in any of the instances it handles rolling back the application in every instance, unless this is the first deploy and disable rollback is enabled.
 func (bg BlueGreen) Push(environment config.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
 	actors := make([]actor, len(environment.Foundations))
 	buffers := make([]*bytes.Buffer, len(actors))
+	firstDeploy := true
 
 	for i, foundationURL := range environment.Foundations {
 		pusher, err := bg.PusherCreator.CreatePusher()
@@ -49,7 +50,7 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 		return errors.New(loginFailed)
 	}
 
-	failed = bg.pushAll(actors, buffers, appPath, environment.Domain, deploymentInfo)
+	failed, firstDeploy = bg.pushAll(actors, buffers, appPath, environment.Domain, deploymentInfo)
 
 	combinedOutput := &bytes.Buffer{}
 	for _, buffer := range buffers {
@@ -60,7 +61,7 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 		return errors.New(err)
 	}
 
-	if failed {
+	if failed && (!firstDeploy || (firstDeploy && !environment.DisableFirstDeployRollback)) {
 		bg.unpushAll(actors, deploymentInfo)
 		return errors.Errorf(pushFailedRollbackTriggered + "\n" + combinedOutput.String())
 	}
@@ -88,12 +89,16 @@ func (bg BlueGreen) loginAll(actors []actor, buffers []*bytes.Buffer, deployment
 	return failed
 }
 
-func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, domain string, deploymentInfo S.DeploymentInfo) bool {
-	failed := false
+func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, domain string, deploymentInfo S.DeploymentInfo) (bool, bool) {
+	failed, firstDeploy := false, true
 
 	for i, a := range actors {
 		buffer := buffers[i]
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
+			if pusher.AppExists(deploymentInfo.AppName) {
+				firstDeploy = false
+			}
+
 			return pusher.Push(appPath, foundationURL, domain, deploymentInfo, buffer)
 		}
 	}
@@ -104,7 +109,7 @@ func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, do
 		}
 	}
 
-	return failed
+	return failed, firstDeploy
 }
 
 func (bg BlueGreen) unpushAll(actors []actor, deploymentInfo S.DeploymentInfo) {

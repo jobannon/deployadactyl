@@ -12,4 +12,5 @@ type Pusher interface {
 	Unpush(foundationURL string, deploymentInfo S.DeploymentInfo) error
 	FinishPush(foundationURL string, deploymentInfo S.DeploymentInfo) error
 	CleanUp() error
+	AppExists(appName string) bool
 }

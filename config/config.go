@@ -29,11 +29,12 @@ type Config struct {
 }
 
 type Environment struct {
-	Name         string
-	Domain       string
-	Foundations  []string `yaml:",flow"`
-	Authenticate bool
-	SkipSSL      bool `yaml:"skip_ssl"`
+	Name                       string
+	Domain                     string
+	Foundations                []string `yaml:",flow"`
+	Authenticate               bool
+	SkipSSL                    bool `yaml:"skip_ssl"`
+	DisableFirstDeployRollback bool `yaml:"disable_first_deploy_rollback"`
 }
 
 type configYaml struct {

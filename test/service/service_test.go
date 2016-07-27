@@ -28,7 +28,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
-	"github.com/stretchr/testify/mock"
 )
 
 const (
@@ -190,12 +189,17 @@ func (c Creator) CreateDeployer() I.Deployer {
 func (c Creator) CreatePusher() (I.Pusher, error) {
 	courier := &mocks.Courier{}
 
-	courier.On("Login", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]byte("logged in"), nil)
-	courier.On("Delete", mock.Anything).Return([]byte("deleted app"), nil)
-	courier.On("Push", mock.Anything, mock.Anything).Return([]byte("pushed app"), nil)
-	courier.On("Rename", mock.Anything, mock.Anything).Return([]byte("renamed app"), nil)
-	courier.On("MapRoute", mock.Anything, mock.Anything).Return([]byte("mapped route"), nil)
-	courier.On("CleanUp").Return(nil)
+	courier.LoginCall.Returns.Output = []byte("logged in")
+	courier.LoginCall.Returns.Error = nil
+	courier.DeleteCall.Returns.Output = []byte("deleted app")
+	courier.DeleteCall.Returns.Error = nil
+	courier.PushCall.Returns.Output = []byte("pushed app")
+	courier.PushCall.Returns.Error = nil
+	courier.RenameCall.Returns.Output = []byte("renamed app")
+	courier.RenameCall.Returns.Error = nil
+	courier.MapRouteCall.Returns.Output = []byte("mapped route")
+	courier.MapRouteCall.Returns.Error = nil
+	courier.CleanUpCall.Returns.Error = nil
 
 	p := pusher.Pusher{
 		Courier: courier,
@@ -218,9 +222,11 @@ func (c Creator) CreateConfig() config.Config {
 }
 
 func (c Creator) CreatePrechecker() I.Prechecker {
-	p := &mocks.Prechecker{}
-	p.On("AssertAllFoundationsUp", mock.Anything).Return(nil)
-	return p
+	prechecker := &mocks.Prechecker{}
+
+	prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
+
+	return prechecker
 }
 
 func (c Creator) CreateWriter() io.Writer {

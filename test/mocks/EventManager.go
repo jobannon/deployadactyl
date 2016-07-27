@@ -35,6 +35,7 @@ func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 
 func (e *EventManager) Emit(event S.Event) error {
 	defer func() { e.EmitCall.TimesCalled++ }()
+
 	e.EmitCall.Received.Event = event
 
 	return e.EmitCall.Returns.Error

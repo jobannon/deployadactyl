@@ -115,6 +115,7 @@ func (c *Courier) MapRoute(appName, domain string) ([]byte, error) {
 
 func (c *Courier) Exists(appName string) bool {
 	c.ExistsCall.Received.AppName = appName
+
 	return c.ExistsCall.Returns.Bool
 }
 

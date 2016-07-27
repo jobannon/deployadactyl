@@ -31,12 +31,14 @@ type Executor struct {
 
 func (e *Executor) Execute(args ...string) ([]byte, error) {
 	e.ExecuteCall.Received.Args = args
+
 	return e.ExecuteCall.Returns.Output, e.ExecuteCall.Returns.Error
 }
 
 func (e *Executor) ExecuteInDirectory(appLocation string, args ...string) ([]byte, error) {
 	e.ExecuteInDirectoryCall.Received.AppLocation = appLocation
 	e.ExecuteInDirectoryCall.Received.Args = args
+
 	return e.ExecuteInDirectoryCall.Returns.Output, e.ExecuteInDirectoryCall.Returns.Error
 }
 

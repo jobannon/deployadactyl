@@ -1,5 +1,5 @@
 package interfaces
 
 type Extractor interface {
-	Unzip(string, string, string) error
+	Unzip(source, destination, manifest string) error
 }

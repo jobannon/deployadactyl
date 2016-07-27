@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/op/go-logging"
 
@@ -41,13 +40,15 @@ var _ = Describe("Artifetcher", func() {
 	Describe("Fetch", func() {
 		It("can fetch a jar file", func() {
 			defer testserver.Close()
-			extractor.On("Unzip", mock.Anything, mock.Anything, mock.Anything).Return(nil).Times(1)
+			extractor.UnzipCall.Returns.Error = nil
 
 			unzippedPath, err := artifetcher.Fetch(testserver.URL, "")
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(af.IsDir(unzippedPath)).To(BeTrue())
-			Expect(extractor.AssertExpectations(GinkgoT())).To(BeTrue())
+
+			Expect(extractor.UnzipCall.Received.Destination).To(Equal(unzippedPath))
+			Expect(extractor.UnzipCall.Received.Manifest).To(BeEmpty())
 		})
 
 		It("returns an error when an invalid url is given", func() {

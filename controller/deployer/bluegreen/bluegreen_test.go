@@ -196,7 +196,7 @@ var _ = Describe("Bluegreen", func() {
 					pusher.PushCall.Returns.Error = errors.New("bork")
 				}
 
-				pusher.UnpushCall.Returns.Error = nil
+				pusher.RollbackCall.Returns.Error = nil
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
@@ -212,8 +212,8 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.PushCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.UnpushCall.Received.FoundationURL).To(Equal(foundationURL))
-				Expect(pusher.UnpushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.RollbackCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.RollbackCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			}
 
 			Expect(buffer.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
@@ -240,7 +240,7 @@ var _ = Describe("Bluegreen", func() {
 					pusher.PushCall.Returns.Error = errors.New("bork")
 				}
 
-				pusher.UnpushCall.Returns.Error = nil
+				pusher.RollbackCall.Returns.Error = nil
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
@@ -256,8 +256,8 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.PushCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.UnpushCall.Received.FoundationURL).ToNot(Equal(foundationURL))
-				Expect(pusher.UnpushCall.Received.DeploymentInfo).ToNot(Equal(deploymentInfo))
+				Expect(pusher.RollbackCall.Received.FoundationURL).ToNot(Equal(foundationURL))
+				Expect(pusher.RollbackCall.Received.DeploymentInfo).ToNot(Equal(deploymentInfo))
 			}
 
 			Expect(buffer.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))

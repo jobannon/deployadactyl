@@ -80,9 +80,9 @@ func (p Pusher) FinishPush(foundationURL string, deploymentInfo S.DeploymentInfo
 	return nil
 }
 
-// Unpush will rollback Push.
+// Rollback will rollback Push.
 // Deletes the new application and renames appName-venerable back to appName.
-func (p Pusher) Unpush(foundationURL string, deploymentInfo S.DeploymentInfo) error {
+func (p Pusher) Rollback(foundationURL string, deploymentInfo S.DeploymentInfo) error {
 	p.Log.Errorf(rollingBackDeploy, deploymentInfo.AppName)
 
 	venerableName := deploymentInfo.AppName + "-venerable"

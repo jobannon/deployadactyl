@@ -38,7 +38,7 @@ type Pusher struct {
 		}
 	}
 
-	UnpushCall struct {
+	RollbackCall struct {
 		Received struct {
 			FoundationURL  string
 			DeploymentInfo S.DeploymentInfo
@@ -96,11 +96,11 @@ func (p *Pusher) Push(appPath, foundationURL, domain string, deploymentInfo S.De
 	return p.PushCall.Returns.Error
 }
 
-func (p *Pusher) Unpush(foundationURL string, deploymentInfo S.DeploymentInfo) error {
-	p.UnpushCall.Received.FoundationURL = foundationURL
-	p.UnpushCall.Received.DeploymentInfo = deploymentInfo
+func (p *Pusher) Rollback(foundationURL string, deploymentInfo S.DeploymentInfo) error {
+	p.RollbackCall.Received.FoundationURL = foundationURL
+	p.RollbackCall.Received.DeploymentInfo = deploymentInfo
 
-	return p.UnpushCall.Returns.Error
+	return p.RollbackCall.Returns.Error
 }
 
 func (p *Pusher) FinishPush(foundationURL string, deploymentInfo S.DeploymentInfo) error {

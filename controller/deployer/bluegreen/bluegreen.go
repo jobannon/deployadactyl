@@ -63,7 +63,7 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 	}
 
 	if failed && (!firstDeploy || (firstDeploy && !environment.DisableFirstDeployRollback)) {
-		bg.unpushAll(actors, deploymentInfo)
+		bg.rollbackAll(actors, deploymentInfo)
 		return errors.Errorf(pushFailedRollbackTriggered + "\n" + combinedOutput.String())
 	}
 
@@ -118,10 +118,10 @@ func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, do
 	return failed, firstDeploy
 }
 
-func (bg BlueGreen) unpushAll(actors []actor, deploymentInfo S.DeploymentInfo) {
+func (bg BlueGreen) rollbackAll(actors []actor, deploymentInfo S.DeploymentInfo) {
 	for _, a := range actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.Unpush(foundationURL, deploymentInfo)
+			return pusher.Rollback(foundationURL, deploymentInfo)
 		}
 	}
 	for _, a := range actors {

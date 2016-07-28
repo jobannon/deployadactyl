@@ -101,7 +101,7 @@ func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, do
 	for i, a := range actors {
 		buffer := buffers[i]
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			if pusher.AppExists(deploymentInfo.AppName) {
+			if pusher.Exists(deploymentInfo.AppName) {
 				firstDeploy = false
 			}
 

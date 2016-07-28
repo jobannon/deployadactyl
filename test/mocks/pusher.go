@@ -61,7 +61,7 @@ type Pusher struct {
 		}
 	}
 
-	AppExistsCall struct {
+	ExistsCall struct {
 		Received struct {
 			AppName string
 		}
@@ -108,8 +108,8 @@ func (p *Pusher) CleanUp() error {
 	return p.CleanUpCall.Returns.Error
 }
 
-func (p *Pusher) AppExists(appName string) bool {
-	p.AppExistsCall.Received.AppName = appName
+func (p *Pusher) Exists(appName string) bool {
+	p.ExistsCall.Received.AppName = appName
 
-	return p.AppExistsCall.Returns.Exists
+	return p.ExistsCall.Returns.Exists
 }

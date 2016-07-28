@@ -73,7 +73,7 @@ var _ = Describe("Pusher", func() {
 
 				Expect(pusher.Login(foundationURL, deploymentInfo, responseBuffer)).To(Succeed())
 
-				Expect(courier.LoginCall.Received.API).To(Equal(foundationURL))
+				Expect(courier.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(courier.LoginCall.Received.Username).To(Equal(username))
 				Expect(courier.LoginCall.Received.Password).To(Equal(password))
 				Expect(courier.LoginCall.Received.Org).To(Equal(org))
@@ -91,7 +91,7 @@ var _ = Describe("Pusher", func() {
 
 				Expect(pusher.Login(foundationURL, deploymentInfo, responseBuffer)).ToNot(Succeed())
 
-				Expect(courier.LoginCall.Received.API).To(Equal(foundationURL))
+				Expect(courier.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(courier.LoginCall.Received.Username).To(Equal(username))
 				Expect(courier.LoginCall.Received.Password).To(Equal(password))
 				Expect(courier.LoginCall.Received.Org).To(Equal(org))
@@ -115,9 +115,9 @@ var _ = Describe("Pusher", func() {
 			Expect(pusher.Push(appPath, domain, deploymentInfo, responseBuffer)).To(Succeed())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
-			Expect(courier.RenameCall.Received.NewAppName).To(Equal(appNameVenerable))
+			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))
 			Expect(courier.PushCall.Received.AppName).To(Equal(appName))
-			Expect(courier.PushCall.Received.AppLocation).To(Equal(appPath))
+			Expect(courier.PushCall.Received.AppPath).To(Equal(appPath))
 			Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName))
 			Expect(courier.MapRouteCall.Received.Domain).To(Equal(domain))
 
@@ -139,7 +139,7 @@ var _ = Describe("Pusher", func() {
 				Expect(pusher.Push(appPath, domain, deploymentInfo, responseBuffer)).ToNot(Succeed())
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
-				Expect(courier.RenameCall.Received.NewAppName).To(Equal(appNameVenerable))
+				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))
 				Expect(courier.ExistsCall.Received.AppName).To(Equal(appName))
 
 				Eventually(logBuffer).Should(gbytes.Say("renaming app from " + appName + " to " + appNameVenerable))
@@ -158,10 +158,10 @@ var _ = Describe("Pusher", func() {
 				Expect(pusher.Push(appPath, domain, deploymentInfo, responseBuffer)).To(Succeed())
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
-				Expect(courier.RenameCall.Received.NewAppName).To(Equal(appNameVenerable))
+				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))
 				Expect(courier.ExistsCall.Received.AppName).To(Equal(appName))
 				Expect(courier.PushCall.Received.AppName).To(Equal(appName))
-				Expect(courier.PushCall.Received.AppLocation).To(Equal(appPath))
+				Expect(courier.PushCall.Received.AppPath).To(Equal(appPath))
 				Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName))
 				Expect(courier.MapRouteCall.Received.Domain).To(Equal(domain))
 
@@ -187,7 +187,7 @@ var _ = Describe("Pusher", func() {
 			Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(appNameVenerable))
-			Expect(courier.RenameCall.Received.NewAppName).To(Equal(appName))
+			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appName))
 			Expect(courier.DeleteCall.Received.AppName).To(Equal(appName))
 
 			Eventually(logBuffer).Should(gbytes.Say("rolling back deploy of " + appName))
@@ -217,11 +217,11 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("AppExists", func() {
-		It("checks that app exists", func() {
+	Describe("checking for an existing application", func() {
+		It("it is successful", func() {
 			courier.ExistsCall.Returns.Bool = true
 
-			Expect(pusher.AppExists(appName)).To(Equal(true))
+			Expect(pusher.Exists(appName)).To(Equal(true))
 		})
 	})
 })

@@ -125,7 +125,7 @@ var _ = Describe("Bluegreen", func() {
 
 			Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 			Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-			Expect(pusher.AppExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
+			Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 			Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 			Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
@@ -158,12 +158,12 @@ var _ = Describe("Bluegreen", func() {
 
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.AppExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
+				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.FinishPushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.AppExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
+				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			}
 
 			Expect(buffer.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
@@ -181,7 +181,7 @@ var _ = Describe("Bluegreen", func() {
 
 				pusher.LoginCall.Write.Output = loginOutput
 				pusher.LoginCall.Returns.Error = nil
-				pusher.AppExistsCall.Returns.Exists = true
+				pusher.ExistsCall.Returns.Exists = true
 
 				if index == 0 {
 					pusher.PushCall.Write.Output = pushOutput
@@ -203,7 +203,7 @@ var _ = Describe("Bluegreen", func() {
 
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.AppExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
+				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
@@ -245,7 +245,7 @@ var _ = Describe("Bluegreen", func() {
 
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.AppExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
+				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))

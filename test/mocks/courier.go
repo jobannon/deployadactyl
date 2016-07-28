@@ -3,12 +3,12 @@ package mocks
 type Courier struct {
 	LoginCall struct {
 		Received struct {
-			API      string
-			Username string
-			Password string
-			Org      string
-			Space    string
-			SkipSSL  bool
+			FoundationURL string
+			Username      string
+			Password      string
+			Org           string
+			Space         string
+			SkipSSL       bool
 		}
 		Returns struct {
 			Output []byte
@@ -28,8 +28,8 @@ type Courier struct {
 
 	PushCall struct {
 		Received struct {
-			AppName     string
-			AppLocation string
+			AppName string
+			AppPath string
 		}
 		Returns struct {
 			Output []byte
@@ -39,8 +39,8 @@ type Courier struct {
 
 	RenameCall struct {
 		Received struct {
-			AppName    string
-			NewAppName string
+			AppName          string
+			AppNameVenerable string
 		}
 		Returns struct {
 			Output []byte
@@ -76,7 +76,7 @@ type Courier struct {
 }
 
 func (c *Courier) Login(api, username, password, org, space string, skipSSL bool) ([]byte, error) {
-	c.LoginCall.Received.API = api
+	c.LoginCall.Received.FoundationURL = api
 	c.LoginCall.Received.Username = username
 	c.LoginCall.Received.Password = password
 	c.LoginCall.Received.Org = org
@@ -94,14 +94,14 @@ func (c *Courier) Delete(appName string) ([]byte, error) {
 
 func (c *Courier) Push(appName, appLocation string) ([]byte, error) {
 	c.PushCall.Received.AppName = appName
-	c.PushCall.Received.AppLocation = appLocation
+	c.PushCall.Received.AppPath = appLocation
 
 	return c.PushCall.Returns.Output, c.PushCall.Returns.Error
 }
 
 func (c *Courier) Rename(appName, newAppName string) ([]byte, error) {
 	c.RenameCall.Received.AppName = appName
-	c.RenameCall.Received.NewAppName = newAppName
+	c.RenameCall.Received.AppNameVenerable = newAppName
 
 	return c.RenameCall.Returns.Output, c.RenameCall.Returns.Error
 }

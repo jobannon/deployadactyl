@@ -12,5 +12,5 @@ type Pusher interface {
 	Rollback(deploymentInfo S.DeploymentInfo) error
 	FinishPush(deploymentInfo S.DeploymentInfo) error
 	CleanUp() error
-	AppExists(appName string) bool
+	Exists(appName string) bool
 }

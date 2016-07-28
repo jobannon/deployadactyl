@@ -137,8 +137,7 @@ var _ = Describe("Deployer", func() {
 				fetcher.FetchCall.Returns.Error = errors.New("bork")
 				fetcher.FetchCall.Returns.AppPath = appPath
 
-				err := deployer.Deploy(deploymentInfo, buffer)
-				Expect(err).To(HaveOccurred())
+				Expect(deployer.Deploy(deploymentInfo, buffer)).ToNot(Succeed())
 				Expect(buffer).To(ContainSubstring("bork"))
 
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
@@ -158,8 +157,7 @@ var _ = Describe("Deployer", func() {
 					blueGreener.PushCall.Returns.Error = nil
 					prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 
-					err := deployer.Deploy(deploymentInfo, buffer)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(deployer.Deploy(deploymentInfo, buffer)).To(Succeed())
 
 					Expect(buffer).To(ContainSubstring("deploy was successful"))
 
@@ -187,8 +185,7 @@ var _ = Describe("Deployer", func() {
 				By("making bluegreener return an error")
 				blueGreener.PushCall.Returns.Error = errors.New("bork")
 
-				err := deployer.Deploy(deploymentInfo, buffer)
-				Expect(err).To(HaveOccurred())
+				Expect(deployer.Deploy(deploymentInfo, buffer)).ToNot(Succeed())
 
 				fmt.Fprint(deployEventData.Writer, buffer.String())
 				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
@@ -212,8 +209,7 @@ var _ = Describe("Deployer", func() {
 				fetcher.FetchCall.Returns.AppPath = appPath
 				blueGreener.PushCall.Returns.Error = nil
 
-				err := deployer.Deploy(deploymentInfo, buffer)
-				Expect(err).To(HaveOccurred())
+				Expect(deployer.Deploy(deploymentInfo, buffer)).ToNot(Succeed())
 
 				Expect(buffer).To(ContainSubstring("bork"))
 

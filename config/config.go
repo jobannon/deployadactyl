@@ -1,4 +1,4 @@
-// Package config holds all specified configuration information aggregated from across all possible inputs (config yaml file and user-defined environment variables).
+// Package config holds all specified configuration information aggregated from all possible inputs.
 package config
 
 import (
@@ -21,6 +21,7 @@ const (
 	defaultConfigPath      = "./config.yml"
 )
 
+// Config is a representation of a config yaml. It can contain multiple Environments.
 type Config struct {
 	Username     string
 	Password     string
@@ -28,6 +29,7 @@ type Config struct {
 	Port         int
 }
 
+// Environment is representation of a single environment configuration.
 type Environment struct {
 	Name                       string
 	Domain                     string

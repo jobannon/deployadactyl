@@ -66,8 +66,8 @@ var _ = Describe("Server", func() {
 	Context("when log level is invalid", func() {
 		It("throws an error", func() {
 			level := os.Getenv("DEPLOYADACTYL_LOGLEVEL")
-			err = os.Setenv("DEPLOYADACTYL_LOGLEVEL", "tanystropheus")
-			Expect(err).ToNot(HaveOccurred())
+
+			Expect(os.Setenv("DEPLOYADACTYL_LOGLEVEL", "tanystropheus")).To(Succeed())
 
 			session, err = gexec.Start(exec.Command(pathToCLI), GinkgoWriter, GinkgoWriter)
 			Expect(err).ToNot(HaveOccurred())

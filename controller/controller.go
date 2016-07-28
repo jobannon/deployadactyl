@@ -1,3 +1,4 @@
+// Package controller is responsible for handling requests from the Server.
 package controller
 
 import (
@@ -40,6 +41,7 @@ type Controller struct {
 	Randomizer   I.Randomizer
 }
 
+// Deploy parses parameters from the request, builds a DeploymentInfo and passes it to Deployer.
 func (c *Controller) Deploy(g *gin.Context) {
 	c.Log.Debug("Request originated from: %+v", g.Request.RemoteAddr)
 

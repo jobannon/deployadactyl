@@ -68,8 +68,7 @@ var _ = Describe("Prechecker", func() {
 			It("returns a nil error", func() {
 				httpStatus = http.StatusOK
 
-				err = prechecker.AssertAllFoundationsUp(environment)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(prechecker.AssertAllFoundationsUp(environment)).To(Succeed())
 
 				Expect(foundationApiURLs).To(ConsistOf("/v2/info"))
 			})
@@ -88,8 +87,8 @@ var _ = Describe("Prechecker", func() {
 				eventManager.EmitCall.Returns.Error = nil
 
 				httpStatus = http.StatusInternalServerError
-				err = prechecker.AssertAllFoundationsUp(environment)
-				Expect(err).To(HaveOccurred())
+
+				Expect(prechecker.AssertAllFoundationsUp(environment)).ToNot(Succeed())
 
 				Expect(foundationApiURLs).To(ConsistOf("/v2/info"))
 				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
@@ -110,8 +109,7 @@ var _ = Describe("Prechecker", func() {
 
 				httpStatus = http.StatusNotFound
 
-				err = prechecker.AssertAllFoundationsUp(environment)
-				Expect(err).To(HaveOccurred())
+				Expect(prechecker.AssertAllFoundationsUp(environment)).ToNot(Succeed())
 
 				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
 			})

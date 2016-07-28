@@ -93,8 +93,8 @@ var _ = Describe("Config", func() {
 			env.GetCall.Returns.Values["PORT"] = "42"
 
 			config, err := Custom(env.Get, customConfigPath)
-
 			Expect(err).ToNot(HaveOccurred())
+
 			Expect(config.Port).To(Equal(42))
 		})
 	})

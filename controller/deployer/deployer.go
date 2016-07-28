@@ -81,15 +81,15 @@ func (d Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) (err er
 			deployEvent.Type = "deploy.failure"
 		}
 
-		err = d.EventManager.Emit(deployEvent)
-		if err != nil {
-			fmt.Fprintln(out, err)
+		newErr := d.EventManager.Emit(deployEvent)
+		if newErr != nil {
+			fmt.Fprintln(out, newErr)
 		}
 	}()
 
 	err = d.BlueGreener.Push(environment, appPath, deploymentInfo, out)
 	if err != nil {
-		return errors.New(err)
+		return err
 	}
 
 	fmt.Fprintln(out, fmt.Sprintf("\n%s", successfulDeploy))

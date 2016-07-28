@@ -134,11 +134,11 @@ var _ = Describe("Deployer", func() {
 			It("returns an error", func() {
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 
-				fetcher.FetchCall.Returns.Error = errors.New("bork")
+				fetcher.FetchCall.Returns.Error = errors.New("Fetcher error")
 				fetcher.FetchCall.Returns.AppPath = appPath
 
 				Expect(deployer.Deploy(deploymentInfo, buffer)).ToNot(Succeed())
-				Expect(buffer).To(ContainSubstring("bork"))
+				Expect(buffer).To(ContainSubstring("Fetcher error"))
 
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
 				Expect(fetcher.FetchCall.Received.URL).To(Equal(artifactURL))
@@ -177,15 +177,16 @@ var _ = Describe("Deployer", func() {
 			It("returns an error", func() {
 				event.Type = "deploy.failure"
 
-				eventManager.EmitCall.Returns.Error = errors.New("bork")
+				eventManager.EmitCall.Returns.Error = errors.New("Event error")
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 				fetcher.FetchCall.Returns.Error = nil
 				fetcher.FetchCall.Returns.AppPath = appPath
 
 				By("making bluegreener return an error")
-				blueGreener.PushCall.Returns.Error = errors.New("bork")
+				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
 
-				Expect(deployer.Deploy(deploymentInfo, buffer)).ToNot(Succeed())
+				err := deployer.Deploy(deploymentInfo, buffer)
+				Expect(err).To(MatchError("blue green error"))
 
 				fmt.Fprint(deployEventData.Writer, buffer.String())
 				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
@@ -199,19 +200,19 @@ var _ = Describe("Deployer", func() {
 		})
 
 		Context("when eventmanager fails", func() {
-			It("returns an error", func() {
+			It("prints an error and does not return an error", func() {
 				event.Type = "deploy.success"
 
 				By("making eventmanager return an error")
-				eventManager.EmitCall.Returns.Error = errors.New("bork")
+				eventManager.EmitCall.Returns.Error = errors.New("Event error")
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 				fetcher.FetchCall.Returns.Error = nil
 				fetcher.FetchCall.Returns.AppPath = appPath
 				blueGreener.PushCall.Returns.Error = nil
 
-				Expect(deployer.Deploy(deploymentInfo, buffer)).ToNot(Succeed())
+				Expect(deployer.Deploy(deploymentInfo, buffer)).To(Succeed())
 
-				Expect(buffer).To(ContainSubstring("bork"))
+				Expect(buffer).To(ContainSubstring("Event error"))
 
 				fmt.Fprint(deployEventData.Writer, buffer.String())
 				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))

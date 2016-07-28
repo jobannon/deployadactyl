@@ -17,7 +17,6 @@ var _ = Describe("Prechecker", func() {
 	Describe("AssertAllFoundationsUp", func() {
 		var (
 			httpStatus        int
-			err               error
 			foundationApiURLs []string
 			prechecker        Prechecker
 			eventManager      *mocks.EventManager

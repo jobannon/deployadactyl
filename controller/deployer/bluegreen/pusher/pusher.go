@@ -81,7 +81,7 @@ func (p Pusher) FinishPush(foundationURL string, deploymentInfo S.DeploymentInfo
 }
 
 // Unpush will rollback Push.
-// Deletes the new application and renames the appName-venerable to appName.
+// Deletes the new application and renames appName-venerable back to appName.
 func (p Pusher) Unpush(foundationURL string, deploymentInfo S.DeploymentInfo) error {
 	p.Log.Errorf(rollingBackDeploy, deploymentInfo.AppName)
 

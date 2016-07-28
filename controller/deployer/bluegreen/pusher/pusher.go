@@ -35,7 +35,7 @@ type Pusher struct {
 // Push pushes a single application to a Clound Foundry instance using blue green deployment.
 // Blue green is done by renaming the current application to appName-venerable.
 // Pushes the new application to the existing appName route with an included load balanced domain if provided.
-func (p Pusher) Push(appPath, foundationURL, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
+func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
 	p.Log.Debugf(renamingApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	renameOutput, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	if err != nil {
@@ -67,7 +67,7 @@ func (p Pusher) Push(appPath, foundationURL, domain string, deploymentInfo S.Dep
 }
 
 // FinishPush will delete the venerable instance of your application.
-func (p Pusher) FinishPush(foundationURL string, deploymentInfo S.DeploymentInfo) error {
+func (p Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
 	venerableName := deploymentInfo.AppName + "-venerable"
 
 	_, err := p.Courier.Delete(deploymentInfo.AppName + "-venerable")
@@ -82,7 +82,7 @@ func (p Pusher) FinishPush(foundationURL string, deploymentInfo S.DeploymentInfo
 
 // Rollback will rollback Push.
 // Deletes the new application and renames appName-venerable back to appName.
-func (p Pusher) Rollback(foundationURL string, deploymentInfo S.DeploymentInfo) error {
+func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
 	p.Log.Errorf(rollingBackDeploy, deploymentInfo.AppName)
 
 	venerableName := deploymentInfo.AppName + "-venerable"

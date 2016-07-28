@@ -105,7 +105,7 @@ func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, do
 				firstDeploy = false
 			}
 
-			return pusher.Push(appPath, foundationURL, domain, deploymentInfo, buffer)
+			return pusher.Push(appPath, domain, deploymentInfo, buffer)
 		}
 	}
 	for _, a := range actors {
@@ -121,7 +121,7 @@ func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, do
 func (bg BlueGreen) rollbackAll(actors []actor, deploymentInfo S.DeploymentInfo) {
 	for _, a := range actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.Rollback(foundationURL, deploymentInfo)
+			return pusher.Rollback(deploymentInfo)
 		}
 	}
 	for _, a := range actors {
@@ -134,7 +134,7 @@ func (bg BlueGreen) rollbackAll(actors []actor, deploymentInfo S.DeploymentInfo)
 func (bg BlueGreen) finishPushAll(actors []actor, deploymentInfo S.DeploymentInfo) {
 	for _, a := range actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.FinishPush(foundationURL, deploymentInfo)
+			return pusher.FinishPush(deploymentInfo)
 		}
 	}
 	for _, a := range actors {

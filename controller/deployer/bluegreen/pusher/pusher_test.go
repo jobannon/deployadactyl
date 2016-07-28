@@ -112,7 +112,7 @@ var _ = Describe("Pusher", func() {
 			courier.MapRouteCall.Returns.Output = []byte("mapped route")
 			courier.MapRouteCall.Returns.Error = nil
 
-			Expect(pusher.Push(appPath, foundationURL, domain, deploymentInfo, responseBuffer)).To(Succeed())
+			Expect(pusher.Push(appPath, domain, deploymentInfo, responseBuffer)).To(Succeed())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
 			Expect(courier.RenameCall.Received.NewAppName).To(Equal(appNameVenerable))
@@ -136,7 +136,7 @@ var _ = Describe("Pusher", func() {
 				courier.RenameCall.Returns.Error = errors.New("bork")
 				courier.ExistsCall.Returns.Bool = true
 
-				Expect(pusher.Push(appPath, foundationURL, domain, deploymentInfo, responseBuffer)).ToNot(Succeed())
+				Expect(pusher.Push(appPath, domain, deploymentInfo, responseBuffer)).ToNot(Succeed())
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
 				Expect(courier.RenameCall.Received.NewAppName).To(Equal(appNameVenerable))
@@ -155,7 +155,7 @@ var _ = Describe("Pusher", func() {
 				courier.MapRouteCall.Returns.Output = []byte("mapped route")
 				courier.MapRouteCall.Returns.Error = nil
 
-				Expect(pusher.Push(appPath, foundationURL, domain, deploymentInfo, responseBuffer)).To(Succeed())
+				Expect(pusher.Push(appPath, domain, deploymentInfo, responseBuffer)).To(Succeed())
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
 				Expect(courier.RenameCall.Received.NewAppName).To(Equal(appNameVenerable))
@@ -184,7 +184,7 @@ var _ = Describe("Pusher", func() {
 			courier.DeleteCall.Returns.Output = nil
 			courier.DeleteCall.Returns.Error = nil
 
-			Expect(pusher.Rollback(foundationURL, deploymentInfo)).To(Succeed())
+			Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(appNameVenerable))
 			Expect(courier.RenameCall.Received.NewAppName).To(Equal(appName))
@@ -201,7 +201,7 @@ var _ = Describe("Pusher", func() {
 			courier.DeleteCall.Returns.Output = nil
 			courier.DeleteCall.Returns.Error = nil
 
-			Expect(pusher.FinishPush(foundationURL, deploymentInfo)).To(Succeed())
+			Expect(pusher.FinishPush(deploymentInfo)).To(Succeed())
 
 			Expect(courier.DeleteCall.Received.AppName).To(Equal(appNameVenerable))
 

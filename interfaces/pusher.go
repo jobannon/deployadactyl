@@ -8,9 +8,9 @@ import (
 
 type Pusher interface {
 	Login(foundationURL string, deploymentInfo S.DeploymentInfo, out io.Writer) error
-	Push(appPath, foundationURL, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) error
-	Rollback(foundationURL string, deploymentInfo S.DeploymentInfo) error
-	FinishPush(foundationURL string, deploymentInfo S.DeploymentInfo) error
+	Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) error
+	Rollback(deploymentInfo S.DeploymentInfo) error
+	FinishPush(deploymentInfo S.DeploymentInfo) error
 	CleanUp() error
 	AppExists(appName string) bool
 }

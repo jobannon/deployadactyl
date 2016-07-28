@@ -10,9 +10,9 @@ import (
 
 	. "github.com/compozed/deployadactyl/controller/deployer/eventmanager"
 	"github.com/compozed/deployadactyl/logger"
+	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/compozed/deployadactyl/test/mocks"
 )
 
 var _ = Describe("Events", func() {

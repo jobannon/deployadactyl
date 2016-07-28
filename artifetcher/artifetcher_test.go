@@ -12,8 +12,8 @@ import (
 
 	. "github.com/compozed/deployadactyl/artifetcher"
 	"github.com/compozed/deployadactyl/logger"
+	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
-	"github.com/compozed/deployadactyl/test/mocks"
 )
 
 var _ = Describe("Artifetcher", func() {

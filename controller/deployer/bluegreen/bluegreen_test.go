@@ -7,9 +7,9 @@ import (
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/logger"
+	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/compozed/deployadactyl/test/mocks"
 	"github.com/op/go-logging"
 
 	. "github.com/onsi/ginkgo"

@@ -6,8 +6,8 @@ import (
 
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer/prechecker"
+	"github.com/compozed/deployadactyl/mocks"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/compozed/deployadactyl/test/mocks"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

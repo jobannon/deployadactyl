@@ -8,8 +8,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "github.com/compozed/deployadactyl/config"
+	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
-	"github.com/compozed/deployadactyl/test/mocks"
 )
 
 const (

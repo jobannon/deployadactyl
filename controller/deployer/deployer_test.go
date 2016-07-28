@@ -95,9 +95,7 @@ var _ = Describe("Deployer", func() {
 			Domain:      domain,
 			Foundations: foundations,
 		}
-	})
 
-	JustBeforeEach(func() {
 		deployer = Deployer{blueGreener, environments, fetcher, log, prechecker, eventManager}
 	})
 
@@ -185,6 +183,8 @@ var _ = Describe("Deployer", func() {
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 				fetcher.FetchCall.Returns.Error = nil
 				fetcher.FetchCall.Returns.AppPath = appPath
+
+				By("making bluegreener return an error")
 				blueGreener.PushCall.Returns.Error = errors.New("bork")
 
 				err := deployer.Deploy(deploymentInfo, buffer)
@@ -205,6 +205,7 @@ var _ = Describe("Deployer", func() {
 			It("returns an error", func() {
 				event.Type = "deploy.success"
 
+				By("making eventmanager return an error")
 				eventManager.EmitCall.Returns.Error = errors.New("bork")
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 				fetcher.FetchCall.Returns.Error = nil

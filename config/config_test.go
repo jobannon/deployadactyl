@@ -45,6 +45,7 @@ var _ = Describe("Config", func() {
 		cfPassword = "cfPassword-" + randomizer.StringRunes(10)
 
 		env = &mocks.Env{}
+		env.GetCall.Returns.Values = map[string]string{}
 
 		envMap = map[string]Environment{
 			"test": Environment{
@@ -70,13 +71,11 @@ var _ = Describe("Config", func() {
 	})
 
 	Context("when all environment variables are present", func() {
-		JustBeforeEach(func() {
-			env.On("Get", "CF_USERNAME").Return(cfUsername)
-			env.On("Get", "CF_PASSWORD").Return(cfPassword)
-			env.On("Get", "PORT").Return("")
-		})
+		It("returns a valid config", func() {
+			env.GetCall.Returns.Values["CF_USERNAME"] = cfUsername
+			env.GetCall.Returns.Values["CF_PASSWORD"] = cfPassword
+			env.GetCall.Returns.Values["PORT"] = ""
 
-		It("returns a valid Config", func() {
 			config, err := Custom(env.Get, customConfigPath)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -85,40 +84,38 @@ var _ = Describe("Config", func() {
 			Expect(config.Environments).To(Equal(envMap))
 			Expect(config.Port).To(Equal(8080))
 		})
+	})
 
-		Context("when PORT is in the environment", func() {
-			BeforeEach(func() {
-				env.On("Get", "PORT").Return("42")
-			})
+	Context("when PORT is in the environment", func() {
+		It("uses the value as the port", func() {
+			env.GetCall.Returns.Values["CF_USERNAME"] = cfUsername
+			env.GetCall.Returns.Values["CF_PASSWORD"] = cfPassword
+			env.GetCall.Returns.Values["PORT"] = "42"
 
-			It("uses the value as the Port", func() {
-				config, err := Custom(env.Get, customConfigPath)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(config.Port).To(Equal(42))
-			})
+			config, err := Custom(env.Get, customConfigPath)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(config.Port).To(Equal(42))
 		})
 	})
 
 	Context("when an environment variable is missing", func() {
-		BeforeEach(func() {
-			env.On("Get", "CF_USERNAME").Return("")
-			env.On("Get", "CF_PASSWORD").Return(cfPassword)
-		})
-
 		It("returns an error", func() {
+			env.GetCall.Returns.Values["CF_USERNAME"] = ""
+			env.GetCall.Returns.Values["CF_PASSWORD"] = cfPassword
+
 			_, err := Custom(env.Get, customConfigPath)
+
 			Expect(err).To(MatchError("missing environment variables: CF_USERNAME"))
 		})
 	})
 
 	Context("when a bad config is given", func() {
-		BeforeEach(func() {
-			env.On("Get", "CF_USERNAME").Return(cfUsername)
-			env.On("Get", "CF_PASSWORD").Return(cfPassword)
-			env.On("Get", "PORT").Return("42")
-		})
+		It("returns an error when environments key is empty", func() {
+			env.GetCall.Returns.Values["CF_USERNAME"] = cfUsername
+			env.GetCall.Returns.Values["CF_PASSWORD"] = cfPassword
+			env.GetCall.Returns.Values["PORT"] = "42"
 
-		It("returns an error when empty", func() {
 			testBadConfig := `--- ~`
 			Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 
@@ -128,31 +125,48 @@ var _ = Describe("Config", func() {
 			Expect(badConfig.Environments).To(BeEmpty())
 		})
 
-		It("returns an error when environments does not contain a name", func() {
-			testBadConfig := `---
+		Context("missing required parameters", func() {
+			It("returns an error when name is missing", func() {
+				testBadConfig := `---
 environments:
-- invalidKey: invalidValue
+- foundations: []
+  domain: test.example.com
 `
-			Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
+				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 
-			badConfig, err := Custom(env.Get, badConfigPath)
-			Expect(err).To(MatchError("missing required environment parameter in the configuration"))
+				badConfig, err := Custom(env.Get, badConfigPath)
+				Expect(err).To(MatchError("missing required parameter in the environments key"))
 
-			Expect(badConfig.Environments).To(BeEmpty())
-		})
+				Expect(badConfig.Environments).To(BeEmpty())
+			})
 
-		It("returns an error when environment is missing required parameters", func() {
-			testBadConfig := `---
+			It("returns an error when foundations is missing", func() {
+				testBadConfig := `---
+environments:
+- name: production
+  domain: test.example.com
+`
+				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
+
+				badConfig, err := Custom(env.Get, badConfigPath)
+				Expect(err).To(MatchError("missing required parameter in the environments key"))
+
+				Expect(badConfig.Environments).To(BeEmpty())
+			})
+
+			It("returns an error when domain is missing", func() {
+				testBadConfig := `---
 environments:
 - name: production
   foundations: []
 `
-			Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
+				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 
-			badConfig, err := Custom(env.Get, badConfigPath)
-			Expect(err).To(MatchError("missing required environment parameter in the configuration"))
+				badConfig, err := Custom(env.Get, badConfigPath)
+				Expect(err).To(MatchError("missing required parameter in the environments key"))
 
-			Expect(badConfig.Environments).To(BeEmpty())
+				Expect(badConfig.Environments).To(BeEmpty())
+			})
 		})
 	})
 })

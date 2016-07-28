@@ -65,9 +65,9 @@ var _ = Describe("Pusher", func() {
 		}
 	})
 
-	Describe("Login", func() {
+	Describe("logging in", func() {
 		Context("when it succeeds", func() {
-			It("writes the output of the courier to the Writer", func() {
+			It("writes the output of the courier to the writer", func() {
 				courier.LoginCall.Returns.Output = []byte("login succeeded")
 				courier.LoginCall.Returns.Error = nil
 
@@ -85,7 +85,7 @@ var _ = Describe("Pusher", func() {
 		})
 
 		Context("when it fails", func() {
-			It("writes the output of the courier to the Writer", func() {
+			It("writes the output of the courier to the writer", func() {
 				courier.LoginCall.Returns.Output = []byte("login failed")
 				courier.LoginCall.Returns.Error = errors.New("bork")
 
@@ -103,7 +103,7 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("Push", func() {
+	Describe("starting a deployment", func() {
 		It("renames, pushes, and maps route", func() {
 			courier.RenameCall.Returns.Output = nil
 			courier.RenameCall.Returns.Error = nil
@@ -177,7 +177,7 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("Unpush", func() {
+	Describe("rolling back a deployment", func() {
 		It("logs in, deletes, and renames", func() {
 			courier.RenameCall.Returns.Output = nil
 			courier.RenameCall.Returns.Error = nil
@@ -196,7 +196,7 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("FinishPush", func() {
+	Describe("completing a deployment", func() {
 		It("deletes venerable", func() {
 			courier.DeleteCall.Returns.Output = nil
 			courier.DeleteCall.Returns.Error = nil
@@ -209,8 +209,8 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("CleanUp", func() {
-		It("deletes the temporary directory", func() {
+	Describe("cleaning up temporary directories", func() {
+		It("is successful", func() {
 			courier.CleanUpCall.Returns.Error = nil
 
 			Expect(pusher.CleanUp()).To(Succeed())

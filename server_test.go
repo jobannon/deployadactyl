@@ -42,42 +42,48 @@ var _ = Describe("Server", func() {
 		session.Terminate()
 	})
 
-	It("uses the default log level when a log level is not specified", func() {
-		configLocation := fmt.Sprintf("%s/config.yml", path.Dir(pathToCLI))
+	Context("when a log level is not specified", func() {
+		It("uses the default log level ", func() {
+			configLocation := fmt.Sprintf("%s/config.yml", path.Dir(pathToCLI))
 
-		Expect(ioutil.WriteFile(configLocation, goodConfig, 0777)).To(Succeed())
+			Expect(ioutil.WriteFile(configLocation, goodConfig, 0777)).To(Succeed())
 
-		level := os.Getenv("DEPLOYADACTYL_LOGLEVEL")
+			level := os.Getenv("DEPLOYADACTYL_LOGLEVEL")
 
-		os.Unsetenv("DEPLOYADACTYL_LOGLEVEL")
-		Expect(err).ToNot(HaveOccurred())
+			os.Unsetenv("DEPLOYADACTYL_LOGLEVEL")
+			Expect(err).ToNot(HaveOccurred())
 
-		session, err = gexec.Start(exec.Command(pathToCLI, "-config", configLocation), GinkgoWriter, GinkgoWriter)
-		Expect(err).ToNot(HaveOccurred())
+			session, err = gexec.Start(exec.Command(pathToCLI, "-config", configLocation), GinkgoWriter, GinkgoWriter)
+			Expect(err).ToNot(HaveOccurred())
 
-		Eventually(session.Out).Should(gbytes.Say("log level"))
-		Eventually(session.Out).Should(gbytes.Say("DEBUG"))
+			Eventually(session.Out).Should(gbytes.Say("log level"))
+			Eventually(session.Out).Should(gbytes.Say("DEBUG"))
 
-		os.Setenv("DEPLOYADACTYL_LOGLEVEL", level)
+			os.Setenv("DEPLOYADACTYL_LOGLEVEL", level)
+		})
 	})
 
-	It("throws an error when log level is invalid", func() {
-		level := os.Getenv("DEPLOYADACTYL_LOGLEVEL")
-		err = os.Setenv("DEPLOYADACTYL_LOGLEVEL", "tanystropheus")
-		Expect(err).ToNot(HaveOccurred())
+	Context("when log level is invalid", func() {
+		It("throws an error", func() {
+			level := os.Getenv("DEPLOYADACTYL_LOGLEVEL")
+			err = os.Setenv("DEPLOYADACTYL_LOGLEVEL", "tanystropheus")
+			Expect(err).ToNot(HaveOccurred())
 
-		session, err = gexec.Start(exec.Command(pathToCLI), GinkgoWriter, GinkgoWriter)
-		Expect(err).ToNot(HaveOccurred())
+			session, err = gexec.Start(exec.Command(pathToCLI), GinkgoWriter, GinkgoWriter)
+			Expect(err).ToNot(HaveOccurred())
 
-		Eventually(session.Err).Should(gbytes.Say("invalid log level"))
+			Eventually(session.Err).Should(gbytes.Say("invalid log level"))
 
-		os.Setenv("DEPLOYADACTYL_LOGLEVEL", level)
+			os.Setenv("DEPLOYADACTYL_LOGLEVEL", level)
+		})
 	})
 
-	It("throws an error when an invalid config path is specified", func() {
-		session, err = gexec.Start(exec.Command(pathToCLI, "-config", "./gorgosaurus.yml"), GinkgoWriter, GinkgoWriter)
-		Expect(err).ToNot(HaveOccurred())
+	Context("when an invalid config path is specified", func() {
+		It("throws an error", func() {
+			session, err = gexec.Start(exec.Command(pathToCLI, "-config", "./gorgosaurus.yml"), GinkgoWriter, GinkgoWriter)
+			Expect(err).ToNot(HaveOccurred())
 
-		Eventually(session.Out).Should(gbytes.Say("no such file or directory"))
+			Eventually(session.Out).Should(gbytes.Say("no such file or directory"))
+		})
 	})
 })

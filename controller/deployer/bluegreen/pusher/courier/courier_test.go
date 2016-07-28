@@ -25,7 +25,7 @@ var _ = Describe("Courier", func() {
 		}
 	})
 
-	Describe("Login", func() {
+	Describe("logging in", func() {
 		It("should get a valid Cloud Foundry login command", func() {
 			var (
 				api          = "api-" + randomizer.StringRunes(10)
@@ -40,7 +40,8 @@ var _ = Describe("Courier", func() {
 			executor.ExecuteCall.Returns.Output = []byte(output)
 			executor.ExecuteCall.Returns.Error = nil
 
-			out, _ := courier.Login(api, user, password, org, space, skipSSL)
+			out, err := courier.Login(api, user, password, org, space, skipSSL)
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
 			Expect(string(out)).To(Equal(output))
@@ -68,7 +69,7 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
-	Describe("Delete", func() {
+	Describe("deleting an app", func() {
 		It("should get a valid Cloud Foundry delete command", func() {
 			expectedArgs := []string{"delete", appName, "-f"}
 
@@ -83,7 +84,7 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
-	Describe("Push", func() {
+	Describe("pushing an application", func() {
 		It("should get a valid Cloud Foundry push command", func() {
 			var (
 				appLocation  = "appLocation-" + randomizer.StringRunes(10)
@@ -101,7 +102,7 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
-	Describe("Rename", func() {
+	Describe("renaming an app", func() {
 		It("should get a valid Cloud Foundry rename command", func() {
 			var (
 				newAppName   = "newAppName-" + randomizer.StringRunes(10)
@@ -119,7 +120,7 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
-	Describe("MapRoute", func() {
+	Describe("mapping a route", func() {
 		It("should get a valid Cloud Foundry map-route command", func() {
 			var (
 				domain       = "domain-" + randomizer.StringRunes(10)
@@ -137,7 +138,7 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
-	Describe("Exists", func() {
+	Describe("checking for an existing app", func() {
 		It("should get a valid cloud foundry exists command", func() {
 			expectedArgs := []string{"app", appName}
 
@@ -150,8 +151,8 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
-	Describe("CleanUp", func() {
-		It("calls CleanUp on the executor", func() {
+	Describe("cleaning up executor directories", func() {
+		It("should be successful", func() {
 			executor.CleanUpCall.Returns.Error = nil
 
 			Expect(courier.CleanUp()).To(Succeed())

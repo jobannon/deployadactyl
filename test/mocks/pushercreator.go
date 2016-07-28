@@ -2,7 +2,7 @@ package mocks
 
 import "github.com/compozed/deployadactyl/interfaces"
 
-type PusherFactory struct {
+type PusherCreator struct {
 	CreatePusherCall struct {
 		TimesCalled int
 		Returns     struct {
@@ -12,7 +12,7 @@ type PusherFactory struct {
 	}
 }
 
-func (p *PusherFactory) CreatePusher() (interfaces.Pusher, error) {
+func (p *PusherCreator) CreatePusher() (interfaces.Pusher, error) {
 	defer func() { p.CreatePusherCall.TimesCalled++ }()
 
 	return p.CreatePusherCall.Returns.Pushers[p.CreatePusherCall.TimesCalled], p.CreatePusherCall.Returns.Error

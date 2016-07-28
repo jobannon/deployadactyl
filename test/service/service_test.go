@@ -85,29 +85,31 @@ var _ = Describe("Service", func() {
 		artifactServer.Close()
 	})
 
-	It("can deploy", func() {
-		j, err := json.Marshal(gin.H{
-			"artifact_url": artifactServer.URL,
-			"body": gin.H{
-				"user_id": userID,
-				"group":   group,
-			},
+	Context("mocking the courier and the prechecker", func() {
+		It("can deploy an application without the internet", func() {
+			j, err := json.Marshal(gin.H{
+				"artifact_url": artifactServer.URL,
+				"body": gin.H{
+					"user_id": userID,
+					"group":   group,
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			jsonBuffer := bytes.NewBuffer(j)
+
+			requestURL := fmt.Sprintf("%s/v1/apps/%s/%s/%s/%s", deployadactylServer.URL, ENVIRONMENTNAME, org, space, appName)
+			req, err := http.NewRequest("POST", requestURL, jsonBuffer)
+			Expect(err).ToNot(HaveOccurred())
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			Expect(err).ToNot(HaveOccurred())
+
+			responseBody, err := ioutil.ReadAll(resp.Body)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(resp.StatusCode).To(Equal(http.StatusOK), string(responseBody))
 		})
-		Expect(err).ToNot(HaveOccurred())
-		jsonBuffer := bytes.NewBuffer(j)
-
-		requestURL := fmt.Sprintf("%s/v1/apps/%s/%s/%s/%s", deployadactylServer.URL, ENVIRONMENTNAME, org, space, appName)
-		req, err := http.NewRequest("POST", requestURL, jsonBuffer)
-		Expect(err).ToNot(HaveOccurred())
-
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		Expect(err).ToNot(HaveOccurred())
-
-		responseBody, err := ioutil.ReadAll(resp.Body)
-		Expect(err).ToNot(HaveOccurred())
-
-		Expect(resp.StatusCode).To(Equal(http.StatusOK), string(responseBody))
 	})
 })
 

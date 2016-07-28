@@ -37,7 +37,7 @@ var _ = Describe("Artifetcher", func() {
 		}))
 	})
 
-	Describe("Fetch", func() {
+	Describe("fetching a zip file", func() {
 		It("can fetch a jar file", func() {
 			defer testserver.Close()
 			extractor.UnzipCall.Returns.Error = nil
@@ -56,7 +56,7 @@ var _ = Describe("Artifetcher", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("returns an error when the URL returns a 404 error", func() {
+		It("returns an error when the URL returns a 404 not found", func() {
 			testserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "not found", 404)
 			}))

@@ -29,7 +29,7 @@ var _ = Describe("Bluegreen", func() {
 		loginOutput     string
 		username        string
 		password        string
-		pusherFactory   *mocks.PusherFactory
+		pusherFactory   *mocks.PusherCreator
 		pushers         []*mocks.Pusher
 		log             *logging.Logger
 		blueGreen       BlueGreen
@@ -51,7 +51,7 @@ var _ = Describe("Bluegreen", func() {
 		password = "password-" + randomizer.StringRunes(10)
 		buffer = &bytes.Buffer{}
 
-		pusherFactory = &mocks.PusherFactory{}
+		pusherFactory = &mocks.PusherCreator{}
 		pushers = nil
 
 		log = logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "test")
@@ -72,7 +72,7 @@ var _ = Describe("Bluegreen", func() {
 		}
 	})
 
-	Context("when any logins fail", func() {
+	Context("when a login command fails", func() {
 		It("should not start to deploy", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
@@ -82,6 +82,7 @@ var _ = Describe("Bluegreen", func() {
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
 
 				if index == 0 {
+					By("making the first login command fail")
 					pusher.LoginCall.Write.Output = loginOutput
 					pusher.LoginCall.Returns.Error = errors.New("bork")
 				} else {
@@ -103,8 +104,9 @@ var _ = Describe("Bluegreen", func() {
 		})
 	})
 
-	Context("when pushes are successful", func() {
+	Context("when all push commands are successful", func() {
 		It("can push an app to a single foundation", func() {
+			By("setting a single foundation")
 			foundationURL := "foundationURL-" + randomizer.StringRunes(10)
 			environment.Foundations = []string{foundationURL}
 
@@ -135,6 +137,7 @@ var _ = Describe("Bluegreen", func() {
 		})
 
 		It("can push an app to multiple foundations", func() {
+			By("setting up multiple foundations")
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
 			for range environment.Foundations {
@@ -171,7 +174,7 @@ var _ = Describe("Bluegreen", func() {
 		})
 	})
 
-	Context("when at least one push is unsuccessful", func() {
+	Context("when at least one push command is unsuccessful", func() {
 		It("should rollback all recent pushes", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
@@ -188,6 +191,7 @@ var _ = Describe("Bluegreen", func() {
 					pusher.PushCall.Write.Output = pushOutput
 					pusher.PushCall.Returns.Error = nil
 				} else {
+					By("making a push command fail")
 					pusher.PushCall.Write.Output = pushOutput
 					pusher.PushCall.Returns.Error = errors.New("bork")
 				}

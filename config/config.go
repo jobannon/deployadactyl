@@ -119,7 +119,7 @@ func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
 	environments := map[string]Environment{}
 	for _, environment := range foundationConfig.Environments {
 		if environment.Name == "" || environment.Domain == "" || environment.Foundations == nil || len(environment.Foundations) == 0 {
-			return nil, errors.Errorf("missing required environment parameter in the configuration")
+			return nil, errors.Errorf("missing required parameter in the environments key")
 		}
 
 		environments[strings.ToLower(environment.Name)] = environment

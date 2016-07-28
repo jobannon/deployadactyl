@@ -16,23 +16,23 @@ import (
 var _ = Describe("Prechecker", func() {
 	Describe("AssertAllFoundationsUp", func() {
 		var (
-			httpStatus        int
-			foundationApiURLs []string
-			prechecker        Prechecker
-			eventManager      *mocks.EventManager
-			configServer      *httptest.Server
-			environment       config.Environment
-			event             S.Event
+			httpStatus     int
+			foundationURls []string
+			prechecker     Prechecker
+			eventManager   *mocks.EventManager
+			configServer   *httptest.Server
+			environment    config.Environment
+			event          S.Event
 		)
 
 		BeforeEach(func() {
-			foundationApiURLs = []string{}
+			foundationURls = []string{}
 
 			eventManager = &mocks.EventManager{}
 			prechecker = Prechecker{EventManager: eventManager}
 
 			configServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				foundationApiURLs = append(foundationApiURLs, r.URL.Path)
+				foundationURls = append(foundationURls, r.URL.Path)
 				w.WriteHeader(httpStatus)
 			}))
 			environment = config.Environment{
@@ -69,7 +69,7 @@ var _ = Describe("Prechecker", func() {
 
 				Expect(prechecker.AssertAllFoundationsUp(environment)).To(Succeed())
 
-				Expect(foundationApiURLs).To(ConsistOf("/v2/info"))
+				Expect(foundationURls).To(ConsistOf("/v2/info"))
 			})
 		})
 
@@ -89,7 +89,7 @@ var _ = Describe("Prechecker", func() {
 
 				Expect(prechecker.AssertAllFoundationsUp(environment)).ToNot(Succeed())
 
-				Expect(foundationApiURLs).To(ConsistOf("/v2/info"))
+				Expect(foundationURls).To(ConsistOf("/v2/info"))
 				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
 			})
 		})

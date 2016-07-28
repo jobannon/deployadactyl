@@ -76,7 +76,7 @@ var _ = Describe("Bluegreen", func() {
 		It("should not start to deploy", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
-			for index, _ := range environment.Foundations {
+			for index := range environment.Foundations {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
@@ -174,7 +174,7 @@ var _ = Describe("Bluegreen", func() {
 		It("should rollback all recent pushes", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
-			for index, _ := range environment.Foundations {
+			for index := range environment.Foundations {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
@@ -218,7 +218,7 @@ var _ = Describe("Bluegreen", func() {
 
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
-			for index, _ := range environment.Foundations {
+			for index := range environment.Foundations {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)

@@ -34,7 +34,7 @@ var _ = Describe("Controller", func() {
 
 		deploymentInfo S.DeploymentInfo
 
-		artifactUrl     string
+		artifactURL     string
 		environment     string
 		org             string
 		space           string
@@ -43,7 +43,7 @@ var _ = Describe("Controller", func() {
 		password        string
 		defaultUsername string
 		defaultPassword string
-		apiUrl          string
+		apiURL          string
 		uuid            string
 		skipSSL         bool
 	)
@@ -59,7 +59,7 @@ var _ = Describe("Controller", func() {
 		envMap["Test"] = config.Environment{Foundations: []string{"api1.example.com", "api2.example.com"}}
 		envMap["Prod"] = config.Environment{Foundations: []string{"api3.example.com", "api4.example.com"}}
 
-		artifactUrl = "artifactUrl-" + randomizer.StringRunes(10)
+		artifactURL = "artifactURL-" + randomizer.StringRunes(10)
 		environment = "environment-" + randomizer.StringRunes(10)
 		org = "org-" + randomizer.StringRunes(10)
 		space = "space-" + randomizer.StringRunes(10)
@@ -84,7 +84,7 @@ var _ = Describe("Controller", func() {
 			Randomizer:   randomizerMock,
 		}
 
-		apiUrl = fmt.Sprintf("/v1/apps/%s/%s/%s/%s",
+		apiURL = fmt.Sprintf("/v1/apps/%s/%s/%s/%s",
 			environment,
 			org,
 			space,
@@ -92,7 +92,7 @@ var _ = Describe("Controller", func() {
 		)
 
 		deploymentInfo = S.DeploymentInfo{
-			ArtifactURL: artifactUrl,
+			ArtifactURL: artifactURL,
 			Username:    username,
 			Password:    password,
 			Environment: environment,
@@ -113,7 +113,7 @@ var _ = Describe("Controller", func() {
 		jsonBuffer = bytes.NewBufferString(fmt.Sprintf(`{
 				"artifact_url": "%s"
 			}`,
-			artifactUrl,
+			artifactURL,
 		))
 	})
 
@@ -144,7 +144,7 @@ var _ = Describe("Controller", func() {
 				By("setting authenticate to true")
 				controller.Config.Environments[environment] = config.Environment{Authenticate: true}
 
-				req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("setting basic auth")
@@ -164,7 +164,7 @@ var _ = Describe("Controller", func() {
 				By("setting authenticate to true")
 				controller.Config.Environments[environment] = config.Environment{Authenticate: true}
 
-				req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("not setting basic auth")
@@ -183,7 +183,7 @@ var _ = Describe("Controller", func() {
 				By("setting authenticate to false")
 				controller.Config.Environments[environment] = config.Environment{Authenticate: false}
 
-				req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("setting basic auth")
@@ -207,7 +207,7 @@ var _ = Describe("Controller", func() {
 					By("setting authenticate to false")
 					controller.Config.Environments[environment] = config.Environment{Authenticate: false}
 
-					req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+					req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 					Expect(err).ToNot(HaveOccurred())
 
 					By("not setting basic auth and setting the default username and password")
@@ -230,7 +230,7 @@ var _ = Describe("Controller", func() {
 			deployer.DeployCall.Write.Output = "push succeeded"
 			deployer.DeployCall.Returns.Error = nil
 
-			req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 			Expect(err).ToNot(HaveOccurred())
 
 			req.SetBasicAuth(username, password)
@@ -259,11 +259,11 @@ var _ = Describe("Controller", func() {
 						"artifact_url": "%s",
 						"manifest": "%s"
 					}`,
-					artifactUrl,
+					artifactURL,
 					base64Manifest,
 				))
 
-				req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 
 				req.SetBasicAuth(username, password)
@@ -286,11 +286,11 @@ var _ = Describe("Controller", func() {
 						"artifact_url": "%s",
 						"manifest": "%s"
 					}`,
-					artifactUrl,
+					artifactURL,
 					deploymentInfo.Manifest,
 				))
 
-				req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 
 				req.SetBasicAuth(username, password)
@@ -310,7 +310,7 @@ var _ = Describe("Controller", func() {
 			deployer.DeployCall.Write.Output = "some awesome CF error\n"
 			deployer.DeployCall.Returns.Error = errors.New("bork")
 
-			req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 			Expect(err).ToNot(HaveOccurred())
 
 			req.SetBasicAuth(username, password)
@@ -329,7 +329,7 @@ var _ = Describe("Controller", func() {
 			eventManager.EmitCall.Returns.Error = nil
 			deployer.DeployCall.Returns.Error = nil
 
-			req, err := http.NewRequest("POST", apiUrl, jsonBuffer)
+			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 			Expect(err).ToNot(HaveOccurred())
 
 			req.SetBasicAuth(username, password)
@@ -338,7 +338,7 @@ var _ = Describe("Controller", func() {
 			Expect(resp.Code).To(Equal(200))
 
 			result := resp.Body.String()
-			Expect(result).To(ContainSubstring(artifactUrl))
+			Expect(result).To(ContainSubstring(artifactURL))
 			Expect(result).To(ContainSubstring(username))
 			Expect(result).To(ContainSubstring(environment))
 			Expect(result).To(ContainSubstring(org))

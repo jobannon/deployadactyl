@@ -16,7 +16,8 @@ We use GitHub to manage reviews of pull requests.
 - Run **all** the tests to assure nothing else was accidentally broken.
 - Create a pull request and include the Deployadactyl team `@compozed/deployadactyl` in the description.
 - Ensure all pull request checks (such as continuous integration) are passing.
-- Sign our [Contributing License Agreement] (https://compozed-cla.cfapps.io/ "Compozed CLA") if this is your first contribution.
+- [Sign our Contributing License Agreement] (https://compozed-cla.cfapps.io/agreements/compozed/deployadactyl "Compozed CLA") if this is your first contribution.
+
 
 ## Adding Features
 - If you plan to do something more involved, first discuss your ideas using [Waffle](https://waffle.io/compozed/deployadactyl). This will avoid unnecessary work and will surely give you and us a good deal of inspiration.

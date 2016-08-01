@@ -138,6 +138,21 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
+	Describe("getting the logs for an application", func() {
+		It("should get the recent Cloud Foundry logs", func() {
+			expectedArgs := []string{"logs", appName, "--recent"}
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.Logs(appName)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
 	Describe("checking for an existing app", func() {
 		It("should get a valid cloud foundry exists command", func() {
 			expectedArgs := []string{"app", appName}

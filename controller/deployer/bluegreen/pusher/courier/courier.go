@@ -1,9 +1,7 @@
 // Package courier interfaces with the Executor to run specific Cloud Foundry CLI commands.
 package courier
 
-import (
-	I "github.com/compozed/deployadactyl/interfaces"
-)
+import I "github.com/compozed/deployadactyl/interfaces"
 
 type Courier struct {
 	Executor I.Executor
@@ -47,6 +45,14 @@ func (c Courier) Rename(appName, newAppName string) ([]byte, error) {
 // Returns the combined standard output and standard error.
 func (c Courier) MapRoute(appName, domain string) ([]byte, error) {
 	return c.Executor.Execute("map-route", appName, domain, "-n", appName)
+}
+
+// Logs runs the Cloud Foundry logs command.
+//
+// Returns the combined standard output and standard error.
+func (c Courier) Logs(appName string) ([]byte, error) {
+	logs, err := c.Executor.Execute("logs", appName, "--recent")
+	return logs, err
 }
 
 // Exists checks to see whether the application name exists already.

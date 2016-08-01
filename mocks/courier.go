@@ -48,6 +48,16 @@ type Courier struct {
 		}
 	}
 
+	LogsCall struct {
+		Received struct {
+			AppName string
+		}
+		Returns struct {
+			Output []byte
+			Error  error
+		}
+	}
+
 	MapRouteCall struct {
 		Received struct {
 			AppName string
@@ -109,6 +119,12 @@ func (c *Courier) Rename(appName, newAppName string) ([]byte, error) {
 func (c *Courier) MapRoute(appName, domain string) ([]byte, error) {
 	c.MapRouteCall.Received.AppName = appName
 	c.MapRouteCall.Received.Domain = domain
+
+	return c.MapRouteCall.Returns.Output, c.MapRouteCall.Returns.Error
+}
+
+func (c *Courier) Logs(appName string) ([]byte, error) {
+	c.MapRouteCall.Received.AppName = appName
 
 	return c.MapRouteCall.Returns.Output, c.MapRouteCall.Returns.Error
 }

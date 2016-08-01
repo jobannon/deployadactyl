@@ -6,6 +6,7 @@ type Courier interface {
 	Push(appName, appLocation string) ([]byte, error)
 	Rename(oldName, newName string) ([]byte, error)
 	MapRoute(appName, domain string) ([]byte, error)
+	Logs(appName string) ([]byte, error)
 	Exists(appName string) bool
 	CleanUp() error
 }

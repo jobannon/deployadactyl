@@ -35,13 +35,13 @@ type Pusher struct {
 // Push pushes a single application to a Clound Foundry instance using blue green deployment.
 // Blue green is done by renaming the current application to appName-venerable.
 // Pushes the new application to the existing appName route with an included load balanced domain if provided.
-func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
+func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) ([]byte, error) {
 	p.Log.Debugf(renamingApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	renameOutput, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	if err != nil {
 		if p.Courier.Exists(deploymentInfo.AppName) {
 			p.Log.Errorf(cannotRenameApp)
-			return errors.New(string(renameOutput))
+			return nil, errors.New(string(renameOutput))
 		}
 		p.Log.Infof(notRenamingNewApp)
 	}
@@ -51,7 +51,11 @@ func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, ou
 	pushOutput, err := p.Courier.Push(deploymentInfo.AppName, appPath)
 	fmt.Fprint(out, string(pushOutput))
 	if err != nil {
-		return errors.New(string(pushOutput))
+		logs, err := p.getCloudFoundryLogs(deploymentInfo.AppName)
+		if err != nil {
+			return logs, errors.New(err)
+		}
+		return logs, errors.New(string(pushOutput))
 	}
 	p.Log.Infof(string(pushOutput))
 
@@ -59,11 +63,15 @@ func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, ou
 	mapRouteOutput, err := p.Courier.MapRoute(deploymentInfo.AppName, domain)
 	fmt.Fprint(out, string(mapRouteOutput))
 	if err != nil {
-		return errors.New(string(mapRouteOutput))
+		logs, err := p.getCloudFoundryLogs(deploymentInfo.AppName)
+		if err != nil {
+			return logs, errors.New(string(pushOutput))
+		}
+		return logs, errors.New(err)
 	}
 	p.Log.Infof(string(mapRouteOutput))
 
-	return nil
+	return nil, nil
 }
 
 // FinishPush will delete the venerable instance of your application.
@@ -138,4 +146,8 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, out
 // Exists uses the courier to check if the application exists.
 func (p Pusher) Exists(appName string) bool {
 	return p.Courier.Exists(appName)
+}
+
+func (p Pusher) getCloudFoundryLogs(appName string) ([]byte, error) {
+	return p.Courier.Logs(appName)
 }

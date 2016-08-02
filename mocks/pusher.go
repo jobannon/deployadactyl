@@ -33,6 +33,7 @@ type Pusher struct {
 			Output string
 		}
 		Returns struct {
+			Logs  []byte
 			Error error
 		}
 	}
@@ -81,7 +82,7 @@ func (p *Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, ou
 	return p.LoginCall.Returns.Error
 }
 
-func (p *Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
+func (p *Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) ([]byte, error) {
 	p.PushCall.Received.AppPath = appPath
 	p.PushCall.Received.Domain = domain
 	p.PushCall.Received.DeploymentInfo = deploymentInfo
@@ -89,7 +90,7 @@ func (p *Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, o
 
 	fmt.Fprint(out, p.PushCall.Write.Output)
 
-	return p.PushCall.Returns.Error
+	return p.PushCall.Returns.Logs, p.PushCall.Returns.Error
 }
 
 func (p *Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {

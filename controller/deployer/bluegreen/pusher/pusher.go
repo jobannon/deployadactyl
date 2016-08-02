@@ -35,6 +35,8 @@ type Pusher struct {
 // Push pushes a single application to a Clound Foundry instance using blue green deployment.
 // Blue green is done by renaming the current application to appName-venerable.
 // Pushes the new application to the existing appName route with an included load balanced domain if provided.
+//
+// Returns Cloud Foundry logs if there is an error.
 func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) ([]byte, error) {
 	p.Log.Debugf(renamingApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	renameOutput, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")

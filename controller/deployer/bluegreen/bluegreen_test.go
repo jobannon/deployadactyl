@@ -29,6 +29,7 @@ var _ = Describe("Bluegreen", func() {
 		loginOutput     string
 		username        string
 		password        string
+		logs            []byte
 		pusherFactory   *mocks.PusherCreator
 		pushers         []*mocks.Pusher
 		log             *logging.Logger
@@ -49,6 +50,7 @@ var _ = Describe("Bluegreen", func() {
 		loginOutput = "loginOutput-" + randomizer.StringRunes(10)
 		username = "username-" + randomizer.StringRunes(10)
 		password = "password-" + randomizer.StringRunes(10)
+		logs = []byte("logs-" + randomizer.StringRunes(10))
 		buffer = &bytes.Buffer{}
 
 		pusherFactory = &mocks.PusherCreator{}
@@ -171,8 +173,9 @@ var _ = Describe("Bluegreen", func() {
 	})
 
 	Context("when at least one push command is unsuccessful", func() {
-		It("should rollback all recent pushes", func() {
+		It("should rollback all recent pushes and print Cloud Foundry logs", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
+			badFoundationURL := environment.Foundations[1]
 
 			for index := range environment.Foundations {
 				pusher := &mocks.Pusher{}
@@ -190,6 +193,7 @@ var _ = Describe("Bluegreen", func() {
 					By("making a push command fail")
 					pusher.PushCall.Write.Output = pushOutput
 					pusher.PushCall.Returns.Error = errors.New("bork")
+					pusher.PushCall.Returns.Logs = logs
 				}
 
 				pusher.RollbackCall.Returns.Error = nil
@@ -210,7 +214,8 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.RollbackCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			}
 
-			Expect(buffer.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
+			Expect(buffer.String()).To(ContainSubstring("\nCloud Foundry Logs for %s at %s\n------------------------------------------------------------\n%s\n", deploymentInfo.AppName, badFoundationURL, logs))
+			Expect(buffer.String()).To(ContainSubstring(loginOutput + pushOutput + loginOutput + pushOutput))
 		})
 
 		It("should not rollback any pushes on the first deploy when first deploy rollback is disabled", func() {

@@ -112,7 +112,8 @@ var _ = Describe("Pusher", func() {
 			courier.MapRouteCall.Returns.Output = []byte("mapped route")
 			courier.MapRouteCall.Returns.Error = nil
 
-			Expect(pusher.Push(appPath, domain, deploymentInfo, responseBuffer)).To(Succeed())
+			_, err := pusher.Push(appPath, domain, deploymentInfo, responseBuffer)
+			Expect(err).To(BeNil())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
 			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))
@@ -136,7 +137,8 @@ var _ = Describe("Pusher", func() {
 				courier.RenameCall.Returns.Error = errors.New("bork")
 				courier.ExistsCall.Returns.Bool = true
 
-				Expect(pusher.Push(appPath, domain, deploymentInfo, responseBuffer)).ToNot(Succeed())
+				_, err := pusher.Push(appPath, domain, deploymentInfo, responseBuffer)
+				Expect(err).ToNot(BeNil())
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
 				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))
@@ -155,7 +157,8 @@ var _ = Describe("Pusher", func() {
 				courier.MapRouteCall.Returns.Output = []byte("mapped route")
 				courier.MapRouteCall.Returns.Error = nil
 
-				Expect(pusher.Push(appPath, domain, deploymentInfo, responseBuffer)).To(Succeed())
+				_, err := pusher.Push(appPath, domain, deploymentInfo, responseBuffer)
+				Expect(err).To(BeNil())
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
 				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))

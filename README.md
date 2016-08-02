@@ -52,7 +52,7 @@ environments:
     - https://preproduction.foundation-2.example.com
     authenticate: false
     skip_ssl: true
-    disable_first_deployment_rollback: true
+    disable_first_deploy_rollback: true
 
   - name: production
     domain: production.example.com
@@ -63,7 +63,7 @@ environments:
     - https://production.foundation-4.example.com
     authenticate: true
     skip_ssl: false
-    disable_first_deployment_rollback: false
+    disable_first_deploy_rollback: false
 ```
 
 #### Environment Variables

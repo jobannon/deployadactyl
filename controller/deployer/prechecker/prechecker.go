@@ -19,6 +19,7 @@ const (
 	anAPIEndpointFailed     = "An api endpoint failed"
 )
 
+// Prechecker has an eventmanager used to manage event if prechecks fail.
 type Prechecker struct {
 	EventManager I.EventManager
 }

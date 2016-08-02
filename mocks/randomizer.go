@@ -1,5 +1,6 @@
 package mocks
 
+// Randomizer handmade mock for tests.
 type Randomizer struct {
 	RandomizeCall struct {
 		Received struct {
@@ -11,6 +12,7 @@ type Randomizer struct {
 	}
 }
 
+// StringRunes mock method.
 func (r *Randomizer) StringRunes(length int) string {
 	r.RandomizeCall.Received.Length = length
 

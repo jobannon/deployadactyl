@@ -27,6 +27,7 @@ const (
 You can try confirming that it's valid on your computer by opening or performing some other action on it. Once you've confirmed that it's valid, please try again.`
 )
 
+// Extractor has a file system from which files are extracted from.
 type Extractor struct {
 	Log        *logging.Logger
 	FileSystem *afero.Afero

@@ -22,6 +22,7 @@ func New(fileSystem *afero.Afero) (Executor, error) {
 	}, nil
 }
 
+// Executor has a file system that is used to execute the Cloud Foundry CLI.
 type Executor struct {
 	tempDir    string
 	fileSystem *afero.Afero

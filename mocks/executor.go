@@ -1,5 +1,6 @@
 package mocks
 
+// Executor handmade mock for tests.
 type Executor struct {
 	ExecuteCall struct {
 		Received struct {
@@ -29,12 +30,14 @@ type Executor struct {
 	}
 }
 
+// Execute mock method.
 func (e *Executor) Execute(args ...string) ([]byte, error) {
 	e.ExecuteCall.Received.Args = args
 
 	return e.ExecuteCall.Returns.Output, e.ExecuteCall.Returns.Error
 }
 
+// ExecuteInDirectory mock method.
 func (e *Executor) ExecuteInDirectory(appLocation string, args ...string) ([]byte, error) {
 	e.ExecuteInDirectoryCall.Received.AppLocation = appLocation
 	e.ExecuteInDirectoryCall.Received.Args = args
@@ -42,6 +45,7 @@ func (e *Executor) ExecuteInDirectory(appLocation string, args ...string) ([]byt
 	return e.ExecuteInDirectoryCall.Returns.Output, e.ExecuteInDirectoryCall.Returns.Error
 }
 
+// CleanUp mock method.
 func (e *Executor) CleanUp() error {
 	return e.CleanUpCall.Returns.Error
 }

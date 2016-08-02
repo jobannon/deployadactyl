@@ -8,6 +8,7 @@ import (
 	"github.com/op/go-logging"
 )
 
+// EventManager has handlers for each registered event type.
 type EventManager struct {
 	handlers map[string][]I.Handler
 	Log      *logging.Logger

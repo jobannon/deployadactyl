@@ -21,6 +21,7 @@ const (
 	cannotUnzipArtifact       = "cannot unzip artifact"
 )
 
+// Artifetcher fetches artifacts within a file system with an Extractor.
 type Artifetcher struct {
 	FileSystem *afero.Afero
 	Extractor  I.Extractor

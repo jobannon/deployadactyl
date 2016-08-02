@@ -33,6 +33,7 @@ const (
 `
 )
 
+// Controller is used to control deployments using the config and event manager.
 type Controller struct {
 	Deployer     I.Deployer
 	Log          *logging.Logger

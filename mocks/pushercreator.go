@@ -2,6 +2,7 @@ package mocks
 
 import "github.com/compozed/deployadactyl/interfaces"
 
+// PusherCreator handmade mock for tests.
 type PusherCreator struct {
 	CreatePusherCall struct {
 		TimesCalled int
@@ -12,6 +13,7 @@ type PusherCreator struct {
 	}
 }
 
+// CreatePusher mock method.
 func (p *PusherCreator) CreatePusher() (interfaces.Pusher, error) {
 	defer func() { p.CreatePusherCall.TimesCalled++ }()
 

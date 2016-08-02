@@ -28,8 +28,10 @@ import (
 	"github.com/spf13/afero"
 )
 
-const ENDPOINT = "/v1/apps/:environment/:org/:space/:appName" // ENDPOINT is used by the handler to define the deployment endpoint.
+// ENDPOINT is used by the handler to define the deployment endpoint.
+const ENDPOINT = "/v1/apps/:environment/:org/:space/:appName"
 
+// Creator has a config, eventManager, logger and writer for creating dependencies.
 type Creator struct {
 	config       config.Config
 	eventManager I.EventManager

@@ -5,6 +5,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
+// EventManager handmade mock for tests.
 type EventManager struct {
 	AddHandlerCall struct {
 		Received struct {
@@ -26,6 +27,7 @@ type EventManager struct {
 	}
 }
 
+// AddHandler mock method.
 func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 	e.AddHandlerCall.Received.Handler = handler
 	e.AddHandlerCall.Received.EventType = eventType
@@ -33,6 +35,7 @@ func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 	return e.AddHandlerCall.Returns.Error
 }
 
+// Emit mock method.
 func (e *EventManager) Emit(event S.Event) error {
 	defer func() { e.EmitCall.TimesCalled++ }()
 

@@ -1,5 +1,6 @@
 package interfaces
 
+// Courier interface.
 type Courier interface {
 	Login(api, username, password, org, space string, skipSSL bool) ([]byte, error)
 	Delete(appName string) ([]byte, error)

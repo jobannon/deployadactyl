@@ -1,5 +1,6 @@
 package mocks
 
+// Courier handmade mock for tests.
 type Courier struct {
 	LoginCall struct {
 		Received struct {
@@ -85,6 +86,7 @@ type Courier struct {
 	}
 }
 
+// Login mock method.
 func (c *Courier) Login(api, username, password, org, space string, skipSSL bool) ([]byte, error) {
 	c.LoginCall.Received.FoundationURL = api
 	c.LoginCall.Received.Username = username
@@ -96,12 +98,14 @@ func (c *Courier) Login(api, username, password, org, space string, skipSSL bool
 	return c.LoginCall.Returns.Output, c.LoginCall.Returns.Error
 }
 
+// Delete mock method.
 func (c *Courier) Delete(appName string) ([]byte, error) {
 	c.DeleteCall.Received.AppName = appName
 
 	return c.DeleteCall.Returns.Output, c.DeleteCall.Returns.Error
 }
 
+// Push mock method.
 func (c *Courier) Push(appName, appLocation string) ([]byte, error) {
 	c.PushCall.Received.AppName = appName
 	c.PushCall.Received.AppPath = appLocation
@@ -109,6 +113,7 @@ func (c *Courier) Push(appName, appLocation string) ([]byte, error) {
 	return c.PushCall.Returns.Output, c.PushCall.Returns.Error
 }
 
+// Rename mock method.
 func (c *Courier) Rename(appName, newAppName string) ([]byte, error) {
 	c.RenameCall.Received.AppName = appName
 	c.RenameCall.Received.AppNameVenerable = newAppName
@@ -116,6 +121,7 @@ func (c *Courier) Rename(appName, newAppName string) ([]byte, error) {
 	return c.RenameCall.Returns.Output, c.RenameCall.Returns.Error
 }
 
+// MapRoute mock method.
 func (c *Courier) MapRoute(appName, domain string) ([]byte, error) {
 	c.MapRouteCall.Received.AppName = appName
 	c.MapRouteCall.Received.Domain = domain
@@ -123,18 +129,21 @@ func (c *Courier) MapRoute(appName, domain string) ([]byte, error) {
 	return c.MapRouteCall.Returns.Output, c.MapRouteCall.Returns.Error
 }
 
+// Logs mock method.
 func (c *Courier) Logs(appName string) ([]byte, error) {
 	c.MapRouteCall.Received.AppName = appName
 
 	return c.MapRouteCall.Returns.Output, c.MapRouteCall.Returns.Error
 }
 
+// Exists mock method.
 func (c *Courier) Exists(appName string) bool {
 	c.ExistsCall.Received.AppName = appName
 
 	return c.ExistsCall.Returns.Bool
 }
 
+// CleanUp mock method.
 func (c *Courier) CleanUp() error {
 	return c.CleanUpCall.Returns.Error
 }

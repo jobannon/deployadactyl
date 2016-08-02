@@ -13,6 +13,7 @@ func WrapFunc(get func(string) string) ErrGetter {
 	return ErrGetter{get: get}
 }
 
+// ErrGetter has a get function and an array of missing keys for get calls.
 type ErrGetter struct {
 	get         func(string) string
 	missingKeys []string

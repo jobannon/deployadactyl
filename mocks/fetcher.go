@@ -1,5 +1,6 @@
 package mocks
 
+// Fetcher handmade mock for tests.
 type Fetcher struct {
 	FetchCall struct {
 		Received struct {
@@ -13,6 +14,7 @@ type Fetcher struct {
 	}
 }
 
+// Fetch mock method.
 func (f *Fetcher) Fetch(url, manifest string) (string, error) {
 	f.FetchCall.Received.ArtifactURL = url
 	f.FetchCall.Received.Manifest = manifest

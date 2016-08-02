@@ -7,6 +7,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
+// Pusher handmade mock for tests.
 type Pusher struct {
 	LoginCall struct {
 		Received struct {
@@ -72,6 +73,7 @@ type Pusher struct {
 	}
 }
 
+// Login mock method.
 func (p *Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
 	p.LoginCall.Received.FoundationURL = foundationURL
 	p.LoginCall.Received.DeploymentInfo = deploymentInfo
@@ -82,6 +84,7 @@ func (p *Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, ou
 	return p.LoginCall.Returns.Error
 }
 
+// Push mock method.
 func (p *Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) ([]byte, error) {
 	p.PushCall.Received.AppPath = appPath
 	p.PushCall.Received.Domain = domain
@@ -93,22 +96,26 @@ func (p *Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, o
 	return p.PushCall.Returns.Logs, p.PushCall.Returns.Error
 }
 
+// Rollback mock method.
 func (p *Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
 	p.RollbackCall.Received.DeploymentInfo = deploymentInfo
 
 	return p.RollbackCall.Returns.Error
 }
 
+// FinishPush mock method.
 func (p *Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
 	p.FinishPushCall.Received.DeploymentInfo = deploymentInfo
 
 	return p.FinishPushCall.Returns.Error
 }
 
+// CleanUp mock method.
 func (p *Pusher) CleanUp() error {
 	return p.CleanUpCall.Returns.Error
 }
 
+// Exists mock method.
 func (p *Pusher) Exists(appName string) bool {
 	p.ExistsCall.Received.AppName = appName
 

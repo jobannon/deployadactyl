@@ -19,6 +19,7 @@ const (
 	loginFailed                     = "push failed: login failed"
 )
 
+// BlueGreen has a PusherCreator to creater pushers for blue green deployments.
 type BlueGreen struct {
 	PusherCreator I.PusherFactory
 	Log           *logging.Logger

@@ -1,5 +1,6 @@
 package mocks
 
+// Env handmade mock for tests.
 type Env struct {
 	GetCall struct {
 		Received struct {
@@ -11,6 +12,7 @@ type Env struct {
 	}
 }
 
+// Get mock method.
 func (e *Env) Get(key string) string {
 	e.GetCall.Received.Keys = append(e.GetCall.Received.Keys, key)
 

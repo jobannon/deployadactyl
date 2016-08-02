@@ -23,6 +23,7 @@ It is likely that it is an error with your application and not with Deployadacty
 Thanks for using Deployadactyl! Please push down pull up on your lap bar and exit to your left.`
 )
 
+// Deployer contains the bluegreener for deployments, enviroment variables, a fetcher for artifacts, a prechecker and event manager.
 type Deployer struct {
 	BlueGreener  I.BlueGreener
 	Environments map[string]config.Environment

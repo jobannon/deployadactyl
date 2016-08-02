@@ -7,6 +7,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
+// BlueGreener handmade mock for tests.
 type BlueGreener struct {
 	PushCall struct {
 		Received struct {
@@ -21,6 +22,7 @@ type BlueGreener struct {
 	}
 }
 
+// Push mock method.
 func (b *BlueGreener) Push(environment config.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
 	b.PushCall.Received.Environment = environment
 	b.PushCall.Received.AppPath = appPath

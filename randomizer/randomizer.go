@@ -17,6 +17,7 @@ func StringRunes(length int) string {
 	return generateRunes(length)
 }
 
+// Randomizer is used for generating random strings.
 type Randomizer struct{}
 
 // StringRunes generates a random string of runes of a specified length from a Randomizer struct.

@@ -1,5 +1,6 @@
 package mocks
 
+// Extractor handmade mock for tests.
 type Extractor struct {
 	UnzipCall struct {
 		Received struct {
@@ -13,6 +14,7 @@ type Extractor struct {
 	}
 }
 
+// Unzip mock method.
 func (e *Extractor) Unzip(source, destination, manifest string) error {
 	e.UnzipCall.Received.Source = source
 	e.UnzipCall.Received.Destination = destination

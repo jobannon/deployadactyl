@@ -27,6 +27,7 @@ const (
 	notRenamingNewApp       = "new app detected"
 )
 
+// Pusher has a courier used to push applications to Cloud Foundry. 
 type Pusher struct {
 	Courier I.Courier
 	Log     *logging.Logger

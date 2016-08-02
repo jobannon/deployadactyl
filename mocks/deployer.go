@@ -7,6 +7,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
+// Deployer handmade mock for tests.
 type Deployer struct {
 	DeployCall struct {
 		Received struct {
@@ -22,6 +23,7 @@ type Deployer struct {
 	}
 }
 
+// Deploy mock method.
 func (d *Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) error {
 	d.DeployCall.Received.DeploymentInfo = deploymentInfo
 	d.DeployCall.Received.Out = out

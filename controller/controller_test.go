@@ -243,6 +243,32 @@ var _ = Describe("Controller", func() {
 			Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 		})
 
+		Context("when cf logs are enabled", func() {
+			It("returns a 200 OK and displays the recent cf logs for the application", func() {
+				jsonBufferWithOptions := bytes.NewBufferString(fmt.Sprintf(`{
+					"artifact_url": "%s",
+				}`, artifactURL,
+				))
+
+				eventManager.EmitCall.Returns.Error = nil
+				deployer.DeployCall.Write.Output = "push succeeded"
+				deployer.DeployCall.Returns.Error = nil
+
+				req, err := http.NewRequest("POST", apiURL, jsonBufferWithOptions)
+				Expect(err).ToNot(HaveOccurred())
+
+				req.SetBasicAuth(username, password)
+
+				router.ServeHTTP(resp, req)
+
+				Expect(resp.Code).To(Equal(200))
+				Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
+				Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+				Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(resp.Body.String()).To(ContainSubstring("dumping recent logs for app %s", appName))
+			})
+		})
+
 		Context("when custom manifest information is given in the request body", func() {
 			It("properly decodes base64 encoding of the provided manifest information", func() {
 				eventManager.EmitCall.Returns.Error = nil

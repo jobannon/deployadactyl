@@ -65,16 +65,18 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 		return errors.New(err)
 	}
 
+	defer func() {
+		fmt.Fprint(out, string(responseLogs))
+	}()
+
 	if failed && (!firstDeploy || (firstDeploy && !environment.DisableFirstDeployRollback)) {
 		bg.rollbackAll(actors, deploymentInfo)
-		fmt.Printf("%v", responseLogs)
 		return errors.Errorf(pushFailedRollbackTriggered + "\n" + combinedOutput.String())
 	}
 
 	bg.finishPushAll(actors, deploymentInfo)
 
 	if failed {
-		fmt.Printf("%v", responseLogs)
 		return errors.Errorf(pushFailedNoRollbackFirstDeploy + "\n" + combinedOutput.String())
 	}
 
@@ -111,12 +113,8 @@ func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, do
 				firstDeploy = false
 			}
 			logs, err := pusher.Push(appPath, domain, deploymentInfo, buffer)
-			println("####################################")
-			println(logs)
 			if logs != nil {
-				responseLogs = append([]byte(fmt.Sprintf("%s, %s\n\n#########################################\n\n", deploymentInfo.AppName, foundationURL)))
-				responseLogs = append(logs)
-				responseLogs = append([]byte(fmt.Sprintf("\n\n")))
+				responseLogs = append(responseLogs, []byte(fmt.Sprintf("\nCloud Foundry Logs for %s at %s\n------------------------------------------------------------\n%s\n", deploymentInfo.AppName, foundationURL, logs))...)
 			}
 			return err
 		}

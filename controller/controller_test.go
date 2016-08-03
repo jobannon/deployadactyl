@@ -130,7 +130,7 @@ var _ = Describe("Controller", func() {
 			router.ServeHTTP(resp, req)
 
 			Expect(resp.Code).To(Equal(500))
-			Expect(resp.Body.String()).To(Equal("The following properties are missing: artifact_url"))
+			Expect(resp.Body.String()).To(ContainSubstring("The following properties are missing: artifact_url"))
 		})
 	})
 

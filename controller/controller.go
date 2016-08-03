@@ -22,6 +22,7 @@ const (
 	invalidPostRequest      = "invalid POST request"
 	cannotDeployApplication = "cannot deploy application"
 	deployStartError        = "an error occurred in the deploy.start event"
+	deployFinishError       = "an error occurred in the deploy.finish event"
 	deploymentOutput        = `Deployment Parameters:
 	Artifact URL: %s,
 	Username:     %s,
@@ -59,7 +60,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 			err := errors.New(basicAuthHeaderNotFound)
 			c.Log.Error(err.Error())
 			g.Writer.WriteHeader(401)
-			g.Writer.WriteString(err.Error())
+			g.Writer.WriteString(fmt.Sprintln(err.Error()))
 			return
 		}
 		username = c.Config.Username
@@ -70,7 +71,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 	if err != nil {
 		c.Log.Error(err.Error())
 		g.Writer.WriteHeader(500)
-		g.Writer.WriteString(err.Error())
+		g.Writer.WriteString(fmt.Sprintln(err.Error()))
 		return
 	}
 
@@ -85,7 +86,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 
 	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
 	c.Log.Debug(deploymentMessage)
-	fmt.Fprintf(buffer, deploymentMessage)
+	fmt.Fprintln(buffer, deploymentMessage)
 
 	deployEventData := S.DeployEventData{
 		Writer:         buffer,
@@ -97,7 +98,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 	if err != nil {
 		c.Log.Errorf("%s: %s", invalidPostRequest, err)
 		g.Writer.WriteHeader(500)
-		g.Writer.WriteString(err.Error())
+		g.Writer.WriteString(fmt.Sprintln(err.Error()))
 		return
 	}
 
@@ -111,9 +112,9 @@ func (c *Controller) Deploy(g *gin.Context) {
 
 		err = c.EventManager.Emit(deployFinishEvent)
 		if err != nil {
-			c.Log.Errorf("%s: %s", deployStartError, err)
+			c.Log.Errorf("%s: %s", deployFinishError, err)
 			g.Writer.WriteHeader(500)
-			g.Writer.WriteString(err.Error())
+			g.Writer.WriteString(fmt.Sprintln(err.Error()))
 		}
 
 		io.Copy(g.Writer, buffer)
@@ -128,7 +129,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 	if err != nil {
 		c.Log.Errorf("%s: %s", deployStartError, err)
 		g.Writer.WriteHeader(500)
-		g.Writer.WriteString(err.Error())
+		g.Writer.WriteString(fmt.Sprintln(err.Error()))
 		return
 	}
 

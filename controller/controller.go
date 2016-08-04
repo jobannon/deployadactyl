@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/geterrors"
@@ -18,12 +19,14 @@ import (
 )
 
 const (
-	basicAuthHeaderNotFound = "basic auth header not found"
-	invalidPostRequest      = "invalid POST request"
-	cannotDeployApplication = "cannot deploy application"
-	deployStartError        = "an error occurred in the deploy.start event"
-	deployFinishError       = "an error occurred in the deploy.finish event"
-	deploymentOutput        = `Deployment Parameters:
+	basicAuthHeaderNotFound   = "basic auth header not found"
+	invalidPostRequest        = "invalid POST request"
+	cannotOpenManifestFile    = "cannot open manifest file"
+	cannotPrintToManifestFile = "cannot print to open manifest file"
+	cannotDeployApplication   = "cannot deploy application"
+	deployStartError          = "an error occurred in the deploy.start event"
+	deployFinishError         = "an error occurred in the deploy.finish event"
+	deploymentOutput          = `Deployment Parameters:
 	Artifact URL: %s,
 	Username:     %s,
 	Enviroment:   %s,
@@ -41,6 +44,7 @@ type Controller struct {
 	Config       config.Config
 	EventManager I.EventManager
 	Randomizer   I.Randomizer
+	Fetcher      I.Fetcher
 }
 
 // Deploy parses parameters from the request, builds a DeploymentInfo and passes it to Deployer.
@@ -51,13 +55,16 @@ func (c *Controller) Deploy(g *gin.Context) {
 		environment            = g.Param("environment")
 		authenticationRequired = c.Config.Environments[environment].Authenticate
 		buffer                 = &bytes.Buffer{}
+		deployEventData        = S.DeployEventData{}
+		deploymentInfo         = S.DeploymentInfo{}
+		err                    error
 	)
 
 	username, password, ok := g.Request.BasicAuth()
 
 	if !ok {
 		if authenticationRequired {
-			err := errors.New(basicAuthHeaderNotFound)
+			err = errors.New(basicAuthHeaderNotFound)
 			c.Log.Error(err.Error())
 			g.Writer.WriteHeader(401)
 			g.Writer.WriteString(fmt.Sprintln(err.Error()))
@@ -67,31 +74,61 @@ func (c *Controller) Deploy(g *gin.Context) {
 		password = c.Config.Password
 	}
 
-	deploymentInfo, err := getDeploymentInfo(g.Request.Body)
-	if err != nil {
-		c.Log.Error(err.Error())
+	contentType := g.Request.Header.Get("Content-Type")
+	if contentType == "application/json" {
+		deploymentInfo, err = getDeploymentInfo(g.Request.Body)
+		if err != nil {
+			c.Log.Error(err.Error())
+			g.Writer.WriteHeader(500)
+			g.Writer.WriteString(fmt.Sprintln(err.Error()))
+			return
+		}
+
+		deploymentInfo.Username = username
+		deploymentInfo.Password = password
+		deploymentInfo.Environment = environment
+		deploymentInfo.Org = g.Param("org")
+		deploymentInfo.Space = g.Param("space")
+		deploymentInfo.AppName = g.Param("appName")
+		deploymentInfo.UUID = c.Randomizer.StringRunes(128)
+		deploymentInfo.SkipSSL = c.Config.Environments[environment].SkipSSL
+
+		deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
+		c.Log.Debug(deploymentMessage)
+		fmt.Fprintln(buffer, deploymentMessage)
+
+		deployEventData = S.DeployEventData{
+			Writer:         buffer,
+			DeploymentInfo: &deploymentInfo,
+			RequestBody:    g.Request.Body,
+		}
+
+	} else if contentType == "application/zip" {
+		// Get zip file from request
+		f, _, err := g.Request.FormFile("application")
+		if err != nil {
+			c.Log.Errorf("Could not create file from request.")
+			g.Writer.WriteHeader(500)
+			g.Writer.WriteString(fmt.Sprintln(err.Error()))
+			return
+		}
+		// Unzip file
+		appPath, err := c.Fetcher.FetchLocal(f)
+		if err != nil {
+			c.Log.Errorf("Could not process zip file.")
+			g.Writer.WriteHeader(500)
+			g.Writer.WriteString(fmt.Sprintln(err.Error()))
+			return
+		}
+		defer os.RemoveAll(appPath)
+
+		// Do our deploy event
+	} else {
+		//Err: content type not supported
+		c.Log.Errorf("Content type %s not supported", contentType)
 		g.Writer.WriteHeader(500)
 		g.Writer.WriteString(fmt.Sprintln(err.Error()))
 		return
-	}
-
-	deploymentInfo.Username = username
-	deploymentInfo.Password = password
-	deploymentInfo.Environment = environment
-	deploymentInfo.Org = g.Param("org")
-	deploymentInfo.Space = g.Param("space")
-	deploymentInfo.AppName = g.Param("appName")
-	deploymentInfo.UUID = c.Randomizer.StringRunes(128)
-	deploymentInfo.SkipSSL = c.Config.Environments[environment].SkipSSL
-
-	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
-	c.Log.Debug(deploymentMessage)
-	fmt.Fprintln(buffer, deploymentMessage)
-
-	deployEventData := S.DeployEventData{
-		Writer:         buffer,
-		DeploymentInfo: &deploymentInfo,
-		RequestBody:    g.Request.Body,
 	}
 
 	m, err := base64.StdEncoding.DecodeString(deploymentInfo.Manifest)

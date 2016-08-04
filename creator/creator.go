@@ -132,6 +132,7 @@ func (c Creator) createController() controller.Controller {
 		Config:       c.CreateConfig(),
 		EventManager: c.CreateEventManager(),
 		Randomizer:   c.createRandomizer(),
+		Fetcher:      c.createFetcher(),
 	}
 }
 
@@ -139,17 +140,21 @@ func (c Creator) createDeployer() I.Deployer {
 	return deployer.Deployer{
 		Environments: c.config.Environments,
 		BlueGreener:  c.createBlueGreener(),
-		Fetcher: &artifetcher.Artifetcher{
-			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
-			Extractor: &extractor.Extractor{
-				Log:        c.CreateLogger(),
-				FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
-			},
-			Log: c.CreateLogger(),
-		},
+		Fetcher:      c.createFetcher(),
 		Prechecker:   c.createPrechecker(),
 		EventManager: c.CreateEventManager(),
 		Log:          c.CreateLogger(),
+	}
+}
+
+func (c Creator) createFetcher() I.Fetcher {
+	return &artifetcher.Artifetcher{
+		FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+		Extractor: &extractor.Extractor{
+			Log:        c.CreateLogger(),
+			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+			Log:        c.CreateLogger(),
+		},
 	}
 }
 

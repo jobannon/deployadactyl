@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	I "github.com/compozed/deployadactyl/interfaces"
@@ -60,6 +61,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	}
 	defer response.Body.Close()
 
+	println(response.Body)
 	if response.StatusCode != http.StatusOK {
 		return "", errors.Errorf("%s: %s: %s", cannotGetURL, url, response.Status)
 	}
@@ -75,7 +77,33 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 		return "", errors.Errorf("%s: %s", cannotCreateTempDirectory, err)
 	}
 
-	err = a.Extractor.Unzip(artifactFile.Name(), unzippedPath, manifest)
+	err = a.Extractor.Unzip(artifactFile.Name(), unzippedPath, "")
+	if err != nil {
+		a.FileSystem.RemoveAll(unzippedPath)
+		return "", errors.Errorf("%s: %s", cannotUnzipArtifact, err)
+	}
+
+	a.Log.Info("successfully unzipped to tempdir %s", unzippedPath)
+	return unzippedPath, nil
+}
+
+// FetchLocal gets an artifact from the local file system.
+// It then passes it to the extractor for unzipping.
+//
+// Returns a string to the unzipped artifacts path and an error.
+func (a *Artifetcher) FetchLocal(file os.File) (string, error) {
+	a.Log.Debug("Fetching local file: %s", file.Name())
+
+	//Create temp dir
+	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-")
+	if err != nil {
+		return "", errors.Errorf("%s: %s", cannotCreateTempDirectory, err)
+	}
+
+	//put .zip in dir
+
+	//extract
+	err = a.Extractor.Unzip(file.Name(), unzippedPath, "")
 	if err != nil {
 		a.FileSystem.RemoveAll(unzippedPath)
 		return "", errors.Errorf("%s: %s", cannotUnzipArtifact, err)

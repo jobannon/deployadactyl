@@ -224,7 +224,7 @@ var _ = Describe("Controller", func() {
 		})
 	})
 
-	Describe("successful deployments without missing properties", func() {
+	Describe("successful deployments without missing properties with a remote artifact url", func() {
 		It("returns a 200 OK and responds with the output of the push command", func() {
 			eventManager.EmitCall.Returns.Error = nil
 			deployer.DeployCall.Write.Output = "push succeeded"
@@ -298,6 +298,19 @@ var _ = Describe("Controller", func() {
 				router.ServeHTTP(resp, req)
 				Expect(resp.Code).To(Equal(500))
 				Expect(eventManager.EmitCall.TimesCalled).To(Equal(0))
+			})
+		})
+	})
+
+	Describe("successful deployments of a local application", func() {
+		It("returns a 200 OK and responds with the output of the push command", func() {
+		})
+
+		Context("when custom manifest information is given in a manifest file", func() {
+			It("properly decodes the provided manifest information", func() {
+			})
+
+			It("returns an error if the provided manifest information is invalid", func() {
 			})
 		})
 	})

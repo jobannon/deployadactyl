@@ -127,22 +127,22 @@ func (c Creator) CreateEventManager() I.EventManager {
 
 func (c Creator) createController() controller.Controller {
 	return controller.Controller{
+		Config:       c.CreateConfig(),
 		Deployer:     c.createDeployer(),
 		Log:          c.CreateLogger(),
-		Config:       c.CreateConfig(),
 		EventManager: c.CreateEventManager(),
-		Randomizer:   c.createRandomizer(),
 		Fetcher:      c.createFetcher(),
 	}
 }
 
 func (c Creator) createDeployer() I.Deployer {
 	return deployer.Deployer{
-		Environments: c.config.Environments,
+		Config:       c.CreateConfig(),
 		BlueGreener:  c.createBlueGreener(),
 		Fetcher:      c.createFetcher(),
 		Prechecker:   c.createPrechecker(),
 		EventManager: c.CreateEventManager(),
+		Randomizer:   c.createRandomizer(),
 		Log:          c.CreateLogger(),
 	}
 }

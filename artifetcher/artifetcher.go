@@ -87,11 +87,10 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	return unzippedPath, nil
 }
 
-// FetchLocal gets an artifact from the local file system.
-// It then passes it to the extractor for unzipping.
+// FetchFromZip fetches files from a compressed zip file.
 //
 // Returns a string to the unzipped artifacts path and an error.
-func (a *Artifetcher) FetchLocal(file os.File) (string, error) {
+func (a *Artifetcher) FetchFromZip(file os.File) (string, error) {
 	a.Log.Debug("Fetching local file: %s", file.Name())
 
 	//Create temp dir

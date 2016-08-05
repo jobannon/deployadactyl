@@ -2,11 +2,11 @@ package interfaces
 
 import (
 	"io"
-
-	S "github.com/compozed/deployadactyl/structs"
+	"net/http"
 )
 
 // Deployer interface.
 type Deployer interface {
-	Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) error
+	Deploy(req *http.Request, environment, org, space, appName string, out io.Writer) (error, int)
+	DeployZip(req *http.Request, environment, org, space, appName string, out io.Writer) (error, int)
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-errors/errors"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
@@ -44,7 +45,8 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	var proxyClient = &http.Client{
 		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
+			Proxy:             http.ProxyFromEnvironment,
+			DisableKeepAlives: true,
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
@@ -64,6 +66,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	_, err = io.Copy(artifactFile, response.Body)
 	if err != nil {
+		a.Log.Debug("Response: %s", spew.Sdump(response))
 		return "", errors.Errorf("%s: %s", cannotWriteResponseToFile, err)
 	}
 

@@ -4,8 +4,8 @@ package artifetcher
 import (
 	"crypto/tls"
 	"io"
+	"mime/multipart"
 	"net/http"
-	"os"
 	"time"
 
 	I "github.com/compozed/deployadactyl/interfaces"
@@ -89,9 +89,20 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 // FetchFromZip fetches files from a compressed zip file.
 //
-// Returns a string to the unzipped artifacts path and an error.
-func (a *Artifetcher) FetchFromZip(file os.File) (string, error) {
-	a.Log.Debug("Fetching local file: %s", file.Name())
+// Returns a string to the unzipped application path and an error.
+func (a *Artifetcher) FetchFromZip(f multipart.File) (string, error) {
+	zipFile, err := a.FileSystem.TempFile("", "deployadactyl-")
+	if err != nil {
+		return "", errors.Errorf("%s: %s", cannotCreateTempFile, err)
+	}
+	defer zipFile.Close()
+	defer a.FileSystem.Remove(zipFile.Name())
+
+	if _, err = io.Copy(zipFile, f); err != nil {
+		return "", errors.Errorf("%s: %s", cannotWriteResponseToFile, err)
+	}
+
+	a.Log.Debug("Fetching local file: %s", zipFile.Name())
 
 	//Create temp dir
 	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-")
@@ -99,10 +110,7 @@ func (a *Artifetcher) FetchFromZip(file os.File) (string, error) {
 		return "", errors.Errorf("%s: %s", cannotCreateTempDirectory, err)
 	}
 
-	//put .zip in dir
-
-	//extract
-	err = a.Extractor.Unzip(file.Name(), unzippedPath, "")
+	err = a.Extractor.Unzip(zipFile.Name(), unzippedPath, "")
 	if err != nil {
 		a.FileSystem.RemoveAll(unzippedPath)
 		return "", errors.Errorf("%s: %s", cannotUnzipArtifact, err)

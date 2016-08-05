@@ -153,8 +153,8 @@ func (c Creator) createFetcher() I.Fetcher {
 		Extractor: &extractor.Extractor{
 			Log:        c.CreateLogger(),
 			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
-			Log:        c.CreateLogger(),
 		},
+		Log: c.CreateLogger(),
 	}
 }
 

@@ -14,10 +14,11 @@ import (
 )
 
 const (
+	successfulDeploy        = "deploy successful"
 	cannotDeployApplication = "cannot deploy application"
 )
 
-// Controller is used to control deployments using the config and event manager.
+// Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
 	Config       config.Config
 	Deployer     I.Deployer
@@ -26,7 +27,7 @@ type Controller struct {
 	Fetcher      I.Fetcher
 }
 
-// Deploy parses parameters from the request, builds a DeploymentInfo and passes it to Deployer.
+// Deploy checks the request content type and passes it to the Deployer.
 func (c *Controller) Deploy(g *gin.Context) {
 	c.Log.Debug("Request originated from: %+v", g.Request.RemoteAddr)
 
@@ -47,7 +48,11 @@ func (c *Controller) Deploy(g *gin.Context) {
 		if err != nil {
 			c.Log.Errorf("%s: %s", cannotDeployApplication, err)
 			g.Writer.WriteHeader(statusCode)
+			g.Writer.WriteString(fmt.Sprintln(err.Error()))
 			g.Error(err)
+		} else {
+			g.Writer.WriteHeader(statusCode)
+			g.Writer.WriteString(successfulDeploy)
 		}
 	} else if contentType == "application/zip" {
 		f, _, err := g.Request.FormFile("application")
@@ -71,7 +76,11 @@ func (c *Controller) Deploy(g *gin.Context) {
 		if err != nil {
 			c.Log.Errorf("%s: %s", cannotDeployApplication, err)
 			g.Writer.WriteHeader(statusCode)
+			g.Writer.WriteString(cannotDeployApplication)
 			g.Error(err)
+		} else {
+			g.Writer.WriteHeader(statusCode)
+			g.Writer.WriteString(successfulDeploy)
 		}
 	} else {
 		c.Log.Errorf("Content type '%s' not supported", contentType)

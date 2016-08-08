@@ -2,7 +2,9 @@ package controller_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 
 	"github.com/compozed/deployadactyl/config"
@@ -12,6 +14,7 @@ import (
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/op/go-logging"
 )
 
@@ -53,7 +56,6 @@ var _ = Describe("Controller", func() {
 		appName = "appName-" + randomizer.StringRunes(10)
 		defaultUsername = "defaultUsername-" + randomizer.StringRunes(10)
 		defaultPassword = "defaultPassword-" + randomizer.StringRunes(10)
-		jsonBuffer = bytes.NewBufferString("jsonBuffer-" + randomizer.StringRunes(10))
 
 		c := config.Config{
 			Username:     defaultUsername,
@@ -87,20 +89,78 @@ var _ = Describe("Controller", func() {
 		Describe("successful deployments without missing properties with a remote artifact url", func() {
 			It("deploys successfully with no error message and a status code of 200 OK", func() {
 
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
+				req.Header.Set("Content-Type", "application/json")
+
+				deployer.DeployCall.Received.Request = req
+				deployer.DeployCall.Received.EnvironmentName = environment
+				deployer.DeployCall.Received.Org = org
+				deployer.DeployCall.Received.Space = space
+				deployer.DeployCall.Received.AppName = appName
+				deployer.DeployCall.Received.Out = jsonBuffer
+				deployer.DeployCall.Returns.Error = nil
+				deployer.DeployCall.Returns.StatusCode = 200
+
+				router.ServeHTTP(resp, req)
+
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(1))
+				Expect(resp.Code).To(Equal(200))
+				Expect(resp.Body.String()).To(Equal("deploy successful"))
 			})
 		})
 
 		Describe("failed deployments", func() {
 			It("fails to build the application", func() {
 
-				By("returning an error message and a status code that is not 2xx")
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
+				req.Header.Set("Content-Type", "application/json")
+
+				deployer.DeployCall.Received.Request = req
+				deployer.DeployCall.Received.EnvironmentName = environment
+				deployer.DeployCall.Received.Org = org
+				deployer.DeployCall.Received.Space = space
+				deployer.DeployCall.Received.AppName = appName
+				deployer.DeployCall.Received.Out = jsonBuffer
+
+				By("returning an error message and a status code that is 500")
+				deployer.DeployCall.Returns.Error = errors.New("internal server error")
+				deployer.DeployCall.Returns.StatusCode = 500
+
+				router.ServeHTTP(resp, req)
+
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(1))
+				Expect(resp.Code).To(Equal(500))
+				Expect(resp.Body.String()).To(ContainSubstring("internal server error"))
 			})
 		})
 	})
 
 	Context("the controller receives a request that has a mime type application/zip", func() {
 		Describe("successful deployments with a local zip file", func() {
-			It("deploys successfully with no error message and a status code of 200 OK", func() {
+			FIt("deploys successfully with no error message and a status code of 200 OK", func() {
+
+				req, err := http.NewRequest("POST", apiURL, nil)
+				Expect(err).ToNot(HaveOccurred())
+				req.Header.Set("Content-Type", "application/zip")
+
+				deployer.DeployZipCall.Received.Request = req
+				deployer.DeployZipCall.Received.EnvironmentName = environment
+				deployer.DeployZipCall.Received.Org = org
+				deployer.DeployZipCall.Received.Space = space
+				deployer.DeployZipCall.Received.AppName = appName
+				deployer.DeployZipCall.Received.Out = jsonBuffer
+
+				fetcher.FetchFromZipCall.Received.File = nil
+				fetcher.FetchFromZipCall.Returns.AppPath = "appPath-" + randomizer.StringRunes(10)
+				fetcher.FetchFromZipCall.Returns.Error = nil
+
+				router.ServeHTTP(resp, req)
+
+				Expect(deployer.DeployZipCall.TimesCalled).To(Equal(1))
+				Expect(resp.Code).To(Equal(200))
+				Expect(resp.Body).To(ContainSubstring("deploy successful"))
 
 			})
 		})

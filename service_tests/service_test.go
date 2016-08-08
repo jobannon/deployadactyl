@@ -101,6 +101,8 @@ var _ = Describe("Service", func() {
 			req, err := http.NewRequest("POST", requestURL, jsonBuffer)
 			Expect(err).ToNot(HaveOccurred())
 
+			req.Header.Add("Content-Type", "application/json")
+
 			client := &http.Client{}
 			resp, err := client.Do(req)
 			Expect(err).ToNot(HaveOccurred())
@@ -158,11 +160,11 @@ func (c Creator) CreateControllerHandler() *gin.Engine {
 
 func (c Creator) CreateController() controller.Controller {
 	return controller.Controller{
+		Config:       c.CreateConfig(),
 		Deployer:     c.CreateDeployer(),
 		Log:          c.CreateLogger(),
-		Config:       c.CreateConfig(),
 		EventManager: c.CreateEventManager(),
-		Randomizer:   c.CreateRandomizer(),
+		Fetcher:      c.createFetcher(),
 	}
 }
 
@@ -172,8 +174,8 @@ func (c Creator) CreateRandomizer() I.Randomizer {
 
 func (c Creator) CreateDeployer() I.Deployer {
 	return deployer.Deployer{
-		Environments: c.config.Environments,
-		BlueGreener:  c.CreateBlueGreener(),
+		Config:      c.CreateConfig(),
+		BlueGreener: c.CreateBlueGreener(),
 		Fetcher: &artifetcher.Artifetcher{
 			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
 			Extractor: &extractor.Extractor{
@@ -184,7 +186,19 @@ func (c Creator) CreateDeployer() I.Deployer {
 		},
 		Prechecker:   c.CreatePrechecker(),
 		EventManager: c.CreateEventManager(),
+		Randomizer:   c.CreateRandomizer(),
 		Log:          c.CreateLogger(),
+	}
+}
+
+func (c Creator) createFetcher() I.Fetcher {
+	return &artifetcher.Artifetcher{
+		FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+		Extractor: &extractor.Extractor{
+			Log:        c.CreateLogger(),
+			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+		},
+		Log: c.CreateLogger(),
 	}
 }
 

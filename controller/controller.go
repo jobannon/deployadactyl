@@ -14,10 +14,7 @@ import (
 )
 
 const (
-	invalidPostRequest        = "invalid POST request"
-	cannotOpenManifestFile    = "cannot open manifest file"
-	cannotPrintToManifestFile = "cannot print to open manifest file"
-	cannotDeployApplication   = "cannot deploy application"
+	cannotDeployApplication = "cannot deploy application"
 )
 
 // Controller is used to control deployments using the config and event manager.
@@ -76,9 +73,8 @@ func (c *Controller) Deploy(g *gin.Context) {
 			g.Writer.WriteHeader(statusCode)
 			g.Error(err)
 		}
-
 	} else {
-		c.Log.Errorf("Content type %s not supported", contentType)
+		c.Log.Errorf("Content type '%s' not supported", contentType)
 		g.Writer.WriteHeader(400)
 		g.Writer.WriteString(fmt.Sprintln(err.Error()))
 		g.Error(err)

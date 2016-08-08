@@ -18,12 +18,14 @@ import (
 )
 
 const (
-	basicAuthHeaderNotFound = "basic auth header not found"
-	environmentNotFound     = "environment not found"
-	cannotFetchArtifact     = "cannot fetch artifact"
-	invalidArtifact         = "invalid artifact"
-	invalidPostRequest      = "invalid POST request"
-	successfulDeploy        = `Your deploy was successful! (^_^)d
+	basicAuthHeaderNotFound   = "basic auth header not found"
+	environmentNotFound       = "environment not found"
+	cannotFetchArtifact       = "cannot fetch artifact"
+	invalidArtifact           = "invalid artifact"
+	invalidPostRequest        = "invalid POST request"
+	cannotOpenManifestFile    = "cannot open manifest file"
+	cannotPrintToManifestFile = "cannot print to open manifest file"
+	successfulDeploy          = `Your deploy was successful! (^_^)d
 If you experience any problems after this point, check that you can manually push your application to Cloud Foundry on a lower environment.
 It is likely that it is an error with your application and not with Deployadactyl.
 Thanks for using Deployadactyl! Please push down pull up on your lap bar and exit to your left.`
@@ -40,7 +42,7 @@ Thanks for using Deployadactyl! Please push down pull up on your lap bar and exi
 `
 )
 
-// Deployer contains the bluegreener for deployments, enviroment variables, a fetcher for artifacts, a prechecker and event manager.
+// Deployer contains the bluegreener for deployments, environment variables, a fetcher for artifacts, a prechecker and event manager.
 type Deployer struct {
 	Config       config.Config
 	BlueGreener  I.BlueGreener

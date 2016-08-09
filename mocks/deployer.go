@@ -27,9 +27,9 @@ type Deployer struct {
 	DeployZipCall struct {
 		TimesCalled int
 		Received    struct {
-			Request                              *http.Request
-			EnvironmentName, Org, Space, AppName string
-			Out                                  io.Writer
+			Request                                       *http.Request
+			EnvironmentName, Org, Space, AppName, AppPath string
+			Out                                           io.Writer
 		}
 		Write struct {
 			Output string
@@ -58,7 +58,7 @@ func (d *Deployer) Deploy(req *http.Request, environmentName, org, space, appNam
 }
 
 // DeployZip mock method.
-func (d *Deployer) DeployZip(req *http.Request, environmentName, org, space, appName string, out io.Writer) (err error, statusCode int) {
+func (d *Deployer) DeployZip(req *http.Request, environmentName, org, space, appName string, appPath string, out io.Writer) (err error, statusCode int) {
 	defer func() { d.DeployZipCall.TimesCalled++ }()
 
 	d.DeployZipCall.Received.Request = req
@@ -66,6 +66,7 @@ func (d *Deployer) DeployZip(req *http.Request, environmentName, org, space, app
 	d.DeployZipCall.Received.Org = org
 	d.DeployZipCall.Received.Space = space
 	d.DeployZipCall.Received.AppName = appName
+	d.DeployZipCall.Received.AppPath = appPath
 	d.DeployZipCall.Received.Out = out
 
 	fmt.Fprint(out, d.DeployZipCall.Write.Output)

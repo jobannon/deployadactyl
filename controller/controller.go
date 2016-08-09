@@ -10,6 +10,7 @@ import (
 
 	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 )
@@ -39,22 +40,21 @@ func (c *Controller) Deploy(g *gin.Context) {
 		environmentName = g.Param("environment")
 		org             = g.Param("org")
 		space           = g.Param("space")
-		appName         = g.Param("appname")
+		appName         = g.Param("appName")
 		buffer          = &bytes.Buffer{}
 		err             error
 		statusCode      int
 	)
 
 	contentType := g.Request.Header.Get("Content-Type")
-
 	if contentType == "application/json" {
 		err, statusCode = c.Deployer.Deploy(g.Request, environmentName, org, space, appName, buffer)
+		spew.Dump(err)
 		if err != nil {
 			c.Log.Errorf("%s: %s", cannotDeployApplication, err)
 			g.Writer.WriteHeader(statusCode)
 			g.Writer.WriteString(fmt.Sprintln(err.Error()))
 			g.Error(err)
-			return
 		} else {
 			g.Writer.WriteHeader(statusCode)
 			g.Writer.WriteString(successfulDeploy)
@@ -67,7 +67,6 @@ func (c *Controller) Deploy(g *gin.Context) {
 				g.Writer.WriteHeader(500)
 				g.Writer.WriteString(cannotReadFileFromRequest + " - " + err.Error())
 				g.Error(err)
-				return
 			}
 
 			appPath, err := c.Fetcher.FetchFromZip(f)
@@ -76,17 +75,15 @@ func (c *Controller) Deploy(g *gin.Context) {
 				g.Writer.WriteHeader(500)
 				g.Writer.WriteString(cannotProcessZipFile + " - " + err.Error())
 				g.Error(err)
-				return
 			}
 			defer os.RemoveAll(appPath)
 
-			err, statusCode = c.Deployer.DeployZip(g.Request, environmentName, org, space, appName, buffer)
+			err, statusCode = c.Deployer.DeployZip(g.Request, environmentName, org, space, appName, appPath, buffer)
 			if err != nil {
 				c.Log.Errorf("%s: %s", cannotDeployApplication, err)
 				g.Writer.WriteHeader(statusCode)
 				g.Writer.WriteString(cannotDeployApplication + " - " + err.Error())
 				g.Error(err)
-				return
 			} else {
 				g.Writer.WriteHeader(statusCode)
 				g.Writer.WriteString(successfulDeploy)
@@ -95,13 +92,11 @@ func (c *Controller) Deploy(g *gin.Context) {
 			c.Log.Errorf(requestBodyEmpty)
 			g.Writer.WriteHeader(400)
 			g.Writer.WriteString(requestBodyEmpty)
-			return
 		}
 	} else {
 		c.Log.Errorf("content type '%s' not supported", contentType)
 		g.Writer.WriteHeader(400)
 		g.Writer.WriteString(fmt.Sprintf("content type '%s' not supported", contentType))
-		return
 	}
 
 	io.Copy(g.Writer, buffer)

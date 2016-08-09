@@ -123,7 +123,7 @@ var _ = Describe("Deployer", func() {
 		deployer = Deployer{c, blueGreener, fetcher, prechecker, eventManager, randomizerMock, log}
 	})
 
-	Describe("Deploy", func() {
+	Describe("Deploy JSON", func() {
 		Context("with no environments", func() {
 			It("returns an error", func() {
 				errorMessage := "environment not found: " + environmentName
@@ -234,6 +234,48 @@ var _ = Describe("Deployer", func() {
 				Expect(buffer).To(ContainSubstring("Event error"))
 
 				fmt.Fprint(deployEventData.Writer, buffer.String())
+			})
+		})
+	})
+
+	Describe("Deploy Zip", func() {
+		Context("when all applications start correctly", func() {
+			It("is successful", func() {
+
+			})
+		})
+		Context("when authentication is required", func() {
+			It("sets authentication from authentication header", func() {
+
+			})
+
+			It("sets the authentication from the config when there is no authentication header", func() {
+
+			})
+		})
+		Context("when manifest file cannot be found in the extracted zip", func() {
+			It("returns an error and status code 400", func() {
+
+			})
+		})
+		Context("when the environment cannot be found", func() {
+			It("returns an error", func() {
+
+			})
+		})
+		Context("prechecker fails", func() {
+			It("returns an error", func() {
+
+			})
+		})
+		Context("push fails", func() {
+			It("returns an error", func() {
+
+			})
+		})
+		Context("deploy event handler fails", func() {
+			It("returns an error", func() {
+
 			})
 		})
 	})

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -91,6 +92,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
 	d.Log.Debug(deploymentMessage)
 	fmt.Fprintln(out, deploymentMessage)
+
 	deployEventData = S.DeployEventData{
 		Writer:         out,
 		DeploymentInfo: &deploymentInfo,
@@ -193,7 +195,129 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 	return err, 200
 }
 
-func (d Deployer) DeployZip(req *http.Request, environment, org, space, appName string, out io.Writer) (err error, statusCode int) {
+func (d Deployer) DeployZip(req *http.Request, environmentName, org, space, appName string, appPath string, out io.Writer) (err error, statusCode int) {
+	var (
+		deploymentInfo         = S.DeploymentInfo{}
+		environments           = d.Config.Environments
+		authenticationRequired = environments[environmentName].Authenticate
+		deployEventData        = S.DeployEventData{}
+	)
+
+	username, password, ok := req.BasicAuth()
+
+	if !ok {
+		if authenticationRequired {
+			return errors.New(basicAuthHeaderNotFound), 401
+		}
+		username = d.Config.Username
+		password = d.Config.Password
+	}
+
+	deploymentInfo.Username = username
+	deploymentInfo.Password = password
+	deploymentInfo.Environment = environmentName
+	deploymentInfo.Org = org
+	deploymentInfo.Space = space
+	deploymentInfo.AppName = appName
+	deploymentInfo.UUID = d.Randomizer.StringRunes(128)
+	deploymentInfo.SkipSSL = environments[environmentName].SkipSSL
+	deploymentInfo.ArtifactURL = "Local Developer App Deploy " + appPath
+
+	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
+	d.Log.Debug(deploymentMessage)
+	fmt.Fprintln(out, deploymentMessage)
+
+	deployEventData = S.DeployEventData{
+		Writer:         out,
+		DeploymentInfo: &deploymentInfo,
+		RequestBody:    req.Body,
+	}
+
+	manifestBuffer, err := ioutil.ReadFile(appPath + "/manifest.yml")
+	if err != nil {
+		return errors.New(cannotOpenManifestFile), 400
+	}
+	deploymentInfo.Manifest = string(manifestBuffer)
+
+	defer func() (error, int) {
+		deployFinishEvent := S.Event{
+			Type: "deploy.finish",
+			Data: deployEventData,
+		}
+
+		eventErr := d.EventManager.Emit(deployFinishEvent)
+		if eventErr != nil {
+			fmt.Fprintln(out, err)
+		}
+
+		if err != nil {
+			return err, statusCode
+		}
+
+		return nil, 200
+	}()
+
+	deployStartEvent := S.Event{
+		Type: "deploy.start",
+		Data: deployEventData,
+	}
+
+	err = d.EventManager.Emit(deployStartEvent)
+	if err != nil {
+		fmt.Fprintln(out, err)
+		return errors.New(deployStartError), 500
+	}
+
+	deployEventData = S.DeployEventData{
+		Writer:         out,
+		DeploymentInfo: &deploymentInfo,
+	}
+
+	environment, found := environments[deploymentInfo.Environment]
+	if !found {
+		var deployEvent = S.Event{
+			Type: "deploy.error",
+			Data: deployEventData,
+		}
+
+		err = d.EventManager.Emit(deployEvent)
+		if err != nil {
+			fmt.Fprintln(out, err)
+		}
+
+		err = errors.Errorf("%s: %s", environmentNotFound, deploymentInfo.Environment)
+		fmt.Fprintln(out, err)
+		return err, 500
+	}
+
+	err = d.Prechecker.AssertAllFoundationsUp(environment)
+	if err != nil {
+		fmt.Fprintln(out, err)
+		return errors.New(err), 500
+	}
+
+	defer func() {
+		var deployEvent = S.Event{
+			Type: "deploy.success",
+			Data: deployEventData,
+		}
+
+		if err != nil {
+			deployEvent.Type = "deploy.failure"
+		}
+
+		newErr := d.EventManager.Emit(deployEvent)
+		if newErr != nil {
+			fmt.Fprintln(out, newErr)
+		}
+	}()
+
+	err = d.BlueGreener.Push(environment, appPath, deploymentInfo, out)
+	if err != nil {
+		return err, 500
+	}
+
+	fmt.Fprintln(out, fmt.Sprintf("\n%s", successfulDeploy))
 	return err, 200
 }
 

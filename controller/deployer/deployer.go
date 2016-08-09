@@ -65,6 +65,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 
 	deploymentInfo, err = getDeploymentInfo(req.Body)
 	if err != nil {
+		println(err.Error())
 		return err, 500
 	}
 
@@ -90,7 +91,6 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
 	d.Log.Debug(deploymentMessage)
 	fmt.Fprintln(out, deploymentMessage)
-
 	deployEventData = S.DeployEventData{
 		Writer:         out,
 		DeploymentInfo: &deploymentInfo,
@@ -110,10 +110,15 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 			Data: deployEventData,
 		}
 
-		err = d.EventManager.Emit(deployFinishEvent)
-		if err != nil {
-			return errors.New(deployFinishError), 500
+		eventErr := d.EventManager.Emit(deployFinishEvent)
+		if eventErr != nil {
+			fmt.Fprintln(out, err)
 		}
+
+		if err != nil {
+			return err, statusCode
+		}
+
 		return nil, 200
 	}()
 
@@ -124,6 +129,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 
 	err = d.EventManager.Emit(deployStartEvent)
 	if err != nil {
+		fmt.Fprintln(out, err)
 		return errors.New(deployStartError), 500
 	}
 

@@ -1,9 +1,20 @@
 package deployer_test
 
 import (
-	// . "github.com/compozed/deployadactyl/controller/deployer"
+	"bytes"
+	"errors"
+	"fmt"
+	"net/http"
+
+	"github.com/compozed/deployadactyl/config"
+	. "github.com/compozed/deployadactyl/controller/deployer"
+	"github.com/compozed/deployadactyl/logger"
+	"github.com/compozed/deployadactyl/mocks"
+	"github.com/compozed/deployadactyl/randomizer"
+	S "github.com/compozed/deployadactyl/structs"
 	. "github.com/onsi/ginkgo"
-	// . "github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
+	"github.com/op/go-logging"
 )
 
 const (
@@ -11,217 +22,219 @@ const (
 )
 
 var _ = Describe("Deployer", func() {
-	// var (
-	// 	deployer Deployer
+	var (
+		deployer Deployer
 
-	// 	blueGreener  *mocks.BlueGreener
-	// 	fetcher      *mocks.Fetcher
-	// 	prechecker   *mocks.Prechecker
-	// 	eventManager *mocks.EventManager
-	// 	randomizer   *mocks.Randomizer
+		c              config.Config
+		blueGreener    *mocks.BlueGreener
+		fetcher        *mocks.Fetcher
+		prechecker     *mocks.Prechecker
+		eventManager   *mocks.EventManager
+		randomizerMock *mocks.Randomizer
 
-	// 	appName         string
-	// 	appPath         string
-	// 	artifactURL     string
-	// 	domain          string
-	// 	environmentName string
-	// 	org             string
-	// 	space           string
-	// 	username        string
-	// 	uuid            string
-	// 	password        string
-	// 	buffer          *bytes.Buffer
+		req             *http.Request
+		reqBuffer       *bytes.Buffer
+		appName         string
+		appPath         string
+		artifactURL     string
+		domain          string
+		environmentName string
+		org             string
+		space           string
+		username        string
+		uuid            string
+		password        string
+		buffer          *bytes.Buffer
 
-	// 	deploymentInfo  S.DeploymentInfo
-	// 	event           S.Event
-	// 	deployEventData S.DeployEventData
-	// 	foundations     []string
-	// 	environments    = map[string]config.Environment{}
-	// 	log             = logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "test")
-	// )
+		deploymentInfo  S.DeploymentInfo
+		event           S.Event
+		deployEventData S.DeployEventData
+		foundations     []string
+		environments    = map[string]config.Environment{}
+		log             = logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "test")
+	)
 
-	// BeforeEach(func() {
-	// 	blueGreener = &mocks.BlueGreener{}
-	// 	fetcher = &mocks.Fetcher{}
-	// 	prechecker = &mocks.Prechecker{}
-	// 	eventManager = &mocks.EventManager{}
+	BeforeEach(func() {
+		blueGreener = &mocks.BlueGreener{}
+		fetcher = &mocks.Fetcher{}
+		prechecker = &mocks.Prechecker{}
+		eventManager = &mocks.EventManager{}
+		randomizerMock = &mocks.Randomizer{}
 
-	// 	appName = "appName-" + randomizer.StringRunes(10)
-	// 	appPath = "appPath-" + randomizer.StringRunes(10)
-	// 	artifactURL = "artifactURL-" + randomizer.StringRunes(10)
-	// 	domain = "domain-" + randomizer.StringRunes(10)
-	// 	environmentName = "environmentName-" + randomizer.StringRunes(10)
-	// 	org = "org-" + randomizer.StringRunes(10)
-	// 	password = "password-" + randomizer.StringRunes(10)
-	// 	space = "space-" + randomizer.StringRunes(10)
-	// 	username = "username-" + randomizer.StringRunes(10)
-	// 	uuid = "uuid-" + randomizer.StringRunes(10)
+		appName = "appName-" + randomizer.StringRunes(10)
+		appPath = "appPath-" + randomizer.StringRunes(10)
+		artifactURL = "artifactURL-" + randomizer.StringRunes(10)
+		domain = "domain-" + randomizer.StringRunes(10)
+		environmentName = "environmentName-" + randomizer.StringRunes(10)
+		org = "org-" + randomizer.StringRunes(10)
+		password = "password-" + randomizer.StringRunes(10)
+		space = "space-" + randomizer.StringRunes(10)
+		username = "username-" + randomizer.StringRunes(10)
+		uuid = "uuid-" + randomizer.StringRunes(10)
 
-	// 	deploymentInfo = S.DeploymentInfo{
-	// 		ArtifactURL: artifactURL,
-	// 		Username:    username,
-	// 		Password:    password,
-	// 		Environment: environmentName,
-	// 		Org:         org,
-	// 		Space:       space,
-	// 		AppName:     appName,
-	// 		UUID:        uuid,
-	// 	}
+		randomizerMock.RandomizeCall.Returns.Runes = uuid
 
-	// 	deployEventData = S.DeployEventData{
-	// 		Writer:         &bytes.Buffer{},
-	// 		DeploymentInfo: &deploymentInfo,
-	// 	}
+		reqBuffer = bytes.NewBufferString(fmt.Sprintf(`{
+		  		"artifact_url": "%s"
+		  	}`,
+			artifactURL,
+		))
 
-	// 	event = S.Event{
-	// 		Data: deployEventData,
-	// 	}
+		req, _ = http.NewRequest("POST", "", reqBuffer)
 
-	// 	randomizer.RandomizeCall.Returns.Runes = uuid
+		deploymentInfo = S.DeploymentInfo{
+			ArtifactURL: artifactURL,
+			Username:    username,
+			Password:    password,
+			Environment: environmentName,
+			Org:         org,
+			Space:       space,
+			AppName:     appName,
+			UUID:        uuid,
+		}
 
-	// 	foundations = []string{randomizer.StringRunes(10)}
-	// 	buffer = &bytes.Buffer{}
+		deployEventData = S.DeployEventData{
+			Writer:         &bytes.Buffer{},
+			DeploymentInfo: &deploymentInfo,
+		}
 
-	// 	environments = map[string]config.Environment{}
-	// 	environments[environmentName] = config.Environment{
-	// 		Name:        environmentName,
-	// 		Domain:      domain,
-	// 		Foundations: foundations,
-	// 	}
+		event = S.Event{
+			Data: deployEventData,
+		}
 
-	// 	c := config.Config{
-	// 		Username:     username,
-	// 		Password:     password,
-	// 		Environments: environments,
-	// 	}
+		randomizerMock.RandomizeCall.Returns.Runes = uuid
 
-	// 	deployer = Deployer{c, blueGreener, fetcher, prechecker, eventManager, randomizer, log}
-	// })
+		foundations = []string{randomizer.StringRunes(10)}
+		buffer = &bytes.Buffer{}
 
-	// Describe("Deploy", func() {
-	// 	Context("with no environments", func() {
-	// 		It("returns an error", func() {
-	// 			event.Type = "deploy.error"
-	// 			errorMessage := "environment not found: " + environmentName
+		environments = map[string]config.Environment{}
+		environments[environmentName] = config.Environment{
+			Name:        environmentName,
+			Domain:      domain,
+			Foundations: foundations,
+		}
 
-	// 			environments = nil
-	// 			deployer = Deployer{c, blueGreener, fetcher, prechecker, eventManager, randomizer, log}
+		c = config.Config{
+			Username:     username,
+			Password:     password,
+			Environments: environments,
+		}
 
-	// 			eventManager.EmitCall.Returns.Error = nil
+		deployer = Deployer{c, blueGreener, fetcher, prechecker, eventManager, randomizerMock, log}
+	})
 
-	// 			err := deployer.Deploy(deploymentInfo, buffer)
-	// 			Expect(buffer).To(ContainSubstring(errorMessage))
-	// 			Expect(err).To(MatchError(errorMessage))
+	Describe("Deploy", func() {
+		Context("with no environments", func() {
+			It("returns an error", func() {
+				errorMessage := "environment not found: " + environmentName
 
-	// 			fmt.Fprint(deployEventData.Writer, buffer.String())
-	// 			Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
-	// 		})
-	// 	})
+				eventManager.EmitCall.Returns.Error = nil
 
-	// 	Context("when prechecker fails", func() {
-	// 		It("returns an error", func() {
-	// 			prechecker.AssertAllFoundationsUpCall.Returns.Error = errors.New(deployAborted)
+				emptyConfiguration := config.Config{
+					Username:     "",
+					Password:     "",
+					Environments: nil,
+				}
 
-	// 			err := deployer.Deploy(deploymentInfo, buffer)
-	// 			Expect(err).To(MatchError("Deploy aborted, one or more CF foundations unavailable"))
+				deployer = Deployer{emptyConfiguration, blueGreener, fetcher, prechecker, eventManager, randomizerMock, log}
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				Expect(buffer).To(ContainSubstring(errorMessage))
+				Expect(err).To(MatchError(errorMessage))
+				Expect(statusCode).To(Equal(500))
 
-	// 			Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
-	// 		})
-	// 	})
+				fmt.Fprint(deployEventData.Writer, buffer.String())
+			})
+		})
 
-	// 	Context("when fetcher fails", func() {
-	// 		It("returns an error", func() {
-	// 			prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
+		Context("when prechecker fails", func() {
+			It("returns an error", func() {
+				prechecker.AssertAllFoundationsUpCall.Returns.Error = errors.New(deployAborted)
 
-	// 			fetcher.FetchCall.Returns.Error = errors.New("Fetcher error")
-	// 			fetcher.FetchCall.Returns.AppPath = appPath
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				Expect(err).To(MatchError("Deploy aborted, one or more CF foundations unavailable"))
+				Expect(statusCode).To(Equal(500))
 
-	// 			Expect(deployer.Deploy(deploymentInfo, buffer)).ToNot(Succeed())
-	// 			Expect(buffer).To(ContainSubstring("Fetcher error"))
+				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
+			})
+		})
 
-	// 			Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
-	// 			Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
-	// 			Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
-	// 		})
-	// 	})
+		Context("when fetcher fails", func() {
+			It("returns an error", func() {
+				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 
-	// 	Describe("bluegreener", func() {
-	// 		Context("when all applications start correctly", func() {
-	// 			It("is successful", func() {
-	// 				event.Type = "deploy.success"
+				fetcher.FetchCall.Returns.Error = errors.New("Fetcher error")
+				fetcher.FetchCall.Returns.AppPath = appPath
 
-	// 				eventManager.EmitCall.Returns.Error = nil
-	// 				fetcher.FetchCall.Returns.Error = nil
-	// 				fetcher.FetchCall.Returns.AppPath = appPath
-	// 				blueGreener.PushCall.Returns.Error = nil
-	// 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				Expect(err).To(MatchError("Fetcher error"))
+				Expect(statusCode).To(Equal(500))
 
-	// 				Expect(deployer.Deploy(deploymentInfo, buffer)).To(Succeed())
+				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
+				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
+				Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
+			})
+		})
 
-	// 				Expect(buffer).To(ContainSubstring("deploy was successful"))
+		Describe("bluegreener", func() {
+			Context("when all applications start correctly", func() {
+				It("is successful", func() {
+					eventManager.EmitCall.Returns.Error = nil
+					fetcher.FetchCall.Returns.Error = nil
+					fetcher.FetchCall.Returns.AppPath = appPath
+					blueGreener.PushCall.Returns.Error = nil
+					prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 
-	// 				fmt.Fprint(deployEventData.Writer, buffer.String())
-	// 				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
-	// 				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
-	// 				Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
-	// 				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environmentName]))
-	// 				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
-	// 				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-	// 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
-	// 			})
-	// 		})
-	// 	})
+					err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+					Expect(err).To(BeNil())
+					Expect(statusCode).To(Equal(200))
+					Expect(buffer).To(ContainSubstring("deploy was successful"))
+					fmt.Fprint(deployEventData.Writer, buffer.String())
+					Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
+					Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
+					Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environmentName]))
+					Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
+					Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+					Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
+				})
+			})
+		})
 
-	// 	Context("when an application fails to start", func() {
-	// 		It("returns an error", func() {
-	// 			event.Type = "deploy.failure"
+		Context("when an application fails to start", func() {
+			It("returns an error", func() {
+				eventManager.EmitCall.Returns.Error = nil
+				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
+				fetcher.FetchCall.Returns.Error = nil
+				fetcher.FetchCall.Returns.AppPath = appPath
 
-	// 			eventManager.EmitCall.Returns.Error = errors.New("Event error")
-	// 			prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
-	// 			fetcher.FetchCall.Returns.Error = nil
-	// 			fetcher.FetchCall.Returns.AppPath = appPath
+				By("making bluegreener return an error")
+				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
 
-	// 			By("making bluegreener return an error")
-	// 			blueGreener.PushCall.Returns.Error = errors.New("blue green error")
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				Expect(err).To(MatchError("blue green error"))
+				Expect(statusCode).To(Equal(500))
 
-	// 			err := deployer.Deploy(deploymentInfo, buffer)
-	// 			Expect(err).To(MatchError("blue green error"))
+				fmt.Fprint(deployEventData.Writer, buffer.String())
+				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
+				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
+				Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
+				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environmentName]))
+				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
+				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			})
+		})
 
-	// 			fmt.Fprint(deployEventData.Writer, buffer.String())
-	// 			Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
-	// 			Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
-	// 			Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
-	// 			Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
-	// 			Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environmentName]))
-	// 			Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
-	// 			Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-	// 		})
-	// 	})
+		Context("when eventmanager fails on deploy.start", func() {
+			It("returns an error", func() {
+				By("making eventmanager return an error")
+				eventManager.EmitCall.Returns.Error = errors.New("Event error")
 
-	// 	Context("when eventmanager fails", func() {
-	// 		It("prints an error and does not return an error", func() {
-	// 			event.Type = "deploy.success"
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				Expect(err).To(MatchError("an error occurred in the deploy.start event"))
+				Expect(statusCode).To(Equal(500))
+				Expect(buffer).To(ContainSubstring("Event error"))
 
-	// 			By("making eventmanager return an error")
-	// 			eventManager.EmitCall.Returns.Error = errors.New("Event error")
-	// 			prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
-	// 			fetcher.FetchCall.Returns.Error = nil
-	// 			fetcher.FetchCall.Returns.AppPath = appPath
-	// 			blueGreener.PushCall.Returns.Error = nil
-
-	// 			Expect(deployer.Deploy(deploymentInfo, buffer)).To(Succeed())
-
-	// 			Expect(buffer).To(ContainSubstring("Event error"))
-
-	// 			fmt.Fprint(deployEventData.Writer, buffer.String())
-	// 			Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
-	// 			Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
-	// 			Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
-	// 			Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
-	// 			Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environmentName]))
-	// 			Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
-	// 			Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-	// 		})
-	// 	})
-	// })
+				fmt.Fprint(deployEventData.Writer, buffer.String())
+			})
+		})
+	})
 })

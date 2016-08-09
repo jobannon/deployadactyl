@@ -65,7 +65,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 			if err != nil {
 				c.Log.Errorf(cannotReadFileFromRequest)
 				g.Writer.WriteHeader(500)
-				g.Writer.WriteString(fmt.Sprintln(cannotReadFileFromRequest + " - " + err.Error()))
+				g.Writer.WriteString(cannotReadFileFromRequest + " - " + err.Error())
 				g.Error(err)
 				return
 			}
@@ -74,7 +74,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 			if err != nil {
 				c.Log.Errorf(cannotProcessZipFile)
 				g.Writer.WriteHeader(500)
-				g.Writer.WriteString(fmt.Sprintln(cannotProcessZipFile + " - " + err.Error()))
+				g.Writer.WriteString(cannotProcessZipFile + " - " + err.Error())
 				g.Error(err)
 				return
 			}
@@ -84,7 +84,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 			if err != nil {
 				c.Log.Errorf("%s: %s", cannotDeployApplication, err)
 				g.Writer.WriteHeader(statusCode)
-				g.Writer.WriteString(fmt.Sprintln(cannotDeployApplication + " - " + err.Error()))
+				g.Writer.WriteString(cannotDeployApplication + " - " + err.Error())
 				g.Error(err)
 				return
 			} else {

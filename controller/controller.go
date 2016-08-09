@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 
 	"github.com/compozed/deployadactyl/config"
@@ -14,8 +15,11 @@ import (
 )
 
 const (
-	successfulDeploy        = "deploy successful"
-	cannotDeployApplication = "cannot deploy application"
+	successfulDeploy          = "deploy successful"
+	cannotDeployApplication   = "cannot deploy application"
+	requestBodyEmpty          = "request body is empty"
+	cannotReadFileFromRequest = "cannot read file from request"
+	cannotProcessZipFile      = "cannot process zip file"
 )
 
 // Controller is used to determine the type of request and process it accordingly.
@@ -50,43 +54,54 @@ func (c *Controller) Deploy(g *gin.Context) {
 			g.Writer.WriteHeader(statusCode)
 			g.Writer.WriteString(fmt.Sprintln(err.Error()))
 			g.Error(err)
+			return
 		} else {
 			g.Writer.WriteHeader(statusCode)
 			g.Writer.WriteString(successfulDeploy)
 		}
 	} else if contentType == "application/zip" {
-		f, _, err := g.Request.FormFile("application")
-		if err != nil {
-			c.Log.Errorf("Could not create file from request.")
-			g.Writer.WriteHeader(500)
-			g.Writer.WriteString(fmt.Sprintln(err.Error()))
-			g.Error(err)
-		}
+		if g.Request.Body != nil {
+			f, err := ioutil.ReadAll(g.Request.Body)
+			if err != nil {
+				c.Log.Errorf(cannotReadFileFromRequest)
+				g.Writer.WriteHeader(500)
+				g.Writer.WriteString(fmt.Sprintln(cannotReadFileFromRequest + " - " + err.Error()))
+				g.Error(err)
+				return
+			}
 
-		appPath, err := c.Fetcher.FetchFromZip(f)
-		if err != nil {
-			c.Log.Errorf("Could not process zip file.")
-			g.Writer.WriteHeader(500)
-			g.Writer.WriteString(fmt.Sprintln(err.Error()))
-			g.Error(err)
-		}
-		defer os.RemoveAll(appPath)
+			appPath, err := c.Fetcher.FetchFromZip(f)
+			if err != nil {
+				c.Log.Errorf(cannotProcessZipFile)
+				g.Writer.WriteHeader(500)
+				g.Writer.WriteString(fmt.Sprintln(cannotProcessZipFile + " - " + err.Error()))
+				g.Error(err)
+				return
+			}
+			defer os.RemoveAll(appPath)
 
-		err, statusCode = c.Deployer.DeployZip(g.Request, environmentName, org, space, appName, buffer)
-		if err != nil {
-			c.Log.Errorf("%s: %s", cannotDeployApplication, err)
-			g.Writer.WriteHeader(statusCode)
-			g.Writer.WriteString(cannotDeployApplication)
-			g.Error(err)
+			err, statusCode = c.Deployer.DeployZip(g.Request, environmentName, org, space, appName, buffer)
+			if err != nil {
+				c.Log.Errorf("%s: %s", cannotDeployApplication, err)
+				g.Writer.WriteHeader(statusCode)
+				g.Writer.WriteString(fmt.Sprintln(cannotDeployApplication + " - " + err.Error()))
+				g.Error(err)
+				return
+			} else {
+				g.Writer.WriteHeader(statusCode)
+				g.Writer.WriteString(successfulDeploy)
+			}
 		} else {
-			g.Writer.WriteHeader(statusCode)
-			g.Writer.WriteString(successfulDeploy)
+			c.Log.Errorf(requestBodyEmpty)
+			g.Writer.WriteHeader(400)
+			g.Writer.WriteString(requestBodyEmpty)
+			return
 		}
 	} else {
-		c.Log.Errorf("Content type '%s' not supported", contentType)
+		c.Log.Errorf("content type '%s' not supported", contentType)
 		g.Writer.WriteHeader(400)
-		g.Writer.WriteString(fmt.Sprintln(err.Error()))
-		g.Error(err)
+		g.Writer.WriteString(fmt.Sprintf("content type '%s' not supported", contentType))
+		return
 	}
 
 	io.Copy(g.Writer, buffer)

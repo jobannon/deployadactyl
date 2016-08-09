@@ -88,7 +88,6 @@ var _ = Describe("Controller", func() {
 	Context("the controller receives a request that has a mime type application/json", func() {
 		Describe("successful deployments without missing properties with a remote artifact url", func() {
 			It("deploys successfully with no error message and a status code of 200 OK", func() {
-
 				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 				req.Header.Set("Content-Type", "application/json")
@@ -112,7 +111,6 @@ var _ = Describe("Controller", func() {
 
 		Describe("failed deployments", func() {
 			It("fails to build the application", func() {
-
 				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 				req.Header.Set("Content-Type", "application/json")
@@ -139,8 +137,32 @@ var _ = Describe("Controller", func() {
 
 	Context("the controller receives a request that has a mime type application/zip", func() {
 		Describe("successful deployments with a local zip file", func() {
-			FIt("deploys successfully with no error message and a status code of 200 OK", func() {
+			It("deploys successfully with no error message and a status code of 200 OK", func() {
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
+				req.Header.Set("Content-Type", "application/zip")
 
+				deployer.DeployZipCall.Received.Request = req
+				deployer.DeployZipCall.Received.EnvironmentName = environment
+				deployer.DeployZipCall.Received.Org = org
+				deployer.DeployZipCall.Received.Space = space
+				deployer.DeployZipCall.Received.AppName = appName
+				deployer.DeployZipCall.Received.Out = jsonBuffer
+
+				fetcher.FetchFromZipCall.Received.RequestBody = nil
+				fetcher.FetchFromZipCall.Returns.AppPath = "appPath-" + randomizer.StringRunes(10)
+				fetcher.FetchFromZipCall.Returns.Error = nil
+
+				router.ServeHTTP(resp, req)
+
+				Expect(deployer.DeployZipCall.TimesCalled).To(Equal(1))
+				Expect(resp.Code).To(Equal(200))
+				Expect(resp.Body).To(ContainSubstring("deploy successful"))
+			})
+		})
+
+		Describe("failed deployments", func() {
+			It("request is empty", func() {
 				req, err := http.NewRequest("POST", apiURL, nil)
 				Expect(err).ToNot(HaveOccurred())
 				req.Header.Set("Content-Type", "application/zip")
@@ -152,38 +174,80 @@ var _ = Describe("Controller", func() {
 				deployer.DeployZipCall.Received.AppName = appName
 				deployer.DeployZipCall.Received.Out = jsonBuffer
 
-				fetcher.FetchFromZipCall.Received.File = nil
+				router.ServeHTTP(resp, req)
+
+				Expect(deployer.DeployZipCall.TimesCalled).To(Equal(0))
+				Expect(resp.Code).To(Equal(400))
+				Expect(resp.Body).To(ContainSubstring("request body is empty"))
+			})
+
+			It("cannot process the zip file", func() {
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
+				req.Header.Set("Content-Type", "application/zip")
+
+				deployer.DeployZipCall.Received.Request = req
+				deployer.DeployZipCall.Received.EnvironmentName = environment
+				deployer.DeployZipCall.Received.Org = org
+				deployer.DeployZipCall.Received.Space = space
+				deployer.DeployZipCall.Received.AppName = appName
+				deployer.DeployZipCall.Received.Out = jsonBuffer
+
+				fetcher.FetchFromZipCall.Received.RequestBody = jsonBuffer.Bytes()
+				fetcher.FetchFromZipCall.Returns.AppPath = ""
+				fetcher.FetchFromZipCall.Returns.Error = errors.New("could not process zip file")
+
+				router.ServeHTTP(resp, req)
+
+				Expect(deployer.DeployZipCall.TimesCalled).To(Equal(0))
+				Expect(resp.Code).To(Equal(500))
+				Expect(resp.Body).To(ContainSubstring("could not process zip file"))
+			})
+
+			It("fails to build", func() {
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
+				req.Header.Set("Content-Type", "application/zip")
+
+				deployer.DeployZipCall.Received.Request = req
+				deployer.DeployZipCall.Received.EnvironmentName = environment
+				deployer.DeployZipCall.Received.Org = org
+				deployer.DeployZipCall.Received.Space = space
+				deployer.DeployZipCall.Received.AppName = appName
+				deployer.DeployZipCall.Received.Out = jsonBuffer
+
+				fetcher.FetchFromZipCall.Received.RequestBody = jsonBuffer.Bytes()
 				fetcher.FetchFromZipCall.Returns.AppPath = "appPath-" + randomizer.StringRunes(10)
 				fetcher.FetchFromZipCall.Returns.Error = nil
+
+				By("returning an error message and a status code that is 500")
+				deployer.DeployZipCall.Returns.Error = errors.New("internal server error")
+				deployer.DeployZipCall.Returns.StatusCode = 500
 
 				router.ServeHTTP(resp, req)
 
 				Expect(deployer.DeployZipCall.TimesCalled).To(Equal(1))
-				Expect(resp.Code).To(Equal(200))
-				Expect(resp.Body).To(ContainSubstring("deploy successful"))
-
-			})
-		})
-
-		Describe("failed deployments", func() {
-			It("cannot form the zip file", func() {
-
-			})
-
-			It("cannot process the zip file", func() {
-
-			})
-
-			It("fails to build", func() {
-
-				By("returning an error message and a status code that is not 2xx")
+				Expect(resp.Code).To(Equal(500))
+				Expect(resp.Body.String()).To(ContainSubstring("cannot deploy application"))
 			})
 		})
 	})
 
 	Context("the controller receives a request that is not a recognised mime type", func() {
 		It("does not deploy", func() {
+			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+			Expect(err).ToNot(HaveOccurred())
+			req.Header.Set("Content-Type", "invalidContentType")
 
+			deployer.DeployZipCall.Returns.Error = errors.New("internal server error")
+			deployer.DeployZipCall.Returns.StatusCode = 400
+
+			router.ServeHTTP(resp, req)
+
+			Expect(deployer.DeployCall.TimesCalled).To(Equal(0))
+			Expect(deployer.DeployZipCall.TimesCalled).To(Equal(0))
+			Expect(resp.Code).To(Equal(400))
+			Expect(resp.Body.String()).To(ContainSubstring("content type 'invalidContentType' not supported"))
 		})
 	})
 

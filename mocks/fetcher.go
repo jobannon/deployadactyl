@@ -1,7 +1,5 @@
 package mocks
 
-import "mime/multipart"
-
 // Fetcher handmade mock for tests.
 type Fetcher struct {
 	FetchCall struct {
@@ -17,7 +15,7 @@ type Fetcher struct {
 
 	FetchFromZipCall struct {
 		Received struct {
-			File multipart.File
+			RequestBody []byte
 		}
 		Returns struct {
 			AppPath string
@@ -34,8 +32,9 @@ func (f *Fetcher) Fetch(url, manifest string) (string, error) {
 	return f.FetchCall.Returns.AppPath, f.FetchCall.Returns.Error
 }
 
-func (f *Fetcher) FetchFromZip(file multipart.File) (string, error) {
-	f.FetchFromZipCall.Received.File = file
+// FetchFromZip mock method.
+func (f *Fetcher) FetchFromZip(requestBody []byte) (string, error) {
+	f.FetchFromZipCall.Received.RequestBody = requestBody
 
-	return f.FetchCall.Returns.AppPath, f.FetchCall.Returns.Error
+	return f.FetchFromZipCall.Returns.AppPath, f.FetchFromZipCall.Returns.Error
 }

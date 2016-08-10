@@ -78,8 +78,11 @@ func (c *Controller) Deploy(g *gin.Context) {
 			}
 			defer os.RemoveAll(appPath)
 
-			err, statusCode = c.Deployer.DeployZip(g.Request, environmentName, org, space, appName, appPath, buffer)
-			if err != nil {
+			if err == nil {
+				err, statusCode = c.Deployer.DeployZip(g.Request, environmentName, org, space, appName, appPath, buffer)
+			}
+
+ 			if err != nil {
 				c.Log.Errorf("%s: %s", cannotDeployApplication, err)
 				g.Writer.WriteHeader(statusCode)
 				g.Writer.WriteString(cannotDeployApplication + " - " + err.Error())

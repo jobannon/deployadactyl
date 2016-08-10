@@ -123,40 +123,7 @@ var _ = Describe("Deployer", func() {
 		deployer = Deployer{c, blueGreener, fetcher, prechecker, eventManager, randomizerMock, log}
 	})
 
-	Describe("Deploy JSON", func() {
-		Context("with no environments", func() {
-			It("returns an error", func() {
-				errorMessage := "environment not found: " + environmentName
-
-				eventManager.EmitCall.Returns.Error = nil
-
-				emptyConfiguration := config.Config{
-					Username:     "",
-					Password:     "",
-					Environments: nil,
-				}
-
-				deployer = Deployer{emptyConfiguration, blueGreener, fetcher, prechecker, eventManager, randomizerMock, log}
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
-				Expect(buffer).To(ContainSubstring(errorMessage))
-				Expect(err).To(MatchError(errorMessage))
-				Expect(statusCode).To(Equal(500))
-
-				fmt.Fprint(deployEventData.Writer, buffer.String())
-			})
-		})
-
-		Context("when prechecker fails", func() {
-			It("returns an error", func() {
-				prechecker.AssertAllFoundationsUpCall.Returns.Error = errors.New(deployAborted)
-
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
-				Expect(err).To(MatchError("Deploy aborted, one or more CF foundations unavailable"))
-				Expect(statusCode).To(Equal(500))
-
-				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
-			})
-		})
+	Describe("deploy JSON", func() {
 
 		Context("when fetcher fails", func() {
 			It("returns an error", func() {
@@ -174,6 +141,23 @@ var _ = Describe("Deployer", func() {
 				Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
 			})
 		})
+
+		Context("with missing properties in the JSON", func() {
+		 	It("returns an error", func() {
+		 		By("sending empty JSON")
+		 		jsonBuffer = bytes.NewBufferString("{}")
+
+		 		req, err := http.NewRequest("POST", "/v1/apps/someEnv/someOrg/someSpace/someApp", jsonBuffer)
+		 		Expect(err).ToNot(HaveOccurred())
+
+		 		req.SetBasicAuth(username, password)
+
+		 		router.ServeHTTP(resp, req)
+
+		 		Expect(resp.Code).To(Equal(500))
+		 		Expect(resp.Body.String()).To(ContainSubstring("The following properties are missing: artifact_url"))
+		 	})
+		 })
 
 		Describe("bluegreener", func() {
 			Context("when all applications start correctly", func() {
@@ -236,20 +220,75 @@ var _ = Describe("Deployer", func() {
 				fmt.Fprint(deployEventData.Writer, buffer.String())
 			})
 		})
+
+	 	Context("when custom manifest information is given in the request body", func() {
+	 		It("properly decodes base64 encoding of the provided manifest information", func() {
+	 			eventManager.EmitCall.Returns.Error = nil
+	 			deployer.DeployCall.Write.Output = "push succeeded"
+	 			deployer.DeployCall.Returns.Error = nil
+
+	 			deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+
+	 			By("base64 encoding a manifest")
+	 			base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+	 			By("including manifest in the JSON")
+	 			jsonBuffer = bytes.NewBufferString(fmt.Sprintf(`{
+	 					"artifact_url": "%s",
+	 					"manifest": "%s"
+	 				}`,
+	 				artifactURL,
+	 				base64Manifest,
+	 			))
+
+	 			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+	 			Expect(err).ToNot(HaveOccurred())
+
+	 			req.SetBasicAuth(username, password)
+
+	 			router.ServeHTTP(resp, req)
+
+	 			Expect(resp.Code).To(Equal(200))
+	 			Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
+	 			Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+	 			Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+	 		})
+
+	 		It("returns an error if the provided manifest information is not base64 encoded", func() {
+	 			deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+
+	 			By("not base64 encoding a manifest")
+
+	 			By("including manifest in the JSON")
+	 			jsonBuffer = bytes.NewBufferString(fmt.Sprintf(`{
+	 					"artifact_url": "%s",
+	 					"manifest": "%s"
+	 				}`,
+	 				artifactURL,
+	 				deploymentInfo.Manifest,
+	 			))
+
+	 			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+	 			Expect(err).ToNot(HaveOccurred())
+
+	 			req.SetBasicAuth(username, password)
+
+	 			router.ServeHTTP(resp, req)
+	 			Expect(resp.Code).To(Equal(500))
+	 			Expect(eventManager.EmitCall.TimesCalled).To(Equal(0))
+	 		})
+	 	})
 	})
 
-	Describe("Deploy Zip", func() {
+	Describe("deploy zip", func() {
 		Context("when all applications start correctly", func() {
-			It("is successful", func() {
+			It("accepts the request with a 200 OK", func() {
 
 			})
 		})
-		Context("when authentication is required", func() {
-			It("sets authentication from authentication header", func() {
 
-			})
-
-			It("sets the authentication from the config when there is no authentication header", func() {
+		Context("when fetcher fails", func() {
+			It("rejects the request with a 500 Internal Server Error", func() {
 
 			})
 		})
@@ -258,25 +297,140 @@ var _ = Describe("Deployer", func() {
 
 			})
 		})
-		Context("when the environment cannot be found", func() {
-			It("returns an error", func() {
-
-			})
-		})
-		Context("prechecker fails", func() {
-			It("returns an error", func() {
-
-			})
-		})
 		Context("push fails", func() {
-			It("returns an error", func() {
+			It("rejects the request with a 500 Internal Server Error", func() {
 
 			})
 		})
 		Context("deploy event handler fails", func() {
-			It("returns an error", func() {
+			It("rejects the request with a 500 Internal Server Error", func() {
 
 			})
+		})
+	})
+
+  Describe("Common Functionality", func() {
+		Context("when authentication is required and a username and password are provided", func() {
+			It("accepts the request with a 200 OK", func() {
+				 			eventManager.EmitCall.Returns.Error = nil
+				 			deployer.DeployCall.Write.Output = "push succeeded"
+				 			deployer.DeployCall.Returns.Error = nil
+
+				 			By("setting authenticate to true")
+				 			controller.Config.Environments[environment] = config.Environment{Authenticate: true}
+
+				 			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				 			Expect(err).ToNot(HaveOccurred())
+
+				 			By("setting basic auth")
+				 			req.SetBasicAuth(username, password)
+
+				 			router.ServeHTTP(resp, req)
+
+				 			Expect(resp.Code).To(Equal(200))
+				 			Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
+				 			Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+				 			Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			})
+
+			Context("when authentication is required and a username and password is not provided", func() {
+	    	It("rejects the request with a 401 unauthorized", func() {
+					By("setting authenticate to true")
+						controller.Config.Environments[environment] = config.Environment{Authenticate: true}
+
+			 			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+			 			Expect(err).ToNot(HaveOccurred())
+
+			 			By("not setting basic auth")
+
+			 			router.ServeHTTP(resp, req)
+			 			Expect(resp.Code).To(Equal(401))
+			 		})
+			 	})
+
+			Context("username and password are provided", func() {
+			 		It("accepts the request with a 200 OK", func() {
+			 			eventManager.EmitCall.Returns.Error = nil
+			 			deployer.DeployCall.Write.Output = "push succeeded"
+			 			deployer.DeployCall.Returns.Error = nil
+
+			 			By("setting authenticate to false")
+			 			controller.Config.Environments[environment] = config.Environment{Authenticate: false}
+
+			 			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+			 			Expect(err).ToNot(HaveOccurred())
+
+			 			By("setting basic auth")
+			 			req.SetBasicAuth(username, password)
+
+			 			router.ServeHTTP(resp, req)
+
+			 			Expect(resp.Code).To(Equal(200))
+			 			Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
+			 			Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+			 			Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			 	})
+			})
+
+			Context("with no environments", func() {
+				It("returns an error", func() {
+					errorMessage := "environment not found: " + environmentName
+
+					eventManager.EmitCall.Returns.Error = nil
+
+					emptyConfiguration := config.Config{
+						Username:     "",
+						Password:     "",
+						Environments: nil,
+					}
+
+					deployer = Deployer{emptyConfiguration, blueGreener, fetcher, prechecker, eventManager, randomizerMock, log}
+					err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+					Expect(buffer).To(ContainSubstring(errorMessage))
+					Expect(err).To(MatchError(errorMessage))
+					Expect(statusCode).To(Equal(500))
+
+					fmt.Fprint(deployEventData.Writer, buffer.String())
+				})
+			})
+
+			Context("deployer prechecker fails", func() {
+	    	It("rejects the request with a 500 Internal Server Error", func() {
+					prechecker.AssertAllFoundationsUpCall.Returns.Error = errors.New(deployAborted)
+
+					err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+					Expect(err).To(MatchError("Deploy aborted, one or more CF foundations unavailable"))
+					Expect(statusCode).To(Equal(500))
+
+					Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
+				})
+			})
+		})
+
+		Describe("deployment output", func() {
+		 It("shows the user deployment info properties", func() {
+			 eventManager.EmitCall.Returns.Error = nil
+			 deployer.DeployCall.Returns.Error = nil
+
+			 req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+			 Expect(err).ToNot(HaveOccurred())
+
+			 req.SetBasicAuth(username, password)
+
+			 router.ServeHTTP(resp, req)
+			 Expect(resp.Code).To(Equal(200))
+
+			 result := resp.Body.String()
+			 Expect(result).To(ContainSubstring(artifactURL))
+			 Expect(result).To(ContainSubstring(username))
+			 Expect(result).To(ContainSubstring(environment))
+			 Expect(result).To(ContainSubstring(org))
+			 Expect(result).To(ContainSubstring(space))
+			 Expect(result).To(ContainSubstring(appName))
+
+			 Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
+			 Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+		 })
 		})
 	})
 })

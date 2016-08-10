@@ -10,7 +10,6 @@ import (
 
 	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 )
@@ -49,7 +48,6 @@ func (c *Controller) Deploy(g *gin.Context) {
 	contentType := g.Request.Header.Get("Content-Type")
 	if contentType == "application/json" {
 		err, statusCode = c.Deployer.Deploy(g.Request, environmentName, org, space, appName, buffer)
-		spew.Dump(err)
 		if err != nil {
 			c.Log.Errorf("%s: %s", cannotDeployApplication, err)
 			g.Writer.WriteHeader(statusCode)
@@ -82,7 +80,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 				err, statusCode = c.Deployer.DeployZip(g.Request, environmentName, org, space, appName, appPath, buffer)
 			}
 
- 			if err != nil {
+			if err != nil {
 				c.Log.Errorf("%s: %s", cannotDeployApplication, err)
 				g.Writer.WriteHeader(statusCode)
 				g.Writer.WriteString(cannotDeployApplication + " - " + err.Error())

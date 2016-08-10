@@ -35,7 +35,7 @@ Thanks for using Deployadactyl! Please push down pull up on your lap bar and exi
 	deploymentOutput  = `Deployment Parameters:
 	Artifact URL: %s,
 	Username:     %s,
-	Enviroment:   %s,
+	Environment:  %s,
 	Org:          %s,
 	Space:        %s,
 	AppName:      %s
@@ -63,7 +63,6 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 		authenticationRequired = environments[environmentName].Authenticate
 		deployEventData        = S.DeployEventData{}
 	)
-
 	deploymentInfo, err = getDeploymentInfo(req.Body)
 	if err != nil {
 		println(err.Error())
@@ -71,7 +70,6 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 	}
 
 	username, password, ok := req.BasicAuth()
-
 	if !ok {
 		if authenticationRequired {
 			return errors.New(basicAuthHeaderNotFound), 401
@@ -101,7 +99,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 
 	m, err := base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
 	if err != nil {
-		return errors.New(invalidPostRequest), 500
+		return errors.New(cannotOpenManifestFile), 400
 	}
 
 	deploymentInfo.Manifest = string(m)
@@ -195,6 +193,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 	return err, 200
 }
 
+// DeployZip takes the deployment information, checks the foundations, extracts the zip from the request and deploys the application.
 func (d Deployer) DeployZip(req *http.Request, environmentName, org, space, appName string, appPath string, out io.Writer) (err error, statusCode int) {
 	var (
 		deploymentInfo         = S.DeploymentInfo{}
@@ -335,7 +334,6 @@ func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {
 		return ""
 	})
 	getter.Get("artifact_url")
-
 	err = getter.Err("The following properties are missing")
 	if err != nil {
 		return S.DeploymentInfo{}, err

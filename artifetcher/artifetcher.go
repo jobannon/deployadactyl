@@ -77,7 +77,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 		return "", errors.Errorf("%s: %s", cannotCreateTempDirectory, err)
 	}
 
-	err = a.Extractor.Unzip(artifactFile.Name(), unzippedPath, "")
+	err = a.Extractor.Unzip(artifactFile.Name(), unzippedPath, manifest)
 	if err != nil {
 		a.FileSystem.RemoveAll(unzippedPath)
 		return "", errors.Errorf("%s: %s", cannotUnzipArtifact, err)

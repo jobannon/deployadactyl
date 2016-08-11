@@ -63,9 +63,10 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 		authenticationRequired = environments[environmentName].Authenticate
 		deployEventData        = S.DeployEventData{}
 	)
+
 	deploymentInfo, err = getDeploymentInfo(req.Body)
 	if err != nil {
-		println(err.Error())
+		fmt.Fprintln(out, err)
 		return err, 500
 	}
 
@@ -112,7 +113,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 
 		eventErr := d.EventManager.Emit(deployFinishEvent)
 		if eventErr != nil {
-			fmt.Fprintln(out, err)
+			fmt.Fprintln(out, eventErr)
 		}
 
 		if err != nil {
@@ -178,9 +179,9 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 			deployEvent.Type = "deploy.failure"
 		}
 
-		newErr := d.EventManager.Emit(deployEvent)
-		if newErr != nil {
-			fmt.Fprintln(out, newErr)
+		eventErr := d.EventManager.Emit(deployEvent)
+		if eventErr != nil {
+			fmt.Fprintln(out, eventErr)
 		}
 	}()
 
@@ -246,7 +247,7 @@ func (d Deployer) DeployZip(req *http.Request, environmentName, org, space, appN
 
 		eventErr := d.EventManager.Emit(deployFinishEvent)
 		if eventErr != nil {
-			fmt.Fprintln(out, err)
+			fmt.Fprintln(out, eventErr)
 		}
 
 		if err != nil {
@@ -305,9 +306,9 @@ func (d Deployer) DeployZip(req *http.Request, environmentName, org, space, appN
 			deployEvent.Type = "deploy.failure"
 		}
 
-		newErr := d.EventManager.Emit(deployEvent)
-		if newErr != nil {
-			fmt.Fprintln(out, newErr)
+		eventErr := d.EventManager.Emit(deployEvent)
+		if eventErr != nil {
+			fmt.Fprintln(out, eventErr)
 		}
 	}()
 

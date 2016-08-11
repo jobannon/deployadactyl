@@ -96,8 +96,8 @@ var _ = Describe("Controller", func() {
 		deployer.DeployZipCall.Received.Out = jsonBuffer
 	})
 
-	Context("the controller receives a request that has a mime type application/json", func() {
-		Describe("successful deployments without missing properties with a remote artifact url", func() {
+	Describe("the controller receives a request that has a mime type application/json", func() {
+		Context("successful deployments without missing properties with a remote artifact url", func() {
 			It("deploys successfully with no error message and a status code of 200 OK", func() {
 				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
@@ -115,7 +115,7 @@ var _ = Describe("Controller", func() {
 			})
 		})
 
-		Describe("failed deployments", func() {
+		Context("failed deployments", func() {
 			It("fails to build the application", func() {
 				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
@@ -136,8 +136,8 @@ var _ = Describe("Controller", func() {
 		})
 	})
 
-	Context("the controller receives a request that has a mime type application/zip", func() {
-		Describe("successful deployments with a local zip file", func() {
+	Describe("the controller receives a request that has a mime type application/zip", func() {
+		Context("successful deployments with a local zip file", func() {
 			It("deploys successfully with no error message and a status code of 200 OK", func() {
 				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
@@ -157,7 +157,7 @@ var _ = Describe("Controller", func() {
 			})
 		})
 
-		Describe("failed deployments", func() {
+		Context("failed deployments", func() {
 			It("request is empty", func() {
 				req, err := http.NewRequest("POST", apiURL, nil)
 				Expect(err).ToNot(HaveOccurred())
@@ -214,7 +214,7 @@ var _ = Describe("Controller", func() {
 		})
 	})
 
-	Context("the controller receives a request that is not a recognised mime type", func() {
+	Describe("the controller receives a request that is not a recognized mime type", func() {
 		It("does not deploy", func() {
 			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 			Expect(err).ToNot(HaveOccurred())

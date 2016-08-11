@@ -61,14 +61,13 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	}
 	defer response.Body.Close()
 
-	println(response.Body)
 	if response.StatusCode != http.StatusOK {
 		return "", errors.Errorf("%s: %s: %s", cannotGetURL, url, response.Status)
 	}
 
 	_, err = io.Copy(artifactFile, response.Body)
 	if err != nil {
-		a.Log.Debug("Response: %s", spew.Sdump(response))
+		a.Log.Debug("response: %s", spew.Sdump(response))
 		return "", errors.Errorf("%s: %s", cannotWriteResponseToFile, err)
 	}
 
@@ -103,9 +102,8 @@ func (a *Artifetcher) FetchFromZip(requestBody []byte) (string, error) {
 		return "", errors.Errorf("%s: %s", cannotWriteResponseToFile, err)
 	}
 
-	a.Log.Debug("Fetching local file: %s", zipFile.Name())
+	a.Log.Debug("fetching local file: %s", zipFile.Name())
 
-	//Create temp dir
 	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-")
 	if err != nil {
 		return "", errors.Errorf("%s: %s", cannotCreateTempDirectory, err)

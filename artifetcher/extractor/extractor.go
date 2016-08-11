@@ -40,7 +40,7 @@ func (e *Extractor) Unzip(source, destination, manifest string) error {
 	source: %+v
 	destination: %+v`, source, destination)
 
-	err := e.FileSystem.MkdirAll(destination, 0777)
+	err := e.FileSystem.MkdirAll(destination, 0755)
 	if err != nil {
 		return errors.Errorf("%s: %s", cannotCreateDirectory, err)
 	}
@@ -98,7 +98,7 @@ func (e *Extractor) unzipFile(destination string, file *zip.File) error {
 
 	savedLocation := path.Join(destination, file.Name)
 	directory := path.Dir(savedLocation)
-	err = e.FileSystem.MkdirAll(directory, 0777)
+	err = e.FileSystem.MkdirAll(directory, 0755)
 	if err != nil {
 		return errors.Errorf("%s: %s: %s", cannotMakeDirectory, directory, err)
 	}

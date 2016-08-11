@@ -65,14 +65,14 @@ func Custom(level string, configFilename string) (Creator, error) {
 // CreateControllerHandler returns a gin.Engine that implements http.Handler.
 // Sets up the controller endpoint.
 func (c Creator) CreateControllerHandler() *gin.Engine {
-	d := c.createController()
+	controller := c.createController()
 
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(gin.LoggerWithWriter(c.createWriter()))
 	r.Use(gin.ErrorLogger())
 
-	r.POST(ENDPOINT, d.Deploy)
+	r.POST(ENDPOINT, controller.Deploy)
 
 	return r
 }

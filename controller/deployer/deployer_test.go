@@ -29,6 +29,8 @@ applications:
   disk_quota: 256M
 `
 	testManifestFile = "./manifest.yml"
+	jsonRequest      = "application/json"
+	zipRequest       = "application/zip"
 )
 
 var _ = Describe("Deployer", func() {
@@ -89,7 +91,6 @@ var _ = Describe("Deployer", func() {
 		  	}`,
 			artifactURL,
 		))
-
 		req, _ = http.NewRequest("POST", "", reqBuffer)
 
 		Expect(ioutil.WriteFile(testManifestFile, []byte(testManifest), 0644)).To(Succeed())
@@ -148,7 +149,7 @@ var _ = Describe("Deployer", func() {
 				fetcher.FetchCall.Returns.Error = errors.New("Fetcher error")
 				fetcher.FetchCall.Returns.AppPath = appPath
 
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, appPath, "application/json", buffer)
 				Expect(err).To(MatchError("Fetcher error"))
 				Expect(statusCode).To(Equal(500))
 
@@ -164,7 +165,7 @@ var _ = Describe("Deployer", func() {
 				reqBuffer = bytes.NewBufferString("{}")
 				req, _ = http.NewRequest("POST", "", reqBuffer)
 
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(err).To(MatchError("The following properties are missing: artifact_url"))
 				Expect(statusCode).To(Equal(500))
 			})
@@ -178,7 +179,7 @@ var _ = Describe("Deployer", func() {
 				blueGreener.PushCall.Returns.Error = nil
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(err).To(BeNil())
 				Expect(statusCode).To(Equal(200))
 				Expect(buffer).To(ContainSubstring("deploy was successful"))
@@ -201,7 +202,7 @@ var _ = Describe("Deployer", func() {
 				By("making bluegreener return an error")
 				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
 
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(err).To(MatchError("blue green error"))
 				Expect(statusCode).To(Equal(500))
 
@@ -219,7 +220,7 @@ var _ = Describe("Deployer", func() {
 				By("making eventmanager return an error")
 				eventManager.EmitCall.Returns.Error = errors.New("event error")
 
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(err).To(MatchError("an error occurred in the deploy.start event"))
 				Expect(statusCode).To(Equal(500))
 				Expect(buffer).To(ContainSubstring("event error"))
@@ -245,7 +246,7 @@ var _ = Describe("Deployer", func() {
 				))
 				req, _ = http.NewRequest("POST", "", reqBuffer)
 
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(statusCode).To(Equal(200))
@@ -268,7 +269,7 @@ var _ = Describe("Deployer", func() {
 				))
 				req, _ = http.NewRequest("POST", "", reqBuffer)
 
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(err).To(MatchError("cannot open manifest file"))
 				Expect(statusCode).To(Equal(400))
 
@@ -288,7 +289,7 @@ var _ = Describe("Deployer", func() {
 				wd, err := os.Getwd()
 				Expect(err).To(BeNil())
 
-				err, statusCode := deployer.DeployZip(req, environmentName, org, space, appName, wd, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, wd, zipRequest, buffer)
 				Expect(err).To(BeNil())
 				Expect(statusCode).To(Equal(200))
 				Expect(buffer).To(ContainSubstring("deploy was successful"))
@@ -302,14 +303,15 @@ var _ = Describe("Deployer", func() {
 		})
 
 		Context("when manifest file cannot be found in the extracted zip", func() {
-			It("returns an error and status code 400", func() {
+			It("continues to deploy successfully", func() {
 				eventManager.EmitCall.Returns.Error = nil
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 				blueGreener.PushCall.Returns.Error = nil
 
-				err, statusCode := deployer.DeployZip(req, environmentName, org, space, appName, appPath, buffer)
-				Expect(err).To(MatchError("cannot open manifest file"))
-				Expect(statusCode).To(Equal(400))
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", zipRequest, buffer)
+				Expect(err).To(BeNil())
+				Expect(statusCode).To(Equal(200))
+				Expect(buffer).To(ContainSubstring("deploy was successful"))
 			})
 		})
 
@@ -325,7 +327,7 @@ var _ = Describe("Deployer", func() {
 				wd, err := os.Getwd()
 				Expect(err).To(BeNil())
 
-				err, statusCode := deployer.DeployZip(req, environmentName, org, space, appName, wd, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, wd, zipRequest, buffer)
 				Expect(err).To(MatchError("blue green error"))
 				Expect(statusCode).To(Equal(500))
 
@@ -346,7 +348,7 @@ var _ = Describe("Deployer", func() {
 				wd, err := os.Getwd()
 				Expect(err).To(BeNil())
 
-				err, statusCode := deployer.DeployZip(req, environmentName, org, space, appName, wd, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, wd, zipRequest, buffer)
 				Expect(err).To(MatchError("an error occurred in the deploy.start event"))
 				Expect(statusCode).To(Equal(500))
 				Expect(buffer).To(ContainSubstring("event error"))
@@ -367,7 +369,7 @@ var _ = Describe("Deployer", func() {
 				password = "password-" + deployer.Randomizer.StringRunes(10)
 				req.SetBasicAuth(username, password)
 
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(statusCode).To(Equal(200))
 
@@ -384,7 +386,7 @@ var _ = Describe("Deployer", func() {
 
 				By("not setting basic auth")
 
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(err).To(MatchError("basic auth header not found"))
 				Expect(statusCode).To(Equal(401))
 
@@ -399,7 +401,7 @@ var _ = Describe("Deployer", func() {
 				By("setting authenticate to true")
 				deployer.Config.Environments[environmentName] = config.Environment{Authenticate: false}
 
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(statusCode).To(Equal(200))
 
@@ -422,7 +424,7 @@ var _ = Describe("Deployer", func() {
 				}
 
 				deployer = Deployer{emptyConfiguration, blueGreener, fetcher, prechecker, eventManager, randomizerMock, log}
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(buffer).To(ContainSubstring(errorMessage))
 				Expect(err).To(MatchError(errorMessage))
 				Expect(statusCode).To(Equal(500))
@@ -433,7 +435,7 @@ var _ = Describe("Deployer", func() {
 			It("rejects the request with a 500 Internal Server Error", func() {
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = errors.New(deployAborted)
 
-				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(err).To(MatchError("Deploy aborted, one or more CF foundations unavailable"))
 				Expect(statusCode).To(Equal(500))
 
@@ -446,7 +448,7 @@ var _ = Describe("Deployer", func() {
 		It("shows the user deployment info properties", func() {
 			eventManager.EmitCall.Returns.Error = nil
 
-			err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, buffer)
+			err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(statusCode).To(Equal(200))
 

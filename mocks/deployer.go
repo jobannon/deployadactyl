@@ -11,25 +11,14 @@ type Deployer struct {
 	DeployCall struct {
 		TimesCalled int
 		Received    struct {
-			Request                              *http.Request
-			EnvironmentName, Org, Space, AppName string
-			Out                                  io.Writer
-		}
-		Write struct {
-			Output string
-		}
-		Returns struct {
-			Error      error
-			StatusCode int
-		}
-	}
-
-	DeployZipCall struct {
-		TimesCalled int
-		Received    struct {
-			Request                                       *http.Request
-			EnvironmentName, Org, Space, AppName, AppPath string
-			Out                                           io.Writer
+			Request         *http.Request
+			EnvironmentName string
+			Org             string
+			Space           string
+			AppName         string
+			AppPath         string
+			ContentType     string
+			Out             io.Writer
 		}
 		Write struct {
 			Output string
@@ -42,7 +31,7 @@ type Deployer struct {
 }
 
 // Deploy mock method.
-func (d *Deployer) Deploy(req *http.Request, environmentName, org, space, appName string, out io.Writer) (err error, statusCode int) {
+func (d *Deployer) Deploy(req *http.Request, environmentName, org, space, appName, appPath, contentType string, out io.Writer) (err error, statusCode int) {
 	defer func() { d.DeployCall.TimesCalled++ }()
 
 	d.DeployCall.Received.Request = req
@@ -50,26 +39,11 @@ func (d *Deployer) Deploy(req *http.Request, environmentName, org, space, appNam
 	d.DeployCall.Received.Org = org
 	d.DeployCall.Received.Space = space
 	d.DeployCall.Received.AppName = appName
+	d.DeployCall.Received.AppPath = appPath
+	d.DeployCall.Received.ContentType = contentType
 	d.DeployCall.Received.Out = out
 
 	fmt.Fprint(out, d.DeployCall.Write.Output)
 
 	return d.DeployCall.Returns.Error, d.DeployCall.Returns.StatusCode
-}
-
-// DeployZip mock method.
-func (d *Deployer) DeployZip(req *http.Request, environmentName, org, space, appName string, appPath string, out io.Writer) (err error, statusCode int) {
-	defer func() { d.DeployZipCall.TimesCalled++ }()
-
-	d.DeployZipCall.Received.Request = req
-	d.DeployZipCall.Received.EnvironmentName = environmentName
-	d.DeployZipCall.Received.Org = org
-	d.DeployZipCall.Received.Space = space
-	d.DeployZipCall.Received.AppName = appName
-	d.DeployZipCall.Received.AppPath = appPath
-	d.DeployZipCall.Received.Out = out
-
-	fmt.Fprint(out, d.DeployZipCall.Write.Output)
-
-	return d.DeployZipCall.Returns.Error, d.DeployZipCall.Returns.StatusCode
 }

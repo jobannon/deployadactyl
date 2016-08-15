@@ -187,3 +187,7 @@ func (p *Page) Page(description string) {
   em.AddHandler(p, "deploy.error")
   em.AddHandler(p, "deploy.finish")
 ```
+
+## Contributing
+
+See our [CONTRUBUTING](CONTRIBUTING.md) section for more information.

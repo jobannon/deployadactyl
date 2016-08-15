@@ -90,9 +90,9 @@ var _ = Describe("Controller", func() {
 		deployer.DeployCall.Received.Out = jsonBuffer
 	})
 
-	Describe("the controller receives a request that has a mime type application/json", func() {
-		Context("successful deployments without missing properties with a remote artifact url", func() {
-			It("deploys successfully with no error message and a status code of 200 OK", func() {
+	Describe("type application/json", func() {
+		Context("without missing properties", func() {
+			It("deploys successfully with a status code of 200 OK", func() {
 				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 				req.Header.Set("Content-Type", "application/json")
@@ -109,15 +109,15 @@ var _ = Describe("Controller", func() {
 			})
 		})
 
-		Context("failed deployments", func() {
-			It("fails to build the application", func() {
+		Context("when an application fails", func() {
+			It("returns an error", func() {
 				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
+
 				req.Header.Set("Content-Type", "application/json")
 
 				deployer.DeployCall.Received.Request = req
 
-				By("returning an error message and a status code that is 500")
 				deployer.DeployCall.Returns.Error = errors.New("internal server error")
 				deployer.DeployCall.Returns.StatusCode = 500
 
@@ -130,9 +130,9 @@ var _ = Describe("Controller", func() {
 		})
 	})
 
-	Describe("the controller receives a request that has a mime type application/zip", func() {
-		Context("successful deployments with a local zip file", func() {
-			It("deploys successfully with no error message and a status code of 200 OK", func() {
+	Describe("type application/zip", func() {
+		Context("with a valid zip file", func() {
+			It("deploys successfully with a status code of 200 OK", func() {
 				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 				req.Header.Set("Content-Type", "application/zip")
@@ -151,8 +151,8 @@ var _ = Describe("Controller", func() {
 			})
 		})
 
-		Context("failed deployments", func() {
-			It("request is empty", func() {
+		Context("when the request is empty", func() {
+			It("returns an error", func() {
 				req, err := http.NewRequest("POST", apiURL, nil)
 				Expect(err).ToNot(HaveOccurred())
 				req.Header.Set("Content-Type", "application/zip")
@@ -165,8 +165,10 @@ var _ = Describe("Controller", func() {
 				Expect(resp.Code).To(Equal(400))
 				Expect(resp.Body).To(ContainSubstring("request body is empty"))
 			})
+		})
 
-			It("cannot process the zip file", func() {
+		Context("when it cannot process the zip file", func() {
+			It("returns an error", func() {
 				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 				req.Header.Set("Content-Type", "application/zip")
@@ -183,8 +185,10 @@ var _ = Describe("Controller", func() {
 				Expect(resp.Code).To(Equal(500))
 				Expect(resp.Body).To(ContainSubstring("could not process zip file"))
 			})
+		})
 
-			It("fails to build", func() {
+		Context("when an application fails", func() {
+			It("returns an error", func() {
 				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 				req.Header.Set("Content-Type", "application/zip")
@@ -195,7 +199,6 @@ var _ = Describe("Controller", func() {
 				fetcher.FetchFromZipCall.Returns.AppPath = "appPath-" + randomizer.StringRunes(10)
 				fetcher.FetchFromZipCall.Returns.Error = nil
 
-				By("returning an error message and a status code that is 500")
 				deployer.DeployCall.Returns.Error = errors.New("internal server error")
 				deployer.DeployCall.Returns.StatusCode = 500
 
@@ -208,8 +211,8 @@ var _ = Describe("Controller", func() {
 		})
 	})
 
-	Describe("the controller receives a request that is not a recognized mime type", func() {
-		It("does not deploy", func() {
+	Describe("unknown content type", func() {
+		It("returns an error", func() {
 			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 			Expect(err).ToNot(HaveOccurred())
 			req.Header.Set("Content-Type", "invalidContentType")

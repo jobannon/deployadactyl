@@ -2,6 +2,7 @@
 package artifetcher
 
 import (
+	"bytes"
 	"crypto/tls"
 	"io"
 	"net/http"
@@ -66,7 +67,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	_, err = io.Copy(artifactFile, response.Body)
 	if err != nil {
-		a.Log.Debug("Response: %s", spew.Sdump(response))
+		a.Log.Debug("response: %s", spew.Sdump(response))
 		return "", errors.Errorf("%s: %s", cannotWriteResponseToFile, err)
 	}
 
@@ -76,6 +77,39 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	}
 
 	err = a.Extractor.Unzip(artifactFile.Name(), unzippedPath, manifest)
+	if err != nil {
+		a.FileSystem.RemoveAll(unzippedPath)
+		return "", errors.Errorf("%s: %s", cannotUnzipArtifact, err)
+	}
+
+	a.Log.Info("successfully unzipped to tempdir %s", unzippedPath)
+	return unzippedPath, nil
+}
+
+// FetchFromZip fetches files from a compressed zip file.
+//
+// Returns a string to the unzipped application path and an error.
+func (a *Artifetcher) FetchFromZip(requestBody []byte) (string, error) {
+	zipFile, err := a.FileSystem.TempFile("", "deployadactyl-")
+	if err != nil {
+		return "", errors.Errorf("%s: %s", cannotCreateTempFile, err)
+	}
+	defer zipFile.Close()
+	defer a.FileSystem.Remove(zipFile.Name())
+
+	f := bytes.NewReader(requestBody)
+	if _, err = io.Copy(zipFile, f); err != nil {
+		return "", errors.Errorf("%s: %s", cannotWriteResponseToFile, err)
+	}
+
+	a.Log.Debug("fetching local file: %s", zipFile.Name())
+
+	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-")
+	if err != nil {
+		return "", errors.Errorf("%s: %s", cannotCreateTempDirectory, err)
+	}
+
+	err = a.Extractor.Unzip(zipFile.Name(), unzippedPath, "")
 	if err != nil {
 		a.FileSystem.RemoveAll(unzippedPath)
 		return "", errors.Errorf("%s: %s", cannotUnzipArtifact, err)

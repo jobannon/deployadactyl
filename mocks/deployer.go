@@ -3,32 +3,47 @@ package mocks
 import (
 	"fmt"
 	"io"
-
-	S "github.com/compozed/deployadactyl/structs"
+	"net/http"
 )
 
 // Deployer handmade mock for tests.
 type Deployer struct {
 	DeployCall struct {
-		Received struct {
-			DeploymentInfo S.DeploymentInfo
-			Out            io.Writer
+		TimesCalled int
+		Received    struct {
+			Request         *http.Request
+			EnvironmentName string
+			Org             string
+			Space           string
+			AppName         string
+			AppPath         string
+			ContentType     string
+			Out             io.Writer
 		}
 		Write struct {
 			Output string
 		}
 		Returns struct {
-			Error error
+			Error      error
+			StatusCode int
 		}
 	}
 }
 
 // Deploy mock method.
-func (d *Deployer) Deploy(deploymentInfo S.DeploymentInfo, out io.Writer) error {
-	d.DeployCall.Received.DeploymentInfo = deploymentInfo
+func (d *Deployer) Deploy(req *http.Request, environmentName, org, space, appName, appPath, contentType string, out io.Writer) (err error, statusCode int) {
+	defer func() { d.DeployCall.TimesCalled++ }()
+
+	d.DeployCall.Received.Request = req
+	d.DeployCall.Received.EnvironmentName = environmentName
+	d.DeployCall.Received.Org = org
+	d.DeployCall.Received.Space = space
+	d.DeployCall.Received.AppName = appName
+	d.DeployCall.Received.AppPath = appPath
+	d.DeployCall.Received.ContentType = contentType
 	d.DeployCall.Received.Out = out
 
 	fmt.Fprint(out, d.DeployCall.Write.Output)
 
-	return d.DeployCall.Returns.Error
+	return d.DeployCall.Returns.Error, d.DeployCall.Returns.StatusCode
 }

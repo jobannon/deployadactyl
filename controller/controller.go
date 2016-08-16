@@ -3,162 +3,95 @@ package controller
 
 import (
 	"bytes"
-	"encoding/base64"
-	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
+	"io/ioutil"
+	"os"
 
 	"github.com/compozed/deployadactyl/config"
-	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
-	S "github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
-	"github.com/go-errors/errors"
 	"github.com/op/go-logging"
 )
 
 const (
-	basicAuthHeaderNotFound = "basic auth header not found"
-	invalidPostRequest      = "invalid POST request"
-	cannotDeployApplication = "cannot deploy application"
-	deployStartError        = "an error occurred in the deploy.start event"
-	deployFinishError       = "an error occurred in the deploy.finish event"
-	deploymentOutput        = `Deployment Parameters:
-	Artifact URL: %s,
-	Username:     %s,
-	Enviroment:   %s,
-	Org:          %s,
-	Space:        %s,
-	AppName:      %s
-
-`
+	successfulDeploy          = "deploy successful"
+	cannotDeployApplication   = "cannot deploy application"
+	requestBodyEmpty          = "request body is empty"
+	cannotReadFileFromRequest = "cannot read file from request"
+	cannotProcessZipFile      = "cannot process zip file"
+	contentTypeNotSupported   = "content type not supported"
 )
 
-// Controller is used to control deployments using the config and event manager.
+// Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
+	Config       config.Config
 	Deployer     I.Deployer
 	Log          *logging.Logger
-	Config       config.Config
 	EventManager I.EventManager
-	Randomizer   I.Randomizer
+	Fetcher      I.Fetcher
 }
 
-// Deploy parses parameters from the request, builds a DeploymentInfo and passes it to Deployer.
+// Deploy checks the request content type and passes it to the Deployer.
 func (c *Controller) Deploy(g *gin.Context) {
 	c.Log.Debug("Request originated from: %+v", g.Request.RemoteAddr)
 
 	var (
-		environment            = g.Param("environment")
-		authenticationRequired = c.Config.Environments[environment].Authenticate
-		buffer                 = &bytes.Buffer{}
+		environmentName = g.Param("environment")
+		org             = g.Param("org")
+		space           = g.Param("space")
+		appName         = g.Param("appName")
+		buffer          = &bytes.Buffer{}
+		err             error
+		statusCode      int
 	)
 
-	username, password, ok := g.Request.BasicAuth()
+	defer io.Copy(g.Writer, buffer)
 
-	if !ok {
-		if authenticationRequired {
-			err := errors.New(basicAuthHeaderNotFound)
-			c.Log.Error(err.Error())
-			g.Writer.WriteHeader(401)
-			g.Writer.WriteString(fmt.Sprintln(err.Error()))
+	contentType := g.Request.Header.Get("Content-Type")
+	if contentType == "application/json" {
+		err, statusCode = c.Deployer.Deploy(g.Request, environmentName, org, space, appName, "", contentType, buffer)
+		if err != nil {
+			logError(cannotDeployApplication, statusCode, err, g, c.Log)
 			return
 		}
-		username = c.Config.Username
-		password = c.Config.Password
-	}
-
-	deploymentInfo, err := getDeploymentInfo(g.Request.Body)
-	if err != nil {
-		c.Log.Error(err.Error())
-		g.Writer.WriteHeader(500)
-		g.Writer.WriteString(fmt.Sprintln(err.Error()))
+		g.Writer.WriteHeader(statusCode)
+		g.Writer.WriteString(successfulDeploy)
 		return
-	}
+	} else if contentType == "application/zip" {
+		if g.Request.Body != nil {
+			f, err := ioutil.ReadAll(g.Request.Body)
+			if err != nil {
+				logError(cannotReadFileFromRequest, 500, err, g, c.Log)
+				return
+			}
 
-	deploymentInfo.Username = username
-	deploymentInfo.Password = password
-	deploymentInfo.Environment = environment
-	deploymentInfo.Org = g.Param("org")
-	deploymentInfo.Space = g.Param("space")
-	deploymentInfo.AppName = g.Param("appName")
-	deploymentInfo.UUID = c.Randomizer.StringRunes(128)
-	deploymentInfo.SkipSSL = c.Config.Environments[environment].SkipSSL
+			appPath, err := c.Fetcher.FetchFromZip(f)
+			if err != nil {
+				logError(cannotProcessZipFile, 500, err, g, c.Log)
+				return
+			}
+			defer os.RemoveAll(appPath)
 
-	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
-	c.Log.Debug(deploymentMessage)
-	fmt.Fprintln(buffer, deploymentMessage)
+			err, statusCode = c.Deployer.Deploy(g.Request, environmentName, org, space, appName, appPath, contentType, buffer)
 
-	deployEventData := S.DeployEventData{
-		Writer:         buffer,
-		DeploymentInfo: &deploymentInfo,
-		RequestBody:    g.Request.Body,
-	}
-
-	m, err := base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
-	if err != nil {
-		c.Log.Errorf("%s: %s", invalidPostRequest, err)
-		g.Writer.WriteHeader(500)
-		g.Writer.WriteString(fmt.Sprintln(err.Error()))
-		return
-	}
-
-	deploymentInfo.Manifest = string(m)
-
-	defer func() {
-		deployFinishEvent := S.Event{
-			Type: "deploy.finish",
-			Data: deployEventData,
+			if err != nil {
+				logError(cannotDeployApplication, statusCode, err, g, c.Log)
+				return
+			}
+			g.Writer.WriteHeader(statusCode)
+			g.Writer.WriteString(successfulDeploy)
+			return
 		}
-
-		err = c.EventManager.Emit(deployFinishEvent)
-		if err != nil {
-			c.Log.Errorf("%s: %s", deployFinishError, err)
-			g.Writer.WriteHeader(500)
-			g.Writer.WriteString(fmt.Sprintln(err.Error()))
-		}
-
-		io.Copy(g.Writer, buffer)
-	}()
-
-	deployStartEvent := S.Event{
-		Type: "deploy.start",
-		Data: deployEventData,
-	}
-
-	err = c.EventManager.Emit(deployStartEvent)
-	if err != nil {
-		c.Log.Errorf("%s: %s", deployStartError, err)
-		g.Writer.WriteHeader(500)
-		g.Writer.WriteString(fmt.Sprintln(err.Error()))
+		logError(requestBodyEmpty, 400, errors.New("request body required"), g, c.Log)
 		return
 	}
-
-	err = c.Deployer.Deploy(deploymentInfo, buffer)
-	if err != nil {
-		c.Log.Errorf("%s: %s", cannotDeployApplication, err)
-		g.Writer.WriteHeader(500)
-		g.Error(err)
-	}
+	logError(contentTypeNotSupported, 400, errors.New("must be application/json or application/zip"), g, c.Log)
 }
 
-func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {
-	deploymentInfo := S.DeploymentInfo{}
-	err := json.NewDecoder(reader).Decode(&deploymentInfo)
-	if err != nil {
-		return deploymentInfo, err
-	}
-
-	getter := geterrors.WrapFunc(func(key string) string {
-		if key == "artifact_url" {
-			return deploymentInfo.ArtifactURL
-		}
-		return ""
-	})
-	getter.Get("artifact_url")
-
-	err = getter.Err("The following properties are missing")
-	if err != nil {
-		return S.DeploymentInfo{}, err
-	}
-	return deploymentInfo, nil
+func logError(message string, statusCode int, err error, g *gin.Context, l *logging.Logger) {
+	l.Errorf("%s: %s", message, err)
+	g.Writer.WriteHeader(statusCode)
+	g.Writer.WriteString(message + " - " + err.Error())
+	g.Error(err)
 }

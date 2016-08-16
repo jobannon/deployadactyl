@@ -1,12 +1,12 @@
 ![](https://raw.githubusercontent.com/compozed/images/master/deployadactyl_logo.png?token=AGfothZi0jY4w33pWVrcRH6MxJ5_cODgks5XtMspwA%3D%3D)
 
 [![Release](https://img.shields.io/github/release/compozed/deployadactyl.svg)](https://github.com/compozed/deployadactyl/releases/latest)
-[![CircleCI](https://circleci.com/gh/compozed/deployadactyl.svg?style=svg&circle-token=0eab8bce42440217fb24ffd8ffdc2b44932125d5)](https://circleci.com/gh/compozed/deployadactyl)
 [![codecov](https://codecov.io/gh/compozed/deployadactyl/branch/master/graph/badge.svg?token=r9yd1cwtbH)](https://codecov.io/gh/compozed/deployadactyl)
-[![Stories in Ready](https://badge.waffle.io/compozed/deployadactyl.png?label=ready&title=Ready)](https://waffle.io/compozed/deployadactyl)
 [![GoDoc](https://godoc.org/github.com/compozed/deployadactyl?status.svg)](https://godoc.org/github.com/compozed/deployadactyl)
 [![Gitter](https://badges.gitter.im/compozed/deployadactyl.svg)](https://gitter.im/compozed/deployadactyl?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![Slack Status](https://deployadactyl-invite.cfapps.io/badge.svg)](https://deployadactyl-invite.cfapps.io)
+[![CircleCI](https://circleci.com/gh/compozed/deployadactyl.svg?style=svg&circle-token=0eab8bce42440217fb24ffd8ffdc2b44932125d5)](https://circleci.com/gh/compozed/deployadactyl)
+[![Stories in Ready](https://badge.waffle.io/compozed/deployadactyl.png?label=ready&title=Ready)](https://waffle.io/compozed/deployadactyl)
 
 Deployadactyl is a Go library for deploying applications to multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push your application it will rollback to the previous version. Deployadactyl utilizes Gochannels for concurrent deployments across the multiple Cloud Foundry instances.
 
@@ -123,6 +123,7 @@ With Deployadactyl you can optionally register event handlers to perform any add
 |`deploy.start`|[DeployEventData](structs/deploy_event_data.go)|Before deployment starts
 |`deploy.success`|[DeployEventData](structs/deploy_event_data.go)|When a deployment succeeds
 |`deploy.failure`|[DeployEventData](structs/deploy_event_data.go)|When a deployment fails
+|`deploy.error`|[DeployEventData](structs/deploy_event_data.go)|When a deployment throws an error
 |`deploy.finish`|[DeployEventData](structs/deploy_event_data.go)|When a deployment finishes, regardless of success or failure
 |`validate.foundationsUnavailable`|[PrecheckerEventData](structs/prechecker_event_data.go)|When a foundation you're deploying to is down
 
@@ -183,5 +184,6 @@ func (p *Page) Page(description string) {
   em.AddHandler(p, "deploy.start")
   em.AddHandler(p, "deploy.success")
   em.AddHandler(p, "deploy.failure")
+  em.AddHandler(p, "deploy.error")
   em.AddHandler(p, "deploy.finish")
 ```

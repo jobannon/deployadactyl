@@ -65,14 +65,14 @@ func Custom(level string, configFilename string) (Creator, error) {
 // CreateControllerHandler returns a gin.Engine that implements http.Handler.
 // Sets up the controller endpoint.
 func (c Creator) CreateControllerHandler() *gin.Engine {
-	d := c.createController()
+	controller := c.createController()
 
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(gin.LoggerWithWriter(c.createWriter()))
 	r.Use(gin.ErrorLogger())
 
-	r.POST(ENDPOINT, d.Deploy)
+	r.POST(ENDPOINT, controller.Deploy)
 
 	return r
 }
@@ -127,29 +127,34 @@ func (c Creator) CreateEventManager() I.EventManager {
 
 func (c Creator) createController() controller.Controller {
 	return controller.Controller{
+		Config:       c.CreateConfig(),
 		Deployer:     c.createDeployer(),
 		Log:          c.CreateLogger(),
-		Config:       c.CreateConfig(),
 		EventManager: c.CreateEventManager(),
-		Randomizer:   c.createRandomizer(),
+		Fetcher:      c.createFetcher(),
 	}
 }
 
 func (c Creator) createDeployer() I.Deployer {
 	return deployer.Deployer{
-		Environments: c.config.Environments,
+		Config:       c.CreateConfig(),
 		BlueGreener:  c.createBlueGreener(),
-		Fetcher: &artifetcher.Artifetcher{
-			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
-			Extractor: &extractor.Extractor{
-				Log:        c.CreateLogger(),
-				FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
-			},
-			Log: c.CreateLogger(),
-		},
+		Fetcher:      c.createFetcher(),
 		Prechecker:   c.createPrechecker(),
 		EventManager: c.CreateEventManager(),
+		Randomizer:   c.createRandomizer(),
 		Log:          c.CreateLogger(),
+	}
+}
+
+func (c Creator) createFetcher() I.Fetcher {
+	return &artifetcher.Artifetcher{
+		FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+		Extractor: &extractor.Extractor{
+			Log:        c.CreateLogger(),
+			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+		},
+		Log: c.CreateLogger(),
 	}
 }
 

@@ -12,6 +12,16 @@ type Fetcher struct {
 			Error   error
 		}
 	}
+
+	FetchFromZipCall struct {
+		Received struct {
+			RequestBody []byte
+		}
+		Returns struct {
+			AppPath string
+			Error   error
+		}
+	}
 }
 
 // Fetch mock method.
@@ -20,4 +30,11 @@ func (f *Fetcher) Fetch(url, manifest string) (string, error) {
 	f.FetchCall.Received.Manifest = manifest
 
 	return f.FetchCall.Returns.AppPath, f.FetchCall.Returns.Error
+}
+
+// FetchFromZip mock method.
+func (f *Fetcher) FetchFromZip(requestBody []byte) (string, error) {
+	f.FetchFromZipCall.Received.RequestBody = requestBody
+
+	return f.FetchFromZipCall.Returns.AppPath, f.FetchFromZipCall.Returns.Error
 }

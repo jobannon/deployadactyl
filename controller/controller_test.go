@@ -2,7 +2,6 @@ package controller_test
 
 import (
 	"bytes"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,7 +12,6 @@ import (
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
-	S "github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -23,35 +21,28 @@ import (
 var _ = Describe("Controller", func() {
 
 	var (
-		controller     *Controller
-		deployer       *mocks.Deployer
-		router         *gin.Engine
-		resp           *httptest.ResponseRecorder
-		eventManager   *mocks.EventManager
-		randomizerMock *mocks.Randomizer
+		controller   *Controller
+		deployer     *mocks.Deployer
+		eventManager *mocks.EventManager
+		fetcher      *mocks.Fetcher
+		router       *gin.Engine
+		resp         *httptest.ResponseRecorder
 
-		jsonBuffer *bytes.Buffer
-
-		deploymentInfo S.DeploymentInfo
-
-		artifactURL     string
 		environment     string
 		org             string
 		space           string
 		appName         string
-		username        string
-		password        string
 		defaultUsername string
 		defaultPassword string
 		apiURL          string
-		uuid            string
-		skipSSL         bool
+
+		jsonBuffer *bytes.Buffer
 	)
 
 	BeforeEach(func() {
 		deployer = &mocks.Deployer{}
 		eventManager = &mocks.EventManager{}
-		randomizerMock = &mocks.Randomizer{}
+		fetcher = &mocks.Fetcher{}
 
 		jsonBuffer = &bytes.Buffer{}
 
@@ -59,16 +50,12 @@ var _ = Describe("Controller", func() {
 		envMap["Test"] = config.Environment{Foundations: []string{"api1.example.com", "api2.example.com"}}
 		envMap["Prod"] = config.Environment{Foundations: []string{"api3.example.com", "api4.example.com"}}
 
-		artifactURL = "artifactURL-" + randomizer.StringRunes(10)
 		environment = "environment-" + randomizer.StringRunes(10)
 		org = "org-" + randomizer.StringRunes(10)
 		space = "space-" + randomizer.StringRunes(10)
 		appName = "appName-" + randomizer.StringRunes(10)
-		username = "username-" + randomizer.StringRunes(10)
-		password = "password-" + randomizer.StringRunes(10)
 		defaultUsername = "defaultUsername-" + randomizer.StringRunes(10)
 		defaultPassword = "defaultPassword-" + randomizer.StringRunes(10)
-		uuid = "uuid-" + randomizer.StringRunes(123)
 
 		c := config.Config{
 			Username:     defaultUsername,
@@ -77,11 +64,11 @@ var _ = Describe("Controller", func() {
 		}
 
 		controller = &Controller{
+			Config:       c,
 			Deployer:     deployer,
 			Log:          logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "api_test"),
-			Config:       c,
 			EventManager: eventManager,
-			Randomizer:   randomizerMock,
+			Fetcher:      fetcher,
 		}
 
 		apiURL = fmt.Sprintf("/v1/apps/%s/%s/%s/%s",
@@ -91,262 +78,154 @@ var _ = Describe("Controller", func() {
 			appName,
 		)
 
-		deploymentInfo = S.DeploymentInfo{
-			ArtifactURL: artifactURL,
-			Username:    username,
-			Password:    password,
-			Environment: environment,
-			Org:         org,
-			Space:       space,
-			AppName:     appName,
-			UUID:        uuid,
-			SkipSSL:     skipSSL,
-		}
-
-		randomizerMock.RandomizeCall.Returns.Runes = uuid
-
 		router = gin.New()
 		resp = httptest.NewRecorder()
 
 		router.POST("/v1/apps/:environment/:org/:space/:appName", controller.Deploy)
 
-		jsonBuffer = bytes.NewBufferString(fmt.Sprintf(`{
-				"artifact_url": "%s"
-			}`,
-			artifactURL,
-		))
+		deployer.DeployCall.Received.EnvironmentName = environment
+		deployer.DeployCall.Received.Org = org
+		deployer.DeployCall.Received.Space = space
+		deployer.DeployCall.Received.AppName = appName
+		deployer.DeployCall.Received.Out = jsonBuffer
 	})
 
-	Describe("missing properties in the JSON", func() {
-		It("returns an error", func() {
-			By("sending empty JSON")
-			jsonBuffer = bytes.NewBufferString("{}")
+	Describe("type application/json", func() {
+		Context("without missing properties", func() {
+			It("deploys successfully with a status code of 200 OK", func() {
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
+				req.Header.Set("Content-Type", "application/json")
 
-			req, err := http.NewRequest("POST", "/v1/apps/someEnv/someOrg/someSpace/someApp", jsonBuffer)
-			Expect(err).ToNot(HaveOccurred())
-
-			req.SetBasicAuth(username, password)
-
-			router.ServeHTTP(resp, req)
-
-			Expect(resp.Code).To(Equal(500))
-			Expect(resp.Body.String()).To(ContainSubstring("The following properties are missing: artifact_url"))
-		})
-	})
-
-	Describe("authentication", func() {
-		Context("username and password are provided", func() {
-			It("accepts the request with a 200 OK", func() {
-				eventManager.EmitCall.Returns.Error = nil
-				deployer.DeployCall.Write.Output = "push succeeded"
+				deployer.DeployCall.Received.Request = req
 				deployer.DeployCall.Returns.Error = nil
-
-				By("setting authenticate to true")
-				controller.Config.Environments[environment] = config.Environment{Authenticate: true}
-
-				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
-				Expect(err).ToNot(HaveOccurred())
-
-				By("setting basic auth")
-				req.SetBasicAuth(username, password)
+				deployer.DeployCall.Returns.StatusCode = 200
 
 				router.ServeHTTP(resp, req)
 
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(1))
 				Expect(resp.Code).To(Equal(200))
-				Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
-				Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
-				Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(resp.Body).To(ContainSubstring("deploy successful"))
 			})
 		})
 
-		Context("when username and password are not provided", func() {
-			It("rejects the request with a 401 unauthorized", func() {
-				By("setting authenticate to true")
-				controller.Config.Environments[environment] = config.Environment{Authenticate: true}
-
+		Context("when an application fails", func() {
+			It("returns an error", func() {
 				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 
-				By("not setting basic auth")
+				req.Header.Set("Content-Type", "application/json")
 
-				router.ServeHTTP(resp, req)
-				Expect(resp.Code).To(Equal(401))
-			})
-		})
+				deployer.DeployCall.Received.Request = req
 
-		Context("username and password are provided", func() {
-			It("accepts the request with a 200 OK", func() {
-				eventManager.EmitCall.Returns.Error = nil
-				deployer.DeployCall.Write.Output = "push succeeded"
-				deployer.DeployCall.Returns.Error = nil
-
-				By("setting authenticate to false")
-				controller.Config.Environments[environment] = config.Environment{Authenticate: false}
-
-				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
-				Expect(err).ToNot(HaveOccurred())
-
-				By("setting basic auth")
-				req.SetBasicAuth(username, password)
+				deployer.DeployCall.Returns.Error = errors.New("internal server error")
+				deployer.DeployCall.Returns.StatusCode = 500
 
 				router.ServeHTTP(resp, req)
 
-				Expect(resp.Code).To(Equal(200))
-				Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
-				Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
-				Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-
-			})
-
-			Context("username and password are not provided", func() {
-				It("accepts the request with a 200 OK", func() {
-					eventManager.EmitCall.Returns.Error = nil
-					deployer.DeployCall.Write.Output = "push succeeded"
-					deployer.DeployCall.Returns.Error = nil
-
-					By("setting authenticate to false")
-					controller.Config.Environments[environment] = config.Environment{Authenticate: false}
-
-					req, err := http.NewRequest("POST", apiURL, jsonBuffer)
-					Expect(err).ToNot(HaveOccurred())
-
-					By("not setting basic auth and setting the default username and password")
-					deploymentInfo.Username = defaultUsername
-					deploymentInfo.Password = defaultPassword
-
-					router.ServeHTTP(resp, req)
-
-					Expect(resp.Code).To(Equal(200))
-					Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
-					Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				})
-			})
-		})
-	})
-
-	Describe("successful deployments without missing properties", func() {
-		It("returns a 200 OK and responds with the output of the push command", func() {
-			eventManager.EmitCall.Returns.Error = nil
-			deployer.DeployCall.Write.Output = "push succeeded"
-			deployer.DeployCall.Returns.Error = nil
-
-			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
-			Expect(err).ToNot(HaveOccurred())
-
-			req.SetBasicAuth(username, password)
-
-			router.ServeHTTP(resp, req)
-
-			Expect(resp.Code).To(Equal(200))
-			Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
-			Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
-			Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-		})
-
-		Context("when custom manifest information is given in the request body", func() {
-			It("properly decodes base64 encoding of the provided manifest information", func() {
-				eventManager.EmitCall.Returns.Error = nil
-				deployer.DeployCall.Write.Output = "push succeeded"
-				deployer.DeployCall.Returns.Error = nil
-
-				deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
-
-				By("base64 encoding a manifest")
-				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
-
-				By("including manifest in the JSON")
-				jsonBuffer = bytes.NewBufferString(fmt.Sprintf(`{
-						"artifact_url": "%s",
-						"manifest": "%s"
-					}`,
-					artifactURL,
-					base64Manifest,
-				))
-
-				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
-				Expect(err).ToNot(HaveOccurred())
-
-				req.SetBasicAuth(username, password)
-
-				router.ServeHTTP(resp, req)
-
-				Expect(resp.Code).To(Equal(200))
-				Expect(resp.Body.String()).To(ContainSubstring("push succeeded"))
-				Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
-				Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-			})
-
-			It("returns an error if the provided manifest information is not base64 encoded", func() {
-				deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
-
-				By("not base64 encoding a manifest")
-
-				By("including manifest in the JSON")
-				jsonBuffer = bytes.NewBufferString(fmt.Sprintf(`{
-						"artifact_url": "%s",
-						"manifest": "%s"
-					}`,
-					artifactURL,
-					deploymentInfo.Manifest,
-				))
-
-				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
-				Expect(err).ToNot(HaveOccurred())
-
-				req.SetBasicAuth(username, password)
-
-				router.ServeHTTP(resp, req)
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(1))
 				Expect(resp.Code).To(Equal(500))
-				Expect(eventManager.EmitCall.TimesCalled).To(Equal(0))
+				Expect(resp.Body).To(ContainSubstring("internal server error"))
 			})
 		})
 	})
 
-	Describe("when deployer fails", func() {
-		It("returns a 500 internal server error and responds with the output of the push command", func() {
-			eventManager.EmitCall.Returns.Error = nil
+	Describe("type application/zip", func() {
+		Context("with a valid zip file", func() {
+			It("deploys successfully with a status code of 200 OK", func() {
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
+				req.Header.Set("Content-Type", "application/zip")
 
-			By("making deployer return an error")
-			deployer.DeployCall.Write.Output = "some awesome CF error\n"
-			deployer.DeployCall.Returns.Error = errors.New("bork")
+				deployer.DeployCall.Received.Request = req
 
-			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
-			Expect(err).ToNot(HaveOccurred())
+				fetcher.FetchFromZipCall.Received.RequestBody = nil
+				fetcher.FetchFromZipCall.Returns.AppPath = "appPath-" + randomizer.StringRunes(10)
+				fetcher.FetchFromZipCall.Returns.Error = nil
 
-			req.SetBasicAuth(username, password)
+				router.ServeHTTP(resp, req)
 
-			router.ServeHTTP(resp, req)
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(1))
+				Expect(resp.Code).To(Equal(200))
+				Expect(resp.Body).To(ContainSubstring("deploy successful"))
+			})
+		})
 
-			Expect(resp.Code).To(Equal(500))
-			Expect(resp.Body.String()).To(ContainSubstring("some awesome CF error\n"))
-			Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
-			Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+		Context("when the request is empty", func() {
+			It("returns an error", func() {
+				req, err := http.NewRequest("POST", apiURL, nil)
+				Expect(err).ToNot(HaveOccurred())
+				req.Header.Set("Content-Type", "application/zip")
+
+				deployer.DeployCall.Received.Request = req
+
+				router.ServeHTTP(resp, req)
+
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(0))
+				Expect(resp.Code).To(Equal(400))
+				Expect(resp.Body).To(ContainSubstring("request body is empty"))
+			})
+		})
+
+		Context("when it cannot process the zip file", func() {
+			It("returns an error", func() {
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
+				req.Header.Set("Content-Type", "application/zip")
+
+				deployer.DeployCall.Received.Request = req
+
+				fetcher.FetchFromZipCall.Received.RequestBody = jsonBuffer.Bytes()
+				fetcher.FetchFromZipCall.Returns.AppPath = ""
+				fetcher.FetchFromZipCall.Returns.Error = errors.New("could not process zip file")
+
+				router.ServeHTTP(resp, req)
+
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(0))
+				Expect(resp.Code).To(Equal(500))
+				Expect(resp.Body).To(ContainSubstring("could not process zip file"))
+			})
+		})
+
+		Context("when an application fails", func() {
+			It("returns an error", func() {
+				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
+				req.Header.Set("Content-Type", "application/zip")
+
+				deployer.DeployCall.Received.Request = req
+
+				fetcher.FetchFromZipCall.Received.RequestBody = jsonBuffer.Bytes()
+				fetcher.FetchFromZipCall.Returns.AppPath = "appPath-" + randomizer.StringRunes(10)
+				fetcher.FetchFromZipCall.Returns.Error = nil
+
+				deployer.DeployCall.Returns.Error = errors.New("internal server error")
+				deployer.DeployCall.Returns.StatusCode = 500
+
+				router.ServeHTTP(resp, req)
+
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(1))
+				Expect(resp.Code).To(Equal(500))
+				Expect(resp.Body).To(ContainSubstring("cannot deploy application"))
+			})
 		})
 	})
 
-	Describe("deployment output", func() {
-		It("shows the user deployment info properties", func() {
-			eventManager.EmitCall.Returns.Error = nil
-			deployer.DeployCall.Returns.Error = nil
-
+	Describe("unknown content type", func() {
+		It("returns an error", func() {
 			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
 			Expect(err).ToNot(HaveOccurred())
+			req.Header.Set("Content-Type", "invalidContentType")
 
-			req.SetBasicAuth(username, password)
+			deployer.DeployCall.Returns.Error = errors.New("internal server error")
+			deployer.DeployCall.Returns.StatusCode = 400
 
 			router.ServeHTTP(resp, req)
-			Expect(resp.Code).To(Equal(200))
 
-			result := resp.Body.String()
-			Expect(result).To(ContainSubstring(artifactURL))
-			Expect(result).To(ContainSubstring(username))
-			Expect(result).To(ContainSubstring(environment))
-			Expect(result).To(ContainSubstring(org))
-			Expect(result).To(ContainSubstring(space))
-			Expect(result).To(ContainSubstring(appName))
-
-			Expect(eventManager.EmitCall.TimesCalled).To(Equal(2))
-			Expect(deployer.DeployCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			Expect(deployer.DeployCall.TimesCalled).To(Equal(0))
+			Expect(deployer.DeployCall.TimesCalled).To(Equal(0))
+			Expect(resp.Code).To(Equal(400))
+			Expect(resp.Body).To(ContainSubstring("content type not supported - must be application/json or application/zip"))
 		})
 	})
 })

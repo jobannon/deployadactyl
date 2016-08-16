@@ -42,6 +42,7 @@ type Pusher struct {
 	RollbackCall struct {
 		Received struct {
 			DeploymentInfo S.DeploymentInfo
+			FirstDeploy    bool
 		}
 		Returns struct {
 			Error error
@@ -97,8 +98,9 @@ func (p *Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, o
 }
 
 // Rollback mock method.
-func (p *Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
+func (p *Pusher) Rollback(deploymentInfo S.DeploymentInfo, firstDeploy bool) error {
 	p.RollbackCall.Received.DeploymentInfo = deploymentInfo
+	p.RollbackCall.Received.FirstDeploy = firstDeploy
 
 	return p.RollbackCall.Returns.Error
 }

@@ -187,7 +187,7 @@ var _ = Describe("Pusher", func() {
 			courier.DeleteCall.Returns.Output = nil
 			courier.DeleteCall.Returns.Error = nil
 
-			Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
+			Expect(pusher.Rollback(deploymentInfo, false)).To(Succeed())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(appNameVenerable))
 			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appName))

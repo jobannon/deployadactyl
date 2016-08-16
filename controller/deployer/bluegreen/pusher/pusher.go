@@ -27,7 +27,7 @@ const (
 	notRenamingNewApp       = "new app detected"
 )
 
-// Pusher has a courier used to push applications to Cloud Foundry. 
+// Pusher has a courier used to push applications to Cloud Foundry.
 type Pusher struct {
 	Courier I.Courier
 	Log     *logging.Logger
@@ -92,8 +92,9 @@ func (p Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
 }
 
 // Rollback will rollback Push.
-// Deletes the new application and renames appName-venerable back to appName.
-func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
+// Deletes the new application.
+// Renames appName-venerable back to appName if this is not the first deploy.
+func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo, firstDeploy bool) error {
 	p.Log.Errorf(rollingBackDeploy, deploymentInfo.AppName)
 
 	venerableName := deploymentInfo.AppName + "-venerable"
@@ -104,11 +105,13 @@ func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
 	}
 	p.Log.Infof(deletedApp, deploymentInfo.AppName)
 
-	_, err = p.Courier.Rename(venerableName, deploymentInfo.AppName)
-	if err != nil {
-		p.Log.Infof(unableToRenameVenerable, venerableName, err)
+	if !firstDeploy {
+		_, err = p.Courier.Rename(venerableName, deploymentInfo.AppName)
+		if err != nil {
+			p.Log.Infof(unableToRenameVenerable, venerableName, err)
+		}
+		p.Log.Infof(renamedApp, venerableName, deploymentInfo.AppName)
 	}
-	p.Log.Infof(renamedApp, venerableName, deploymentInfo.AppName)
 
 	return nil
 }

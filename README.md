@@ -1,4 +1,4 @@
-![](https://raw.githubusercontent.com/compozed/images/master/deployadactyl_logo.png?token=AGfothZi0jY4w33pWVrcRH6MxJ5_cODgks5XtMspwA%3D%3D)
+![](https://raw.githubusercontent.com/compozed/images/master/deployadactyl_logo.png?token=AGfotjxMTdUEkRiJaSfj_R0AT2uXdnh9ks5Xv7_cwA%3D%3D)
 
 [![Release](https://img.shields.io/github/release/compozed/deployadactyl.svg)](https://github.com/compozed/deployadactyl/releases/latest)
 [![codecov](https://codecov.io/gh/compozed/deployadactyl/branch/master/graph/badge.svg?token=r9yd1cwtbH)](https://codecov.io/gh/compozed/deployadactyl)

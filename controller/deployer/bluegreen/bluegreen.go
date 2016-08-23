@@ -55,6 +55,8 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 		return errors.New(loginFailed)
 	}
 
+	bg.cleanUpAll(actors, deploymentInfo)
+
 	failed, firstDeploy, responseLogs = bg.pushAll(actors, buffers, appPath, environment.Domain, deploymentInfo)
 
 	combinedOutput := &bytes.Buffer{}
@@ -103,6 +105,23 @@ func (bg BlueGreen) loginAll(actors []actor, buffers []*bytes.Buffer, deployment
 	return failed
 }
 
+func (bg BlueGreen) cleanUpAll(actors []actor, deploymentInfo S.DeploymentInfo) {
+	for _, a := range actors {
+		a.commands <- func(pusher I.Pusher, foundationURL string) error {
+			if pusher.Exists(deploymentInfo.AppName + "-venerable") {
+				bg.Log.Error("venerable instance of " + deploymentInfo.AppName + " exists")
+				return pusher.Rollback(deploymentInfo, false)
+			}
+			return nil
+		}
+	}
+	for _, a := range actors {
+		if err := <-a.errs; err != nil {
+			bg.Log.Error(err.Error())
+		}
+	}
+}
+
 func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, domain string, deploymentInfo S.DeploymentInfo) (bool, bool, []byte) {
 	failed, firstDeploy := false, true
 	var responseLogs []byte
@@ -142,7 +161,6 @@ func (bg BlueGreen) rollbackAll(actors []actor, deploymentInfo S.DeploymentInfo,
 		}
 	}
 }
-
 func (bg BlueGreen) finishPushAll(actors []actor, deploymentInfo S.DeploymentInfo) {
 	for _, a := range actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {

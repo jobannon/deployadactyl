@@ -96,7 +96,6 @@ func (p Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
 // Renames appName-venerable back to appName if this is not the first deploy.
 func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo, firstDeploy bool) error {
 	p.Log.Errorf(rollingBackDeploy, deploymentInfo.AppName)
-
 	venerableName := deploymentInfo.AppName + "-venerable"
 
 	_, err := p.Courier.Delete(deploymentInfo.AppName)

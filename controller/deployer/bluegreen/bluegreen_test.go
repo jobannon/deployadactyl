@@ -172,6 +172,42 @@ var _ = Describe("Bluegreen", func() {
 		})
 	})
 
+	Context("when app-venerable already exists on cf", func() {
+		It("should rollback before push", func() {
+			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
+
+			for range environment.Foundations {
+				pusher := &mocks.Pusher{}
+				pushers = append(pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+
+				pusher.LoginCall.Write.Output = loginOutput
+				pusher.LoginCall.Returns.Error = nil
+				pusher.ExistsCall.Returns.Exists = true
+				pusher.PushCall.Write.Output = pushOutput
+				pusher.PushCall.Returns.Error = nil
+				pusher.FinishPushCall.Returns.Error = nil
+				pusher.CleanUpCall.Returns.Error = nil
+			}
+
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).To(Succeed())
+
+			for i, pusher := range pushers {
+				foundationURL := environment.Foundations[i]
+
+				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.RollbackCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
+				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
+				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
+				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.FinishPushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
+			}
+		})
+	})
+
 	Context("when at least one push command is unsuccessful", func() {
 		It("should rollback all recent pushes and print Cloud Foundry logs", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}

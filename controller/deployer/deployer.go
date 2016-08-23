@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/geterrors"
@@ -71,14 +72,14 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 		deploymentInfo, err = getDeploymentInfo(req.Body)
 		if err != nil {
 			fmt.Fprintln(out, err)
-			return err, 500
+			return err, http.StatusInternalServerError
 		}
 	}
 
 	username, password, ok := req.BasicAuth()
 	if !ok {
 		if authenticationRequired {
-			return errors.New(basicAuthHeaderNotFound), 401
+			return errors.New(basicAuthHeaderNotFound), http.StatusUnauthorized
 		}
 		username = d.Config.Username
 		password = d.Config.Password
@@ -111,7 +112,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 		manifest, err = base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
 		if err != nil {
 			fmt.Fprintln(out, err)
-			return errors.New(cannotOpenManifestFile), 400
+			return errors.New(cannotOpenManifestFile), http.StatusBadRequest
 		}
 	}
 	if isZipRequest(contentType) {
@@ -137,7 +138,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 			return err, statusCode
 		}
 
-		return nil, 200
+		return nil, http.StatusOK
 	}()
 
 	deployStartEvent := S.Event{
@@ -148,7 +149,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 	err = d.EventManager.Emit(deployStartEvent)
 	if err != nil {
 		fmt.Fprintln(out, err)
-		return errors.New(deployStartError), 500
+		return errors.New(deployStartError), http.StatusInternalServerError
 	}
 
 	deployEventData = S.DeployEventData{
@@ -170,20 +171,20 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 
 		err = errors.Errorf("%s: %s", environmentNotFound, deploymentInfo.Environment)
 		fmt.Fprintln(out, err)
-		return err, 500
+		return err, http.StatusInternalServerError
 	}
 
 	err = d.Prechecker.AssertAllFoundationsUp(environment)
 	if err != nil {
 		fmt.Fprintln(out, err)
-		return errors.New(err), 500
+		return errors.New(err), http.StatusInternalServerError
 	}
 
 	if isJSONRequest(contentType) {
 		appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, deploymentInfo.Manifest)
 		if err != nil {
 			fmt.Fprintln(out, err)
-			return err, 500
+			return err, http.StatusInternalServerError
 		}
 		defer os.RemoveAll(appPath)
 	}
@@ -206,11 +207,15 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 
 	err = d.BlueGreener.Push(environment, appPath, deploymentInfo, out)
 	if err != nil {
-		return err, 500
+		fmt.Fprintln(out, err)
+		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
+			return err, http.StatusUnauthorized
+		}
+		return err, http.StatusInternalServerError
 	}
 
 	fmt.Fprintln(out, fmt.Sprintf("\n%s", successfulDeploy))
-	return err, 200
+	return err, http.StatusOK
 }
 
 func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {
@@ -237,6 +242,7 @@ func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {
 func isZipRequest(contentType string) bool {
 	return contentType == zipRequestContentType
 }
+
 func isJSONRequest(contentType string) bool {
 	return contentType == jsonRequestContentType
 }

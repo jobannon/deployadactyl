@@ -57,8 +57,6 @@ var _ = Describe("Service", func() {
 		org                 = randomizer.StringRunes(10)
 		space               = randomizer.StringRunes(10)
 		appName             = randomizer.StringRunes(10)
-		userID              = randomizer.StringRunes(10)
-		group               = randomizer.StringRunes(10)
 	)
 
 	BeforeEach(func() {
@@ -89,10 +87,6 @@ var _ = Describe("Service", func() {
 		It("can deploy an application without the internet", func() {
 			j, err := json.Marshal(gin.H{
 				"artifact_url": artifactServer.URL,
-				"body": gin.H{
-					"user_id": userID,
-					"group":   group,
-				},
 			})
 			Expect(err).ToNot(HaveOccurred())
 			jsonBuffer := bytes.NewBuffer(j)

@@ -7,7 +7,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
-// BlueGreener interface. 
+// BlueGreener interface.
 type BlueGreener interface {
 	Push(environment config.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.Writer) error
 }

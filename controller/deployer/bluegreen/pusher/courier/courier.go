@@ -3,7 +3,7 @@ package courier
 
 import I "github.com/compozed/deployadactyl/interfaces"
 
-// Courier has 
+// Courier has an Executor to execute Cloud Foundry commands.
 type Courier struct {
 	Executor I.Executor
 }

@@ -18,6 +18,10 @@ import (
 	"github.com/op/go-logging"
 )
 
+const (
+	deployerNotEnoughCalls = "event manager didn't have the right number of calls"
+)
+
 var _ = Describe("Controller", func() {
 
 	var (
@@ -103,7 +107,7 @@ var _ = Describe("Controller", func() {
 
 				router.ServeHTTP(resp, req)
 
-				Expect(deployer.DeployCall.TimesCalled).To(Equal(1))
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(1), deployerNotEnoughCalls)
 				Expect(resp.Code).To(Equal(200))
 				Expect(resp.Body).To(ContainSubstring("deploy successful"))
 			})
@@ -123,7 +127,7 @@ var _ = Describe("Controller", func() {
 
 				router.ServeHTTP(resp, req)
 
-				Expect(deployer.DeployCall.TimesCalled).To(Equal(1))
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(1), deployerNotEnoughCalls)
 				Expect(resp.Code).To(Equal(500))
 				Expect(resp.Body).To(ContainSubstring("internal server error"))
 			})
@@ -145,7 +149,7 @@ var _ = Describe("Controller", func() {
 
 				router.ServeHTTP(resp, req)
 
-				Expect(deployer.DeployCall.TimesCalled).To(Equal(1))
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(1), deployerNotEnoughCalls)
 				Expect(resp.Code).To(Equal(200))
 				Expect(resp.Body).To(ContainSubstring("deploy successful"))
 			})
@@ -161,7 +165,7 @@ var _ = Describe("Controller", func() {
 
 				router.ServeHTTP(resp, req)
 
-				Expect(deployer.DeployCall.TimesCalled).To(Equal(0))
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(0), deployerNotEnoughCalls)
 				Expect(resp.Code).To(Equal(400))
 				Expect(resp.Body).To(ContainSubstring("request body is empty"))
 			})
@@ -181,7 +185,7 @@ var _ = Describe("Controller", func() {
 
 				router.ServeHTTP(resp, req)
 
-				Expect(deployer.DeployCall.TimesCalled).To(Equal(0))
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(0), deployerNotEnoughCalls)
 				Expect(resp.Code).To(Equal(500))
 				Expect(resp.Body).To(ContainSubstring("could not process zip file"))
 			})
@@ -204,7 +208,7 @@ var _ = Describe("Controller", func() {
 
 				router.ServeHTTP(resp, req)
 
-				Expect(deployer.DeployCall.TimesCalled).To(Equal(1))
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(1), deployerNotEnoughCalls)
 				Expect(resp.Code).To(Equal(500))
 				Expect(resp.Body).To(ContainSubstring("cannot deploy application"))
 			})
@@ -222,8 +226,8 @@ var _ = Describe("Controller", func() {
 
 			router.ServeHTTP(resp, req)
 
-			Expect(deployer.DeployCall.TimesCalled).To(Equal(0))
-			Expect(deployer.DeployCall.TimesCalled).To(Equal(0))
+			Expect(deployer.DeployCall.TimesCalled).To(Equal(0), deployerNotEnoughCalls)
+			Expect(deployer.DeployCall.TimesCalled).To(Equal(0), deployerNotEnoughCalls)
 			Expect(resp.Code).To(Equal(400))
 			Expect(resp.Body).To(ContainSubstring("content type not supported - must be application/json or application/zip"))
 		})

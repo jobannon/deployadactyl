@@ -35,7 +35,8 @@ type Artifetcher struct {
 //
 // Returns a string to the unzipped artifacts path and an error.
 func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
-	a.Log.Debug("fetch URL: %s", url)
+	a.Log.Info("fetching artifact")
+	a.Log.Debug("artifact URL: %s", url)
 
 	artifactFile, err := a.FileSystem.TempFile("", "deployadactyl-")
 	if err != nil {
@@ -82,7 +83,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 		return "", errors.Errorf("%s: %s", cannotUnzipArtifact, err)
 	}
 
-	a.Log.Info("successfully unzipped to tempdir %s", unzippedPath)
+	a.Log.Debug("fetched and unzipped to tempdir %s", unzippedPath)
 	return unzippedPath, nil
 }
 
@@ -97,12 +98,12 @@ func (a *Artifetcher) FetchFromZip(requestBody []byte) (string, error) {
 	defer zipFile.Close()
 	defer a.FileSystem.Remove(zipFile.Name())
 
+	a.Log.Info("fetching zip file %s", zipFile.Name())
+
 	f := bytes.NewReader(requestBody)
 	if _, err = io.Copy(zipFile, f); err != nil {
 		return "", errors.Errorf("%s: %s", cannotWriteResponseToFile, err)
 	}
-
-	a.Log.Debug("fetching local file: %s", zipFile.Name())
 
 	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-")
 	if err != nil {
@@ -115,6 +116,6 @@ func (a *Artifetcher) FetchFromZip(requestBody []byte) (string, error) {
 		return "", errors.Errorf("%s: %s", cannotUnzipArtifact, err)
 	}
 
-	a.Log.Info("successfully unzipped to tempdir %s", unzippedPath)
+	a.Log.Debug("fetched and unzipped to tempdir %s", unzippedPath)
 	return unzippedPath, nil
 }

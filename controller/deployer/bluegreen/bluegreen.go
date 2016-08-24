@@ -106,10 +106,11 @@ func (bg BlueGreen) loginAll(actors []actor, buffers []*bytes.Buffer, deployment
 }
 
 func (bg BlueGreen) cleanUpAll(actors []actor, deploymentInfo S.DeploymentInfo) {
+	foundVenerable := false
 	for _, a := range actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
 			if pusher.Exists(deploymentInfo.AppName + "-venerable") {
-				bg.Log.Error("venerable instance of " + deploymentInfo.AppName + " exists")
+				foundVenerable = true
 				return pusher.Rollback(deploymentInfo, false)
 			}
 			return nil
@@ -119,6 +120,9 @@ func (bg BlueGreen) cleanUpAll(actors []actor, deploymentInfo S.DeploymentInfo) 
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
 		}
+	}
+	if foundVenerable {
+		bg.Log.Error("cleaned up venerable instances of " + deploymentInfo.AppName)
 	}
 }
 
@@ -164,7 +168,7 @@ func (bg BlueGreen) rollbackAll(actors []actor, deploymentInfo S.DeploymentInfo,
 func (bg BlueGreen) finishPushAll(actors []actor, deploymentInfo S.DeploymentInfo) {
 	for _, a := range actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.FinishPush(deploymentInfo)
+			return pusher.FinishPush(deploymentInfo, foundationURL)
 		}
 	}
 	for _, a := range actors {

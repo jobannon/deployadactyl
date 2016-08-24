@@ -36,6 +36,7 @@ type Extractor struct {
 // Unzip unzips from source into destination.
 // If there is no manifest provided to this function, it will attempt to read a manifest file within the zip file.
 func (e *Extractor) Unzip(source, destination, manifest string) error {
+	e.Log.Info("extracting application")
 	e.Log.Debug(`parameters for extractor:
 	source: %+v
 	destination: %+v`, source, destination)

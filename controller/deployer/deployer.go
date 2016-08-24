@@ -40,9 +40,7 @@ Thanks for using Deployadactyl! Please push down pull up on your lap bar and exi
 	Environment:  %s,
 	Org:          %s,
 	Space:        %s,
-	AppName:      %s
-
-`
+	AppName:      %s`
 	jsonRequestContentType = "application/json"
 	zipRequestContentType  = "application/zip"
 )
@@ -207,7 +205,6 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 
 	err = d.BlueGreener.Push(environment, appPath, deploymentInfo, out)
 	if err != nil {
-		fmt.Fprintln(out, err)
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
 			return err, http.StatusUnauthorized
 		}

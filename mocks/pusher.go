@@ -52,6 +52,7 @@ type Pusher struct {
 	FinishPushCall struct {
 		Received struct {
 			DeploymentInfo S.DeploymentInfo
+			FoundationURL  string
 		}
 		Returns struct {
 			Error error
@@ -106,8 +107,9 @@ func (p *Pusher) Rollback(deploymentInfo S.DeploymentInfo, firstDeploy bool) err
 }
 
 // FinishPush mock method.
-func (p *Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
+func (p *Pusher) FinishPush(deploymentInfo S.DeploymentInfo, foundationURL string) error {
 	p.FinishPushCall.Received.DeploymentInfo = deploymentInfo
+	p.FinishPushCall.Received.FoundationURL = foundationURL
 
 	return p.FinishPushCall.Returns.Error
 }

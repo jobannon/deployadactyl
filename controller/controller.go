@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 
 	"github.com/compozed/deployadactyl/config"
@@ -34,7 +35,7 @@ type Controller struct {
 
 // Deploy checks the request content type and passes it to the Deployer.
 func (c *Controller) Deploy(g *gin.Context) {
-	c.Log.Debug("Request originated from: %+v", g.Request.RemoteAddr)
+	c.Log.Info("Request originated from: %+v", g.Request.RemoteAddr)
 
 	var (
 		environmentName = g.Param("environment")
@@ -56,19 +57,19 @@ func (c *Controller) Deploy(g *gin.Context) {
 			return
 		}
 		g.Writer.WriteHeader(statusCode)
-		g.Writer.WriteString(successfulDeploy)
+		g.Writer.WriteString(successfulDeploy + "\n")
 		return
 	} else if contentType == "application/zip" {
 		if g.Request.Body != nil {
 			f, err := ioutil.ReadAll(g.Request.Body)
 			if err != nil {
-				logError(cannotReadFileFromRequest, 500, err, g, c.Log)
+				logError(cannotReadFileFromRequest, http.StatusInternalServerError, err, g, c.Log)
 				return
 			}
 
 			appPath, err := c.Fetcher.FetchFromZip(f)
 			if err != nil {
-				logError(cannotProcessZipFile, 500, err, g, c.Log)
+				logError(cannotProcessZipFile, http.StatusInternalServerError, err, g, c.Log)
 				return
 			}
 			defer os.RemoveAll(appPath)
@@ -80,18 +81,18 @@ func (c *Controller) Deploy(g *gin.Context) {
 				return
 			}
 			g.Writer.WriteHeader(statusCode)
-			g.Writer.WriteString(successfulDeploy)
+			g.Writer.WriteString(successfulDeploy + "\n")
 			return
 		}
-		logError(requestBodyEmpty, 400, errors.New("request body required"), g, c.Log)
+		logError(requestBodyEmpty, http.StatusBadRequest, errors.New("request body required"), g, c.Log)
 		return
 	}
-	logError(contentTypeNotSupported, 400, errors.New("must be application/json or application/zip"), g, c.Log)
+	logError(contentTypeNotSupported, http.StatusBadRequest, errors.New("must be application/json or application/zip"), g, c.Log)
 }
 
 func logError(message string, statusCode int, err error, g *gin.Context, l *logging.Logger) {
 	l.Errorf("%s: %s", message, err)
 	g.Writer.WriteHeader(statusCode)
-	g.Writer.WriteString(message + " - " + err.Error())
+	g.Writer.WriteString(message + " - " + err.Error() + "\n")
 	g.Error(err)
 }

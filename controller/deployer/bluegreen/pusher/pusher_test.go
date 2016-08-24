@@ -126,7 +126,8 @@ var _ = Describe("Pusher", func() {
 			Eventually(responseBuffer).Should(gbytes.Say("mapped route"))
 
 			Eventually(logBuffer).Should(gbytes.Say("renaming app from " + appName + " to " + appNameVenerable))
-			Eventually(logBuffer).Should(gbytes.Say("pushing new app " + appName + " from " + appPath))
+			Eventually(logBuffer).Should(gbytes.Say("pushing new app " + appName + " to " + domain))
+			Eventually(logBuffer).Should(gbytes.Say("using tempdir for app " + appName + " " + appPath))
 			Eventually(logBuffer).Should(gbytes.Say("push succeeded"))
 			Eventually(logBuffer).Should(gbytes.Say("mapping route for " + appName + " to " + domain))
 		})
@@ -173,7 +174,8 @@ var _ = Describe("Pusher", func() {
 
 				Eventually(logBuffer).Should(gbytes.Say("renaming app from " + appName + " to " + appNameVenerable))
 				Eventually(logBuffer).Should(gbytes.Say("new app detected"))
-				Eventually(logBuffer).Should(gbytes.Say("pushing new app " + appName + " from " + appPath))
+				Eventually(logBuffer).Should(gbytes.Say("pushing new app " + appName + " to " + domain))
+				Eventually(logBuffer).Should(gbytes.Say("using tempdir for app " + appName + " " + appPath))
 				Eventually(logBuffer).Should(gbytes.Say("push succeeded"))
 				Eventually(logBuffer).Should(gbytes.Say("mapping route for " + appName + " to " + domain))
 			})
@@ -204,7 +206,7 @@ var _ = Describe("Pusher", func() {
 			courier.DeleteCall.Returns.Output = nil
 			courier.DeleteCall.Returns.Error = nil
 
-			Expect(pusher.FinishPush(deploymentInfo)).To(Succeed())
+			Expect(pusher.FinishPush(deploymentInfo, foundationURL)).To(Succeed())
 
 			Expect(courier.DeleteCall.Received.AppName).To(Equal(appNameVenerable))
 

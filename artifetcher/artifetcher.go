@@ -16,11 +16,12 @@ import (
 )
 
 const (
-	cannotCreateTempFile      = "cannot create temp file"
-	cannotGetURL              = "cannot GET url"
-	cannotWriteResponseToFile = "cannot write response to file"
-	cannotCreateTempDirectory = "cannot create temp directory"
-	cannotUnzipArtifact       = "cannot unzip artifact"
+	cannotCreateTempFile           = "cannot create temp file"
+	cannotGetURL                   = "cannot GET url"
+	cannotCreateArtifactoryRequest = "cannot create artifactory request"
+	cannotWriteResponseToFile      = "cannot write response to file"
+	cannotCreateTempDirectory      = "cannot create temp directory"
+	cannotUnzipArtifact            = "cannot unzip artifact"
 )
 
 // Artifetcher fetches artifacts within a file system with an Extractor.
@@ -46,6 +47,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	defer a.FileSystem.Remove(artifactFile.Name())
 
 	var proxyClient = &http.Client{
+		Timeout: 4 * time.Minute,
 		Transport: &http.Transport{
 			Proxy:             http.ProxyFromEnvironment,
 			DisableKeepAlives: true,
@@ -56,7 +58,13 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 		},
 	}
 
-	response, err := proxyClient.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		a.Log.Errorf("request: %s", spew.Sdump(req))
+		return "", errors.Errorf("%s: %s", cannotCreateArtifactoryRequest, err)
+	}
+
+	response, err := proxyClient.Do(req)
 	if err != nil {
 		return "", errors.Errorf("%s: %s: %s", cannotGetURL, url, err)
 	}
@@ -68,7 +76,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	_, err = io.Copy(artifactFile, response.Body)
 	if err != nil {
-		a.Log.Debug("response: %s", spew.Sdump(response))
+		a.Log.Error("response: %s", spew.Sdump(response))
 		return "", errors.Errorf("%s: %s", cannotWriteResponseToFile, err)
 	}
 

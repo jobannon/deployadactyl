@@ -16,7 +16,7 @@ const (
 	cannotLogin              = "cannot login to"
 	renamingApp              = "renaming app from %s to %s"
 	renamedApp               = "renamed app from %s to %s"
-	cannotRenameApp          = "rename failed"
+	cannotRenameApp          = "cannot rename, app already exists"
 	pushingNewApp            = "pushing new app %s to %s"
 	newAppPath               = "using tempdir for app %s %s"
 	mappingRoute             = "mapping route for %s to %s"
@@ -25,7 +25,7 @@ const (
 	unableToDelete           = "unable to delete %s: %s"
 	unableToRenameVenerable  = "unable to rename venerable app %s: %s"
 	loggedIntoCloudFoundry   = "logged into cloud foundry %s"
-	notRenamingNewApp        = "new app detected"
+	newAppDetected           = "new app detected"
 	appRouteCreated          = "application route created at %s.%s"
 	outputMessage            = "output from Cloud Foundry:\n"
 	finishedPushSuccessfully = "finished push successfully on %s"
@@ -43,16 +43,16 @@ type Pusher struct {
 //
 // Returns Cloud Foundry logs if there is an error.
 func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) ([]byte, error) {
-	p.Log.Debugf(renamingApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	renameOutput, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	if err != nil {
 		if p.Courier.Exists(deploymentInfo.AppName) {
 			p.Log.Errorf(cannotRenameApp)
 			return nil, errors.New(string(renameOutput))
 		}
-		p.Log.Infof(notRenamingNewApp)
+		p.Log.Infof(newAppDetected)
+	} else {
+		p.Log.Infof(renamedApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	}
-	p.Log.Infof(renamedApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 
 	p.Log.Infof(pushingNewApp, deploymentInfo.AppName, domain)
 	p.Log.Debugf(newAppPath, deploymentInfo.AppName, appPath)

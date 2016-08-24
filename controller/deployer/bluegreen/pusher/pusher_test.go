@@ -125,7 +125,7 @@ var _ = Describe("Pusher", func() {
 			Eventually(responseBuffer).Should(gbytes.Say("push succeeded"))
 			Eventually(responseBuffer).Should(gbytes.Say("mapped route"))
 
-			Eventually(logBuffer).Should(gbytes.Say("renaming app from " + appName + " to " + appNameVenerable))
+			Eventually(logBuffer).Should(gbytes.Say("renamed app from " + appName + " to " + appNameVenerable))
 			Eventually(logBuffer).Should(gbytes.Say("pushing new app " + appName + " to " + domain))
 			Eventually(logBuffer).Should(gbytes.Say("using tempdir for app " + appName + " " + appPath))
 			Eventually(logBuffer).Should(gbytes.Say("push succeeded"))
@@ -145,8 +145,7 @@ var _ = Describe("Pusher", func() {
 				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))
 				Expect(courier.ExistsCall.Received.AppName).To(Equal(appName))
 
-				Eventually(logBuffer).Should(gbytes.Say("renaming app from " + appName + " to " + appNameVenerable))
-				Eventually(logBuffer).Should(gbytes.Say("rename failed"))
+				Eventually(logBuffer).Should(gbytes.Say("cannot rename, app already exists"))
 			})
 
 			It("doesn't fail when it's a new app", func() {
@@ -172,7 +171,6 @@ var _ = Describe("Pusher", func() {
 				Eventually(responseBuffer).Should(gbytes.Say("push succeeded"))
 				Eventually(responseBuffer).Should(gbytes.Say("mapped route"))
 
-				Eventually(logBuffer).Should(gbytes.Say("renaming app from " + appName + " to " + appNameVenerable))
 				Eventually(logBuffer).Should(gbytes.Say("new app detected"))
 				Eventually(logBuffer).Should(gbytes.Say("pushing new app " + appName + " to " + domain))
 				Eventually(logBuffer).Should(gbytes.Say("using tempdir for app " + appName + " " + appPath))

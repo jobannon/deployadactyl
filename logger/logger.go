@@ -13,7 +13,7 @@ func DefaultLogger(out io.Writer, level logging.Level, module string) *logging.L
 	var log = logging.MustGetLogger(module)
 
 	var format = logging.MustStringFormatter(
-		`%{color}%{time:2006/01/02 15:04:05} %{level:.4s} ▶ (%{shortfunc}) %{color:reset}%{message}`,
+		`%{time:2006/01/02 15:04:05} %{level:.4s} ▶ (%{shortfunc}) %{message}`,
 	)
 
 	backend := logging.NewLogBackend(out, "", 0)

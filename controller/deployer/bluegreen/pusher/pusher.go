@@ -82,8 +82,8 @@ func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, ou
 	return nil, nil
 }
 
-// FinishPush will delete the venerable instance of your application.
-func (p Pusher) FinishPush(deploymentInfo S.DeploymentInfo, foundationURL string) error {
+// DeleteVenerable will delete the venerable instance of your application.
+func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo, foundationURL string) error {
 	venerableName := deploymentInfo.AppName + "-venerable"
 
 	_, err := p.Courier.Delete(deploymentInfo.AppName + "-venerable")

@@ -204,7 +204,7 @@ var _ = Describe("Pusher", func() {
 			courier.DeleteCall.Returns.Output = nil
 			courier.DeleteCall.Returns.Error = nil
 
-			Expect(pusher.FinishPush(deploymentInfo, foundationURL)).To(Succeed())
+			Expect(pusher.DeleteVenerable(deploymentInfo, foundationURL)).To(Succeed())
 
 			Expect(courier.DeleteCall.Received.AppName).To(Equal(appNameVenerable))
 

@@ -169,7 +169,7 @@ func (bg BlueGreen) rollbackAll(actors []actor, deploymentInfo S.DeploymentInfo,
 func (bg BlueGreen) finishPushAll(actors []actor, deploymentInfo S.DeploymentInfo) {
 	for _, a := range actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.FinishPush(deploymentInfo, foundationURL)
+			return pusher.DeleteVenerable(deploymentInfo, foundationURL)
 		}
 	}
 	for _, a := range actors {

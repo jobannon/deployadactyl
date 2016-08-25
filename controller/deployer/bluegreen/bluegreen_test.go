@@ -120,7 +120,7 @@ var _ = Describe("Bluegreen", func() {
 			pusher.LoginCall.Returns.Error = nil
 			pusher.PushCall.Write.Output = pushOutput
 			pusher.PushCall.Returns.Error = nil
-			pusher.FinishPushCall.Returns.Error = nil
+			pusher.DeleteVenerableCall.Returns.Error = nil
 			pusher.CleanUpCall.Returns.Error = nil
 
 			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).To(Succeed())
@@ -131,7 +131,7 @@ var _ = Describe("Bluegreen", func() {
 			Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 			Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 			Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-			Expect(pusher.FinishPushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			Expect(pusher.DeleteVenerableCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 
 			Expect(buffer.String()).To(Equal(loginOutput + pushOutput))
 		})
@@ -149,7 +149,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.LoginCall.Returns.Error = nil
 				pusher.PushCall.Write.Output = pushOutput
 				pusher.PushCall.Returns.Error = nil
-				pusher.FinishPushCall.Returns.Error = nil
+				pusher.DeleteVenerableCall.Returns.Error = nil
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
@@ -164,7 +164,7 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.FinishPushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.DeleteVenerableCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			}
 
@@ -186,7 +186,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.ExistsCall.Returns.Exists = true
 				pusher.PushCall.Write.Output = pushOutput
 				pusher.PushCall.Returns.Error = nil
-				pusher.FinishPushCall.Returns.Error = nil
+				pusher.DeleteVenerableCall.Returns.Error = nil
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
@@ -202,7 +202,7 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.FinishPushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(pusher.DeleteVenerableCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			}
 		})

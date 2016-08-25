@@ -14,6 +14,19 @@ Deployadactyl is a Go library for deploying applications to multiple [Cloud Foun
 
 Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to push your application. The general flow is to get a list of Cloud Foundry instances, check that the instances are available, download your artifact, log into each instance, and concurrently call `cf push` in the deploying applications directory. If your application fails to deploy on any instance, Deployadactyl will automatically roll the application back to the previous version.
 
+## Why Use Deployadactyl?
+
+As an application grows, it will have multiple foundations for each environment. These scaling foundations make deploying an application time consuming and difficult to manage. If any errors occur during a deployment it can greatly increase downtime. 
+
+Deployadactyl makes the process easy and efficient with:
+
+- Management of multiple environment configurations
+- Concurrent deployments across environment foundations
+- Automatic rollbacks for failures or errors
+- Prechecking foundation availablity before deployments
+- Event handlers for third-party services
+
+
 ## Usage Requirements
 
 

@@ -49,7 +49,7 @@ The configuration file can be placed anywhere within your project directory as l
 |`name`|**Required**|`string`| Used in the deploy when the users are sending a request to Deployadactyl to specify which environment from the config they want to use.|
 |`domain`|**Required**|`string`| Used to specify a load balanced URL that has previously been created on the Cloud Foundry instances.|
 |`foundations` |**Required**|`[]string`|A list of Cloud Foundry instance URLs.|
-|`authenticate` |*Optional*|`bool`| Used to specify if basic authentication is required for users. See the [authentication section](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-v1#authentication) in the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) for more details|
+|`authenticate` |*Optional*|`bool`| Used to specify if basic authentication is required for users. See the [authentication section](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-v1.0.0#authentication) in the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) for more details|
 |`skip_ssl` |*Optional*|`bool`| Used to skip SSL verification when Deployadactyl logs into Cloud Foundry.|
 |`disable_first_deploy_rollback` |*Optional*|`bool`| Used to disable automatic rollback on first deploy so that initial logs are kept.|
 

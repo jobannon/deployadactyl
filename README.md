@@ -52,7 +52,7 @@ The configuration file can be placed anywhere within your project directory as l
 |`authenticate` |*Optional*|`bool`| Used to specify if basic authentication is required for users. See the [authentication section](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-v1.0.0#authentication) in the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) for more details|
 |`skip_ssl` |*Optional*|`bool`| Used to skip SSL verification when Deployadactyl logs into Cloud Foundry.|
 |`disable_first_deploy_rollback` |*Optional*|`bool`| Used to disable automatic rollback on first deploy so that initial logs are kept.|
-|`number_of_instances` |*Optional*|`int`| Used to set the number of instances an application is deployed with. If the number of instances is specified in a Cloud Foundry manifest, that will be used instead. |
+|`instances` |*Optional*|`int`| Used to set the number of instances an application is deployed with. If the number of instances is specified in a Cloud Foundry manifest, that will be used instead. |
 
 #### Example Configuration Yaml
 
@@ -67,7 +67,7 @@ environments:
     authenticate: false
     skip_ssl: true
     disable_first_deploy_rollback: true
-    number_of_instances: 2
+    instances: 2
 
   - name: production
     domain: production.example.com
@@ -79,7 +79,7 @@ environments:
     authenticate: true
     skip_ssl: false
     disable_first_deploy_rollback: false
-    number_of_instances: 4
+    instances: 4
 ```
 
 #### Environment Variables

@@ -1,7 +1,11 @@
 // Package courier interfaces with the Executor to run specific Cloud Foundry CLI commands.
 package courier
 
-import I "github.com/compozed/deployadactyl/interfaces"
+import (
+	"fmt"
+
+	I "github.com/compozed/deployadactyl/interfaces"
+)
 
 // Courier has an Executor to execute Cloud Foundry commands.
 type Courier struct {
@@ -30,8 +34,8 @@ func (c Courier) Delete(appName string) ([]byte, error) {
 // Push runs the Cloud Foundry push command.
 //
 // Returns the combined standard output and standard error.
-func (c Courier) Push(appName, appLocation string) ([]byte, error) {
-	return c.Executor.ExecuteInDirectory(appLocation, "push", appName)
+func (c Courier) Push(appName, appLocation string, instances uint16) ([]byte, error) {
+	return c.Executor.ExecuteInDirectory(appLocation, "push", appName, "-i", fmt.Sprint(instances))
 }
 
 // Rename runs the Cloud Foundry rename command.

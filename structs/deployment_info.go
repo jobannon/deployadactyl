@@ -13,6 +13,7 @@ type DeploymentInfo struct {
 	AppName     string
 	UUID        string
 	SkipSSL     bool
+	Instances   uint16
 
 	// Generic map used for users to provide their own deployment properties in JSON format.
 	Data map[string]interface{} `json:"data"`

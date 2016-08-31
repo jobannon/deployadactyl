@@ -51,7 +51,7 @@ applications:
 
 				result := GetInstances(manifest)
 
-				Expect(*result).To(Equal(2))
+				Expect(*result).To(Equal(uint16(2)))
 			})
 		})
 
@@ -94,7 +94,7 @@ applications:
 
 				result := GetInstances(manifest)
 
-				Expect(*result).To(Equal(2))
+				Expect(*result).To(Equal(uint16(2)))
 			})
 		})
 	})

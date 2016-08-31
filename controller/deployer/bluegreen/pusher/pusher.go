@@ -56,7 +56,7 @@ func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, ou
 
 	p.Log.Infof(pushingNewApp, deploymentInfo.AppName, domain)
 	p.Log.Debugf(newAppPath, deploymentInfo.AppName, appPath)
-	pushOutput, err := p.Courier.Push(deploymentInfo.AppName, appPath)
+	pushOutput, err := p.Courier.Push(deploymentInfo.AppName, appPath, deploymentInfo.Instances)
 	fmt.Fprint(out, string(pushOutput))
 	if err != nil {
 		logs, err := p.getCloudFoundryLogs(deploymentInfo.AppName)

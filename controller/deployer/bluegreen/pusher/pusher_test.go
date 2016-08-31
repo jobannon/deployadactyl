@@ -2,6 +2,7 @@ package pusher_test
 
 import (
 	"errors"
+	"math/rand"
 
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/logger"
@@ -30,6 +31,7 @@ var _ = Describe("Pusher", func() {
 		appPath          string
 		appName          string
 		appNameVenerable string
+		instances        uint16
 		deploymentInfo   S.DeploymentInfo
 		responseBuffer   *gbytes.Buffer
 		logBuffer        *gbytes.Buffer
@@ -47,6 +49,7 @@ var _ = Describe("Pusher", func() {
 		appPath = "appPath-" + randomizer.StringRunes(10)
 		appName = "appName-" + randomizer.StringRunes(10)
 		appNameVenerable = appName + "-venerable"
+		instances = uint16(rand.Uint32())
 		responseBuffer = gbytes.NewBuffer()
 
 		logBuffer = gbytes.NewBuffer()
@@ -56,12 +59,13 @@ var _ = Describe("Pusher", func() {
 		}
 
 		deploymentInfo = S.DeploymentInfo{
-			Username: username,
-			Password: password,
-			Org:      org,
-			Space:    space,
-			AppName:  appName,
-			SkipSSL:  skipSSL,
+			Username:  username,
+			Password:  password,
+			Org:       org,
+			Space:     space,
+			AppName:   appName,
+			SkipSSL:   skipSSL,
+			Instances: instances,
 		}
 	})
 
@@ -119,6 +123,7 @@ var _ = Describe("Pusher", func() {
 			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))
 			Expect(courier.PushCall.Received.AppName).To(Equal(appName))
 			Expect(courier.PushCall.Received.AppPath).To(Equal(appPath))
+			Expect(courier.PushCall.Received.Instances).To(Equal(instances))
 			Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName))
 			Expect(courier.MapRouteCall.Received.Domain).To(Equal(domain))
 

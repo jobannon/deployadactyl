@@ -22,7 +22,7 @@ environments:
   - api1.example.com
   - api2.example.com
   skip_ssl: true
-  number_of_instances: 3
+  instances: 3
 - name: Prod
   domain: example.com
   foundations:
@@ -51,11 +51,11 @@ var _ = Describe("Config", func() {
 
 		envMap = map[string]Environment{
 			"test": Environment{
-				Name:              "Test",
-				Foundations:       []string{"api1.example.com", "api2.example.com"},
-				Domain:            "test.example.com",
-				SkipSSL:           true,
-				NumberOfInstances: 3,
+				Name:        "Test",
+				Foundations: []string{"api1.example.com", "api2.example.com"},
+				Domain:      "test.example.com",
+				SkipSSL:     true,
+				Instances:   3,
 			},
 			"prod": Environment{
 				Name:                       "Prod",
@@ -63,7 +63,7 @@ var _ = Describe("Config", func() {
 				Domain:                     "example.com",
 				SkipSSL:                    false,
 				DisableFirstDeployRollback: true,
-				NumberOfInstances:          1,
+				Instances:                  1,
 			},
 		}
 
@@ -175,7 +175,7 @@ environments:
 		})
 
 		Context("when the number of instances is zero", func() {
-			It("sets the number of instances to 1", func() {
+			It("sets the number of instances to one", func() {
 				env.GetCall.Returns.Values["CF_USERNAME"] = cfUsername
 				env.GetCall.Returns.Values["CF_PASSWORD"] = cfPassword
 
@@ -186,14 +186,14 @@ environments:
   - api1.example.com
   - api2.example.com
   domain: example.com
-  number_of_instances: 0
+  instances: 0
 `
 
 				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 
 				badConfig, err := Custom(env.Get, badConfigPath)
 
-				Expect(badConfig.Environments["production"].NumberOfInstances).To(Equal(1))
+				Expect(badConfig.Environments["production"].Instances).To(Equal(uint16(1)))
 				Expect(err).ToNot(HaveOccurred())
 
 			})

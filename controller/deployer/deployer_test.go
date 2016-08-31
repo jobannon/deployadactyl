@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 
@@ -56,6 +57,7 @@ var _ = Describe("Deployer", func() {
 		space           string
 		username        string
 		uuid            string
+		instances       uint16
 		password        string
 		buffer          *bytes.Buffer
 
@@ -84,6 +86,7 @@ var _ = Describe("Deployer", func() {
 		space = "space-" + randomizer.StringRunes(10)
 		username = "username-" + randomizer.StringRunes(10)
 		uuid = "uuid-" + randomizer.StringRunes(10)
+		instances = uint16(rand.Uint32())
 
 		randomizerMock.RandomizeCall.Returns.Runes = uuid
 
@@ -105,6 +108,8 @@ var _ = Describe("Deployer", func() {
 			Space:       space,
 			AppName:     appName,
 			UUID:        uuid,
+			Instances:   instances,
+			Manifest:    "",
 		}
 
 		deployEventData = S.DeployEventData{
@@ -126,6 +131,7 @@ var _ = Describe("Deployer", func() {
 			Name:        environmentName,
 			Domain:      domain,
 			Foundations: foundations,
+			Instances:   instances,
 		}
 
 		c = config.Config{
@@ -484,6 +490,47 @@ var _ = Describe("Deployer", func() {
 			Expect(buffer).To(ContainSubstring(appName))
 
 			Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
+		})
+	})
+
+	Describe("setting number of instances in deployment", func() {
+		Context("when a manifest with instances is provided", func() {
+			It("uses manifest instances", func() {
+				deploymentInfo.Manifest = `---
+applications:
+- name: deployadactyl
+  instances: 1337
+`
+				Expect(ioutil.WriteFile(testManifestFile, []byte(deploymentInfo.Manifest), 0644)).To(Succeed())
+
+				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+				reqBuffer = bytes.NewBufferString(fmt.Sprintf(`{
+	 					"artifact_url": "%s",
+	 					"manifest": "%s"
+	 				}`,
+					artifactURL,
+					base64Manifest,
+				))
+				req, _ = http.NewRequest("POST", "", reqBuffer)
+
+				err, _ := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(blueGreener.PushCall.Received.DeploymentInfo.Instances).To(Equal(uint16(1337)))
+			})
+		})
+
+		Context("when manifest is empty", func() {
+			It("uses config instances", func() {
+				instancesManifest := ""
+				Expect(ioutil.WriteFile(testManifestFile, []byte(instancesManifest), 0644)).To(Succeed())
+
+				err, _ := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(blueGreener.PushCall.Received.DeploymentInfo.Instances).To(Equal(instances))
+			})
 		})
 	})
 })

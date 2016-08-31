@@ -1,6 +1,9 @@
 package courier_test
 
 import (
+	"fmt"
+	"math/rand"
+
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
@@ -88,13 +91,14 @@ var _ = Describe("Courier", func() {
 		It("should get a valid Cloud Foundry push command", func() {
 			var (
 				appLocation  = "appLocation-" + randomizer.StringRunes(10)
-				expectedArgs = []string{"push", appName}
+				instances    = uint16(rand.Uint32())
+				expectedArgs = []string{"push", appName, "-i", fmt.Sprint(instances)}
 			)
 
 			executor.ExecuteInDirectoryCall.Returns.Output = []byte(output)
 			executor.ExecuteInDirectoryCall.Returns.Error = nil
 
-			out, err := courier.Push(appName, appLocation)
+			out, err := courier.Push(appName, appLocation, instances)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteInDirectoryCall.Received.Args).To(Equal(expectedArgs))

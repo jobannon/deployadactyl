@@ -37,7 +37,7 @@ type Environment struct {
 	Authenticate               bool
 	SkipSSL                    bool `yaml:"skip_ssl"`
 	DisableFirstDeployRollback bool `yaml:"disable_first_deploy_rollback"`
-	NumberOfInstances          int  `yaml:"number_of_instances"`
+	Instances                  uint16
 }
 
 type configYaml struct {
@@ -125,8 +125,8 @@ func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
 			return nil, errors.New("missing required parameter in the environments key")
 		}
 
-		if environment.NumberOfInstances < 1 {
-			environment.NumberOfInstances = 1
+		if environment.Instances < 1 {
+			environment.Instances = 1
 		}
 
 		environments[strings.ToLower(environment.Name)] = environment

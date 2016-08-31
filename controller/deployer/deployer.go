@@ -12,6 +12,7 @@ import (
 	"regexp"
 
 	"github.com/compozed/deployadactyl/config"
+	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
 	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
@@ -91,6 +92,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 	deploymentInfo.AppName = appName
 	deploymentInfo.UUID = d.Randomizer.StringRunes(128)
 	deploymentInfo.SkipSSL = environments[environmentName].SkipSSL
+	deploymentInfo.Instances = 1
 
 	if isZipRequest(contentType) {
 		deploymentInfo.ArtifactURL = "Local Developer App Deploy " + appPath
@@ -170,6 +172,13 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 		err = errors.Errorf("%s: %s", environmentNotFound, deploymentInfo.Environment)
 		fmt.Fprintln(out, err)
 		return err, http.StatusInternalServerError
+	}
+
+	instances := manifestro.GetInstances(deploymentInfo.Manifest)
+	if instances != nil {
+		deploymentInfo.Instances = *instances
+	} else {
+		deploymentInfo.Instances = environments[environmentName].Instances
 	}
 
 	err = d.Prechecker.AssertAllFoundationsUp(environment)

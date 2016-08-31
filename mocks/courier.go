@@ -29,8 +29,9 @@ type Courier struct {
 
 	PushCall struct {
 		Received struct {
-			AppName string
-			AppPath string
+			AppName   string
+			AppPath   string
+			Instances uint16
 		}
 		Returns struct {
 			Output []byte
@@ -106,9 +107,10 @@ func (c *Courier) Delete(appName string) ([]byte, error) {
 }
 
 // Push mock method.
-func (c *Courier) Push(appName, appLocation string) ([]byte, error) {
+func (c *Courier) Push(appName, appLocation string, instances uint16) ([]byte, error) {
 	c.PushCall.Received.AppName = appName
 	c.PushCall.Received.AppPath = appLocation
+	c.PushCall.Received.Instances = instances
 
 	return c.PushCall.Returns.Output, c.PushCall.Returns.Error
 }

@@ -37,6 +37,7 @@ type Environment struct {
 	Authenticate               bool
 	SkipSSL                    bool `yaml:"skip_ssl"`
 	DisableFirstDeployRollback bool `yaml:"disable_first_deploy_rollback"`
+	NumberOfInstances          int  `yaml:"number_of_instances"`
 }
 
 type configYaml struct {
@@ -121,7 +122,11 @@ func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
 	environments := map[string]Environment{}
 	for _, environment := range foundationConfig.Environments {
 		if environment.Name == "" || environment.Domain == "" || environment.Foundations == nil || len(environment.Foundations) == 0 {
-			return nil, errors.Errorf("missing required parameter in the environments key")
+			return nil, errors.New("missing required parameter in the environments key")
+		}
+
+		if environment.NumberOfInstances < 1 {
+			environment.NumberOfInstances = 1
 		}
 
 		environments[strings.ToLower(environment.Name)] = environment
@@ -132,6 +137,7 @@ func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
 
 func parseYamlFromBody(data []byte) (configYaml, error) {
 	var foundationConfig configYaml
+
 	err := candiedyaml.Unmarshal(data, &foundationConfig)
 	if err != nil {
 		return configYaml{}, errors.Errorf("%s: %s", cannotParseYamlFile, err)

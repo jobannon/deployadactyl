@@ -22,12 +22,14 @@ environments:
   - api1.example.com
   - api2.example.com
   skip_ssl: true
+  number_of_instances: 3
 - name: Prod
   domain: example.com
   foundations:
   - api3.example.com
   - api4.example.com
   skip_ssl: false
+  disable_first_deploy_rollback: true
 `
 	badConfigPath = "./test_bad_config.yml"
 )
@@ -49,16 +51,19 @@ var _ = Describe("Config", func() {
 
 		envMap = map[string]Environment{
 			"test": Environment{
-				Name:        "Test",
-				Foundations: []string{"api1.example.com", "api2.example.com"},
-				Domain:      "test.example.com",
-				SkipSSL:     true,
+				Name:              "Test",
+				Foundations:       []string{"api1.example.com", "api2.example.com"},
+				Domain:            "test.example.com",
+				SkipSSL:           true,
+				NumberOfInstances: 3,
 			},
 			"prod": Environment{
-				Name:        "Prod",
-				Foundations: []string{"api3.example.com", "api4.example.com"},
-				Domain:      "example.com",
-				SkipSSL:     false,
+				Name:                       "Prod",
+				Foundations:                []string{"api3.example.com", "api4.example.com"},
+				Domain:                     "example.com",
+				SkipSSL:                    false,
+				DisableFirstDeployRollback: true,
+				NumberOfInstances:          1,
 			},
 		}
 
@@ -166,6 +171,31 @@ environments:
 				Expect(err).To(MatchError("missing required parameter in the environments key"))
 
 				Expect(badConfig.Environments).To(BeEmpty())
+			})
+		})
+
+		Context("when the number of instances is zero", func() {
+			It("sets the number of instances to 1", func() {
+				env.GetCall.Returns.Values["CF_USERNAME"] = cfUsername
+				env.GetCall.Returns.Values["CF_PASSWORD"] = cfPassword
+
+				testBadConfig := `---
+environments:
+- name: production
+  foundations:
+  - api1.example.com
+  - api2.example.com
+  domain: example.com
+  number_of_instances: 0
+`
+
+				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
+
+				badConfig, err := Custom(env.Get, badConfigPath)
+
+				Expect(badConfig.Environments["production"].NumberOfInstances).To(Equal(1))
+				Expect(err).ToNot(HaveOccurred())
+
 			})
 		})
 	})

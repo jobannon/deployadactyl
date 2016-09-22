@@ -287,7 +287,7 @@ var _ = Describe("Deployer", func() {
 
 	Describe("deploy zip", func() {
 		Context("when all applications start correctly", func() {
-			It("accepts the request with a http.StatusOK OK", func() {
+			It("accepts the request with a http.StatusOK", func() {
 				eventManager.EmitCall.Returns.Error = nil
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 				blueGreener.PushCall.Returns.Error = nil
@@ -323,7 +323,7 @@ var _ = Describe("Deployer", func() {
 		})
 
 		Context("push fails", func() {
-			It("rejects the request with a http.StatusInternalServerError Internal Server Error", func() {
+			It("rejects the request with a http.StatusInternalServerError", func() {
 				eventManager.EmitCall.Returns.Error = nil
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 
@@ -347,7 +347,7 @@ var _ = Describe("Deployer", func() {
 		})
 
 		Context("deploy event handler fails", func() {
-			It("rejects the request with a http.StatusInternalServerError Internal Server Error", func() {
+			It("rejects the request with a http.StatusInternalServerError", func() {
 				eventManager.EmitCall.Returns.Error = errors.New("event error")
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 
@@ -364,7 +364,7 @@ var _ = Describe("Deployer", func() {
 	})
 
 	Context("when authentication is required and a username and password are provided", func() {
-		It("accepts the request with a http.StatusOK OK", func() {
+		It("accepts the request with a http.StatusOK", func() {
 			eventManager.EmitCall.Returns.Error = nil
 
 			By("setting authenticate to true")
@@ -387,7 +387,7 @@ var _ = Describe("Deployer", func() {
 
 	Context("when authentication is required", func() {
 		Context("a username and password are not provided", func() {
-			It("rejects the request with a http.StatusUnauthorized unauthorized", func() {
+			It("rejects the request with a http.StatusUnauthorized", func() {
 				By("setting authenticate to true")
 				deployer.Config.Environments[environmentName] = config.Environment{Authenticate: true}
 
@@ -402,7 +402,7 @@ var _ = Describe("Deployer", func() {
 		})
 
 		Context("the username and password are incorrect", func() {
-			It("rejects the request with a http.StatusUnauthorized unauthorized", func() {
+			It("rejects the request with a http.StatusUnauthorized", func() {
 				eventManager.EmitCall.Returns.Error = nil
 				fetcher.FetchCall.Returns.AppPath = appPath
 				fetcher.FetchCall.Returns.Error = nil
@@ -418,7 +418,7 @@ var _ = Describe("Deployer", func() {
 
 				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)
 				Expect(err).To(MatchError("push failed: login failed"))
-				Expect(statusCode).To(Equal(http.StatusUnauthorized))
+				Expect(statusCode).To(Equal(http.StatusBadRequest))
 
 				Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
 			})
@@ -426,7 +426,7 @@ var _ = Describe("Deployer", func() {
 	})
 
 	Context("when authentication is not required", func() {
-		It("uses the config username and password and accepts the request with a http.StatusOK OK", func() {
+		It("uses the config username and password and accepts the request with a http.StatusOK", func() {
 			eventManager.EmitCall.Returns.Error = nil
 
 			By("setting authenticate to true")
@@ -463,7 +463,7 @@ var _ = Describe("Deployer", func() {
 	})
 
 	Context("deployer prechecker fails", func() {
-		It("rejects the request with a http.StatusInternalServerError Internal Server Error", func() {
+		It("rejects the request with a http.StatusInternalServerError", func() {
 			prechecker.AssertAllFoundationsUpCall.Returns.Error = errors.New(deployAborted)
 
 			err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, "", jsonRequest, buffer)

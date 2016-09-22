@@ -215,7 +215,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 	err = d.BlueGreener.Push(environment, appPath, deploymentInfo, out)
 	if err != nil {
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
-			return err, http.StatusUnauthorized
+			return err, http.StatusBadRequest
 		}
 		return err, http.StatusInternalServerError
 	}

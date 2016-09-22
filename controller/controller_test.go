@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	deployerNotEnoughCalls = "event manager didn't have the right number of calls"
+	deployerNotEnoughCalls = "deployer didn't have the right number of calls"
 )
 
 var _ = Describe("Controller", func() {
@@ -109,7 +109,6 @@ var _ = Describe("Controller", func() {
 
 				Expect(deployer.DeployCall.TimesCalled).To(Equal(1), deployerNotEnoughCalls)
 				Expect(resp.Code).To(Equal(200))
-				Expect(resp.Body).To(ContainSubstring("deploy successful"))
 			})
 		})
 
@@ -151,7 +150,6 @@ var _ = Describe("Controller", func() {
 
 				Expect(deployer.DeployCall.TimesCalled).To(Equal(1), deployerNotEnoughCalls)
 				Expect(resp.Code).To(Equal(200))
-				Expect(resp.Body).To(ContainSubstring("deploy successful"))
 			})
 		})
 
@@ -226,7 +224,6 @@ var _ = Describe("Controller", func() {
 
 			router.ServeHTTP(resp, req)
 
-			Expect(deployer.DeployCall.TimesCalled).To(Equal(0), deployerNotEnoughCalls)
 			Expect(deployer.DeployCall.TimesCalled).To(Equal(0), deployerNotEnoughCalls)
 			Expect(resp.Code).To(Equal(400))
 			Expect(resp.Body).To(ContainSubstring("content type not supported - must be application/json or application/zip"))

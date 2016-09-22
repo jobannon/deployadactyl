@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	successfulDeploy          = "deploy successful"
 	cannotDeployApplication   = "cannot deploy application"
 	requestBodyEmpty          = "request body is empty"
 	cannotReadFileFromRequest = "cannot read file from request"
@@ -45,49 +44,43 @@ func (c *Controller) Deploy(g *gin.Context) {
 		buffer          = &bytes.Buffer{}
 		err             error
 		statusCode      int
+		appPath         string
 	)
 
 	defer io.Copy(g.Writer, buffer)
 
 	contentType := g.Request.Header.Get("Content-Type")
-	if contentType == "application/json" {
-		err, statusCode = c.Deployer.Deploy(g.Request, environmentName, org, space, appName, "", contentType, buffer)
+	if isZipRequest(contentType) {
+
+		if g.Request.Body == nil {
+			logError(requestBodyEmpty, http.StatusBadRequest, errors.New("request body required"), g, c.Log)
+			return
+		}
+
+		f, err := ioutil.ReadAll(g.Request.Body)
 		if err != nil {
-			logError(cannotDeployApplication, statusCode, err, g, c.Log)
+			logError(cannotReadFileFromRequest, http.StatusInternalServerError, err, g, c.Log)
 			return
 		}
-		g.Writer.WriteHeader(statusCode)
-		g.Writer.WriteString(successfulDeploy + "\n")
-		return
-	} else if contentType == "application/zip" {
-		if g.Request.Body != nil {
-			f, err := ioutil.ReadAll(g.Request.Body)
-			if err != nil {
-				logError(cannotReadFileFromRequest, http.StatusInternalServerError, err, g, c.Log)
-				return
-			}
 
-			appPath, err := c.Fetcher.FetchFromZip(f)
-			if err != nil {
-				logError(cannotProcessZipFile, http.StatusInternalServerError, err, g, c.Log)
-				return
-			}
-			defer os.RemoveAll(appPath)
-
-			err, statusCode = c.Deployer.Deploy(g.Request, environmentName, org, space, appName, appPath, contentType, buffer)
-
-			if err != nil {
-				logError(cannotDeployApplication, statusCode, err, g, c.Log)
-				return
-			}
-			g.Writer.WriteHeader(statusCode)
-			g.Writer.WriteString(successfulDeploy + "\n")
+		appPath, err = c.Fetcher.FetchFromZip(f)
+		defer os.RemoveAll(appPath)
+		if err != nil {
+			logError(cannotProcessZipFile, http.StatusInternalServerError, err, g, c.Log)
 			return
 		}
-		logError(requestBodyEmpty, http.StatusBadRequest, errors.New("request body required"), g, c.Log)
+	} else if !isJsonRequest(contentType) {
+		logError(contentTypeNotSupported, http.StatusBadRequest, errors.New("must be application/json or application/zip"), g, c.Log)
 		return
 	}
-	logError(contentTypeNotSupported, http.StatusBadRequest, errors.New("must be application/json or application/zip"), g, c.Log)
+
+	err, statusCode = c.Deployer.Deploy(g.Request, environmentName, org, space, appName, appPath, contentType, buffer)
+	if err != nil {
+		logError(cannotDeployApplication, statusCode, err, g, c.Log)
+		return
+	}
+
+	g.Writer.WriteHeader(statusCode)
 }
 
 func logError(message string, statusCode int, err error, g *gin.Context, l *logging.Logger) {
@@ -95,4 +88,12 @@ func logError(message string, statusCode int, err error, g *gin.Context, l *logg
 	g.Writer.WriteHeader(statusCode)
 	g.Writer.WriteString(message + " - " + err.Error() + "\n")
 	g.Error(err)
+}
+
+func isZipRequest(contentType string) bool {
+	return contentType == "application/zip"
+}
+
+func isJsonRequest(contentType string) bool {
+	return contentType == "application/json"
 }

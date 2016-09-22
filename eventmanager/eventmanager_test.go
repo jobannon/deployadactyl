@@ -8,7 +8,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
 
-	. "github.com/compozed/deployadactyl/controller/deployer/eventmanager"
+	. "github.com/compozed/deployadactyl/eventmanager"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"

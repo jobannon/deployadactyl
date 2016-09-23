@@ -8,7 +8,28 @@
 [![CircleCI](https://circleci.com/gh/compozed/deployadactyl.svg?style=svg&circle-token=0eab8bce42440217fb24ffd8ffdc2b44932125d5)](https://circleci.com/gh/compozed/deployadactyl)
 [![Stories in Ready](https://badge.waffle.io/compozed/deployadactyl.png?label=ready&title=Ready)](https://waffle.io/compozed/deployadactyl)
 
-Deployadactyl is a Go library for deploying applications to multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push your application it will rollback to the previous version. Deployadactyl utilizes Gochannels for concurrent deployments across the multiple Cloud Foundry instances.
+Deployadactyl is a Go library for deploying applications to multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push your application it will rollback to the previous version. It also utilizes Go channels for concurrent deployments across the multiple Cloud Foundry instances.
+
+<!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
+
+- [How It Works](#how-it-works)
+- [Why Use Deployadactyl?](#why-use-deployadactyl)
+- [Usage Requirements](#usage-requirements)
+	- [Dependencies](#dependencies)
+	- [Configuration File](#configuration-file)
+		- [Example Configuration Yaml](#example-configuration-yaml)
+		- [Environment Variables](#environment-variables)
+- [How To Run Deployadactyl](#how-to-run-deployadactyl)
+	- [Available Flags](#available-flags)
+	- [API](#api)
+		- [Example Curl](#example-curl)
+- [Event Handling](#event-handling)
+	- [Available Emitted Event Types](#available-emitted-event-types)
+	- [Event Handler Example](#event-handler-example)
+	- [Event Handling Example](#event-handling-example)
+- [Contributing](#contributing)
+
+<!-- /TOC -->
 
 ## How It Works
 
@@ -16,7 +37,7 @@ Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundr
 
 ## Why Use Deployadactyl?
 
-As an application grows, it will have multiple foundations for each environment. These scaling foundations make deploying an application time consuming and difficult to manage. If any errors occur during a deployment it can greatly increase downtime. 
+As an application grows, it will have multiple foundations for each environment. These scaling foundations make deploying an application time consuming and difficult to manage. If any errors occur during a deployment it can greatly increase downtime.
 
 Deployadactyl makes the process easy and efficient with:
 
@@ -107,7 +128,7 @@ or
 $ go build && ./deployadactyl
 ```
 
-#### Available Flags
+### Available Flags
 
 |**Flag**|**Usage**|
 |---|---|

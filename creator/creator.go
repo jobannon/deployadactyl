@@ -37,6 +37,7 @@ type Creator struct {
 	eventManager I.EventManager
 	logger       *logging.Logger
 	writer       io.Writer
+	fileSystem   *afero.Afero
 }
 
 // Default returns a default Creator and an Error.
@@ -94,8 +95,7 @@ func (c Creator) CreateListener() net.Listener {
 //
 // Returns a pusher and error.
 func (c Creator) CreatePusher() (I.Pusher, error) {
-	fs := &afero.Afero{Fs: afero.NewOsFs()}
-	ex, err := executor.New(fs)
+	ex, err := executor.New(c.CreateFileSystem())
 	if err != nil {
 		return nil, err
 	}
@@ -144,15 +144,16 @@ func (c Creator) createDeployer() I.Deployer {
 		EventManager: c.CreateEventManager(),
 		Randomizer:   c.createRandomizer(),
 		Log:          c.CreateLogger(),
+		FileSystem:   c.CreateFileSystem(),
 	}
 }
 
 func (c Creator) createFetcher() I.Fetcher {
 	return &artifetcher.Artifetcher{
-		FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+		FileSystem: c.CreateFileSystem(),
 		Extractor: &extractor.Extractor{
 			Log:        c.CreateLogger(),
-			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+			FileSystem: c.CreateFileSystem(),
 		},
 		Log: c.CreateLogger(),
 	}
@@ -191,8 +192,13 @@ func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
 		eventManager,
 		logger,
 		os.Stdout,
+		&afero.Afero{Fs: afero.NewOsFs()},
 	}, nil
 
+}
+
+func (c Creator) CreateFileSystem() *afero.Afero {
+	return c.fileSystem
 }
 
 func ensureCLI() error {

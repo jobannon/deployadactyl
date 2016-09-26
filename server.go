@@ -41,11 +41,11 @@ func main() {
 	// add your event handling here
 
 	l := c.CreateListener()
-	dh := c.CreateControllerHandler()
+	deploy := c.CreateControllerHandler()
 
 	log.Infof("Listening on Port %d", c.CreateConfig().Port)
 
-	err = http.Serve(l, dh)
+	err = http.Serve(l, deploy)
 	if err != nil {
 		log.Fatal(err)
 	}

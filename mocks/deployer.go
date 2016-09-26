@@ -16,7 +16,6 @@ type Deployer struct {
 			Org             string
 			Space           string
 			AppName         string
-			AppPath         string
 			ContentType     string
 			Out             io.Writer
 		}
@@ -31,7 +30,7 @@ type Deployer struct {
 }
 
 // Deploy mock method.
-func (d *Deployer) Deploy(req *http.Request, environmentName, org, space, appName, appPath, contentType string, out io.Writer) (err error, statusCode int) {
+func (d *Deployer) Deploy(req *http.Request, environmentName, org, space, appName, contentType string, out io.Writer) (err error, statusCode int) {
 	defer func() { d.DeployCall.TimesCalled++ }()
 
 	d.DeployCall.Received.Request = req
@@ -39,7 +38,6 @@ func (d *Deployer) Deploy(req *http.Request, environmentName, org, space, appNam
 	d.DeployCall.Received.Org = org
 	d.DeployCall.Received.Space = space
 	d.DeployCall.Received.AppName = appName
-	d.DeployCall.Received.AppPath = appPath
 	d.DeployCall.Received.ContentType = contentType
 	d.DeployCall.Received.Out = out
 

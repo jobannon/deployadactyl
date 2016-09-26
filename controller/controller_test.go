@@ -142,10 +142,6 @@ var _ = Describe("Controller", func() {
 
 				deployer.DeployCall.Received.Request = req
 
-				fetcher.FetchFromZipCall.Received.RequestBody = nil
-				fetcher.FetchFromZipCall.Returns.AppPath = "appPath-" + randomizer.StringRunes(10)
-				fetcher.FetchFromZipCall.Returns.Error = nil
-
 				router.ServeHTTP(resp, req)
 
 				Expect(deployer.DeployCall.TimesCalled).To(Equal(1), deployerNotEnoughCalls)
@@ -153,39 +149,22 @@ var _ = Describe("Controller", func() {
 			})
 		})
 
-		Context("when the request is empty", func() {
+		Context("when deployer returns an error", func() {
 			It("returns an error", func() {
 				req, err := http.NewRequest("POST", apiURL, nil)
 				Expect(err).ToNot(HaveOccurred())
+
 				req.Header.Set("Content-Type", "application/zip")
 
 				deployer.DeployCall.Received.Request = req
+				deployer.DeployCall.Returns.Error = errors.New("request body is empty")
+				deployer.DeployCall.Returns.StatusCode = 400
 
 				router.ServeHTTP(resp, req)
 
-				Expect(deployer.DeployCall.TimesCalled).To(Equal(0), deployerNotEnoughCalls)
+				Expect(deployer.DeployCall.TimesCalled).To(Equal(1), deployerNotEnoughCalls)
 				Expect(resp.Code).To(Equal(400))
 				Expect(resp.Body).To(ContainSubstring("request body is empty"))
-			})
-		})
-
-		Context("when it cannot process the zip file", func() {
-			It("returns an error", func() {
-				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
-				Expect(err).ToNot(HaveOccurred())
-				req.Header.Set("Content-Type", "application/zip")
-
-				deployer.DeployCall.Received.Request = req
-
-				fetcher.FetchFromZipCall.Received.RequestBody = jsonBuffer.Bytes()
-				fetcher.FetchFromZipCall.Returns.AppPath = ""
-				fetcher.FetchFromZipCall.Returns.Error = errors.New("could not process zip file")
-
-				router.ServeHTTP(resp, req)
-
-				Expect(deployer.DeployCall.TimesCalled).To(Equal(0), deployerNotEnoughCalls)
-				Expect(resp.Code).To(Equal(500))
-				Expect(resp.Body).To(ContainSubstring("could not process zip file"))
 			})
 		})
 
@@ -198,7 +177,6 @@ var _ = Describe("Controller", func() {
 				deployer.DeployCall.Received.Request = req
 
 				fetcher.FetchFromZipCall.Received.RequestBody = jsonBuffer.Bytes()
-				fetcher.FetchFromZipCall.Returns.AppPath = "appPath-" + randomizer.StringRunes(10)
 				fetcher.FetchFromZipCall.Returns.Error = nil
 
 				deployer.DeployCall.Returns.Error = errors.New("internal server error")
@@ -210,23 +188,6 @@ var _ = Describe("Controller", func() {
 				Expect(resp.Code).To(Equal(500))
 				Expect(resp.Body).To(ContainSubstring("cannot deploy application"))
 			})
-		})
-	})
-
-	Describe("unknown content type", func() {
-		It("returns an error", func() {
-			req, err := http.NewRequest("POST", apiURL, jsonBuffer)
-			Expect(err).ToNot(HaveOccurred())
-			req.Header.Set("Content-Type", "invalidContentType")
-
-			deployer.DeployCall.Returns.Error = errors.New("internal server error")
-			deployer.DeployCall.Returns.StatusCode = 400
-
-			router.ServeHTTP(resp, req)
-
-			Expect(deployer.DeployCall.TimesCalled).To(Equal(0), deployerNotEnoughCalls)
-			Expect(resp.Code).To(Equal(400))
-			Expect(resp.Body).To(ContainSubstring("content type not supported - must be application/json or application/zip"))
 		})
 	})
 })

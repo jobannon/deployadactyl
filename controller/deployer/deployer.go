@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"regexp"
 
 	"github.com/compozed/deployadactyl/config"
@@ -18,6 +17,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/go-errors/errors"
 	"github.com/op/go-logging"
+	"github.com/spf13/afero"
 )
 
 const (
@@ -42,8 +42,6 @@ Thanks for using Deployadactyl! Please push down pull up on your lap bar and exi
 	Org:          %s,
 	Space:        %s,
 	AppName:      %s`
-	jsonRequestContentType = "application/json"
-	zipRequestContentType  = "application/zip"
 )
 
 // Deployer contains the bluegreener for deployments, environment variables, a fetcher for artifacts, a prechecker and event manager.
@@ -55,26 +53,27 @@ type Deployer struct {
 	EventManager I.EventManager
 	Randomizer   I.Randomizer
 	Log          *logging.Logger
+	FileSystem   *afero.Afero
 }
 
 // Deploy takes the deployment information, checks the foundations, fetches the artifact and deploys the application.
-func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName, appPath, contentType string, out io.Writer) (err error, statusCode int) {
+func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName, contentType string, out io.Writer) (err error, statusCode int) {
 	var (
 		deploymentInfo         = S.DeploymentInfo{}
 		environments           = d.Config.Environments
 		authenticationRequired = environments[environmentName].Authenticate
 		deployEventData        = S.DeployEventData{}
 		manifest               []byte
+		appPath                string
 	)
 
-	if isJSONRequest(contentType) {
-		deploymentInfo, err = getDeploymentInfo(req.Body)
-		if err != nil {
-			fmt.Fprintln(out, err)
-			return err, http.StatusInternalServerError
-		}
+	err = d.Prechecker.AssertAllFoundationsUp(environments[environmentName])
+	if err != nil {
+		fmt.Fprintln(out, err)
+		return errors.New(err), http.StatusInternalServerError
 	}
 
+	// move into controller
 	username, password, ok := req.BasicAuth()
 	if !ok {
 		if authenticationRequired {
@@ -82,6 +81,57 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 		}
 		username = d.Config.Username
 		password = d.Config.Password
+	}
+
+	if isJSON(contentType) {
+		deploymentInfo, err = getDeploymentInfo(req.Body)
+		if err != nil {
+			fmt.Fprintln(out, err)
+			return err, http.StatusInternalServerError
+		}
+
+		if deploymentInfo.Manifest != "" {
+			manifest, err = base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
+			if err != nil {
+				fmt.Fprintln(out, err)
+				return errors.New(cannotOpenManifestFile), http.StatusBadRequest
+			}
+		}
+
+		appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, deploymentInfo.Manifest)
+		if err != nil {
+			fmt.Fprintln(out, err)
+			return err, http.StatusInternalServerError
+		}
+		defer d.FileSystem.RemoveAll(appPath)
+
+	} else if isZip(contentType) {
+
+		// move into fetchfromzip
+		if req.Body == nil {
+			return errors.New("request body required"), http.StatusBadRequest
+		}
+
+		// dont do this, pass req to fetchFromZip
+		f, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return err, http.StatusInternalServerError
+		}
+
+		appPath, err = d.Fetcher.FetchFromZip(f)
+		defer d.FileSystem.RemoveAll(appPath)
+		if err != nil {
+			return err, http.StatusInternalServerError
+		}
+
+		manifest, err = d.FileSystem.ReadFile(appPath + "/manifest.yml")
+		if err != nil {
+			fmt.Fprintln(out, cannotFindManifestFile)
+		}
+
+		deploymentInfo.ArtifactURL = "Local Developer App Deploy " + appPath
+	} else {
+		return errors.New("must be application/json or application/zip"), http.StatusBadRequest
 	}
 
 	deploymentInfo.Username = username
@@ -93,10 +143,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 	deploymentInfo.UUID = d.Randomizer.StringRunes(128)
 	deploymentInfo.SkipSSL = environments[environmentName].SkipSSL
 	deploymentInfo.Instances = 1
-
-	if isZipRequest(contentType) {
-		deploymentInfo.ArtifactURL = "Local Developer App Deploy " + appPath
-	}
+	deploymentInfo.Manifest = string(manifest)
 
 	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
 	d.Log.Debug(deploymentMessage)
@@ -107,21 +154,6 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 		DeploymentInfo: &deploymentInfo,
 		RequestBody:    req.Body,
 	}
-
-	if isJSONRequest(contentType) && deploymentInfo.Manifest != "" {
-		manifest, err = base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
-		if err != nil {
-			fmt.Fprintln(out, err)
-			return errors.New(cannotOpenManifestFile), http.StatusBadRequest
-		}
-	}
-	if isZipRequest(contentType) {
-		manifest, err = ioutil.ReadFile(appPath + "/manifest.yml")
-		if err != nil {
-			fmt.Fprintln(out, cannotFindManifestFile)
-		}
-	}
-	deploymentInfo.Manifest = string(manifest)
 
 	defer func() (error, int) {
 		deployFinishEvent := S.Event{
@@ -181,21 +213,6 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 		deploymentInfo.Instances = environments[environmentName].Instances
 	}
 
-	err = d.Prechecker.AssertAllFoundationsUp(environment)
-	if err != nil {
-		fmt.Fprintln(out, err)
-		return errors.New(err), http.StatusInternalServerError
-	}
-
-	if isJSONRequest(contentType) {
-		appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, deploymentInfo.Manifest)
-		if err != nil {
-			fmt.Fprintln(out, err)
-			return err, http.StatusInternalServerError
-		}
-		defer os.RemoveAll(appPath)
-	}
-
 	defer func() {
 		var deployEvent = S.Event{
 			Type: "deploy.success",
@@ -245,10 +262,10 @@ func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {
 	return deploymentInfo, nil
 }
 
-func isZipRequest(contentType string) bool {
-	return contentType == zipRequestContentType
+func isZip(contentType string) bool {
+	return contentType == "application/zip"
 }
 
-func isJSONRequest(contentType string) bool {
-	return contentType == jsonRequestContentType
+func isJSON(contentType string) bool {
+	return contentType == "application/json"
 }

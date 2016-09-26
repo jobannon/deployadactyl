@@ -2,7 +2,6 @@ package extractor_test
 
 import (
 	"io/ioutil"
-	"os"
 	"path"
 
 	. "github.com/onsi/ginkgo"
@@ -44,7 +43,7 @@ var _ = Describe("Extracting", func() {
 	})
 
 	AfterEach(func() {
-		Expect(os.RemoveAll(destination)).To(Succeed())
+		Expect(af.RemoveAll(destination)).To(Succeed())
 	})
 
 	It("unzips the artifact", func() {

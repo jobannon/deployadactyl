@@ -114,6 +114,7 @@ type Creator struct {
 	eventManager I.EventManager
 	logger       *logging.Logger
 	writer       io.Writer
+	fileSystem   *afero.Afero
 }
 
 func New(level string, configFilename string) (Creator, error) {
@@ -136,6 +137,7 @@ func New(level string, configFilename string) (Creator, error) {
 		eventManager: eventManager,
 		logger:       logger,
 		writer:       GinkgoWriter,
+		fileSystem:   &afero.Afero{Fs: afero.NewMemMapFs()},
 	}, nil
 }
 
@@ -171,10 +173,10 @@ func (c Creator) CreateDeployer() I.Deployer {
 		Config:      c.CreateConfig(),
 		BlueGreener: c.CreateBlueGreener(),
 		Fetcher: &artifetcher.Artifetcher{
-			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+			FileSystem: c.CreateFileSystem(),
 			Extractor: &extractor.Extractor{
 				Log:        c.CreateLogger(),
-				FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+				FileSystem: c.CreateFileSystem(),
 			},
 			Log: c.CreateLogger(),
 		},
@@ -182,15 +184,16 @@ func (c Creator) CreateDeployer() I.Deployer {
 		EventManager: c.CreateEventManager(),
 		Randomizer:   c.CreateRandomizer(),
 		Log:          c.CreateLogger(),
+		FileSystem:   c.CreateFileSystem(),
 	}
 }
 
 func (c Creator) createFetcher() I.Fetcher {
 	return &artifetcher.Artifetcher{
-		FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+		FileSystem: c.CreateFileSystem(),
 		Extractor: &extractor.Extractor{
 			Log:        c.CreateLogger(),
-			FileSystem: &afero.Afero{Fs: afero.NewOsFs()},
+			FileSystem: c.CreateFileSystem(),
 		},
 		Log: c.CreateLogger(),
 	}
@@ -248,6 +251,10 @@ func (c Creator) CreateBlueGreener() I.BlueGreener {
 		PusherCreator: c,
 		Log:           c.CreateLogger(),
 	}
+}
+
+func (c Creator) CreateFileSystem() *afero.Afero {
+	return c.fileSystem
 }
 
 func getLevel(level string) (logging.Level, error) {

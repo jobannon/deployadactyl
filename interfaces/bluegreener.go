@@ -9,5 +9,10 @@ import (
 
 // BlueGreener interface.
 type BlueGreener interface {
-	Push(environment config.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.Writer) error
+	Push(
+		environment config.Environment,
+		appPath string,
+		deploymentInfo S.DeploymentInfo,
+		out io.Writer,
+	) error
 }

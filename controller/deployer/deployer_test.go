@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 
@@ -29,7 +28,6 @@ applications:
   memory: 256M
   disk_quota: 256M
 `
-	testManifestLocation       = "./manifest.yml"
 	jsonRequest                = "application/json"
 	zipRequest                 = "application/zip"
 	eventManagerNotEnoughCalls = "event manager didn't have the right number of calls"
@@ -46,20 +44,21 @@ var _ = Describe("Deployer", func() {
 		eventManager   *mocks.EventManager
 		randomizerMock *mocks.Randomizer
 
-		req             *http.Request
-		reqBuffer       *bytes.Buffer
-		appName         string
-		appPath         string
-		artifactURL     string
-		domain          string
-		environmentName string
-		org             string
-		space           string
-		username        string
-		uuid            string
-		instances       uint16
-		password        string
-		buffer          *bytes.Buffer
+		req                  *http.Request
+		reqBuffer            *bytes.Buffer
+		appName              string
+		appPath              string
+		artifactURL          string
+		domain               string
+		environmentName      string
+		org                  string
+		space                string
+		username             string
+		uuid                 string
+		instances            uint16
+		password             string
+		testManifestLocation string
+		buffer               *bytes.Buffer
 
 		deploymentInfo  S.DeploymentInfo
 		event           S.Event
@@ -140,6 +139,8 @@ var _ = Describe("Deployer", func() {
 		}
 
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
+
+		testManifestLocation, _ = af.TempDir("", "")
 
 		deployer = Deployer{
 			c,
@@ -293,15 +294,12 @@ var _ = Describe("Deployer", func() {
 	Describe("deploy zip", func() {
 		Context("when all applications start correctly", func() {
 			It("accepts the request and returns http.StatusOK", func() {
-				tempDir, err := af.TempDir("", "")
-				Expect(err).To(BeNil())
-
-				Expect(af.WriteFile(tempDir+"/manifest.yml", []byte(testManifest), 0644)).To(Succeed())
+				Expect(af.WriteFile(testManifestLocation+"/manifest.yml", []byte(testManifest), 0644)).To(Succeed())
 
 				eventManager.EmitCall.Returns.Error = nil
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 				blueGreener.PushCall.Returns.Error = nil
-				fetcher.FetchFromZipCall.Returns.AppPath = tempDir
+				fetcher.FetchFromZipCall.Returns.AppPath = testManifestLocation
 
 				err, statusCode := deployer.Deploy(req, environmentName, org, space, appName, zipRequest, buffer)
 				Expect(err).To(BeNil())
@@ -310,9 +308,9 @@ var _ = Describe("Deployer", func() {
 				Expect(buffer).To(ContainSubstring("deploy was successful"))
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
 				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environmentName]))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(tempDir))
+				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(testManifestLocation))
 				Expect(blueGreener.PushCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.ArtifactURL).To(Equal("Local Developer App Deploy" + " " + tempDir))
+				Expect(blueGreener.PushCall.Received.DeploymentInfo.ArtifactURL).To(Equal("Local Developer App Deploy" + " " + testManifestLocation))
 			})
 		})
 
@@ -332,14 +330,11 @@ var _ = Describe("Deployer", func() {
 
 		Context("push fails", func() {
 			It("rejects the request with a http.StatusInternalServerError", func() {
-				tempDir, err := af.TempDir("", "")
-				Expect(err).To(BeNil())
-
-				Expect(af.WriteFile(tempDir+"/manifest.yml", []byte(testManifest), 0644)).To(Succeed())
+				Expect(af.WriteFile(testManifestLocation+"/manifest.yml", []byte(testManifest), 0644)).To(Succeed())
 
 				eventManager.EmitCall.Returns.Error = nil
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
-				fetcher.FetchFromZipCall.Returns.AppPath = tempDir
+				fetcher.FetchFromZipCall.Returns.AppPath = testManifestLocation
 
 				By("making bluegreener return an error")
 				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
@@ -350,9 +345,9 @@ var _ = Describe("Deployer", func() {
 				Expect(statusCode).To(Equal(http.StatusInternalServerError))
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environmentName]))
 				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environmentName]))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(tempDir))
+				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(testManifestLocation))
 				Expect(blueGreener.PushCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.ArtifactURL).To(Equal("Local Developer App Deploy" + " " + tempDir))
+				Expect(blueGreener.PushCall.Received.DeploymentInfo.ArtifactURL).To(Equal("Local Developer App Deploy" + " " + testManifestLocation))
 			})
 		})
 
@@ -518,7 +513,7 @@ applications:
 - name: deployadactyl
   instances: 1337
 `
-				Expect(ioutil.WriteFile(testManifestLocation, []byte(deploymentInfo.Manifest), 0644)).To(Succeed())
+				Expect(af.WriteFile(testManifestLocation+"/manifest.yml", []byte(deploymentInfo.Manifest), 0644)).To(Succeed())
 
 				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
 
@@ -541,7 +536,7 @@ applications:
 		Context("when manifest is empty", func() {
 			It("uses config instances", func() {
 				instancesManifest := ""
-				Expect(ioutil.WriteFile(testManifestLocation, []byte(instancesManifest), 0644)).To(Succeed())
+				Expect(af.WriteFile(testManifestLocation+"/manifest.yml", []byte(instancesManifest), 0644)).To(Succeed())
 
 				err, _ := deployer.Deploy(req, environmentName, org, space, appName, jsonRequest, buffer)
 				Expect(err).ToNot(HaveOccurred())

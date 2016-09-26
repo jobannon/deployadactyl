@@ -160,7 +160,6 @@ func (c Creator) CreateController() controller.Controller {
 		Deployer:     c.CreateDeployer(),
 		Log:          c.CreateLogger(),
 		EventManager: c.CreateEventManager(),
-		Fetcher:      c.createFetcher(),
 	}
 }
 

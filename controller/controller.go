@@ -25,7 +25,6 @@ type Controller struct {
 	Deployer     I.Deployer
 	Log          *logging.Logger
 	EventManager I.EventManager
-	Fetcher      I.Fetcher
 }
 
 // Deploy checks the request content type and passes it to the Deployer.

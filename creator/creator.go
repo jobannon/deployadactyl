@@ -131,7 +131,6 @@ func (c Creator) createController() controller.Controller {
 		Deployer:     c.createDeployer(),
 		Log:          c.CreateLogger(),
 		EventManager: c.CreateEventManager(),
-		Fetcher:      c.createFetcher(),
 	}
 }
 

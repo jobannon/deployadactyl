@@ -28,7 +28,6 @@ var _ = Describe("Controller", func() {
 		controller   *Controller
 		deployer     *mocks.Deployer
 		eventManager *mocks.EventManager
-		fetcher      *mocks.Fetcher
 		router       *gin.Engine
 		resp         *httptest.ResponseRecorder
 
@@ -46,7 +45,6 @@ var _ = Describe("Controller", func() {
 	BeforeEach(func() {
 		deployer = &mocks.Deployer{}
 		eventManager = &mocks.EventManager{}
-		fetcher = &mocks.Fetcher{}
 
 		jsonBuffer = &bytes.Buffer{}
 
@@ -72,7 +70,6 @@ var _ = Describe("Controller", func() {
 			Deployer:     deployer,
 			Log:          logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "api_test"),
 			EventManager: eventManager,
-			Fetcher:      fetcher,
 		}
 
 		apiURL = fmt.Sprintf("/v1/apps/%s/%s/%s/%s",
@@ -175,9 +172,6 @@ var _ = Describe("Controller", func() {
 				req.Header.Set("Content-Type", "application/zip")
 
 				deployer.DeployCall.Received.Request = req
-
-				fetcher.FetchFromZipCall.Received.RequestBody = jsonBuffer.Bytes()
-				fetcher.FetchFromZipCall.Returns.Error = nil
 
 				deployer.DeployCall.Returns.Error = errors.New("internal server error")
 				deployer.DeployCall.Returns.StatusCode = 500

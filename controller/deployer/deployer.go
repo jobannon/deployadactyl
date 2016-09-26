@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"regexp"
 
@@ -106,19 +105,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 		defer d.FileSystem.RemoveAll(appPath)
 
 	} else if isZip(contentType) {
-
-		// move into fetchfromzip
-		if req.Body == nil {
-			return errors.New("request body required"), http.StatusBadRequest
-		}
-
-		// dont do this, pass req to fetchFromZip
-		f, err := ioutil.ReadAll(req.Body)
-		if err != nil {
-			return err, http.StatusInternalServerError
-		}
-
-		appPath, err = d.Fetcher.FetchFromZip(f)
+		appPath, err = d.Fetcher.FetchFromZip(req)
 		defer d.FileSystem.RemoveAll(appPath)
 		if err != nil {
 			return err, http.StatusInternalServerError

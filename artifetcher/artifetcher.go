@@ -2,7 +2,6 @@
 package artifetcher
 
 import (
-	"bytes"
 	"io"
 	"net"
 	"net/http"
@@ -99,7 +98,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 // FetchFromZip fetches files from a compressed zip file.
 //
 // Returns a string to the unzipped application path and an error.
-func (a *Artifetcher) FetchFromZip(requestBody []byte) (string, error) {
+func (a *Artifetcher) FetchFromZip(req *http.Request) (string, error) {
 	zipFile, err := a.FileSystem.TempFile("", "deployadactyl-")
 	if err != nil {
 		return "", errors.Errorf("%s: %s", cannotCreateTempFile, err)
@@ -109,8 +108,7 @@ func (a *Artifetcher) FetchFromZip(requestBody []byte) (string, error) {
 
 	a.Log.Info("fetching zip file %s", zipFile.Name())
 
-	f := bytes.NewReader(requestBody)
-	if _, err = io.Copy(zipFile, f); err != nil {
+	if _, err = io.Copy(zipFile, req.Body); err != nil {
 		return "", errors.Errorf("%s: %s", cannotWriteResponseToFile, err)
 	}
 

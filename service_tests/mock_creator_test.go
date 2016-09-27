@@ -70,10 +70,8 @@ func (c Creator) CreateControllerHandler() *gin.Engine {
 
 func (c Creator) CreateController() controller.Controller {
 	return controller.Controller{
-		Config:       c.CreateConfig(),
-		Deployer:     c.CreateDeployer(),
-		Log:          c.CreateLogger(),
-		EventManager: c.CreateEventManager(),
+		Deployer: c.CreateDeployer(),
+		Log:      c.CreateLogger(),
 	}
 }
 

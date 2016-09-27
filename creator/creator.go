@@ -127,10 +127,8 @@ func (c Creator) CreateEventManager() I.EventManager {
 
 func (c Creator) createController() controller.Controller {
 	return controller.Controller{
-		Config:       c.CreateConfig(),
-		Deployer:     c.createDeployer(),
-		Log:          c.CreateLogger(),
-		EventManager: c.CreateEventManager(),
+		Deployer: c.createDeployer(),
+		Log:      c.CreateLogger(),
 	}
 }
 

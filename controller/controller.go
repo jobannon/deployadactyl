@@ -3,9 +3,10 @@ package controller
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"net/http"
 
-	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
@@ -21,15 +22,12 @@ const (
 
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
-	Config       config.Config
-	Deployer     I.Deployer
-	Log          *logging.Logger
-	EventManager I.EventManager
+	Deployer I.Deployer
+	Log      *logging.Logger
 }
 
 // Deploy checks the request content type and passes it to the Deployer.
 func (c *Controller) Deploy(g *gin.Context) {
-
 	c.Log.Info("Request originated from: %+v", g.Request.RemoteAddr)
 
 	buffer := &bytes.Buffer{}
@@ -46,16 +44,12 @@ func (c *Controller) Deploy(g *gin.Context) {
 		buffer,
 	)
 	if err != nil {
-		logError(cannotDeployApplication, statusCode, err, g, c.Log)
+		c.Log.Errorf("%s: %s", cannotDeployApplication, err)
+		g.Writer.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(buffer, fmt.Sprintf("%s - %s\n", cannotDeployApplication, err.Error()))
+		g.Error(err)
 		return
 	}
 
 	g.Writer.WriteHeader(statusCode)
-}
-
-func logError(message string, statusCode int, err error, g *gin.Context, l *logging.Logger) {
-	l.Errorf("%s: %s", message, err)
-	g.Writer.WriteHeader(statusCode)
-	g.Writer.WriteString(message + " - " + err.Error() + "\n")
-	g.Error(err)
 }

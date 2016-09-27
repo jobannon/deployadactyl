@@ -105,7 +105,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 		defer d.FileSystem.RemoveAll(appPath)
 
 	} else if isZip(contentType) {
-		appPath, err = d.Fetcher.FetchFromZip(req)
+		appPath, err = d.Fetcher.FetchZipFromRequest(req)
 		defer d.FileSystem.RemoveAll(appPath)
 		if err != nil {
 			return err, http.StatusInternalServerError

@@ -1,8 +1,10 @@
 package artifetcher_test
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -64,6 +66,38 @@ var _ = Describe("Artifetcher", func() {
 
 			_, err := artifetcher.Fetch(testserver.URL, manifest)
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("fetching a zip file from a request", func() {
+		It("returns the path to the unzipped directory", func() {
+			extractor.UnzipCall.Returns.Error = nil
+
+			body, err := os.Open("./fixtures/artifact-with-manifest.jar")
+			Expect(err).ToNot(HaveOccurred())
+
+			req := httptest.NewRequest("POST", "https://example.com", body)
+
+			path, err := artifetcher.FetchZipFromRequest(req)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(path).To(ContainSubstring("deployadactyl-"))
+			Expect(extractor.UnzipCall.Received.Destination).To(Equal(path))
+		})
+
+		It("returns an error when extractor fails", func() {
+			errorMessage := "test extract fail"
+			extractor.UnzipCall.Returns.Error = errors.New(errorMessage)
+
+			body, err := os.Open("./fixtures/artifact-with-manifest.jar")
+			Expect(err).ToNot(HaveOccurred())
+
+			req := httptest.NewRequest("POST", "https://example.com", body)
+
+			path, err := artifetcher.FetchZipFromRequest(req)
+			Expect(err).To(MatchError("cannot unzip artifact: " + errorMessage))
+
+			Expect(path).To(BeEmpty())
 		})
 	})
 })

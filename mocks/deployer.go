@@ -9,15 +9,14 @@ import (
 // Deployer handmade mock for tests.
 type Deployer struct {
 	DeployCall struct {
-		TimesCalled int
-		Received    struct {
-			Request         *http.Request
-			EnvironmentName string
-			Org             string
-			Space           string
-			AppName         string
-			ContentType     string
-			Out             io.Writer
+		Received struct {
+			Request     *http.Request
+			Environment string
+			Org         string
+			Space       string
+			AppName     string
+			ContentType string
+			Out         io.Writer
 		}
 		Write struct {
 			Output string
@@ -30,11 +29,9 @@ type Deployer struct {
 }
 
 // Deploy mock method.
-func (d *Deployer) Deploy(req *http.Request, environmentName, org, space, appName, contentType string, out io.Writer) (err error, statusCode int) {
-	defer func() { d.DeployCall.TimesCalled++ }()
-
+func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, out io.Writer) (err error, statusCode int) {
 	d.DeployCall.Received.Request = req
-	d.DeployCall.Received.EnvironmentName = environmentName
+	d.DeployCall.Received.Environment = environment
 	d.DeployCall.Received.Org = org
 	d.DeployCall.Received.Space = space
 	d.DeployCall.Received.AppName = appName

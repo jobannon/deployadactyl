@@ -72,7 +72,6 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 		return errors.New(err), http.StatusInternalServerError
 	}
 
-	// move into controller
 	username, password, ok := req.BasicAuth()
 	if !ok {
 		if authenticationRequired {

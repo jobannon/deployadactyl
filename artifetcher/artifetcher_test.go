@@ -76,7 +76,9 @@ var _ = Describe("Artifetcher", func() {
 			body, err := os.Open("./fixtures/artifact-with-manifest.jar")
 			Expect(err).ToNot(HaveOccurred())
 
-			req := httptest.NewRequest("POST", "https://example.com", body)
+			// for go 1.7 change this to httptest
+			req, err := http.NewRequest("POST", "https://example.com", body)
+			Expect(err).ToNot(HaveOccurred())
 
 			path, err := artifetcher.FetchZipFromRequest(req)
 			Expect(err).ToNot(HaveOccurred())
@@ -92,7 +94,9 @@ var _ = Describe("Artifetcher", func() {
 			body, err := os.Open("./fixtures/artifact-with-manifest.jar")
 			Expect(err).ToNot(HaveOccurred())
 
-			req := httptest.NewRequest("POST", "https://example.com", body)
+			// for go 1.7 change this to httptest
+			req, err := http.NewRequest("POST", "https://example.com", body)
+			Expect(err).ToNot(HaveOccurred())
 
 			path, err := artifetcher.FetchZipFromRequest(req)
 			Expect(err).To(MatchError("cannot unzip artifact: " + errorMessage))

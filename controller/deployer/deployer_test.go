@@ -60,13 +60,11 @@ var _ = Describe("Deployer", func() {
 		testManifestLocation string
 		buffer               *bytes.Buffer
 
-		deploymentInfo  S.DeploymentInfo
-		event           S.Event
-		deployEventData S.DeployEventData
-		foundations     []string
-		environments    = map[string]config.Environment{}
-		log             = logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "test")
-		af              *afero.Afero
+		deploymentInfo S.DeploymentInfo
+		foundations    []string
+		environments   = map[string]config.Environment{}
+		log            = logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "test")
+		af             *afero.Afero
 	)
 
 	BeforeEach(func() {
@@ -108,15 +106,6 @@ var _ = Describe("Deployer", func() {
 			UUID:        uuid,
 			Instances:   instances,
 			Manifest:    "",
-		}
-
-		deployEventData = S.DeployEventData{
-			Writer:         &bytes.Buffer{},
-			DeploymentInfo: &deploymentInfo,
-		}
-
-		event = S.Event{
-			Data: deployEventData,
 		}
 
 		randomizerMock.RandomizeCall.Returns.Runes = uuid

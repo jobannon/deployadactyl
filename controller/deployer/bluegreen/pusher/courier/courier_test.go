@@ -170,6 +170,26 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
+	Describe("creating user provided services", func() {
+		It("should get a valid Cloud Foundry command", func() {
+			var (
+				hostName     = "hostName-" + randomizer.StringRunes(10)
+				address      = "address-" + randomizer.StringRunes(10)
+				body         = fmt.Sprintf("{%s:%s}", hostName, address)
+				expectedArgs = []string{"cups", appName, "-p", body}
+			)
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.Cups(appName, body)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
 	Describe("cleaning up executor directories", func() {
 		It("should be successful", func() {
 			executor.CleanUpCall.Returns.Error = nil

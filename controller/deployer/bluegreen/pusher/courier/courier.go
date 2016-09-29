@@ -60,6 +60,14 @@ func (c Courier) Logs(appName string) ([]byte, error) {
 	return logs, err
 }
 
+// Cups runs the Cloud Foundry CUPS command to create user provided
+// services.
+//
+// Returns the combined standard output and standard error.
+func (c Courier) Cups(appName string, body string) ([]byte, error) {
+	return c.Executor.Execute("cups", appName, "-p", body)
+}
+
 // Exists checks to see whether the application name exists already.
 //
 // Returns true if the application exists.

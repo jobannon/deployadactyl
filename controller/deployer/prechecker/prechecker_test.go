@@ -56,10 +56,10 @@ var _ = Describe("Prechecker", func() {
 					Type: "validate.foundationsUnavailable",
 					Data: precheckerEventData,
 				}
-				eventManager.EmitCall.Returns.Error = nil
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				Expect(prechecker.AssertAllFoundationsUp(environment)).ToNot(Succeed())
-				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
+				Expect(eventManager.EmitCall.Received.Events[0]).To(Equal(event))
 			})
 		})
 
@@ -83,14 +83,14 @@ var _ = Describe("Prechecker", func() {
 					Type: "validate.foundationsUnavailable",
 					Data: precheckerEventData,
 				}
-				eventManager.EmitCall.Returns.Error = nil
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				httpStatus = http.StatusInternalServerError
 
 				Expect(prechecker.AssertAllFoundationsUp(environment)).ToNot(Succeed())
 
 				Expect(foundationURls).To(ConsistOf("/v2/info"))
-				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
+				Expect(eventManager.EmitCall.Received.Events[0]).To(Equal(event))
 			})
 		})
 
@@ -104,13 +104,13 @@ var _ = Describe("Prechecker", func() {
 					Type: "validate.foundationsUnavailable",
 					Data: precheckerEventData,
 				}
-				eventManager.EmitCall.Returns.Error = nil
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				httpStatus = http.StatusNotFound
 
 				Expect(prechecker.AssertAllFoundationsUp(environment)).ToNot(Succeed())
 
-				Expect(eventManager.EmitCall.Received.Event).To(Equal(event))
+				Expect(eventManager.EmitCall.Received.Events[0]).To(Equal(event))
 			})
 		})
 	})

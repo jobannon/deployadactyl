@@ -20,21 +20,12 @@ import (
 )
 
 const (
-	basicAuthHeaderNotFound   = "basic auth header not found"
-	environmentNotFound       = "environment not found"
-	cannotFetchArtifact       = "cannot fetch artifact"
-	invalidArtifact           = "invalid artifact"
-	invalidPostRequest        = "invalid POST request"
-	cannotOpenManifestFile    = "cannot open manifest file"
-	cannotFindManifestFile    = "cannot find manifest file in zip"
-	cannotPrintToManifestFile = "cannot print to open manifest file"
-	successfulDeploy          = `Your deploy was successful! (^_^)d
+	successfulDeploy = `Your deploy was successful! (^_^)b
 If you experience any problems after this point, check that you can manually push your application to Cloud Foundry on a lower environment.
 It is likely that it is an error with your application and not with Deployadactyl.
 Thanks for using Deployadactyl! Please push down pull up on your lap bar and exit to your left.`
-	deployStartError  = "an error occurred in the deploy.start event"
-	deployFinishError = "an error occurred in the deploy.finish event"
-	deploymentOutput  = `Deployment Parameters:
+
+	deploymentOutput = `Deployment Parameters:
 	Artifact URL: %s,
 	Username:     %s,
 	Environment:  %s,
@@ -56,32 +47,37 @@ type Deployer struct {
 }
 
 // Deploy takes the deployment information, checks the foundations, fetches the artifact and deploys the application.
-func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName, contentType string, out io.Writer) (err error, statusCode int) {
+func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, out io.Writer) (err error, statusCode int) {
 	var (
 		deploymentInfo         = S.DeploymentInfo{}
 		environments           = d.Config.Environments
-		authenticationRequired = environments[environmentName].Authenticate
+		authenticationRequired = environments[environment].Authenticate
 		deployEventData        = S.DeployEventData{}
 		manifest               []byte
 		appPath                string
 	)
+	defer d.FileSystem.RemoveAll(appPath)
 
-	err = d.Prechecker.AssertAllFoundationsUp(environments[environmentName])
+	d.Log.Debug("prechecking the foundations")
+	err = d.Prechecker.AssertAllFoundationsUp(environments[environment])
 	if err != nil {
 		fmt.Fprintln(out, err)
 		return errors.New(err), http.StatusInternalServerError
 	}
 
+	d.Log.Debug("checking for basic auth")
 	username, password, ok := req.BasicAuth()
 	if !ok {
 		if authenticationRequired {
-			return errors.New(basicAuthHeaderNotFound), http.StatusUnauthorized
+			return errors.New("basic auth header not found"), http.StatusUnauthorized
 		}
 		username = d.Config.Username
 		password = d.Config.Password
 	}
 
 	if isJSON(contentType) {
+		d.Log.Debug("deploying from json request")
+		d.Log.Debug("building deploymentInfo")
 		deploymentInfo, err = getDeploymentInfo(req.Body)
 		if err != nil {
 			fmt.Fprintln(out, err)
@@ -92,7 +88,7 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 			manifest, err = base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
 			if err != nil {
 				fmt.Fprintln(out, err)
-				return errors.New(cannotOpenManifestFile), http.StatusBadRequest
+				return errors.New("cannot open manifest file"), http.StatusBadRequest
 			}
 		}
 
@@ -101,121 +97,68 @@ func (d Deployer) Deploy(req *http.Request, environmentName, org, space, appName
 			fmt.Fprintln(out, err)
 			return err, http.StatusInternalServerError
 		}
-		defer d.FileSystem.RemoveAll(appPath)
 
 	} else if isZip(contentType) {
+		d.Log.Debug("deploying from zip request")
 		appPath, err = d.Fetcher.FetchZipFromRequest(req)
-		defer d.FileSystem.RemoveAll(appPath)
 		if err != nil {
 			return err, http.StatusInternalServerError
 		}
 
-		manifest, err = d.FileSystem.ReadFile(appPath + "/manifest.yml")
-		if err != nil {
-			fmt.Fprintln(out, cannotFindManifestFile)
-		}
+		manifest, _ = d.FileSystem.ReadFile(appPath + "/manifest.yml")
 
-		deploymentInfo.ArtifactURL = "Local Developer App Deploy " + appPath
+		deploymentInfo.ArtifactURL = appPath
 	} else {
 		return errors.New("must be application/json or application/zip"), http.StatusBadRequest
 	}
 
 	deploymentInfo.Username = username
 	deploymentInfo.Password = password
-	deploymentInfo.Environment = environmentName
+	deploymentInfo.Environment = environment
 	deploymentInfo.Org = org
 	deploymentInfo.Space = space
 	deploymentInfo.AppName = appName
 	deploymentInfo.UUID = d.Randomizer.StringRunes(128)
-	deploymentInfo.SkipSSL = environments[environmentName].SkipSSL
-	deploymentInfo.Instances = 1
+	deploymentInfo.SkipSSL = environments[environment].SkipSSL
 	deploymentInfo.Manifest = string(manifest)
-
-	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
-	d.Log.Debug(deploymentMessage)
-	fmt.Fprintln(out, deploymentMessage)
-
-	deployEventData = S.DeployEventData{
-		Writer:         out,
-		DeploymentInfo: &deploymentInfo,
-		RequestBody:    req.Body,
-	}
-
-	defer func() (error, int) {
-		deployFinishEvent := S.Event{
-			Type: "deploy.finish",
-			Data: deployEventData,
-		}
-
-		eventErr := d.EventManager.Emit(deployFinishEvent)
-		if eventErr != nil {
-			fmt.Fprintln(out, eventErr)
-		}
-
-		if err != nil {
-			return err, statusCode
-		}
-
-		return nil, http.StatusOK
-	}()
-
-	deployStartEvent := S.Event{
-		Type: "deploy.start",
-		Data: deployEventData,
-	}
-
-	err = d.EventManager.Emit(deployStartEvent)
-	if err != nil {
-		fmt.Fprintln(out, err)
-		return errors.New(deployStartError), http.StatusInternalServerError
-	}
-
-	deployEventData = S.DeployEventData{
-		Writer:         out,
-		DeploymentInfo: &deploymentInfo,
-	}
-
-	environment, found := environments[deploymentInfo.Environment]
-	if !found {
-		var deployEvent = S.Event{
-			Type: "deploy.error",
-			Data: deployEventData,
-		}
-
-		err = d.EventManager.Emit(deployEvent)
-		if err != nil {
-			fmt.Fprintln(out, err)
-		}
-
-		err = errors.Errorf("%s: %s", environmentNotFound, deploymentInfo.Environment)
-		fmt.Fprintln(out, err)
-		return err, http.StatusInternalServerError
-	}
 
 	instances := manifestro.GetInstances(deploymentInfo.Manifest)
 	if instances != nil {
 		deploymentInfo.Instances = *instances
 	} else {
-		deploymentInfo.Instances = environments[environmentName].Instances
+		deploymentInfo.Instances = environments[environment].Instances
 	}
 
-	defer func() {
-		var deployEvent = S.Event{
-			Type: "deploy.success",
-			Data: deployEventData,
-		}
-
+	e, found := environments[deploymentInfo.Environment]
+	if !found {
+		err = d.EventManager.Emit(S.Event{Type: "deploy.error", Data: deployEventData})
 		if err != nil {
-			deployEvent.Type = "deploy.failure"
+			fmt.Fprintln(out, err)
 		}
 
-		eventErr := d.EventManager.Emit(deployEvent)
-		if eventErr != nil {
-			fmt.Fprintln(out, eventErr)
-		}
-	}()
+		err = errors.Errorf("environment not found: %s", deploymentInfo.Environment)
+		fmt.Fprintln(out, err)
+		return err, http.StatusInternalServerError
+	}
 
-	err = d.BlueGreener.Push(environment, appPath, deploymentInfo, out)
+	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
+	d.Log.Info(deploymentMessage)
+	fmt.Fprintln(out, deploymentMessage)
+
+	deployEventData = S.DeployEventData{Writer: out, DeploymentInfo: &deploymentInfo, RequestBody: req.Body}
+
+	defer emitDeployFinish(d, deployEventData, out, &err, &statusCode)
+
+	d.Log.Debug("emitting a deploy.start event")
+	err = d.EventManager.Emit(S.Event{Type: "deploy.start", Data: deployEventData})
+	if err != nil {
+		fmt.Fprintln(out, err)
+		return errors.Errorf("an error occurred in the deploy.start event: %s", err), http.StatusInternalServerError
+	}
+
+	defer emitDeploySuccess(d, deployEventData, out, &err, &statusCode)
+
+	err = d.BlueGreener.Push(e, appPath, deploymentInfo, out)
 	if err != nil {
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
 			return err, http.StatusBadRequest
@@ -240,7 +183,9 @@ func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {
 		}
 		return ""
 	})
+
 	getter.Get("artifact_url")
+
 	err = getter.Err("The following properties are missing")
 	if err != nil {
 		return S.DeploymentInfo{}, err
@@ -254,4 +199,30 @@ func isZip(contentType string) bool {
 
 func isJSON(contentType string) bool {
 	return contentType == "application/json"
+}
+
+func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, out io.Writer, err *error, statusCode *int) {
+	d.Log.Debug("emitting a deploy.finish event")
+	finishErr := d.EventManager.Emit(S.Event{Type: "deploy.finish", Data: deployEventData})
+	if finishErr != nil {
+		fmt.Fprintln(out, finishErr)
+		*err = errors.Errorf("%s: an error occurred in the deploy.finish event: %s", *err, finishErr)
+		*statusCode = http.StatusInternalServerError
+	}
+
+}
+
+func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, out io.Writer, err *error, statusCode *int) {
+
+	deployEvent := S.Event{Type: "deploy.success", Data: deployEventData}
+
+	if *err != nil {
+		deployEvent.Type = "deploy.failure"
+	}
+
+	d.Log.Debug(fmt.Sprintf("emitting a %s event", deployEvent.Type))
+	eventErr := d.EventManager.Emit(deployEvent)
+	if eventErr != nil {
+		fmt.Fprintln(out, eventErr)
+	}
 }

@@ -30,13 +30,11 @@ var _ = Describe("Controller", func() {
 		resp       *httptest.ResponseRecorder
 		jsonBuffer *bytes.Buffer
 
-		apiURL          string
-		appName         string
-		defaultPassword string
-		defaultUsername string
-		environment     string
-		org             string
-		space           string
+		apiURL      string
+		appName     string
+		environment string
+		org         string
+		space       string
 	)
 
 	BeforeEach(func() {
@@ -52,8 +50,6 @@ var _ = Describe("Controller", func() {
 		jsonBuffer = &bytes.Buffer{}
 
 		appName = "appName-" + randomizer.StringRunes(10)
-		defaultPassword = "defaultPassword-" + randomizer.StringRunes(10)
-		defaultUsername = "defaultUsername-" + randomizer.StringRunes(10)
 		environment = "environment-" + randomizer.StringRunes(10)
 		org = "org-" + randomizer.StringRunes(10)
 		space = "space-" + randomizer.StringRunes(10)

@@ -95,7 +95,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	return unzippedPath, nil
 }
 
-// FetchFromZip fetches files from a compressed zip file.
+// FetchZipFromRequest fetches files from a compressed zip file in the request body.
 //
 // Returns a string to the unzipped application path and an error.
 func (a *Artifetcher) FetchZipFromRequest(req *http.Request) (string, error) {

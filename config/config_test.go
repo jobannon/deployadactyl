@@ -50,14 +50,14 @@ var _ = Describe("Config", func() {
 		env.GetCall.Returns.Values = map[string]string{}
 
 		envMap = map[string]Environment{
-			"test": Environment{
+			"test": {
 				Name:        "Test",
 				Foundations: []string{"api1.example.com", "api2.example.com"},
 				Domain:      "test.example.com",
 				SkipSSL:     true,
 				Instances:   3,
 			},
-			"prod": Environment{
+			"prod": {
 				Name:                       "Prod",
 				Foundations:                []string{"api3.example.com", "api4.example.com"},
 				Domain:                     "example.com",

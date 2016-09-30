@@ -8,6 +8,10 @@ type manifestYaml struct {
 	}
 }
 
+// GetInstances reads a Cloud Foundry manifest as a string and returns the number of instances
+// defined in the manifest, if there are any.
+//
+// Returns a point to a uint16. If instances are not found or less than 1, it returns nil.
 func GetInstances(manifest string) *uint16 {
 	var m manifestYaml
 

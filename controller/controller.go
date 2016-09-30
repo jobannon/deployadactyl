@@ -34,7 +34,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 
 	defer io.Copy(g.Writer, buffer)
 
-	err, statusCode := c.Deployer.Deploy(
+	statusCode, err := c.Deployer.Deploy(
 		g.Request,
 		g.Param("environment"),
 		g.Param("org"),

@@ -47,7 +47,7 @@ type Deployer struct {
 }
 
 // Deploy takes the deployment information, checks the foundations, fetches the artifact and deploys the application.
-func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, out io.Writer) (err error, statusCode int) {
+func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, out io.Writer) (statusCode int, err error) {
 	var (
 		deploymentInfo         = S.DeploymentInfo{}
 		environments           = d.Config.Environments
@@ -62,14 +62,14 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	err = d.Prechecker.AssertAllFoundationsUp(environments[environment])
 	if err != nil {
 		fmt.Fprintln(out, err)
-		return errors.New(err), http.StatusInternalServerError
+		return http.StatusInternalServerError, errors.New(err)
 	}
 
 	d.Log.Debug("checking for basic auth")
 	username, password, ok := req.BasicAuth()
 	if !ok {
 		if authenticationRequired {
-			return errors.New("basic auth header not found"), http.StatusUnauthorized
+			return http.StatusUnauthorized, errors.New("basic auth header not found")
 		}
 		username = d.Config.Username
 		password = d.Config.Password
@@ -81,35 +81,35 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 		deploymentInfo, err = getDeploymentInfo(req.Body)
 		if err != nil {
 			fmt.Fprintln(out, err)
-			return err, http.StatusInternalServerError
+			return http.StatusInternalServerError, err
 		}
 
 		if deploymentInfo.Manifest != "" {
 			manifest, err = base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
 			if err != nil {
 				fmt.Fprintln(out, err)
-				return errors.New("cannot open manifest file"), http.StatusBadRequest
+				return http.StatusBadRequest, errors.New("cannot open manifest file")
 			}
 		}
 
 		appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, deploymentInfo.Manifest)
 		if err != nil {
 			fmt.Fprintln(out, err)
-			return err, http.StatusInternalServerError
+			return http.StatusInternalServerError, err
 		}
 
 	} else if isZip(contentType) {
 		d.Log.Debug("deploying from zip request")
 		appPath, err = d.Fetcher.FetchZipFromRequest(req)
 		if err != nil {
-			return err, http.StatusInternalServerError
+			return http.StatusInternalServerError, err
 		}
 
 		manifest, _ = d.FileSystem.ReadFile(appPath + "/manifest.yml")
 
 		deploymentInfo.ArtifactURL = appPath
 	} else {
-		return errors.New("must be application/json or application/zip"), http.StatusBadRequest
+		return http.StatusBadRequest, errors.New("must be application/json or application/zip")
 	}
 
 	deploymentInfo.Username = username
@@ -138,7 +138,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 
 		err = errors.Errorf("environment not found: %s", deploymentInfo.Environment)
 		fmt.Fprintln(out, err)
-		return err, http.StatusInternalServerError
+		return http.StatusInternalServerError, err
 	}
 
 	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
@@ -153,7 +153,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	err = d.EventManager.Emit(S.Event{Type: "deploy.start", Data: deployEventData})
 	if err != nil {
 		fmt.Fprintln(out, err)
-		return errors.Errorf("an error occurred in the deploy.start event: %s", err), http.StatusInternalServerError
+		return http.StatusInternalServerError, errors.Errorf("an error occurred in the deploy.start event: %s", err)
 	}
 
 	defer emitDeploySuccess(d, deployEventData, out, &err, &statusCode)
@@ -161,13 +161,13 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	err = d.BlueGreener.Push(e, appPath, deploymentInfo, out)
 	if err != nil {
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
-			return err, http.StatusBadRequest
+			return http.StatusBadRequest, err
 		}
-		return err, http.StatusInternalServerError
+		return http.StatusInternalServerError, err
 	}
 
 	fmt.Fprintln(out, fmt.Sprintf("\n%s", successfulDeploy))
-	return err, http.StatusOK
+	return http.StatusOK, err
 }
 
 func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {

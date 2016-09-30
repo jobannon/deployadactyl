@@ -95,7 +95,7 @@ func (c Creator) CreateListener() net.Listener {
 //
 // Returns a pusher and error.
 func (c Creator) CreatePusher() (I.Pusher, error) {
-	ex, err := executor.New(c.CreateFileSystem())
+	ex, err := executor.New(c.createFileSystem())
 	if err != nil {
 		return nil, err
 	}
@@ -141,16 +141,16 @@ func (c Creator) createDeployer() I.Deployer {
 		EventManager: c.CreateEventManager(),
 		Randomizer:   c.createRandomizer(),
 		Log:          c.CreateLogger(),
-		FileSystem:   c.CreateFileSystem(),
+		FileSystem:   c.createFileSystem(),
 	}
 }
 
 func (c Creator) createFetcher() I.Fetcher {
 	return &artifetcher.Artifetcher{
-		FileSystem: c.CreateFileSystem(),
+		FileSystem: c.createFileSystem(),
 		Extractor: &extractor.Extractor{
 			Log:        c.CreateLogger(),
-			FileSystem: c.CreateFileSystem(),
+			FileSystem: c.createFileSystem(),
 		},
 		Log: c.CreateLogger(),
 	}
@@ -194,7 +194,7 @@ func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
 
 }
 
-func (c Creator) CreateFileSystem() *afero.Afero {
+func (c Creator) createFileSystem() *afero.Afero {
 	return c.fileSystem
 }
 

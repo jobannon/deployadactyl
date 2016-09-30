@@ -29,7 +29,7 @@ type Deployer struct {
 }
 
 // Deploy mock method.
-func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, out io.Writer) (err error, statusCode int) {
+func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, out io.Writer) (int, error) {
 	d.DeployCall.Received.Request = req
 	d.DeployCall.Received.Environment = environment
 	d.DeployCall.Received.Org = org
@@ -40,5 +40,5 @@ func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName, c
 
 	fmt.Fprint(out, d.DeployCall.Write.Output)
 
-	return d.DeployCall.Returns.Error, d.DeployCall.Returns.StatusCode
+	return d.DeployCall.Returns.StatusCode, d.DeployCall.Returns.Error
 }

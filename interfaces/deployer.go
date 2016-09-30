@@ -15,5 +15,5 @@ type Deployer interface {
 		appName,
 		contentType string,
 		out io.Writer,
-	) (error, int)
+	) (int, error)
 }

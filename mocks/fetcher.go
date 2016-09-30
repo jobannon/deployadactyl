@@ -34,7 +34,7 @@ func (f *Fetcher) Fetch(url, manifest string) (string, error) {
 	return f.FetchCall.Returns.AppPath, f.FetchCall.Returns.Error
 }
 
-// FetchFromZip mock method.
+// FetchZipFromRequest mock method.
 func (f *Fetcher) FetchZipFromRequest(req *http.Request) (string, error) {
 	f.FetchFromZipCall.Received.Request = req
 

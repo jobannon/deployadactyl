@@ -121,6 +121,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	deploymentInfo.UUID = d.Randomizer.StringRunes(128)
 	deploymentInfo.SkipSSL = environments[environment].SkipSSL
 	deploymentInfo.Manifest = string(manifest)
+	deploymentInfo.Domain = environments[environment].Domain
 
 	instances := manifestro.GetInstances(deploymentInfo.Manifest)
 	if instances != nil {

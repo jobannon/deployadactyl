@@ -110,6 +110,7 @@ var _ = Describe("Deployer", func() {
 			UUID:        uuid,
 			Instances:   instances,
 			Manifest:    "",
+			Domain:      domain,
 		}
 
 		foundations = []string{randomizer.StringRunes(10)}
@@ -172,9 +173,9 @@ var _ = Describe("Deployer", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(statusCode).To(Equal(http.StatusOK))
 
-					Expect(buffer).To(ContainSubstring("deploy was successful"))
+					Expect(buffer.String()).To(ContainSubstring("deploy was successful"))
 					Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
-					Expect(buffer).To(ContainSubstring(username))
+					Expect(buffer.String()).To(ContainSubstring(username))
 				})
 			})
 
@@ -278,7 +279,7 @@ var _ = Describe("Deployer", func() {
 				Expect(err).To(BeNil())
 
 				Expect(statusCode).To(Equal(http.StatusOK))
-				Expect(buffer).To(ContainSubstring("deploy was successful"))
+				Expect(buffer.String()).To(ContainSubstring("deploy was successful"))
 			})
 		})
 
@@ -352,7 +353,7 @@ applications:
 			Expect(err).To(MatchError(fmt.Sprintf("environment not found: %s", environment)))
 
 			Expect(statusCode).To(Equal(http.StatusInternalServerError))
-			Expect(buffer).To(ContainSubstring(fmt.Sprintf("environment not found: %s", environment)))
+			Expect(buffer.String()).To(ContainSubstring(fmt.Sprintf("environment not found: %s", environment)))
 		})
 	})
 
@@ -361,18 +362,18 @@ applications:
 			statusCode, _ := deployer.Deploy(req, environment, org, space, appName, "application/json", buffer)
 
 			Expect(statusCode).To(Equal(http.StatusOK))
-			Expect(buffer).To(ContainSubstring(artifactURL))
-			Expect(buffer).To(ContainSubstring(username))
-			Expect(buffer).To(ContainSubstring(environment))
-			Expect(buffer).To(ContainSubstring(org))
-			Expect(buffer).To(ContainSubstring(space))
-			Expect(buffer).To(ContainSubstring(appName))
+			Expect(buffer.String()).To(ContainSubstring(artifactURL))
+			Expect(buffer.String()).To(ContainSubstring(username))
+			Expect(buffer.String()).To(ContainSubstring(environment))
+			Expect(buffer.String()).To(ContainSubstring(org))
+			Expect(buffer.String()).To(ContainSubstring(space))
+			Expect(buffer.String()).To(ContainSubstring(appName))
 		})
 
 		It("shows the user their deploy was successful", func() {
 			deployer.Deploy(req, environment, org, space, appName, "application/json", buffer)
 
-			Expect(buffer).To(ContainSubstring("deploy was successful"))
+			Expect(buffer.String()).To(ContainSubstring("deploy was successful"))
 		})
 	})
 
@@ -390,7 +391,7 @@ applications:
 				Expect(err).To(MatchError("an error occurred in the deploy.start event: deploy.start error"))
 
 				Expect(statusCode).To(Equal(http.StatusInternalServerError))
-				Expect(buffer).To(ContainSubstring("deploy.start error"))
+				Expect(buffer.String()).To(ContainSubstring("deploy.start error"))
 				Expect(eventManager.EmitCall.TimesCalled).To(Equal(2), eventManagerNotEnoughCalls)
 			})
 
@@ -403,8 +404,8 @@ applications:
 					Expect(err).To(MatchError("an error occurred in the deploy.start event: deploy.start error: an error occurred in the deploy.finish event: deploy.finish error"))
 
 					Expect(statusCode).To(Equal(http.StatusInternalServerError))
-					Expect(buffer).To(ContainSubstring("deploy.start error"))
-					Expect(buffer).To(ContainSubstring("deploy.finish error"))
+					Expect(buffer.String()).To(ContainSubstring("deploy.start error"))
+					Expect(buffer.String()).To(ContainSubstring("deploy.finish error"))
 					Expect(eventManager.EmitCall.TimesCalled).To(Equal(2), eventManagerNotEnoughCalls)
 				})
 			})
@@ -449,7 +450,7 @@ applications:
 					Expect(err).To(BeNil())
 
 					Expect(statusCode).To(Equal(http.StatusOK))
-					Expect(buffer).To(ContainSubstring("event error"))
+					Expect(buffer.String()).To(ContainSubstring("event error"))
 					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal("deploy.success"))
 				})
 			})
@@ -512,8 +513,8 @@ applications:
 
 				Expect(statusCode).To(Equal(http.StatusOK))
 
-				Expect(buffer).To(ContainSubstring("Deployment Parameters"))
-				Expect(buffer).To(ContainSubstring("deploy was successful"))
+				Expect(buffer.String()).To(ContainSubstring("Deployment Parameters"))
+				Expect(buffer.String()).To(ContainSubstring("deploy was successful"))
 
 				Eventually(logBuffer).Should(Say("prechecking the foundations"))
 				Eventually(logBuffer).Should(Say("checking for basic auth"))
@@ -549,8 +550,8 @@ applications:
 
 				Expect(statusCode).To(Equal(http.StatusOK))
 
-				Expect(buffer).To(ContainSubstring("Deployment Parameters"))
-				Expect(buffer).To(ContainSubstring("deploy was successful"))
+				Expect(buffer.String()).To(ContainSubstring("Deployment Parameters"))
+				Expect(buffer.String()).To(ContainSubstring("deploy was successful"))
 
 				Eventually(logBuffer).Should(Say("prechecking the foundations"))
 				Eventually(logBuffer).Should(Say("checking for basic auth"))

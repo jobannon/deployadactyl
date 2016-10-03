@@ -238,7 +238,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "c93a9b4f2af537028078fd467936d5bd6320e126"
+			"Rev": "0f2be02c5ddfa7c7936000ad519b04c6c795eab3"
 		},
 		{
 			"ImportPath": "golang.org/x/sys/unix",

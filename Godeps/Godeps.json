@@ -11,10 +11,6 @@
 			"Rev": "99c3df83b51532e3615f851d8c2dbb638f5313bf"
 		},
 		{
-			"ImportPath": "github.com/davecgh/go-spew/spew",
-			"Rev": "5215b55f46b2b919f50a1df0eaa5886afe4e3b3d"
-		},
-		{
 			"ImportPath": "github.com/gin-gonic/gin",
 			"Comment": "v1.0rc1-148-g52fcc5d",
 			"Rev": "52fcc5dbf6e94df33ad313858fb94b713e9d1b4a"
@@ -35,7 +31,7 @@
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "2c1988e8c18d14b142c0b472624f71647cf39adb"
+			"Rev": "df1d3ca07d2d07bba352d5b73c4313b4e2a6203e"
 		},
 		{
 			"ImportPath": "github.com/kr/fs",
@@ -44,6 +40,15 @@
 		{
 			"ImportPath": "github.com/manucorporat/sse",
 			"Rev": "fe6ea2c8e398672518ef204bf0fbd9af858d0e15"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-colorable",
+			"Comment": "v0.0.6-6-g6c903ff",
+			"Rev": "6c903ff4aa50920ca86087a280590b36b3152b9c"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-isatty",
+			"Rev": "66b8e73f3f5cda9f96b69efd03dd3d7fc4a5cdb8"
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
@@ -246,6 +251,11 @@
 		{
 			"ImportPath": "golang.org/x/text/unicode/norm",
 			"Rev": "cf4986612c83df6c55578ba198316d1684a9a287"
+		},
+		{
+			"ImportPath": "gopkg.in/bluesuncorp/validator.v5",
+			"Comment": "v5.12",
+			"Rev": "d5acf1dac43705f8bfbb71d878e290e2bed3950b"
 		},
 		{
 			"ImportPath": "gopkg.in/go-playground/validator.v8",

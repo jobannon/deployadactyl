@@ -22,7 +22,7 @@ watch:
 	ginkgo watch -r
 
 godep:
-	godep save $(go list ./... | grep /vendor/)
+	godep save ./...
 
 server:
 	go run server.go

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-errors/errors"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
@@ -60,7 +59,6 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		a.Log.Errorf("request: %s", spew.Sdump(req))
 		return "", errors.Errorf("%s: %s", cannotCreateArtifactoryRequest, err)
 	}
 
@@ -76,7 +74,6 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	_, err = io.Copy(artifactFile, response.Body)
 	if err != nil {
-		a.Log.Error("response: %s", spew.Sdump(response))
 		return "", errors.Errorf("%s: %s", cannotWriteResponseToFile, err)
 	}
 

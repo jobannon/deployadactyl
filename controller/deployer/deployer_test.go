@@ -53,6 +53,7 @@ var _ = Describe("Deployer", func() {
 		space                string
 		username             string
 		uuid                 string
+		manifest             string
 		instances            uint16
 		password             string
 		testManifestLocation string
@@ -83,7 +84,10 @@ var _ = Describe("Deployer", func() {
 		space = "space-" + randomizer.StringRunes(10)
 		username = "username-" + randomizer.StringRunes(10)
 		uuid = "uuid-" + randomizer.StringRunes(10)
+		manifest = "manifest-" + randomizer.StringRunes(10)
 		instances = uint16(rand.Uint32())
+
+		base64Manifest := base64.StdEncoding.EncodeToString([]byte(manifest))
 
 		randomizerMock.RandomizeCall.Returns.Runes = uuid
 		eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
@@ -92,9 +96,11 @@ var _ = Describe("Deployer", func() {
 		eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 		requestBody = bytes.NewBufferString(fmt.Sprintf(`{
-		  		"artifact_url": "%s"
-		  	}`,
+				"artifact_url": "%s",
+				"manifest": "%s"
+			}`,
 			artifactURL,
+			base64Manifest,
 		))
 
 		req, _ = http.NewRequest("POST", "", requestBody)
@@ -109,7 +115,7 @@ var _ = Describe("Deployer", func() {
 			AppName:     appName,
 			UUID:        uuid,
 			Instances:   instances,
-			Manifest:    "",
+			Manifest:    manifest,
 			Domain:      domain,
 		}
 
@@ -230,6 +236,7 @@ var _ = Describe("Deployer", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(statusCode).To(Equal(http.StatusOK))
+					Expect(fetcher.FetchCall.Received.Manifest).ToNot(Equal(base64Manifest), "manifest was not decoded")
 				})
 			})
 
@@ -248,7 +255,7 @@ var _ = Describe("Deployer", func() {
 					req, _ = http.NewRequest("POST", "", requestBody)
 
 					statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/json", buffer)
-					Expect(err).To(MatchError("cannot open manifest file"))
+					Expect(err.Error()).To(ContainSubstring("base64 encoded manifest could not be decoded"))
 
 					Expect(statusCode).To(Equal(http.StatusBadRequest))
 				})
@@ -266,7 +273,7 @@ var _ = Describe("Deployer", func() {
 
 					Expect(statusCode).To(Equal(http.StatusInternalServerError))
 					Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
-					Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
+					Expect(fetcher.FetchCall.Received.Manifest).To(Equal(manifest))
 				})
 			})
 		})
@@ -527,7 +534,7 @@ applications:
 
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
-				Expect(fetcher.FetchCall.Received.Manifest).To(BeEmpty())
+				Expect(fetcher.FetchCall.Received.Manifest).To(Equal(manifest))
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal("deploy.start"))
 				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal("deploy.success"))
 				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal("deploy.finish"))

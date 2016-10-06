@@ -61,7 +61,7 @@ func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, ou
 	if err != nil {
 		logs, err := p.getCloudFoundryLogs(deploymentInfo.AppName)
 		if err != nil {
-			return logs, errors.New(err)
+			return logs, err
 		}
 		return logs, errors.New(outputMessage + string(pushOutput))
 	}
@@ -75,7 +75,7 @@ func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, ou
 		if err != nil {
 			return logs, errors.New(string(pushOutput))
 		}
-		return logs, errors.New(err)
+		return logs, err
 	}
 	p.Log.Debugf(string(mapRouteOutput))
 	p.Log.Infof(appRouteCreated, deploymentInfo.AppName, domain)

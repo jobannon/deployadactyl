@@ -88,11 +88,11 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 			manifest, err = base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
 			if err != nil {
 				fmt.Fprintln(out, err)
-				return http.StatusBadRequest, errors.New("cannot open manifest file")
+				return http.StatusBadRequest, errors.Errorf("%s: base64 encoded manifest could not be decoded", err)
 			}
 		}
 
-		appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, deploymentInfo.Manifest)
+		appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, string(manifest))
 		if err != nil {
 			fmt.Fprintln(out, err)
 			return http.StatusInternalServerError, err

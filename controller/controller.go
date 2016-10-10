@@ -12,14 +12,6 @@ import (
 	"github.com/op/go-logging"
 )
 
-const (
-	cannotDeployApplication   = "cannot deploy application"
-	requestBodyEmpty          = "request body is empty"
-	cannotReadFileFromRequest = "cannot read file from request"
-	cannotProcessZipFile      = "cannot process zip file"
-	contentTypeNotSupported   = "content type not supported"
-)
-
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
 	Deployer I.Deployer
@@ -44,9 +36,9 @@ func (c *Controller) Deploy(g *gin.Context) {
 		buffer,
 	)
 	if err != nil {
-		c.Log.Errorf("%s: %s", cannotDeployApplication, err)
+		c.Log.Errorf("%s: %s", "cannot deploy application", err)
 		g.Writer.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(buffer, fmt.Sprintf("%s - %s\n", cannotDeployApplication, err.Error()))
+		fmt.Fprintln(buffer, fmt.Sprintf("%s: %s", "cannot deploy application", err.Error()))
 		g.Error(err)
 		return
 	}

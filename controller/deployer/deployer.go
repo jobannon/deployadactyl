@@ -56,7 +56,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 		manifest               []byte
 		appPath                string
 	)
-	defer d.FileSystem.RemoveAll(appPath)
+	defer func() { d.FileSystem.RemoveAll(appPath) }()
 
 	d.Log.Debug("prechecking the foundations")
 	err = d.Prechecker.AssertAllFoundationsUp(environments[environment])

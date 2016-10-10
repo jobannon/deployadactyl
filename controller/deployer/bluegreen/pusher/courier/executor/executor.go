@@ -11,7 +11,7 @@ import (
 
 // New returns a new Executor struct.
 func New(fileSystem *afero.Afero) (Executor, error) {
-	tempDir, err := fileSystem.TempDir("", "deployadactyl-")
+	tempDir, err := fileSystem.TempDir("", "deployadactyl-executor-")
 	if err != nil {
 		return Executor{}, err
 	}

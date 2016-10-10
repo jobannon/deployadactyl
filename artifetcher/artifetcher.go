@@ -37,7 +37,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	a.Log.Info("fetching artifact")
 	a.Log.Debug("artifact URL: %s", url)
 
-	artifactFile, err := a.FileSystem.TempFile("", "deployadactyl-")
+	artifactFile, err := a.FileSystem.TempFile("", "deployadactyl-zip-")
 	if err != nil {
 		return "", errors.Errorf("%s: %s", cannotCreateTempFile, err)
 	}
@@ -77,7 +77,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 		return "", errors.Errorf("%s: %s", cannotWriteResponseToFile, err)
 	}
 
-	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-")
+	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-unzipped-")
 	if err != nil {
 		return "", errors.Errorf("%s: %s", cannotCreateTempDirectory, err)
 	}

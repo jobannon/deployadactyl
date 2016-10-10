@@ -510,6 +510,34 @@ applications:
 		})
 	})
 
+	Describe("removing files after deploying", func() {
+		It("deletes the unzipped folder from the fetcher", func() {
+			af = &afero.Afero{Fs: afero.NewMemMapFs()}
+			deployer = Deployer{
+				c,
+				blueGreener,
+				fetcher,
+				prechecker,
+				eventManager,
+				randomizerMock,
+				log,
+				af,
+			}
+
+			directoryName, err := af.TempDir("", "deployadactyl-")
+			Expect(err).ToNot(HaveOccurred())
+
+			fetcher.FetchCall.Returns.AppPath = directoryName
+
+			deployer.Deploy(req, environment, org, space, appName, "application/json", buffer)
+
+			exists, err := af.DirExists(directoryName)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(exists).ToNot(BeTrue())
+		})
+	})
+
 	Describe("happy path deploying with json in the request body", func() {
 		Context("when no errors occur", func() {
 			It("accepts the request and returns http.StatusOK", func() {

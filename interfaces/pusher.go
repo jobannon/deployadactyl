@@ -8,8 +8,8 @@ import (
 
 // Pusher interface.
 type Pusher interface {
-	Login(foundationURL string, deploymentInfo S.DeploymentInfo, out io.Writer) error
-	Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) ([]byte, error)
+	Login(foundationURL string, deploymentInfo S.DeploymentInfo, response io.Writer) error
+	Push(appPath, domain string, deploymentInfo S.DeploymentInfo, response io.Writer) ([]byte, error)
 	Rollback(deploymentInfo S.DeploymentInfo, firstDeploy bool) error
 	DeleteVenerable(deploymentInfo S.DeploymentInfo, foundationURL string) error
 	CleanUp() error

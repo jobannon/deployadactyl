@@ -36,7 +36,7 @@ var _ = Describe("Bluegreen", func() {
 		blueGreen       BlueGreen
 		environment     config.Environment
 		deploymentInfo  S.DeploymentInfo
-		buffer          *bytes.Buffer
+		response        *bytes.Buffer
 	)
 
 	BeforeEach(func() {
@@ -51,7 +51,7 @@ var _ = Describe("Bluegreen", func() {
 		username = "username-" + randomizer.StringRunes(10)
 		password = "password-" + randomizer.StringRunes(10)
 		logs = []byte("logs-" + randomizer.StringRunes(10))
-		buffer = &bytes.Buffer{}
+		response = &bytes.Buffer{}
 
 		pusherFactory = &mocks.PusherCreator{}
 		pushers = nil
@@ -95,14 +95,14 @@ var _ = Describe("Bluegreen", func() {
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).ToNot(Succeed())
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).ToNot(Succeed())
 
 			for i, pusher := range pushers {
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
 				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			}
 
-			Expect(buffer.String()).To(Equal(loginOutput + loginOutput))
+			Expect(response.String()).To(Equal(loginOutput + loginOutput))
 		})
 	})
 
@@ -123,7 +123,7 @@ var _ = Describe("Bluegreen", func() {
 			pusher.DeleteVenerableCall.Returns.Error = nil
 			pusher.CleanUpCall.Returns.Error = nil
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).To(Succeed())
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
 
 			Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 			Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
@@ -133,7 +133,7 @@ var _ = Describe("Bluegreen", func() {
 			Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			Expect(pusher.DeleteVenerableCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 
-			Expect(buffer.String()).To(Equal(loginOutput + pushOutput))
+			Expect(response.String()).To(Equal(loginOutput + pushOutput))
 		})
 
 		It("can push an app to multiple foundations", func() {
@@ -153,7 +153,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).To(Succeed())
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
 
 			for i, pusher := range pushers {
 				foundationURL := environment.Foundations[i]
@@ -168,7 +168,7 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			}
 
-			Expect(buffer.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
+			Expect(response.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
 		})
 	})
 
@@ -190,7 +190,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).To(Succeed())
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
 
 			for i, pusher := range pushers {
 				foundationURL := environment.Foundations[i]
@@ -236,7 +236,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).ToNot(Succeed())
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).ToNot(Succeed())
 
 			for i, pusher := range pushers {
 				foundationURL := environment.Foundations[i]
@@ -250,8 +250,8 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.RollbackCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			}
 
-			Expect(buffer.String()).To(ContainSubstring("\nCloud Foundry Logs for %s at %s\n------------------------------------------------------------\n%s\n", deploymentInfo.AppName, badFoundationURL, logs))
-			Expect(buffer.String()).To(ContainSubstring(loginOutput + pushOutput + loginOutput + pushOutput))
+			Expect(response.String()).To(ContainSubstring("\nCloud Foundry Logs for %s at %s\n------------------------------------------------------------\n%s\n", deploymentInfo.AppName, badFoundationURL, logs))
+			Expect(response.String()).To(ContainSubstring(loginOutput + pushOutput + loginOutput + pushOutput))
 		})
 
 		It("should not rollback any pushes on the first deploy when first deploy rollback is disabled", func() {
@@ -279,7 +279,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, buffer)).ToNot(Succeed())
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).ToNot(Succeed())
 
 			for i, pusher := range pushers {
 				foundationURL := environment.Foundations[i]
@@ -293,7 +293,7 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.RollbackCall.Received.DeploymentInfo).ToNot(Equal(deploymentInfo))
 			}
 
-			Expect(buffer.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
+			Expect(response.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
 		})
 	})
 })

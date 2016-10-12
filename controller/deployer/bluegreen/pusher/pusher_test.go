@@ -33,7 +33,7 @@ var _ = Describe("Pusher", func() {
 		appNameVenerable string
 		instances        uint16
 		deploymentInfo   S.DeploymentInfo
-		responseBuffer   *gbytes.Buffer
+		response         *gbytes.Buffer
 		logBuffer        *gbytes.Buffer
 	)
 
@@ -50,7 +50,7 @@ var _ = Describe("Pusher", func() {
 		appName = "appName-" + randomizer.StringRunes(10)
 		appNameVenerable = appName + "-venerable"
 		instances = uint16(rand.Uint32())
-		responseBuffer = gbytes.NewBuffer()
+		response = gbytes.NewBuffer()
 
 		logBuffer = gbytes.NewBuffer()
 		pusher = Pusher{
@@ -75,7 +75,7 @@ var _ = Describe("Pusher", func() {
 				courier.LoginCall.Returns.Output = []byte("login succeeded")
 				courier.LoginCall.Returns.Error = nil
 
-				Expect(pusher.Login(foundationURL, deploymentInfo, responseBuffer)).To(Succeed())
+				Expect(pusher.Login(foundationURL, deploymentInfo, response)).To(Succeed())
 
 				Expect(courier.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(courier.LoginCall.Received.Username).To(Equal(username))
@@ -84,7 +84,7 @@ var _ = Describe("Pusher", func() {
 				Expect(courier.LoginCall.Received.Space).To(Equal(space))
 				Expect(courier.LoginCall.Received.SkipSSL).To(Equal(skipSSL))
 
-				Eventually(responseBuffer).Should(gbytes.Say("login succeeded"))
+				Eventually(response).Should(gbytes.Say("login succeeded"))
 			})
 		})
 
@@ -93,7 +93,7 @@ var _ = Describe("Pusher", func() {
 				courier.LoginCall.Returns.Output = []byte("login failed")
 				courier.LoginCall.Returns.Error = errors.New("bork")
 
-				Expect(pusher.Login(foundationURL, deploymentInfo, responseBuffer)).ToNot(Succeed())
+				Expect(pusher.Login(foundationURL, deploymentInfo, response)).ToNot(Succeed())
 
 				Expect(courier.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
 				Expect(courier.LoginCall.Received.Username).To(Equal(username))
@@ -102,7 +102,7 @@ var _ = Describe("Pusher", func() {
 				Expect(courier.LoginCall.Received.Space).To(Equal(space))
 				Expect(courier.LoginCall.Received.SkipSSL).To(Equal(skipSSL))
 
-				Eventually(responseBuffer).Should(gbytes.Say("login failed"))
+				Eventually(response).Should(gbytes.Say("login failed"))
 			})
 		})
 	})
@@ -116,7 +116,7 @@ var _ = Describe("Pusher", func() {
 			courier.MapRouteCall.Returns.Output = []byte("mapped route")
 			courier.MapRouteCall.Returns.Error = nil
 
-			_, err := pusher.Push(appPath, domain, deploymentInfo, responseBuffer)
+			_, err := pusher.Push(appPath, domain, deploymentInfo, response)
 			Expect(err).To(BeNil())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
@@ -127,8 +127,8 @@ var _ = Describe("Pusher", func() {
 			Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName))
 			Expect(courier.MapRouteCall.Received.Domain).To(Equal(domain))
 
-			Eventually(responseBuffer).Should(gbytes.Say("push succeeded"))
-			Eventually(responseBuffer).Should(gbytes.Say("mapped route"))
+			Eventually(response).Should(gbytes.Say("push succeeded"))
+			Eventually(response).Should(gbytes.Say("mapped route"))
 
 			Eventually(logBuffer).Should(gbytes.Say("renamed app from " + appName + " to " + appNameVenerable))
 			Eventually(logBuffer).Should(gbytes.Say("pushing new app " + appName + " to " + domain))
@@ -143,7 +143,7 @@ var _ = Describe("Pusher", func() {
 				courier.RenameCall.Returns.Error = errors.New("bork")
 				courier.ExistsCall.Returns.Bool = true
 
-				_, err := pusher.Push(appPath, domain, deploymentInfo, responseBuffer)
+				_, err := pusher.Push(appPath, domain, deploymentInfo, response)
 				Expect(err).ToNot(BeNil())
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
@@ -162,7 +162,7 @@ var _ = Describe("Pusher", func() {
 				courier.MapRouteCall.Returns.Output = []byte("mapped route")
 				courier.MapRouteCall.Returns.Error = nil
 
-				_, err := pusher.Push(appPath, domain, deploymentInfo, responseBuffer)
+				_, err := pusher.Push(appPath, domain, deploymentInfo, response)
 				Expect(err).To(BeNil())
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
@@ -173,8 +173,8 @@ var _ = Describe("Pusher", func() {
 				Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName))
 				Expect(courier.MapRouteCall.Received.Domain).To(Equal(domain))
 
-				Eventually(responseBuffer).Should(gbytes.Say("push succeeded"))
-				Eventually(responseBuffer).Should(gbytes.Say("mapped route"))
+				Eventually(response).Should(gbytes.Say("push succeeded"))
+				Eventually(response).Should(gbytes.Say("mapped route"))
 
 				Eventually(logBuffer).Should(gbytes.Say("new app detected"))
 				Eventually(logBuffer).Should(gbytes.Say("pushing new app " + appName + " to " + domain))

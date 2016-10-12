@@ -190,12 +190,12 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
-	Describe("updating user provided services", func(){
-		It("should get a valid Cloud Foundry Uups command", func ()  {
+	Describe("updating user provided services", func() {
+		It("should get a valid Cloud Foundry Uups command", func() {
 			var (
-				hostName = "hostName-" + randomizer.StringRunes(10)
-				address = "address-" + randomizer.StringRunes(10)
-				body = fmt.Sprintf("{%s:%s}", hostName, address)
+				hostName     = "hostName-" + randomizer.StringRunes(10)
+				address      = "address-" + randomizer.StringRunes(10)
+				body         = fmt.Sprintf("{%s:%s}", hostName, address)
 				expectedArgs = []string{"uups", appName, "-p", body}
 			)
 			executor.ExecuteCall.Returns.Output = []byte(output)

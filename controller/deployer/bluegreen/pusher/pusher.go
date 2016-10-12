@@ -42,7 +42,7 @@ type Pusher struct {
 // Pushes the new application to the existing appName route with an included load balanced domain if provided.
 //
 // Returns Cloud Foundry logs if there is an error.
-func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) ([]byte, error) {
+func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, response io.Writer) ([]byte, error) {
 	renameOutput, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	if err != nil {
 		if p.Courier.Exists(deploymentInfo.AppName) {
@@ -57,7 +57,7 @@ func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, ou
 	p.Log.Infof(pushingNewApp, deploymentInfo.AppName, domain)
 	p.Log.Debugf(newAppPath, deploymentInfo.AppName, appPath)
 	pushOutput, err := p.Courier.Push(deploymentInfo.AppName, appPath, deploymentInfo.Instances)
-	fmt.Fprint(out, string(pushOutput))
+	fmt.Fprint(response, string(pushOutput))
 	if err != nil {
 		logs, err := p.getCloudFoundryLogs(deploymentInfo.AppName)
 		if err != nil {
@@ -69,7 +69,7 @@ func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, ou
 
 	p.Log.Debugf(mappingRoute, deploymentInfo.AppName, domain)
 	mapRouteOutput, err := p.Courier.MapRoute(deploymentInfo.AppName, domain)
-	fmt.Fprint(out, string(mapRouteOutput))
+	fmt.Fprint(response, string(mapRouteOutput))
 	if err != nil {
 		logs, err := p.getCloudFoundryLogs(deploymentInfo.AppName)
 		if err != nil {
@@ -127,7 +127,7 @@ func (p Pusher) CleanUp() error {
 }
 
 // Login will login to a Cloud Foundry instance.
-func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
+func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
 	p.Log.Debugf(
 		`logging into cloud foundry with parameters:
 		foundation URL: %+v
@@ -145,7 +145,7 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, out
 		deploymentInfo.Space,
 		deploymentInfo.SkipSSL,
 	)
-	out.Write(loginOutput)
+	response.Write(loginOutput)
 	if err != nil {
 		return errors.Errorf("%s %s: %s", cannotLogin, foundationURL, err)
 	}

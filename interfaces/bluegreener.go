@@ -13,6 +13,6 @@ type BlueGreener interface {
 		environment config.Environment,
 		appPath string,
 		deploymentInfo S.DeploymentInfo,
-		out io.Writer,
+		response io.Writer,
 	) error
 }

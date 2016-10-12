@@ -22,9 +22,9 @@ type Controller struct {
 func (c *Controller) Deploy(g *gin.Context) {
 	c.Log.Info("Request originated from: %+v", g.Request.RemoteAddr)
 
-	buffer := &bytes.Buffer{}
+	response := &bytes.Buffer{}
 
-	defer io.Copy(g.Writer, buffer)
+	defer io.Copy(g.Writer, response)
 
 	statusCode, err := c.Deployer.Deploy(
 		g.Request,
@@ -33,12 +33,12 @@ func (c *Controller) Deploy(g *gin.Context) {
 		g.Param("space"),
 		g.Param("appName"),
 		g.Request.Header.Get("Content-Type"),
-		buffer,
+		response,
 	)
 	if err != nil {
 		c.Log.Errorf("%s: %s", "cannot deploy application", err)
 		g.Writer.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintln(buffer, fmt.Sprintf("%s: %s", "cannot deploy application", err.Error()))
+		fmt.Fprintln(response, fmt.Sprintf("%s: %s", "cannot deploy application", err.Error()))
 		g.Error(err)
 		return
 	}

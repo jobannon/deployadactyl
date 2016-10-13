@@ -3,6 +3,7 @@ package bluegreen_test
 import (
 	"bytes"
 	"errors"
+	"strings"
 
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen"
@@ -250,7 +251,7 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.RollbackCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			}
 
-			Expect(response.String()).To(ContainSubstring("\nCloud Foundry Logs for %s at %s\n------------------------------------------------------------\n%s\n", deploymentInfo.AppName, badFoundationURL, logs))
+			Expect(response.String()).To(ContainSubstring("\nCloud Foundry logs for %s at %s\n%s\n%s\n", deploymentInfo.AppName, badFoundationURL, strings.Repeat("-", 60), logs))
 			Expect(response.String()).To(ContainSubstring(loginOutput + pushOutput + loginOutput + pushOutput))
 		})
 

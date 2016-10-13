@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
@@ -139,7 +140,7 @@ func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, do
 			}
 			logs, err := pusher.Push(appPath, domain, deploymentInfo, buffer)
 			if logs != nil {
-				responseLogs = append(responseLogs, []byte(fmt.Sprintf("\nCloud Foundry Logs for %s at %s\n------------------------------------------------------------\n%s\n", deploymentInfo.AppName, foundationURL, logs))...)
+				responseLogs = append(responseLogs, []byte(fmt.Sprintf("\nCloud Foundry logs for %s at %s\n%s\n%s\n", deploymentInfo.AppName, foundationURL, strings.Repeat("-", 60), logs))...)
 			}
 			return err
 		}

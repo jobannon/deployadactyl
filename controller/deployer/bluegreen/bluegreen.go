@@ -14,12 +14,6 @@ import (
 	"github.com/op/go-logging"
 )
 
-const (
-	pushFailedRollbackTriggered     = "push failed: rollback triggered"
-	pushFailedNoRollbackFirstDeploy = "push failed: first deploy, rollback not enabled"
-	loginFailed                     = "push failed: login failed"
-)
-
 // BlueGreen has a PusherCreator to creater pushers for blue green deployments.
 type BlueGreen struct {
 	PusherCreator I.PusherFactory
@@ -53,7 +47,7 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 		for _, buffer := range buffers {
 			buffer.WriteTo(response)
 		}
-		return errors.New(loginFailed)
+		return errors.New("push failed: login failed")
 	}
 
 	bg.cleanUpAll(actors, deploymentInfo)
@@ -76,11 +70,11 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 	// Rollback if deploy failed and this is not the first build or DisableFirstDeployRollback is false
 	if failed && (!firstDeploy || (firstDeploy && !environment.DisableFirstDeployRollback)) {
 		bg.rollbackAll(actors, deploymentInfo, firstDeploy)
-		return errors.Errorf(pushFailedRollbackTriggered + "\n" + combinedOutput.String())
+		return errors.Errorf("push failed: rollback triggered" + "\n" + combinedOutput.String())
 	}
 
 	if failed {
-		return errors.Errorf(pushFailedNoRollbackFirstDeploy + "\n" + combinedOutput.String())
+		return errors.Errorf("push failed: first deploy, rollback not enabled" + "\n" + combinedOutput.String())
 	}
 
 	bg.finishPushAll(actors, deploymentInfo)
@@ -138,10 +132,12 @@ func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath, do
 			if pusher.Exists(deploymentInfo.AppName) {
 				firstDeploy = false
 			}
+
 			logs, err := pusher.Push(appPath, domain, deploymentInfo, buffer)
 			if logs != nil {
 				responseLogs = append(responseLogs, []byte(fmt.Sprintf("\nCloud Foundry logs for %s at %s\n%s\n%s\n", deploymentInfo.AppName, foundationURL, strings.Repeat("-", 60), logs))...)
 			}
+
 			return err
 		}
 	}
@@ -161,6 +157,7 @@ func (bg BlueGreen) rollbackAll(actors []actor, deploymentInfo S.DeploymentInfo,
 			return pusher.Rollback(deploymentInfo, firstDeploy)
 		}
 	}
+
 	for _, a := range actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
@@ -173,6 +170,7 @@ func (bg BlueGreen) finishPushAll(actors []actor, deploymentInfo S.DeploymentInf
 			return pusher.DeleteVenerable(deploymentInfo, foundationURL)
 		}
 	}
+
 	for _, a := range actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())

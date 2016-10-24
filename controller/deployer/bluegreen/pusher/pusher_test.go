@@ -2,6 +2,7 @@ package pusher_test
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
@@ -130,11 +131,11 @@ var _ = Describe("Pusher", func() {
 			Eventually(response).Should(gbytes.Say("push succeeded"))
 			Eventually(response).Should(gbytes.Say("mapped route"))
 
-			Eventually(logBuffer).Should(gbytes.Say("renamed app from " + appName + " to " + appNameVenerable))
-			Eventually(logBuffer).Should(gbytes.Say("pushing new app " + appName + " to " + domain))
-			Eventually(logBuffer).Should(gbytes.Say("using tempdir for app " + appName + " " + appPath))
-			Eventually(logBuffer).Should(gbytes.Say("push succeeded"))
-			Eventually(logBuffer).Should(gbytes.Say("mapping route for " + appName + " to " + domain))
+			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("renamed app from %s to %s", appName, appNameVenerable)))
+			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("pushing new app %s to %s", appName, domain)))
+			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("tempdir for app %s: %s", appName, appPath)))
+			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("push succeeded")))
+			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("mapping route for %s to %s", appName, domain)))
 		})
 
 		Context("when renaming", func() {
@@ -150,7 +151,7 @@ var _ = Describe("Pusher", func() {
 				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))
 				Expect(courier.ExistsCall.Received.AppName).To(Equal(appName))
 
-				Eventually(logBuffer).Should(gbytes.Say("cannot rename, app already exists"))
+				Eventually(logBuffer).Should(gbytes.Say("cannot rename: app already exists"))
 			})
 
 			It("doesn't fail when it's a new app", func() {
@@ -177,10 +178,10 @@ var _ = Describe("Pusher", func() {
 				Eventually(response).Should(gbytes.Say("mapped route"))
 
 				Eventually(logBuffer).Should(gbytes.Say("new app detected"))
-				Eventually(logBuffer).Should(gbytes.Say("pushing new app " + appName + " to " + domain))
-				Eventually(logBuffer).Should(gbytes.Say("using tempdir for app " + appName + " " + appPath))
+				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("pushing new app %s to %s", appName, domain)))
+				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("tempdir for app %s: %s", appName, appPath)))
 				Eventually(logBuffer).Should(gbytes.Say("push succeeded"))
-				Eventually(logBuffer).Should(gbytes.Say("mapping route for " + appName + " to " + domain))
+				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("mapping route for %s to %s", appName, domain)))
 			})
 		})
 	})
@@ -198,9 +199,9 @@ var _ = Describe("Pusher", func() {
 			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appName))
 			Expect(courier.DeleteCall.Received.AppName).To(Equal(appName))
 
-			Eventually(logBuffer).Should(gbytes.Say("rolling back deploy of " + appName))
-			Eventually(logBuffer).Should(gbytes.Say("deleted " + appName))
-			Eventually(logBuffer).Should(gbytes.Say("renamed app from " + appNameVenerable + " to " + appName))
+			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("rolling back deploy of %s", appName)))
+			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("deleted %s", appName)))
+			Eventually(logBuffer).Should(gbytes.Say("renamed app from %s to %s", appNameVenerable, appName))
 		})
 	})
 
@@ -213,7 +214,7 @@ var _ = Describe("Pusher", func() {
 
 			Expect(courier.DeleteCall.Received.AppName).To(Equal(appNameVenerable))
 
-			Eventually(logBuffer).Should(gbytes.Say("deleted " + appNameVenerable))
+			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("deleted %s", appNameVenerable)))
 		})
 	})
 

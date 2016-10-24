@@ -69,7 +69,6 @@ func (c Courier) Cups(appName string, body string) ([]byte, error) {
 }
 
 // Uups runs the Cloud Foundry UUPS command to update a user provided serivce
-
 func (c Courier) Uups(appName string, body string) ([]byte, error) {
 	return c.Executor.Execute("uups", appName, "-p", body)
 }

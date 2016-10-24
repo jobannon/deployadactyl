@@ -20,7 +20,7 @@ var _ = Describe("Prechecker", func() {
 			foundationURls []string
 			prechecker     Prechecker
 			eventManager   *mocks.EventManager
-			configServer   *httptest.Server
+			testServer     *httptest.Server
 			environment    config.Environment
 			event          S.Event
 		)
@@ -31,17 +31,18 @@ var _ = Describe("Prechecker", func() {
 			eventManager = &mocks.EventManager{}
 			prechecker = Prechecker{EventManager: eventManager}
 
-			configServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			testServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				foundationURls = append(foundationURls, r.URL.Path)
 				w.WriteHeader(httpStatus)
 			}))
+
 			environment = config.Environment{
-				Foundations: []string{configServer.URL},
+				Foundations: []string{testServer.URL},
 			}
 		})
 
 		AfterEach(func() {
-			configServer.Close()
+			testServer.Close()
 		})
 
 		Context("when no foundations are given", func() {
@@ -63,6 +64,26 @@ var _ = Describe("Prechecker", func() {
 			})
 		})
 
+		Context("when the client returns an error", func() {
+			It("returns an error and emits an event", func() {
+				environment.Foundations = []string{"bork"}
+
+				precheckerEventData := S.PrecheckerEventData{
+					Environment: environment,
+					Description: "no foundations configured",
+				}
+				event = S.Event{
+					Type: "validate.foundationsUnavailable",
+					Data: precheckerEventData,
+				}
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+
+				err := prechecker.AssertAllFoundationsUp(environment)
+
+				Expect(err).To(MatchError("cannot get: Get bork/v2/info: unsupported protocol scheme \"\""))
+			})
+		})
+
 		Context("when all foundations return a 200 OK", func() {
 			It("returns a nil error", func() {
 				httpStatus = http.StatusOK
@@ -77,7 +98,7 @@ var _ = Describe("Prechecker", func() {
 			It("returns an error and emits an event", func() {
 				precheckerEventData := S.PrecheckerEventData{
 					Environment: environment,
-					Description: "deploy aborted, one or more CF foundations unavailable",
+					Description: "deploy aborted: one or more CF foundations unavailable",
 				}
 				event = S.Event{
 					Type: "validate.foundationsUnavailable",
@@ -98,7 +119,7 @@ var _ = Describe("Prechecker", func() {
 			It("returns an error and emits an event", func() {
 				precheckerEventData := S.PrecheckerEventData{
 					Environment: environment,
-					Description: "deploy aborted, one or more CF foundations unavailable",
+					Description: "deploy aborted: one or more CF foundations unavailable",
 				}
 				event = S.Event{
 					Type: "validate.foundationsUnavailable",

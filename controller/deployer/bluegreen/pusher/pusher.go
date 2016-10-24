@@ -11,26 +11,6 @@ import (
 	"github.com/op/go-logging"
 )
 
-const (
-	cannotDelete             = "cannot delete"
-	cannotLogin              = "cannot login to"
-	renamingApp              = "renaming app from %s to %s"
-	renamedApp               = "renamed app from %s to %s"
-	cannotRenameApp          = "cannot rename, app already exists"
-	pushingNewApp            = "pushing new app %s to %s"
-	newAppPath               = "using tempdir for app %s %s"
-	mappingRoute             = "mapping route for %s to %s"
-	deletedApp               = "deleted %s"
-	rollingBackDeploy        = "rolling back deploy of %s"
-	unableToDelete           = "unable to delete %s: %s"
-	unableToRenameVenerable  = "unable to rename venerable app %s: %s"
-	loggedIntoCloudFoundry   = "logged into cloud foundry %s"
-	newAppDetected           = "new app detected"
-	appRouteCreated          = "application route created at %s.%s"
-	outputMessage            = "output from Cloud Foundry:\n"
-	finishedPushSuccessfully = "finished push successfully on %s"
-)
-
 // Pusher has a courier used to push applications to Cloud Foundry.
 type Pusher struct {
 	Courier I.Courier
@@ -46,16 +26,16 @@ func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, re
 	renameOutput, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	if err != nil {
 		if p.Courier.Exists(deploymentInfo.AppName) {
-			p.Log.Errorf(cannotRenameApp)
+			p.Log.Errorf("cannot rename: app already exists")
 			return nil, errors.New(string(renameOutput))
 		}
-		p.Log.Infof(newAppDetected)
+		p.Log.Infof("new app detected")
 	} else {
-		p.Log.Infof(renamedApp, deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
+		p.Log.Infof("renamed app from %s to %s", deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 	}
 
-	p.Log.Infof(pushingNewApp, deploymentInfo.AppName, domain)
-	p.Log.Debugf(newAppPath, deploymentInfo.AppName, appPath)
+	p.Log.Infof("pushing new app %s to %s", deploymentInfo.AppName, domain)
+	p.Log.Debugf("tempdir for app %s: %s", deploymentInfo.AppName, appPath)
 	pushOutput, err := p.Courier.Push(deploymentInfo.AppName, appPath, deploymentInfo.Instances)
 	fmt.Fprint(response, string(pushOutput))
 	if err != nil {
@@ -63,11 +43,11 @@ func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, re
 		if err != nil {
 			return logs, err
 		}
-		return logs, errors.New(outputMessage + string(pushOutput))
+		return logs, errors.Errorf("output from Cloud Foundry:\n%s", string(pushOutput))
 	}
-	p.Log.Infof(outputMessage + string(pushOutput))
+	p.Log.Infof("output from Cloud Foundry:\n%s", string(pushOutput))
 
-	p.Log.Debugf(mappingRoute, deploymentInfo.AppName, domain)
+	p.Log.Debugf("mapping route for %s to %s", deploymentInfo.AppName, domain)
 	mapRouteOutput, err := p.Courier.MapRoute(deploymentInfo.AppName, domain)
 	fmt.Fprint(response, string(mapRouteOutput))
 	if err != nil {
@@ -78,7 +58,7 @@ func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, re
 		return logs, err
 	}
 	p.Log.Debugf(string(mapRouteOutput))
-	p.Log.Infof(appRouteCreated, deploymentInfo.AppName, domain)
+	p.Log.Infof("application route created at %s.%s", deploymentInfo.AppName, domain)
 	return nil, nil
 }
 
@@ -88,11 +68,11 @@ func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo, foundationURL s
 
 	_, err := p.Courier.Delete(deploymentInfo.AppName + "-venerable")
 	if err != nil {
-		return errors.Errorf("%s %s: %s", cannotDelete, venerableName, err)
+		return errors.Errorf("cannot delete %s: %s", venerableName, err)
 	}
 
-	p.Log.Infof(deletedApp, venerableName)
-	p.Log.Infof(finishedPushSuccessfully, foundationURL)
+	p.Log.Infof("deleted %s", venerableName)
+	p.Log.Infof("finished push successfully on %s", foundationURL)
 
 	return nil
 }
@@ -101,21 +81,21 @@ func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo, foundationURL s
 // Deletes the new application.
 // Renames appName-venerable back to appName if this is not the first deploy.
 func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo, firstDeploy bool) error {
-	p.Log.Errorf(rollingBackDeploy, deploymentInfo.AppName)
+	p.Log.Errorf("rolling back deploy of %s", deploymentInfo.AppName)
 	venerableName := deploymentInfo.AppName + "-venerable"
 
 	_, err := p.Courier.Delete(deploymentInfo.AppName)
 	if err != nil {
-		p.Log.Infof(unableToDelete, deploymentInfo.AppName, err)
+		p.Log.Infof("unable to delete %s: %s", deploymentInfo.AppName, err)
 	}
-	p.Log.Infof(deletedApp, deploymentInfo.AppName)
+	p.Log.Infof("deleted %s", deploymentInfo.AppName)
 
 	if !firstDeploy {
 		_, err = p.Courier.Rename(venerableName, deploymentInfo.AppName)
 		if err != nil {
-			p.Log.Infof(unableToRenameVenerable, venerableName, err)
+			p.Log.Infof("unable to rename venerable app %s: %s", venerableName, err)
 		}
-		p.Log.Infof(renamedApp, venerableName, deploymentInfo.AppName)
+		p.Log.Infof("renamed app from %s to %s", venerableName, deploymentInfo.AppName)
 	}
 
 	return nil
@@ -147,9 +127,9 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, res
 	)
 	response.Write(loginOutput)
 	if err != nil {
-		return errors.Errorf("%s %s: %s", cannotLogin, foundationURL, err)
+		return errors.Errorf("cannot login %s: %s", foundationURL, err)
 	}
-	p.Log.Infof(loggedIntoCloudFoundry, foundationURL)
+	p.Log.Infof("logged into cloud foundry %s", foundationURL)
 
 	return nil
 }

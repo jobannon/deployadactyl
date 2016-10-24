@@ -3,6 +3,7 @@ package prechecker
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -12,13 +13,6 @@ import (
 	"github.com/go-errors/errors"
 )
 
-const (
-	apiPathExtension        = "/v2/info"
-	unavailableFoundation   = "deploy aborted, one or more CF foundations unavailable"
-	noFoundationsConfigured = "no foundations configured"
-	anAPIEndpointFailed     = "An api endpoint failed"
-)
-
 // Prechecker has an eventmanager used to manage event if prechecks fail.
 type Prechecker struct {
 	EventManager I.EventManager
@@ -26,39 +20,38 @@ type Prechecker struct {
 
 // AssertAllFoundationsUp will send a request to each Cloud Foundry instance and check that the response status code is 200 OK.
 func (p Prechecker) AssertAllFoundationsUp(environment config.Environment) error {
-	var insecureClient = &http.Client{
+	precheckerEventData := S.PrecheckerEventData{Environment: environment}
+
+	if len(environment.Foundations) == 0 {
+		precheckerEventData.Description = "no foundations configured"
+
+		p.EventManager.Emit(S.Event{Type: "validate.foundationsUnavailable", Data: precheckerEventData})
+
+		return errors.New(precheckerEventData.Description)
+	}
+
+	insecureClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 			ResponseHeaderTimeout: 15 * time.Second,
 		},
 	}
 
-	precheckerEventData := S.PrecheckerEventData{
-		Environment: environment,
-	}
-
-	if len(environment.Foundations) == 0 {
-		precheckerEventData.Description = noFoundationsConfigured
-
-		p.EventManager.Emit(S.Event{Type: "validate.foundationsUnavailable", Data: precheckerEventData})
-		return errors.Errorf(noFoundationsConfigured)
-	}
-
 	for _, foundationURL := range environment.Foundations {
-
-		resp, err := insecureClient.Get(foundationURL + apiPathExtension)
-
+		resp, err := insecureClient.Get(fmt.Sprintf("%s/v2/info", foundationURL))
 		if err != nil {
-			return errors.Errorf(unavailableFoundation)
+			return errors.Errorf("cannot get: %s", err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			precheckerEventData.Description = unavailableFoundation
+			precheckerEventData.Description = "deploy aborted: one or more CF foundations unavailable"
 
 			p.EventManager.Emit(S.Event{Type: "validate.foundationsUnavailable", Data: precheckerEventData})
-			return errors.Errorf("%s: %s: %s", anAPIEndpointFailed, foundationURL, resp.Status)
+
+			return errors.Errorf("an api endpoint failed: %s: %s", foundationURL, resp.Status)
 		}
 	}
+
 	return nil
 }

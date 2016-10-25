@@ -26,7 +26,7 @@ type Pusher struct {
 	PushCall struct {
 		Received struct {
 			AppPath        string
-			Domain         string
+			AppExists      bool
 			DeploymentInfo S.DeploymentInfo
 			Out            io.Writer
 		}
@@ -34,15 +34,14 @@ type Pusher struct {
 			Output string
 		}
 		Returns struct {
-			Logs  []byte
 			Error error
 		}
 	}
 
 	RollbackCall struct {
 		Received struct {
+			AppExists      bool
 			DeploymentInfo S.DeploymentInfo
-			FirstDeploy    bool
 		}
 		Returns struct {
 			Error error
@@ -87,21 +86,21 @@ func (p *Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, ou
 }
 
 // Push mock method.
-func (p *Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, out io.Writer) ([]byte, error) {
+func (p *Pusher) Push(appPath string, appExists bool, deploymentInfo S.DeploymentInfo, out io.Writer) error {
 	p.PushCall.Received.AppPath = appPath
-	p.PushCall.Received.Domain = domain
 	p.PushCall.Received.DeploymentInfo = deploymentInfo
 	p.PushCall.Received.Out = out
+	p.PushCall.Received.AppExists = appExists
 
 	fmt.Fprint(out, p.PushCall.Write.Output)
 
-	return p.PushCall.Returns.Logs, p.PushCall.Returns.Error
+	return p.PushCall.Returns.Error
 }
 
 // Rollback mock method.
-func (p *Pusher) Rollback(deploymentInfo S.DeploymentInfo, firstDeploy bool) error {
+func (p *Pusher) Rollback(appExists bool, deploymentInfo S.DeploymentInfo) error {
 	p.RollbackCall.Received.DeploymentInfo = deploymentInfo
-	p.RollbackCall.Received.FirstDeploy = firstDeploy
+	p.RollbackCall.Received.AppExists = appExists
 
 	return p.RollbackCall.Returns.Error
 }

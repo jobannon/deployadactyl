@@ -79,7 +79,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 		return "", errors.Errorf("%s: %s", "cannot unzip artifact", err)
 	}
 
-	a.Log.Debug("fetched and unzipped to tempdir %s", unzippedPath)
+	a.Log.Debug("fetched and unzipped to tempdir: %s", unzippedPath)
 	return unzippedPath, nil
 }
 

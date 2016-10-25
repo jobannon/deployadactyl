@@ -4,6 +4,7 @@ package pusher
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
@@ -22,44 +23,48 @@ type Pusher struct {
 // Pushes the new application to the existing appName route with an included load balanced domain if provided.
 //
 // Returns Cloud Foundry logs if there is an error.
-func (p Pusher) Push(appPath, domain string, deploymentInfo S.DeploymentInfo, response io.Writer) ([]byte, error) {
-	renameOutput, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
-	if err != nil {
-		if p.Courier.Exists(deploymentInfo.AppName) {
-			p.Log.Errorf("cannot rename: app already exists")
-			return nil, errors.New(string(renameOutput))
+func (p Pusher) Push(appPath string, appExists bool, deploymentInfo S.DeploymentInfo, response io.Writer) error {
+	if appExists {
+		_, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
+		if err != nil {
+			return errors.Errorf("rename failed: %s", err)
 		}
-		p.Log.Infof("new app detected")
-	} else {
+
 		p.Log.Infof("renamed app from %s to %s", deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
+	} else {
+		p.Log.Infof("new app detected")
 	}
 
-	p.Log.Infof("pushing new app %s to %s", deploymentInfo.AppName, domain)
+	p.Log.Debugf("pushing app %s to %s", deploymentInfo.AppName, deploymentInfo.Domain)
 	p.Log.Debugf("tempdir for app %s: %s", deploymentInfo.AppName, appPath)
 	pushOutput, err := p.Courier.Push(deploymentInfo.AppName, appPath, deploymentInfo.Instances)
 	fmt.Fprint(response, string(pushOutput))
 	if err != nil {
 		logs, err := p.getCloudFoundryLogs(deploymentInfo.AppName)
+		fmt.Fprint(response, logs)
 		if err != nil {
-			return logs, err
+			return errors.Errorf("cant get Cloud Foundry logs: %s", err)
 		}
-		return logs, errors.Errorf("output from Cloud Foundry:\n%s", string(pushOutput))
-	}
-	p.Log.Infof("output from Cloud Foundry:\n%s", string(pushOutput))
 
-	p.Log.Debugf("mapping route for %s to %s", deploymentInfo.AppName, domain)
-	mapRouteOutput, err := p.Courier.MapRoute(deploymentInfo.AppName, domain)
+		return errors.New(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
+	}
+	p.Log.Infof(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
+
+	p.Log.Debugf("mapping route for %s to %s", deploymentInfo.AppName, deploymentInfo.Domain)
+	mapRouteOutput, err := p.Courier.MapRoute(deploymentInfo.AppName, deploymentInfo.Domain)
 	fmt.Fprint(response, string(mapRouteOutput))
 	if err != nil {
 		logs, err := p.getCloudFoundryLogs(deploymentInfo.AppName)
+		fmt.Fprint(response, string(mapRouteOutput), logs)
 		if err != nil {
-			return logs, errors.New(string(pushOutput))
+			return errors.New(string(pushOutput))
 		}
-		return logs, err
+		return err
 	}
 	p.Log.Debugf(string(mapRouteOutput))
-	p.Log.Infof("application route created at %s.%s", deploymentInfo.AppName, domain)
-	return nil, nil
+	p.Log.Infof("application route created at %s.%s", deploymentInfo.AppName, deploymentInfo.Domain)
+
+	return nil
 }
 
 // DeleteVenerable will delete the venerable instance of your application.
@@ -80,7 +85,7 @@ func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo, foundationURL s
 // Rollback will rollback Push.
 // Deletes the new application.
 // Renames appName-venerable back to appName if this is not the first deploy.
-func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo, firstDeploy bool) error {
+func (p Pusher) Rollback(appExists bool, deploymentInfo S.DeploymentInfo) error {
 	p.Log.Errorf("rolling back deploy of %s", deploymentInfo.AppName)
 	venerableName := deploymentInfo.AppName + "-venerable"
 
@@ -90,7 +95,7 @@ func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo, firstDeploy bool) erro
 	}
 	p.Log.Infof("deleted %s", deploymentInfo.AppName)
 
-	if !firstDeploy {
+	if appExists {
 		_, err = p.Courier.Rename(venerableName, deploymentInfo.AppName)
 		if err != nil {
 			p.Log.Infof("unable to rename venerable app %s: %s", venerableName, err)
@@ -127,7 +132,7 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, res
 	)
 	response.Write(loginOutput)
 	if err != nil {
-		return errors.Errorf("cannot login %s: %s", foundationURL, err)
+		return errors.Errorf("cannot login to %s: %s", foundationURL, err)
 	}
 	p.Log.Infof("logged into cloud foundry %s", foundationURL)
 

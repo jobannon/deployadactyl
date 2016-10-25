@@ -1,9 +1,7 @@
 package bluegreen_test
 
 import (
-	"bytes"
 	"errors"
-	"strings"
 
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen"
@@ -15,13 +13,13 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("Bluegreen", func() {
 
 	var (
 		environmentName string
-		domainName      string
 		appName         string
 		appPath         string
 		org             string
@@ -30,19 +28,17 @@ var _ = Describe("Bluegreen", func() {
 		loginOutput     string
 		username        string
 		password        string
-		logs            []byte
 		pusherFactory   *mocks.PusherCreator
 		pushers         []*mocks.Pusher
 		log             *logging.Logger
 		blueGreen       BlueGreen
 		environment     config.Environment
 		deploymentInfo  S.DeploymentInfo
-		response        *bytes.Buffer
+		response        *Buffer
 	)
 
 	BeforeEach(func() {
 		environmentName = "environmentName-" + randomizer.StringRunes(10)
-		domainName = "domainName-" + randomizer.StringRunes(10)
 		appName = "appName-" + randomizer.StringRunes(10)
 		appPath = "appPath-" + randomizer.StringRunes(10)
 		org = "org-" + randomizer.StringRunes(10)
@@ -51,8 +47,7 @@ var _ = Describe("Bluegreen", func() {
 		loginOutput = "loginOutput-" + randomizer.StringRunes(10)
 		username = "username-" + randomizer.StringRunes(10)
 		password = "password-" + randomizer.StringRunes(10)
-		logs = []byte("logs-" + randomizer.StringRunes(10))
-		response = &bytes.Buffer{}
+		response = NewBuffer()
 
 		pusherFactory = &mocks.PusherCreator{}
 		pushers = nil
@@ -61,10 +56,7 @@ var _ = Describe("Bluegreen", func() {
 
 		blueGreen = BlueGreen{pusherFactory, log}
 
-		environment = config.Environment{
-			Name:   environmentName,
-			Domain: domainName,
-		}
+		environment = config.Environment{Name: environmentName}
 
 		deploymentInfo = S.DeploymentInfo{
 			Username: username,
@@ -103,7 +95,8 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			}
 
-			Expect(response.String()).To(Equal(loginOutput + loginOutput))
+			Expect(response).To(Say(loginOutput))
+			Expect(response).To(Say(loginOutput))
 		})
 	})
 
@@ -130,11 +123,11 @@ var _ = Describe("Bluegreen", func() {
 			Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-			Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 			Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			Expect(pusher.DeleteVenerableCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 
-			Expect(response.String()).To(Equal(loginOutput + pushOutput))
+			Expect(response).To(Say(loginOutput))
+			Expect(response).To(Say(pushOutput))
 		})
 
 		It("can push an app to multiple foundations", func() {
@@ -163,13 +156,50 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.DeleteVenerableCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			}
 
-			Expect(response.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
+			Expect(response).To(Say(loginOutput))
+			Expect(response).To(Say(pushOutput))
+			Expect(response).To(Say(loginOutput))
+			Expect(response).To(Say(pushOutput))
+		})
+	})
+
+	Context("when pushing to multiple foundations", func() {
+		It("checks if the app exists on each foundation", func() {
+
+			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10), randomizer.StringRunes(10), randomizer.StringRunes(10)}
+
+			for i := range environment.Foundations {
+				pusher := &mocks.Pusher{}
+				pushers = append(pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+
+				pusher.LoginCall.Write.Output = loginOutput
+				pusher.LoginCall.Returns.Error = nil
+				pusher.PushCall.Write.Output = pushOutput
+				pusher.PushCall.Returns.Error = nil
+
+				if i == 0 {
+					pusher.ExistsCall.Returns.Exists = true
+				} else {
+					pusher.ExistsCall.Returns.Exists = false
+				}
+			}
+
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
+
+			for i, pusher := range pushers {
+				if i == 0 {
+					Expect(pusher.PushCall.Received.AppExists).To(Equal(true))
+				} else {
+					Expect(pusher.PushCall.Received.AppExists).To(Equal(false))
+				}
+
+			}
 		})
 	})
 
@@ -201,7 +231,6 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.RollbackCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.DeleteVenerableCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
@@ -212,7 +241,6 @@ var _ = Describe("Bluegreen", func() {
 	Context("when at least one push command is unsuccessful", func() {
 		It("should rollback all recent pushes and print Cloud Foundry logs", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
-			badFoundationURL := environment.Foundations[1]
 
 			for index := range environment.Foundations {
 				pusher := &mocks.Pusher{}
@@ -230,7 +258,6 @@ var _ = Describe("Bluegreen", func() {
 					By("making a push command fail")
 					pusher.PushCall.Write.Output = pushOutput
 					pusher.PushCall.Returns.Error = errors.New("bork")
-					pusher.PushCall.Returns.Logs = logs
 				}
 
 				pusher.RollbackCall.Returns.Error = nil
@@ -246,13 +273,14 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.RollbackCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			}
 
-			Expect(response.String()).To(ContainSubstring("\nCloud Foundry logs for %s at %s\n%s\n%s\n", deploymentInfo.AppName, badFoundationURL, strings.Repeat("-", 60), logs))
-			Expect(response.String()).To(ContainSubstring(loginOutput + pushOutput + loginOutput + pushOutput))
+			Expect(response).To(Say(loginOutput))
+			Expect(response).To(Say(pushOutput))
+			Expect(response).To(Say(loginOutput))
+			Expect(response).To(Say(pushOutput))
 		})
 
 		It("should not rollback any pushes on the first deploy when first deploy rollback is disabled", func() {
@@ -289,12 +317,14 @@ var _ = Describe("Bluegreen", func() {
 				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(pusher.PushCall.Received.Domain).To(Equal(domainName))
 				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.RollbackCall.Received.DeploymentInfo).ToNot(Equal(deploymentInfo))
 			}
 
-			Expect(response.String()).To(Equal(loginOutput + pushOutput + loginOutput + pushOutput))
+			Expect(response).To(Say(loginOutput))
+			Expect(response).To(Say(pushOutput))
+			Expect(response).To(Say(loginOutput))
+			Expect(response).To(Say(pushOutput))
 		})
 	})
 })

@@ -33,6 +33,7 @@ var _ = Describe("Pusher", func() {
 		appName          string
 		appNameVenerable string
 		instances        uint16
+		appExists        bool
 		deploymentInfo   S.DeploymentInfo
 		response         *gbytes.Buffer
 		logBuffer        *gbytes.Buffer
@@ -51,9 +52,11 @@ var _ = Describe("Pusher", func() {
 		appName = "appName-" + randomizer.StringRunes(10)
 		appNameVenerable = appName + "-venerable"
 		instances = uint16(rand.Uint32())
-		response = gbytes.NewBuffer()
+		appExists = false
 
+		response = gbytes.NewBuffer()
 		logBuffer = gbytes.NewBuffer()
+
 		pusher = Pusher{
 			courier,
 			logger.DefaultLogger(logBuffer, logging.DEBUG, "extractor_test"),
@@ -67,6 +70,7 @@ var _ = Describe("Pusher", func() {
 			AppName:   appName,
 			SkipSSL:   skipSSL,
 			Instances: instances,
+			Domain:    domain,
 		}
 	})
 
@@ -117,7 +121,9 @@ var _ = Describe("Pusher", func() {
 			courier.MapRouteCall.Returns.Output = []byte("mapped route")
 			courier.MapRouteCall.Returns.Error = nil
 
-			_, err := pusher.Push(appPath, domain, deploymentInfo, response)
+			appExists = true
+
+			err := pusher.Push(appPath, appExists, deploymentInfo, response)
 			Expect(err).To(BeNil())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
@@ -132,43 +138,35 @@ var _ = Describe("Pusher", func() {
 			Eventually(response).Should(gbytes.Say("mapped route"))
 
 			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("renamed app from %s to %s", appName, appNameVenerable)))
-			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("pushing new app %s to %s", appName, domain)))
+			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("pushing app %s to %s", appName, domain)))
 			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("tempdir for app %s: %s", appName, appPath)))
 			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("push succeeded")))
 			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("mapping route for %s to %s", appName, domain)))
 		})
 
 		Context("when renaming", func() {
-			It("fails when it's not a new app", func() {
+			It("returns an error", func() {
 				courier.RenameCall.Returns.Output = []byte("rename failed")
 				courier.RenameCall.Returns.Error = errors.New("bork")
-				courier.ExistsCall.Returns.Bool = true
 
-				_, err := pusher.Push(appPath, domain, deploymentInfo, response)
-				Expect(err).ToNot(BeNil())
+				appExists = true
+
+				err := pusher.Push(appPath, appExists, deploymentInfo, response)
+				Expect(err).To(MatchError("rename failed: bork"))
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
 				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))
-				Expect(courier.ExistsCall.Received.AppName).To(Equal(appName))
-
-				Eventually(logBuffer).Should(gbytes.Say("cannot rename: app already exists"))
 			})
 
-			It("doesn't fail when it's a new app", func() {
-				courier.RenameCall.Returns.Output = []byte("rename failed")
-				courier.RenameCall.Returns.Error = errors.New("bork")
+			It("doesn't fail when it is a new app", func() {
 				courier.ExistsCall.Returns.Bool = false
 				courier.PushCall.Returns.Output = []byte("push succeeded")
 				courier.PushCall.Returns.Error = nil
 				courier.MapRouteCall.Returns.Output = []byte("mapped route")
-				courier.MapRouteCall.Returns.Error = nil
 
-				_, err := pusher.Push(appPath, domain, deploymentInfo, response)
+				err := pusher.Push(appPath, appExists, deploymentInfo, response)
 				Expect(err).To(BeNil())
 
-				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
-				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))
-				Expect(courier.ExistsCall.Received.AppName).To(Equal(appName))
 				Expect(courier.PushCall.Received.AppName).To(Equal(appName))
 				Expect(courier.PushCall.Received.AppPath).To(Equal(appPath))
 				Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName))
@@ -178,7 +176,7 @@ var _ = Describe("Pusher", func() {
 				Eventually(response).Should(gbytes.Say("mapped route"))
 
 				Eventually(logBuffer).Should(gbytes.Say("new app detected"))
-				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("pushing new app %s to %s", appName, domain)))
+				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("pushing app %s to %s", appName, domain)))
 				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("tempdir for app %s: %s", appName, appPath)))
 				Eventually(logBuffer).Should(gbytes.Say("push succeeded"))
 				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("mapping route for %s to %s", appName, domain)))
@@ -193,7 +191,7 @@ var _ = Describe("Pusher", func() {
 			courier.DeleteCall.Returns.Output = nil
 			courier.DeleteCall.Returns.Error = nil
 
-			Expect(pusher.Rollback(deploymentInfo, false)).To(Succeed())
+			Expect(pusher.Rollback(true, deploymentInfo)).To(Succeed())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(appNameVenerable))
 			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appName))

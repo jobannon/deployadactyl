@@ -113,15 +113,15 @@ func (c Creator) createFetcher() I.Fetcher {
 func (c Creator) CreatePusher() (I.Pusher, error) {
 	courier := &mocks.Courier{}
 
-	courier.LoginCall.Returns.Output = []byte("logged in")
+	courier.LoginCall.Returns.Output = []byte("logged in\t")
 	courier.LoginCall.Returns.Error = nil
-	courier.DeleteCall.Returns.Output = []byte("deleted app")
+	courier.DeleteCall.Returns.Output = []byte("deleted app\t")
 	courier.DeleteCall.Returns.Error = nil
-	courier.PushCall.Returns.Output = []byte("pushed app")
+	courier.PushCall.Returns.Output = []byte("pushed app\t")
 	courier.PushCall.Returns.Error = nil
-	courier.RenameCall.Returns.Output = []byte("renamed app")
+	courier.RenameCall.Returns.Output = []byte("renamed app\t")
 	courier.RenameCall.Returns.Error = nil
-	courier.MapRouteCall.Returns.Output = []byte("mapped route")
+	courier.MapRouteCall.Returns.Output = []byte("mapped route\t")
 	courier.MapRouteCall.Returns.Error = nil
 	courier.CleanUpCall.Returns.Error = nil
 

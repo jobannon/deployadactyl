@@ -40,7 +40,7 @@ func (p Prechecker) AssertAllFoundationsUp(environment config.Environment) error
 	for _, foundationURL := range environment.Foundations {
 		resp, err := insecureClient.Get(fmt.Sprintf("%s/v2/info", foundationURL))
 		if err != nil {
-			return errors.Errorf("cannot get: %s", err)
+			return errors.Errorf("deploy aborted: one or more CF foundations unavailable: cannot get: %s", err)
 		}
 		defer resp.Body.Close()
 

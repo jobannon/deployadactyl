@@ -80,6 +80,20 @@ applications:
 				Expect(result).To(BeNil())
 			})
 		})
+
+		Context("when applications is not found", func() {
+			It("returns nil", func() {
+				manifest := `---
+host: dispatch-dev
+domain: auth-platform-sandbox.allstate.com
+env:
+  DISPATCH_BACKEND_URL: https://dispatch-server-dev.apps.nonprod-mpn.ro11.allstate.com
+`
+				result := GetInstances(manifest)
+
+				Expect(result).To(BeNil())
+			})
+		})
 	})
 
 	Context("when instances is found", func() {

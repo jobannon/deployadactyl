@@ -16,7 +16,7 @@ func GetInstances(manifest string) *uint16 {
 	var m manifestYaml
 
 	err := candiedyaml.Unmarshal([]byte(manifest), &m)
-	if err != nil || m.Applications[0].Instances == nil || *m.Applications[0].Instances < 1 {
+	if err != nil || m.Applications == nil || m.Applications[0].Instances == nil || *m.Applications[0].Instances < 1 {
 		return nil
 	}
 

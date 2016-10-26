@@ -91,6 +91,17 @@ type Courier struct {
 		}
 	}
 
+	UupsCall struct {
+		Received struct {
+			AppName string
+			Body    string
+		}
+		Returns struct {
+			Output []byte
+			Error  error
+		}
+	}
+
 	CleanUpCall struct {
 		Returns struct {
 			Error error
@@ -144,9 +155,9 @@ func (c *Courier) MapRoute(appName, domain string) ([]byte, error) {
 
 // Logs mock method.
 func (c *Courier) Logs(appName string) ([]byte, error) {
-	c.MapRouteCall.Received.AppName = appName
+	c.LogsCall.Received.AppName = appName
 
-	return c.MapRouteCall.Returns.Output, c.MapRouteCall.Returns.Error
+	return c.LogsCall.Returns.Output, c.LogsCall.Returns.Error
 }
 
 // Exists mock method.
@@ -162,6 +173,14 @@ func (c *Courier) Cups(appName string, body string) ([]byte, error) {
 	c.CupsCall.Received.Body = body
 
 	return c.CupsCall.Returns.Output, c.CupsCall.Returns.Error
+}
+
+// Uups mock method
+func (c *Courier) Uups(appName string, body string) ([]byte, error) {
+	c.UupsCall.Received.AppName = appName
+	c.UupsCall.Received.Body = body
+
+	return c.UupsCall.Returns.Output, c.UupsCall.Returns.Error
 }
 
 // CleanUp mock method.

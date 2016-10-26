@@ -38,7 +38,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// add your event handling here
+	// uncomment the next two lines to add your event handlers
+	// em := c.CreateEventManager()
+	// em.AddHandler(myInstanceHandler, "deploy.start")
 
 	l := c.CreateListener()
 	deploy := c.CreateControllerHandler()

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
@@ -91,12 +92,13 @@ var _ = Describe("Service", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(resp.StatusCode).To(Equal(http.StatusOK), string(responseBody))
+
+				fmt.Fprintf(GinkgoWriter, "\nUser Output:\n%s\n%s\n%s", strings.Repeat("-", 60), string(responseBody), strings.Repeat("-", 60))
 			})
 		})
 
 		Context("receiving an artifact in the request body", func() {
 			It("can deploy an application without the internet", func() {
-
 				body, err := os.Open("fixtures/artifact-with-manifest.jar")
 				Expect(err).ToNot(HaveOccurred())
 

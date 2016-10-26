@@ -80,7 +80,7 @@ var _ = Describe("Prechecker", func() {
 
 				err := prechecker.AssertAllFoundationsUp(environment)
 
-				Expect(err).To(MatchError("cannot get: Get bork/v2/info: unsupported protocol scheme \"\""))
+				Expect(err).To(MatchError("deploy aborted: one or more CF foundations unavailable: cannot get: Get bork/v2/info: unsupported protocol scheme \"\""))
 			})
 		})
 

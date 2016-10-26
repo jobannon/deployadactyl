@@ -37,27 +37,28 @@ func (p Pusher) Push(appPath string, appExists bool, deploymentInfo S.Deployment
 
 	p.Log.Debugf("pushing app %s to %s", deploymentInfo.AppName, deploymentInfo.Domain)
 	p.Log.Debugf("tempdir for app %s: %s", deploymentInfo.AppName, appPath)
+
 	pushOutput, err := p.Courier.Push(deploymentInfo.AppName, appPath, deploymentInfo.Instances)
 	fmt.Fprint(response, string(pushOutput))
 	if err != nil {
-		logs, err := p.getCloudFoundryLogs(deploymentInfo.AppName)
-		fmt.Fprint(response, logs)
-		if err != nil {
-			return errors.Errorf("cant get Cloud Foundry logs: %s", err)
+		logs, newErr := p.Courier.Logs(deploymentInfo.AppName)
+		fmt.Fprintf(response, "\n%s", string(logs))
+		if newErr != nil {
+			return errors.Errorf("%s: cannot get Cloud Foundry logs: %s", err, newErr)
 		}
-
-		return errors.New(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
+		return err
 	}
-	p.Log.Infof(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
 
+	p.Log.Infof(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
 	p.Log.Debugf("mapping route for %s to %s", deploymentInfo.AppName, deploymentInfo.Domain)
+
 	mapRouteOutput, err := p.Courier.MapRoute(deploymentInfo.AppName, deploymentInfo.Domain)
 	fmt.Fprint(response, string(mapRouteOutput))
 	if err != nil {
-		logs, err := p.getCloudFoundryLogs(deploymentInfo.AppName)
-		fmt.Fprint(response, string(mapRouteOutput), logs)
-		if err != nil {
-			return errors.New(string(pushOutput))
+		logs, newErr := p.Courier.Logs(deploymentInfo.AppName)
+		fmt.Fprintf(response, "\n%s", string(logs))
+		if newErr != nil {
+			return errors.Errorf("cannot get Cloud Foundry logs: %s", newErr)
 		}
 		return err
 	}
@@ -106,11 +107,6 @@ func (p Pusher) Rollback(appExists bool, deploymentInfo S.DeploymentInfo) error 
 	return nil
 }
 
-// CleanUp removes the temporary directory created by the Executor.
-func (p Pusher) CleanUp() error {
-	return p.Courier.CleanUp()
-}
-
 // Login will login to a Cloud Foundry instance.
 func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
 	p.Log.Debugf(
@@ -139,11 +135,12 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, res
 	return nil
 }
 
+// CleanUp removes the temporary directory created by the Executor.
+func (p Pusher) CleanUp() error {
+	return p.Courier.CleanUp()
+}
+
 // Exists uses the courier to check if the application exists.
 func (p Pusher) Exists(appName string) bool {
 	return p.Courier.Exists(appName)
-}
-
-func (p Pusher) getCloudFoundryLogs(appName string) ([]byte, error) {
-	return p.Courier.Logs(appName)
 }

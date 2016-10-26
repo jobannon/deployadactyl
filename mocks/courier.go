@@ -94,11 +94,11 @@ type Courier struct {
 	UupsCall struct {
 		Received struct {
 			AppName string
-			Body string
+			Body    string
 		}
 		Returns struct {
 			Output []byte
-			Error error
+			Error  error
 		}
 	}
 
@@ -155,9 +155,9 @@ func (c *Courier) MapRoute(appName, domain string) ([]byte, error) {
 
 // Logs mock method.
 func (c *Courier) Logs(appName string) ([]byte, error) {
-	c.MapRouteCall.Received.AppName = appName
+	c.LogsCall.Received.AppName = appName
 
-	return c.MapRouteCall.Returns.Output, c.MapRouteCall.Returns.Error
+	return c.LogsCall.Returns.Output, c.LogsCall.Returns.Error
 }
 
 // Exists mock method.

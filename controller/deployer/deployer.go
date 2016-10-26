@@ -26,12 +26,12 @@ It is likely that it is an error with your application and not with Deployadacty
 Thanks for using Deployadactyl! Please push down pull up on your lap bar and exit to your left.`
 
 	deploymentOutput = `Deployment Parameters:
-	Artifact URL: %s,
-	Username:     %s,
-	Environment:  %s,
-	Org:          %s,
-	Space:        %s,
-	AppName:      %s`
+Artifact URL: %s,
+Username:     %s,
+Environment:  %s,
+Org:          %s,
+Space:        %s,
+AppName:      %s`
 )
 
 // Deployer contains the bluegreener for deployments, environment variables, a fetcher for artifacts, a prechecker and event manager.
@@ -167,7 +167,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 		return http.StatusInternalServerError, err
 	}
 
-	fmt.Fprintln(response, fmt.Sprintf("\n%s", successfulDeploy))
+	fmt.Fprintf(response, "\n%s", successfulDeploy)
 	return http.StatusOK, err
 }
 
@@ -202,21 +202,19 @@ func isJSON(contentType string) bool {
 	return contentType == "application/json"
 }
 
-func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, out io.Writer, err *error, statusCode *int) {
+func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, response io.Writer, err *error, statusCode *int) {
 	d.Log.Debug("emitting a deploy.finish event")
+
 	finishErr := d.EventManager.Emit(S.Event{Type: "deploy.finish", Data: deployEventData})
 	if finishErr != nil {
-		fmt.Fprintln(out, finishErr)
+		fmt.Fprintln(response, finishErr)
 		*err = errors.Errorf("%s: an error occurred in the deploy.finish event: %s", *err, finishErr)
 		*statusCode = http.StatusInternalServerError
 	}
-
 }
 
 func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response io.Writer, err *error, statusCode *int) {
-
 	deployEvent := S.Event{Type: "deploy.success", Data: deployEventData}
-
 	if *err != nil {
 		deployEvent.Type = "deploy.failure"
 	}

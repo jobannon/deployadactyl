@@ -123,6 +123,7 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 	courier.RenameCall.Returns.Error = nil
 	courier.MapRouteCall.Returns.Output = []byte("mapped route\t")
 	courier.MapRouteCall.Returns.Error = nil
+	courier.ExistsCall.Returns.Bool = false
 	courier.CleanUpCall.Returns.Error = nil
 
 	p := pusher.Pusher{

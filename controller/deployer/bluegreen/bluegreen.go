@@ -3,7 +3,9 @@ package bluegreen
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
@@ -28,8 +30,11 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 
 	defer func() {
 		for _, buffer := range buffers {
+			fmt.Fprintf(response, "\n%s Cloud Foundry Output %s\n", strings.Repeat("-", 19), strings.Repeat("-", 19))
+
 			buffer.WriteTo(response)
 		}
+		fmt.Fprintf(response, "\n%s End Cloud Foundry Output %s\n", strings.Repeat("-", 17), strings.Repeat("-", 17))
 	}()
 
 	for i, foundationURL := range environment.Foundations {
@@ -104,7 +109,6 @@ func (bg BlueGreen) cleanUpAll(actors []actor, deploymentInfo S.DeploymentInfo) 
 }
 
 func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath string, deploymentInfo S.DeploymentInfo) (failed bool, appExists bool) {
-
 	for i, a := range actors {
 		buffer := buffers[i]
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {

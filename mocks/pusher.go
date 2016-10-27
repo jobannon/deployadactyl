@@ -51,7 +51,6 @@ type Pusher struct {
 	DeleteVenerableCall struct {
 		Received struct {
 			DeploymentInfo S.DeploymentInfo
-			FoundationURL  string
 		}
 		Returns struct {
 			Error error
@@ -106,9 +105,8 @@ func (p *Pusher) Rollback(appExists bool, deploymentInfo S.DeploymentInfo) error
 }
 
 // DeleteVenerable mock method.
-func (p *Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo, foundationURL string) error {
+func (p *Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo) error {
 	p.DeleteVenerableCall.Received.DeploymentInfo = deploymentInfo
-	p.DeleteVenerableCall.Received.FoundationURL = foundationURL
 
 	return p.DeleteVenerableCall.Returns.Error
 }

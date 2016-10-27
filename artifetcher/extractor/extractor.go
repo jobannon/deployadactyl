@@ -33,7 +33,7 @@ func (e *Extractor) Unzip(source, destination, manifest string) error {
 
 	err := e.FileSystem.MkdirAll(destination, 0755)
 	if err != nil {
-		return errors.Errorf("%s: %s", "cannot create directory", err)
+		return errors.Errorf("cannot create directory: %s", err)
 	}
 
 	file, err := e.FileSystem.Open(source)
@@ -49,26 +49,26 @@ func (e *Extractor) Unzip(source, destination, manifest string) error {
 
 	reader, err := zip.NewReader(file, fileStat.Size())
 	if err != nil {
-		return errors.Errorf("%s: %s: %s\n%s", "cannot open zip file", source, err, niceFixYourZipMessage)
+		return errors.Errorf("cannot open zip file: %s: %s\n%s", source, err, niceFixYourZipMessage)
 	}
 
 	for _, file := range reader.File {
 		err := e.unzipFile(destination, file)
 		if err != nil {
-			return errors.Errorf("%s: %s: %s", "cannot extract file from archive", file.Name, err)
+			return errors.Errorf("cannot extract file from archive: %s: %s", file.Name, err)
 		}
 	}
 
 	if manifest != "" {
 		manifestFile, err := e.FileSystem.OpenFile(path.Join(destination, "manifest.yml"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
-			return errors.Errorf("%s: %s", "cannot open manifest file", err)
+			return errors.Errorf("cannot open manifest file: %s", err)
 		}
 		defer manifestFile.Close()
 
 		_, err = fmt.Fprint(manifestFile, manifest)
 		if err != nil {
-			return errors.Errorf("%s: %s", "cannot print to open manifest file", err)
+			return errors.Errorf("cannot print to open manifest file: %s", err)
 		}
 	}
 
@@ -79,7 +79,7 @@ func (e *Extractor) Unzip(source, destination, manifest string) error {
 func (e *Extractor) unzipFile(destination string, file *zip.File) error {
 	contents, err := file.Open()
 	if err != nil {
-		return errors.Errorf("%s: %s", "cannot extract file from archive", err)
+		return errors.Errorf("cannot extract file from archive: %s", err)
 	}
 	defer contents.Close()
 
@@ -91,19 +91,19 @@ func (e *Extractor) unzipFile(destination string, file *zip.File) error {
 	directory := path.Dir(savedLocation)
 	err = e.FileSystem.MkdirAll(directory, 0755)
 	if err != nil {
-		return errors.Errorf("%s: %s: %s", "cannot make directory", directory, err)
+		return errors.Errorf("cannot make directory: %s: %s", directory, err)
 	}
 
 	mode := file.Mode()
 	newFile, err := e.FileSystem.OpenFile(savedLocation, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 	if err != nil {
-		return errors.Errorf("%s: %s: %s", "cannot open file for writing", savedLocation, err)
+		return errors.Errorf("cannot open file for writing: %s: %s", savedLocation, err)
 	}
 	defer newFile.Close()
 
 	_, err = io.Copy(newFile, contents)
 	if err != nil {
-		return errors.Errorf("%s: %s: %s", "cannot write to file", savedLocation, err)
+		return errors.Errorf("cannot write to file: %s: %s", savedLocation, err)
 	}
 
 	return nil

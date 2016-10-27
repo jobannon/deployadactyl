@@ -193,34 +193,65 @@ var _ = Describe("Pusher", func() {
 	})
 
 	Describe("rolling back a deployment", func() {
-		It("logs in, deletes, and renames", func() {
-			courier.RenameCall.Returns.Output = nil
-			courier.RenameCall.Returns.Error = nil
-			courier.DeleteCall.Returns.Output = nil
-			courier.DeleteCall.Returns.Error = nil
-
+		It("deletes the app that was pushed", func() {
 			Expect(pusher.Rollback(true, deploymentInfo)).To(Succeed())
 
-			Expect(courier.RenameCall.Received.AppName).To(Equal(appNameVenerable))
-			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appName))
 			Expect(courier.DeleteCall.Received.AppName).To(Equal(appName))
 
 			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("rolling back deploy of %s", appName)))
 			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("deleted %s", appName)))
+		})
+
+		Context("when deleting fails", func() {
+			It("writes a message to the info log", func() {
+				courier.DeleteCall.Returns.Error = errors.New("delete error")
+
+				Expect(pusher.Rollback(true, deploymentInfo)).To(Succeed())
+
+				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("unable to delete %s: %s", deploymentInfo.AppName, "delete error")))
+			})
+		})
+
+		It("renames the venerable app", func() {
+			Expect(pusher.Rollback(true, deploymentInfo)).To(Succeed())
+
+			Expect(courier.RenameCall.Received.AppName).To(Equal(appNameVenerable))
+			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appName))
+
 			Eventually(logBuffer).Should(gbytes.Say("renamed app from %s to %s", appNameVenerable, appName))
 		})
+
+		Context("when renaming fails", func() {
+			It("writes a message to the info log", func() {
+				courier.RenameCall.Returns.Error = errors.New("rename error")
+
+				Expect(pusher.Rollback(true, deploymentInfo)).To(Succeed())
+
+				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("unable to rename venerable app %s: %s", appNameVenerable, "rename error")))
+			})
+		})
+
 	})
 
 	Describe("completing a deployment", func() {
 		It("deletes venerable", func() {
-			courier.DeleteCall.Returns.Output = nil
 			courier.DeleteCall.Returns.Error = nil
 
-			Expect(pusher.DeleteVenerable(deploymentInfo, foundationURL)).To(Succeed())
+			Expect(pusher.DeleteVenerable(deploymentInfo)).To(Succeed())
 
 			Expect(courier.DeleteCall.Received.AppName).To(Equal(appNameVenerable))
 
 			Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("deleted %s", appNameVenerable)))
+		})
+
+		Context("when deleting the venerable fails", func() {
+			It("returns an error", func() {
+				courier.DeleteCall.Returns.Error = errors.New("delete error")
+
+				err := pusher.DeleteVenerable(deploymentInfo)
+
+				Expect(err).To(MatchError(fmt.Sprintf("cannot delete %s: %s", appNameVenerable, "delete error")))
+			})
 		})
 	})
 

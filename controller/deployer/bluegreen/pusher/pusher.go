@@ -69,7 +69,7 @@ func (p Pusher) Push(appPath string, appExists bool, deploymentInfo S.Deployment
 }
 
 // DeleteVenerable will delete the venerable instance of your application.
-func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo, foundationURL string) error {
+func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo) error {
 	venerableName := deploymentInfo.AppName + "-venerable"
 
 	_, err := p.Courier.Delete(deploymentInfo.AppName + "-venerable")
@@ -78,7 +78,6 @@ func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo, foundationURL s
 	}
 
 	p.Log.Infof("deleted %s", venerableName)
-	p.Log.Infof("finished push successfully on %s", foundationURL)
 
 	return nil
 }
@@ -93,15 +92,17 @@ func (p Pusher) Rollback(appExists bool, deploymentInfo S.DeploymentInfo) error 
 	_, err := p.Courier.Delete(deploymentInfo.AppName)
 	if err != nil {
 		p.Log.Infof("unable to delete %s: %s", deploymentInfo.AppName, err)
+	} else {
+		p.Log.Infof("deleted %s", deploymentInfo.AppName)
 	}
-	p.Log.Infof("deleted %s", deploymentInfo.AppName)
 
 	if appExists {
 		_, err = p.Courier.Rename(venerableName, deploymentInfo.AppName)
 		if err != nil {
 			p.Log.Infof("unable to rename venerable app %s: %s", venerableName, err)
+		} else {
+			p.Log.Infof("renamed app from %s to %s", venerableName, deploymentInfo.AppName)
 		}
-		p.Log.Infof("renamed app from %s to %s", venerableName, deploymentInfo.AppName)
 	}
 
 	return nil

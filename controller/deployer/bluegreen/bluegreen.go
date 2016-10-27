@@ -25,8 +25,21 @@ type BlueGreen struct {
 func (bg BlueGreen) Push(environment config.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
 	var (
 		actors  = make([]actor, len(environment.Foundations))
-		buffers = make([]*bytes.Buffer, len(actors))
+		buffers = make([]*bytes.Buffer, len(environment.Foundations))
 	)
+
+	for i, foundationURL := range environment.Foundations {
+		pusher, err := bg.PusherCreator.CreatePusher()
+		if err != nil {
+			return err
+		}
+		defer pusher.CleanUp()
+
+		actors[i] = newActor(pusher, foundationURL)
+		defer close(actors[i].commands)
+
+		buffers[i] = &bytes.Buffer{}
+	}
 
 	defer func() {
 		for _, buffer := range buffers {
@@ -36,19 +49,6 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 		}
 		fmt.Fprintf(response, "\n%s End Cloud Foundry Output %s\n", strings.Repeat("-", 17), strings.Repeat("-", 17))
 	}()
-
-	for i, foundationURL := range environment.Foundations {
-		pusher, err := bg.PusherCreator.CreatePusher()
-		if err != nil {
-			return errors.New(err)
-		}
-		defer pusher.CleanUp()
-
-		actors[i] = newActor(pusher, foundationURL)
-		defer close(actors[i].commands)
-
-		buffers[i] = &bytes.Buffer{}
-	}
 
 	failed := bg.loginAll(actors, buffers, deploymentInfo)
 	if failed {
@@ -95,8 +95,7 @@ func (bg BlueGreen) cleanUpAll(actors []actor, deploymentInfo S.DeploymentInfo) 
 	for _, a := range actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
 			if pusher.Exists(deploymentInfo.AppName + "-venerable") {
-				bg.Log.Info("cleaned up venerable instances of " + deploymentInfo.AppName)
-				return pusher.Rollback(false, deploymentInfo)
+				return pusher.DeleteVenerable(deploymentInfo)
 			}
 			return nil
 		}
@@ -146,10 +145,11 @@ func (bg BlueGreen) rollbackAll(actors []actor, deploymentInfo S.DeploymentInfo,
 		}
 	}
 }
+
 func (bg BlueGreen) finishPushAll(actors []actor, deploymentInfo S.DeploymentInfo) {
 	for _, a := range actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.DeleteVenerable(deploymentInfo, foundationURL)
+			return pusher.DeleteVenerable(deploymentInfo)
 		}
 	}
 

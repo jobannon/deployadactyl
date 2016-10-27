@@ -305,6 +305,16 @@ var _ = Describe("Deployer", func() {
 		})
 	})
 
+	Describe("deploying with an unknown request type", func() {
+		It("returns an http.StatusBadRequest and an error", func() {
+
+			statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/bork", response)
+			Expect(err).To(MatchError("must be application/json or application/zip"))
+
+			Expect(statusCode).To(Equal(http.StatusBadRequest))
+		})
+	})
+
 	Describe("setting the number of instances in the deployment", func() {
 		Context("when a manifest with instances is provided", func() {
 			It("uses the instances declared in the manifest", func() {

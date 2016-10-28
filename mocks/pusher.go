@@ -67,9 +67,6 @@ type Pusher struct {
 		Received struct {
 			AppName string
 		}
-		Returns struct {
-			Exists bool
-		}
 	}
 }
 
@@ -85,11 +82,10 @@ func (p *Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, ou
 }
 
 // Push mock method.
-func (p *Pusher) Push(appPath string, appExists bool, deploymentInfo S.DeploymentInfo, out io.Writer) error {
+func (p *Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
 	p.PushCall.Received.AppPath = appPath
 	p.PushCall.Received.DeploymentInfo = deploymentInfo
 	p.PushCall.Received.Out = out
-	p.PushCall.Received.AppExists = appExists
 
 	fmt.Fprint(out, p.PushCall.Write.Output)
 
@@ -97,9 +93,8 @@ func (p *Pusher) Push(appPath string, appExists bool, deploymentInfo S.Deploymen
 }
 
 // Rollback mock method.
-func (p *Pusher) Rollback(appExists bool, deploymentInfo S.DeploymentInfo) error {
+func (p *Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
 	p.RollbackCall.Received.DeploymentInfo = deploymentInfo
-	p.RollbackCall.Received.AppExists = appExists
 
 	return p.RollbackCall.Returns.Error
 }
@@ -117,8 +112,6 @@ func (p *Pusher) CleanUp() error {
 }
 
 // Exists mock method.
-func (p *Pusher) Exists(appName string) bool {
+func (p *Pusher) Exists(appName string) {
 	p.ExistsCall.Received.AppName = appName
-
-	return p.ExistsCall.Returns.Exists
 }

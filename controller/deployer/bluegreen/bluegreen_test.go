@@ -56,7 +56,7 @@ var _ = Describe("Bluegreen", func() {
 
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "test")
 
-		blueGreen = BlueGreen{pusherFactory, log}
+		blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
 
 		environment = config.Environment{Name: environmentName}
 		environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
@@ -212,32 +212,17 @@ var _ = Describe("Bluegreen", func() {
 		It("checks if the app exists on each foundation", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10), randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
-			for i := range environment.Foundations {
+			for range environment.Foundations {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
-
-				pusher.LoginCall.Write.Output = loginOutput
-				pusher.LoginCall.Returns.Error = nil
-				pusher.PushCall.Write.Output = pushOutput
-				pusher.PushCall.Returns.Error = nil
-
-				if i == 0 {
-					pusher.ExistsCall.Returns.Exists = true
-				} else {
-					pusher.ExistsCall.Returns.Exists = false
-				}
 			}
 
 			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
 
-			for i, pusher := range pushers {
-				if i == 0 {
-					Expect(pusher.PushCall.Received.AppExists).To(Equal(true))
-				} else {
-					Expect(pusher.PushCall.Received.AppExists).To(Equal(false))
-				}
+			for i := range environment.Foundations {
+				Expect(pushers[i].ExistsCall.Received.AppName).To(Equal(appName))
 			}
 		})
 	})
@@ -250,7 +235,6 @@ var _ = Describe("Bluegreen", func() {
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
 
-				pusher.ExistsCall.Returns.Exists = true
 				pusher.DeleteVenerableCall.Returns.Error = nil
 			}
 
@@ -270,7 +254,6 @@ var _ = Describe("Bluegreen", func() {
 					pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
 					pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
 
-					pusher.ExistsCall.Returns.Exists = true
 					pusher.DeleteVenerableCall.Returns.Error = errors.New("delete failed")
 				}
 
@@ -291,7 +274,6 @@ var _ = Describe("Bluegreen", func() {
 
 				pusher.LoginCall.Write.Output = loginOutput
 				pusher.LoginCall.Returns.Error = nil
-				pusher.ExistsCall.Returns.Exists = true
 
 				if index == 0 {
 					pusher.PushCall.Write.Output = pushOutput

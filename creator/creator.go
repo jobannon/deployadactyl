@@ -100,7 +100,7 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 		return nil, err
 	}
 
-	p := pusher.Pusher{
+	p := &pusher.Pusher{
 		Courier: courier.Courier{
 			Executor: ex,
 		},

@@ -18,15 +18,15 @@ import (
 type BlueGreen struct {
 	PusherCreator I.PusherFactory
 	Log           *logging.Logger
+	actors        []actor
+	buffers       []*bytes.Buffer
 }
 
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
 // If the application fails to start in any of the instances it handles rolling back the application in every instance, unless this is the first deploy and disable rollback is enabled.
 func (bg BlueGreen) Push(environment config.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
-	var (
-		actors  = make([]actor, len(environment.Foundations))
-		buffers = make([]*bytes.Buffer, len(environment.Foundations))
-	)
+	bg.actors = make([]actor, len(environment.Foundations))
+	bg.buffers = make([]*bytes.Buffer, len(environment.Foundations))
 
 	for i, foundationURL := range environment.Foundations {
 		pusher, err := bg.PusherCreator.CreatePusher()
@@ -35,14 +35,14 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 		}
 		defer pusher.CleanUp()
 
-		actors[i] = newActor(pusher, foundationURL)
-		defer close(actors[i].commands)
+		bg.actors[i] = newActor(pusher, foundationURL)
+		defer close(bg.actors[i].commands)
 
-		buffers[i] = &bytes.Buffer{}
+		bg.buffers[i] = &bytes.Buffer{}
 	}
 
 	defer func() {
-		for _, buffer := range buffers {
+		for _, buffer := range bg.buffers {
 			fmt.Fprintf(response, "\n%s Cloud Foundry Output %s\n", strings.Repeat("-", 19), strings.Repeat("-", 19))
 
 			buffer.WriteTo(response)
@@ -50,38 +50,40 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 		fmt.Fprintf(response, "\n%s End Cloud Foundry Output %s\n", strings.Repeat("-", 17), strings.Repeat("-", 17))
 	}()
 
-	failed := bg.loginAll(actors, buffers, deploymentInfo)
+	failed := bg.loginAll(deploymentInfo)
 	if failed {
 		return errors.New("push failed: login failed")
 	}
 
-	bg.cleanUpAll(actors, deploymentInfo)
+	bg.cleanUpAll(deploymentInfo)
 
-	failed, appExists := bg.pushAll(actors, buffers, appPath, deploymentInfo)
+	bg.existsAll(deploymentInfo)
+
+	failed = bg.pushAll(appPath, deploymentInfo)
 	if failed {
-		if appExists || !environment.DisableFirstDeployRollback {
-			bg.rollbackAll(actors, deploymentInfo, appExists)
+		if !environment.DisableFirstDeployRollback {
+			bg.rollbackAll(deploymentInfo)
 			return errors.Errorf("push failed: rollback triggered")
 		}
 
 		return errors.Errorf("push failed: first deploy, rollback not enabled")
 	}
 
-	bg.finishPushAll(actors, deploymentInfo)
+	bg.finishPushAll(deploymentInfo)
 
 	return nil
 }
 
-func (bg BlueGreen) loginAll(actors []actor, buffers []*bytes.Buffer, deploymentInfo S.DeploymentInfo) bool {
+func (bg BlueGreen) loginAll(deploymentInfo S.DeploymentInfo) bool {
 	failed := false
 
-	for i, a := range actors {
-		buffer := buffers[i]
+	for i, a := range bg.actors {
+		buffer := bg.buffers[i]
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
 			return pusher.Login(foundationURL, deploymentInfo, buffer)
 		}
 	}
-	for _, a := range actors {
+	for _, a := range bg.actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
 			failed = true
@@ -91,38 +93,42 @@ func (bg BlueGreen) loginAll(actors []actor, buffers []*bytes.Buffer, deployment
 	return failed
 }
 
-func (bg BlueGreen) cleanUpAll(actors []actor, deploymentInfo S.DeploymentInfo) {
-	for _, a := range actors {
+func (bg BlueGreen) cleanUpAll(deploymentInfo S.DeploymentInfo) {
+	for _, a := range bg.actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			if pusher.Exists(deploymentInfo.AppName + "-venerable") {
-				return pusher.DeleteVenerable(deploymentInfo)
-			}
-			return nil
+			pusher.Exists(deploymentInfo.AppName + "-venerable")
+			return pusher.DeleteVenerable(deploymentInfo)
 		}
 	}
-	for _, a := range actors {
+	for _, a := range bg.actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
 		}
 	}
 }
 
-func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath string, deploymentInfo S.DeploymentInfo) (failed bool, appExists bool) {
-	for i, a := range actors {
-		buffer := buffers[i]
+func (bg BlueGreen) existsAll(deploymentInfo S.DeploymentInfo) (exists bool) {
+	for _, a := range bg.actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-
-			var exists bool
-
-			if pusher.Exists(deploymentInfo.AppName) {
-				exists = true
-				appExists = true
-			}
-
-			return pusher.Push(appPath, exists, deploymentInfo, buffer)
+			pusher.Exists(deploymentInfo.AppName)
+			return nil
 		}
 	}
-	for _, a := range actors {
+	for _, a := range bg.actors {
+		if err := <-a.errs; err != nil {
+		}
+	}
+	return
+}
+
+func (bg BlueGreen) pushAll(appPath string, deploymentInfo S.DeploymentInfo) (failed bool) {
+	for i, a := range bg.actors {
+		buffer := bg.buffers[i]
+		a.commands <- func(pusher I.Pusher, foundationURL string) error {
+			return pusher.Push(appPath, deploymentInfo, buffer)
+		}
+	}
+	for _, a := range bg.actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
 			failed = true
@@ -132,28 +138,28 @@ func (bg BlueGreen) pushAll(actors []actor, buffers []*bytes.Buffer, appPath str
 	return
 }
 
-func (bg BlueGreen) rollbackAll(actors []actor, deploymentInfo S.DeploymentInfo, appExists bool) {
-	for _, a := range actors {
+func (bg BlueGreen) rollbackAll(deploymentInfo S.DeploymentInfo) {
+	for _, a := range bg.actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.Rollback(appExists, deploymentInfo)
+			return pusher.Rollback(deploymentInfo)
 		}
 	}
 
-	for _, a := range actors {
+	for _, a := range bg.actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
 		}
 	}
 }
 
-func (bg BlueGreen) finishPushAll(actors []actor, deploymentInfo S.DeploymentInfo) {
-	for _, a := range actors {
+func (bg BlueGreen) finishPushAll(deploymentInfo S.DeploymentInfo) {
+	for _, a := range bg.actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
 			return pusher.DeleteVenerable(deploymentInfo)
 		}
 	}
 
-	for _, a := range actors {
+	for _, a := range bg.actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
 		}

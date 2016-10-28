@@ -33,7 +33,6 @@ var _ = Describe("Pusher", func() {
 		appName          string
 		appNameVenerable string
 		instances        uint16
-		appExists        bool
 		deploymentInfo   S.DeploymentInfo
 		response         *gbytes.Buffer
 		logBuffer        *gbytes.Buffer
@@ -52,14 +51,13 @@ var _ = Describe("Pusher", func() {
 		appName = "appName-" + randomizer.StringRunes(10)
 		appNameVenerable = appName + "-venerable"
 		instances = uint16(rand.Uint32())
-		appExists = false
 
 		response = gbytes.NewBuffer()
 		logBuffer = gbytes.NewBuffer()
 
 		pusher = Pusher{
-			courier,
-			logger.DefaultLogger(logBuffer, logging.DEBUG, "extractor_test"),
+			Courier: courier,
+			Log:     logger.DefaultLogger(logBuffer, logging.DEBUG, "extractor_test"),
 		}
 
 		deploymentInfo = S.DeploymentInfo{
@@ -113,12 +111,13 @@ var _ = Describe("Pusher", func() {
 	Describe("pushing an app", func() {
 		Context("when an app with the same name already exists", func() {
 			It("renames the existing app", func() {
+				courier.ExistsCall.Returns.Bool = true
 				courier.RenameCall.Returns.Output = nil
 				courier.RenameCall.Returns.Error = nil
 
-				appExists = true
+				pusher.Exists(appName)
 
-				Expect(pusher.Push(appPath, appExists, deploymentInfo, response)).To(Succeed())
+				Expect(pusher.Push(appPath, deploymentInfo, response)).To(Succeed())
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
 				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable))
@@ -128,12 +127,13 @@ var _ = Describe("Pusher", func() {
 
 			Context("renaming the existing app fails", func() {
 				It("returns an error", func() {
+					courier.ExistsCall.Returns.Bool = true
 					courier.RenameCall.Returns.Output = []byte("rename failed")
 					courier.RenameCall.Returns.Error = errors.New("bork")
 
-					appExists = true
+					pusher.Exists(appName)
 
-					err := pusher.Push(appPath, appExists, deploymentInfo, response)
+					err := pusher.Push(appPath, deploymentInfo, response)
 					Expect(err).To(MatchError("rename failed: bork"))
 
 					Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
@@ -144,7 +144,7 @@ var _ = Describe("Pusher", func() {
 
 		Context("when no app with the same name exists", func() {
 			It("reports that the app is new", func() {
-				Expect(pusher.Push(appPath, appExists, deploymentInfo, response)).To(Succeed())
+				Expect(pusher.Push(appPath, deploymentInfo, response)).To(Succeed())
 
 				Eventually(logBuffer).Should(gbytes.Say("new app detected"))
 			})
@@ -153,7 +153,7 @@ var _ = Describe("Pusher", func() {
 		It("pushes the new app", func() {
 			courier.PushCall.Returns.Output = []byte("push succeeded")
 
-			Expect(pusher.Push(appPath, appExists, deploymentInfo, response)).To(Succeed())
+			Expect(pusher.Push(appPath, deploymentInfo, response)).To(Succeed())
 
 			Expect(courier.PushCall.Received.AppName).To(Equal(appName))
 			Expect(courier.PushCall.Received.AppPath).To(Equal(appPath))
@@ -170,7 +170,7 @@ var _ = Describe("Pusher", func() {
 			courier.MapRouteCall.Returns.Output = []byte("mapped route")
 			courier.MapRouteCall.Returns.Error = nil
 
-			Expect(pusher.Push(appPath, appExists, deploymentInfo, response)).To(Succeed())
+			Expect(pusher.Push(appPath, deploymentInfo, response)).To(Succeed())
 
 			Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName))
 			Expect(courier.MapRouteCall.Received.Domain).To(Equal(domain))
@@ -184,7 +184,7 @@ var _ = Describe("Pusher", func() {
 			It("returns an error", func() {
 				courier.PushCall.Returns.Error = errors.New("push error")
 
-				err := pusher.Push(appPath, appExists, deploymentInfo, response)
+				err := pusher.Push(appPath, deploymentInfo, response)
 
 				Expect(err).To(MatchError("push error"))
 
@@ -194,7 +194,7 @@ var _ = Describe("Pusher", func() {
 
 	Describe("rolling back a deployment", func() {
 		It("deletes the app that was pushed", func() {
-			Expect(pusher.Rollback(true, deploymentInfo)).To(Succeed())
+			Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
 
 			Expect(courier.DeleteCall.Received.AppName).To(Equal(appName))
 
@@ -206,14 +206,17 @@ var _ = Describe("Pusher", func() {
 			It("writes a message to the info log", func() {
 				courier.DeleteCall.Returns.Error = errors.New("delete error")
 
-				Expect(pusher.Rollback(true, deploymentInfo)).To(Succeed())
+				Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
 
 				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("unable to delete %s: %s", deploymentInfo.AppName, "delete error")))
 			})
 		})
 
 		It("renames the venerable app", func() {
-			Expect(pusher.Rollback(true, deploymentInfo)).To(Succeed())
+			courier.ExistsCall.Returns.Bool = true
+
+			pusher.Exists(appName)
+			Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(appNameVenerable))
 			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appName))
@@ -223,9 +226,12 @@ var _ = Describe("Pusher", func() {
 
 		Context("when renaming fails", func() {
 			It("writes a message to the info log", func() {
+				courier.ExistsCall.Returns.Bool = true
 				courier.RenameCall.Returns.Error = errors.New("rename error")
 
-				Expect(pusher.Rollback(true, deploymentInfo)).To(Succeed())
+				pusher.Exists(appName)
+
+				Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
 
 				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("unable to rename venerable app %s: %s", appNameVenerable, "rename error")))
 			})
@@ -261,7 +267,7 @@ var _ = Describe("Pusher", func() {
 				courier.PushCall.Returns.Error = errors.New("push error")
 				courier.LogsCall.Returns.Output = []byte("cf logs")
 
-				Expect(pusher.Push(appPath, appExists, deploymentInfo, response)).ToNot(Succeed())
+				Expect(pusher.Push(appPath, deploymentInfo, response)).ToNot(Succeed())
 
 				Eventually(response).Should(gbytes.Say(("cf logs")))
 			})
@@ -271,7 +277,7 @@ var _ = Describe("Pusher", func() {
 					courier.PushCall.Returns.Error = errors.New("push error")
 					courier.LogsCall.Returns.Error = errors.New("logs error")
 
-					err := pusher.Push(appPath, appExists, deploymentInfo, response)
+					err := pusher.Push(appPath, deploymentInfo, response)
 
 					Expect(err).To(MatchError("push error: cannot get Cloud Foundry logs: logs error"))
 				})
@@ -283,7 +289,7 @@ var _ = Describe("Pusher", func() {
 				courier.MapRouteCall.Returns.Error = errors.New("map route failed")
 				courier.LogsCall.Returns.Output = []byte("cf logs")
 
-				err := pusher.Push(appPath, appExists, deploymentInfo, response)
+				err := pusher.Push(appPath, deploymentInfo, response)
 
 				Expect(err).To(MatchError("map route failed"))
 
@@ -295,7 +301,7 @@ var _ = Describe("Pusher", func() {
 					courier.MapRouteCall.Returns.Error = errors.New("map route failed")
 					courier.LogsCall.Returns.Error = errors.New("logs error")
 
-					err := pusher.Push(appPath, appExists, deploymentInfo, response)
+					err := pusher.Push(appPath, deploymentInfo, response)
 
 					Expect(err).To(MatchError("cannot get Cloud Foundry logs: logs error"))
 				})
@@ -315,7 +321,9 @@ var _ = Describe("Pusher", func() {
 		It("it is successful", func() {
 			courier.ExistsCall.Returns.Bool = true
 
-			Expect(pusher.Exists(appName)).To(Equal(true))
+			pusher.Exists(appName)
+
+			Expect(courier.ExistsCall.Received.AppName).To(Equal(appName))
 		})
 	})
 })

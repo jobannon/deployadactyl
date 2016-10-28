@@ -14,8 +14,9 @@ import (
 
 // Pusher has a courier used to push applications to Cloud Foundry.
 type Pusher struct {
-	Courier I.Courier
-	Log     *logging.Logger
+	Courier   I.Courier
+	Log       *logging.Logger
+	appExists bool
 }
 
 // Push pushes a single application to a Clound Foundry instance using blue green deployment.
@@ -23,8 +24,8 @@ type Pusher struct {
 // Pushes the new application to the existing appName route with an included load balanced domain if provided.
 //
 // Returns Cloud Foundry logs if there is an error.
-func (p Pusher) Push(appPath string, appExists bool, deploymentInfo S.DeploymentInfo, response io.Writer) error {
-	if appExists {
+func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
+	if p.appExists {
 		_, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 		if err != nil {
 			return errors.Errorf("rename failed: %s", err)
@@ -85,7 +86,7 @@ func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo) error {
 // Rollback will rollback Push.
 // Deletes the new application.
 // Renames appName-venerable back to appName if this is not the first deploy.
-func (p Pusher) Rollback(appExists bool, deploymentInfo S.DeploymentInfo) error {
+func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
 	p.Log.Errorf("rolling back deploy of %s", deploymentInfo.AppName)
 	venerableName := deploymentInfo.AppName + "-venerable"
 
@@ -96,7 +97,7 @@ func (p Pusher) Rollback(appExists bool, deploymentInfo S.DeploymentInfo) error 
 		p.Log.Infof("deleted %s", deploymentInfo.AppName)
 	}
 
-	if appExists {
+	if p.appExists {
 		_, err = p.Courier.Rename(venerableName, deploymentInfo.AppName)
 		if err != nil {
 			p.Log.Infof("unable to rename venerable app %s: %s", venerableName, err)
@@ -142,6 +143,6 @@ func (p Pusher) CleanUp() error {
 }
 
 // Exists uses the courier to check if the application exists.
-func (p Pusher) Exists(appName string) bool {
-	return p.Courier.Exists(appName)
+func (p *Pusher) Exists(appName string) {
+	p.appExists = p.Courier.Exists(appName)
 }

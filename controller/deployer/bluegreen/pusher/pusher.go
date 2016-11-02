@@ -8,7 +8,6 @@ import (
 
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/go-errors/errors"
 	"github.com/op/go-logging"
 )
 
@@ -28,7 +27,7 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 	if p.appExists {
 		_, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
 		if err != nil {
-			return errors.Errorf("rename failed: %s", err)
+			return fmt.Errorf("rename failed: %s", err)
 		}
 
 		p.Log.Infof("renamed app from %s to %s", deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
@@ -45,7 +44,7 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 		logs, newErr := p.Courier.Logs(deploymentInfo.AppName)
 		fmt.Fprintf(response, "\n%s", string(logs))
 		if newErr != nil {
-			return errors.Errorf("%s: cannot get Cloud Foundry logs: %s", err, newErr)
+			return fmt.Errorf("%s: cannot get Cloud Foundry logs: %s", err, newErr)
 		}
 		return err
 	}
@@ -59,7 +58,7 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 		logs, newErr := p.Courier.Logs(deploymentInfo.AppName)
 		fmt.Fprintf(response, "\n%s", string(logs))
 		if newErr != nil {
-			return errors.Errorf("cannot get Cloud Foundry logs: %s", newErr)
+			return fmt.Errorf("cannot get Cloud Foundry logs: %s", newErr)
 		}
 		return err
 	}
@@ -75,7 +74,7 @@ func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo) error {
 
 	_, err := p.Courier.Delete(deploymentInfo.AppName + "-venerable")
 	if err != nil {
-		return errors.Errorf("cannot delete %s: %s", venerableName, err)
+		return fmt.Errorf("cannot delete %s: %s", venerableName, err)
 	}
 
 	p.Log.Infof("deleted %s", venerableName)
@@ -130,7 +129,7 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, res
 	)
 	response.Write(loginOutput)
 	if err != nil {
-		return errors.Errorf("cannot login to %s: %s", foundationURL, err)
+		return fmt.Errorf("cannot login to %s: %s", foundationURL, err)
 	}
 	p.Log.Infof("logged into cloud foundry %s", foundationURL)
 

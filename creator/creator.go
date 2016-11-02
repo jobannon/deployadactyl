@@ -2,6 +2,7 @@
 package creator
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -23,7 +24,6 @@ import (
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
-	"github.com/go-errors/errors"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
 )
@@ -207,7 +207,7 @@ func getLevel(level string) (logging.Level, error) {
 	if level != "" {
 		l, err := logging.LogLevel(level)
 		if err != nil {
-			return 0, errors.Errorf("unable to get log level: %s. error: %s", level, err.Error())
+			return 0, fmt.Errorf("unable to get log level: %s. error: %s", level, err.Error())
 		}
 		return l, nil
 	}

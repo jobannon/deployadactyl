@@ -3,6 +3,7 @@ package bluegreen
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -10,7 +11,6 @@ import (
 	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/go-errors/errors"
 	"github.com/op/go-logging"
 )
 
@@ -63,10 +63,10 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 	if failed {
 		if !environment.DisableFirstDeployRollback {
 			bg.rollbackAll(deploymentInfo)
-			return errors.Errorf("push failed: rollback triggered")
+			return fmt.Errorf("push failed: rollback triggered")
 		}
 
-		return errors.Errorf("push failed: first deploy, rollback not enabled")
+		return fmt.Errorf("push failed: first deploy, rollback not enabled")
 	}
 
 	bg.finishPushAll(deploymentInfo)

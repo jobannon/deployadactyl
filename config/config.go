@@ -2,13 +2,14 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/compozed/deployadactyl/geterrors"
-	"github.com/go-errors/errors"
 )
 
 const (
@@ -52,7 +53,7 @@ type foundationYaml struct {
 func Default(getenv func(string) string) (Config, error) {
 	environments, err := getEnvironmentsFromFile(defaultConfigPath)
 	if err != nil {
-		return Config{}, errors.New(err)
+		return Config{}, err
 	}
 	return createConfig(getenv, environments)
 }
@@ -61,7 +62,7 @@ func Default(getenv func(string) string) (Config, error) {
 func Custom(getenv func(string) string, configPath string) (Config, error) {
 	environments, err := getEnvironmentsFromFile(configPath)
 	if err != nil {
-		return Config{}, errors.New(err)
+		return Config{}, err
 	}
 	return createConfig(getenv, environments)
 }
@@ -73,12 +74,12 @@ func createConfig(getenv func(string) string, environments map[string]Environmen
 	password := getter.Get("CF_PASSWORD")
 
 	if err := getter.Err("missing environment variables"); err != nil {
-		return Config{}, errors.New(err)
+		return Config{}, err
 	}
 
 	port, err := getPortFromEnv(getenv)
 	if err != nil {
-		return Config{}, errors.New(err)
+		return Config{}, err
 	}
 
 	config := Config{
@@ -98,7 +99,7 @@ func getPortFromEnv(getenv func(string) string) (int, error) {
 
 	cfgPort, err := strconv.Atoi(envPort)
 	if err != nil {
-		return 0, errors.Errorf("%s: %s: %s", cannotParsePort, envPort, err)
+		return 0, fmt.Errorf("%s: %s: %s", cannotParsePort, envPort, err)
 	}
 
 	return cfgPort, nil
@@ -107,12 +108,12 @@ func getPortFromEnv(getenv func(string) string) (int, error) {
 func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
 	foundationConfig, err := parseYamlFromBody(file)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
 	if foundationConfig.Environments == nil || len(foundationConfig.Environments) == 0 {
@@ -140,7 +141,7 @@ func parseYamlFromBody(data []byte) (configYaml, error) {
 
 	err := candiedyaml.Unmarshal(data, &foundationConfig)
 	if err != nil {
-		return configYaml{}, errors.Errorf("%s: %s", cannotParseYamlFile, err)
+		return configYaml{}, fmt.Errorf("%s: %s", cannotParseYamlFile, err)
 	}
 
 	return foundationConfig, nil

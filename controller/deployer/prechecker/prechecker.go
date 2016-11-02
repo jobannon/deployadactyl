@@ -3,6 +3,7 @@ package prechecker
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/go-errors/errors"
 )
 
 // Prechecker has an eventmanager used to manage event if prechecks fail.
@@ -40,7 +40,7 @@ func (p Prechecker) AssertAllFoundationsUp(environment config.Environment) error
 	for _, foundationURL := range environment.Foundations {
 		resp, err := insecureClient.Get(fmt.Sprintf("%s/v2/info", foundationURL))
 		if err != nil {
-			return errors.Errorf("deploy aborted: one or more CF foundations unavailable: cannot get: %s", err)
+			return fmt.Errorf("deploy aborted: one or more CF foundations unavailable: cannot get: %s", err)
 		}
 		defer resp.Body.Close()
 
@@ -49,7 +49,7 @@ func (p Prechecker) AssertAllFoundationsUp(environment config.Environment) error
 
 			p.EventManager.Emit(S.Event{Type: "validate.foundationsUnavailable", Data: precheckerEventData})
 
-			return errors.Errorf("an api endpoint failed: %s: %s", foundationURL, resp.Status)
+			return fmt.Errorf("an api endpoint failed: %s: %s", foundationURL, resp.Status)
 		}
 	}
 

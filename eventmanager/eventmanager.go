@@ -2,9 +2,10 @@
 package eventmanager
 
 import (
+	"fmt"
+
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/go-errors/errors"
 	"github.com/op/go-logging"
 )
 
@@ -25,7 +26,7 @@ func NewEventManager(l *logging.Logger) *EventManager {
 // AddHandler takes a handler and eventType and returns an error if a handler is not provided.
 func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 	if handler == nil {
-		return errors.Errorf("Invalid argument: error handler does not exist")
+		return fmt.Errorf("Invalid argument: error handler does not exist")
 	}
 	e.handlers[eventType] = append(e.handlers[eventType], handler)
 	return nil

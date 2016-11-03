@@ -4,7 +4,6 @@ package deployer
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -69,7 +68,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	username, password, ok := req.BasicAuth()
 	if !ok {
 		if authenticationRequired {
-			return http.StatusUnauthorized, errors.New("basic auth header not found")
+			return http.StatusUnauthorized, BasicAuthError{}
 		}
 		username = d.Config.Username
 		password = d.Config.Password
@@ -88,7 +87,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 			manifest, err = base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
 			if err != nil {
 				fmt.Fprintln(response, err)
-				return http.StatusBadRequest, fmt.Errorf("%s: base64 encoded manifest could not be decoded", err)
+				return http.StatusBadRequest, ManifestError{err}
 			}
 		}
 
@@ -109,7 +108,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 
 		deploymentInfo.ArtifactURL = appPath
 	} else {
-		return http.StatusBadRequest, errors.New("must be application/json or application/zip")
+		return http.StatusBadRequest, InvalidContentTypeError{}
 	}
 
 	deploymentInfo.Username = username
@@ -154,7 +153,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	err = d.EventManager.Emit(S.Event{Type: "deploy.start", Data: deployEventData})
 	if err != nil {
 		fmt.Fprintln(response, err)
-		return http.StatusInternalServerError, fmt.Errorf("an error occurred in the deploy.start event: %s", err)
+		return http.StatusInternalServerError, EventError{"deploy.start", err}
 	}
 
 	defer emitDeploySuccess(d, deployEventData, response, &err, &statusCode)
@@ -208,7 +207,8 @@ func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, response io
 	finishErr := d.EventManager.Emit(S.Event{Type: "deploy.finish", Data: deployEventData})
 	if finishErr != nil {
 		fmt.Fprintln(response, finishErr)
-		*err = fmt.Errorf("%s: an error occurred in the deploy.finish event: %s", *err, finishErr)
+
+		*err = fmt.Errorf("%s: %s", *err, EventError{"deploy.finish", finishErr})
 		*statusCode = http.StatusInternalServerError
 	}
 }

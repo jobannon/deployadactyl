@@ -309,7 +309,7 @@ var _ = Describe("Deployer", func() {
 		It("returns an http.StatusBadRequest and an error", func() {
 
 			statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/bork", response)
-			Expect(err).To(MatchError("must be application/json or application/zip"))
+			Expect(err).To(MatchError(InvalidContentTypeError{}))
 
 			Expect(statusCode).To(Equal(http.StatusBadRequest))
 		})
@@ -405,7 +405,7 @@ applications:
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/json", response)
-				Expect(err).To(MatchError("an error occurred in the deploy.start event: deploy.start error"))
+				Expect(err).To(MatchError(EventError{"deploy.start", errors.New("deploy.start error")}))
 
 				Expect(statusCode).To(Equal(http.StatusInternalServerError))
 				Expect(response.String()).To(ContainSubstring("deploy.start error"))

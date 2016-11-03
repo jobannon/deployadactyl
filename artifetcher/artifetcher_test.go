@@ -77,7 +77,7 @@ var _ = Describe("Artifetcher", func() {
 
 				_, err := artifetcher.Fetch(testserver.URL, "")
 
-				Expect(err).To(MatchError("cannot unzip artifact: unzip call failed"))
+				Expect(err).To(MatchError(UnzipError{errors.New("unzip call failed")}))
 			})
 		})
 	})
@@ -113,7 +113,7 @@ var _ = Describe("Artifetcher", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				path, err := artifetcher.FetchZipFromRequest(req)
-				Expect(err).To(MatchError("cannot unzip artifact: " + errorMessage))
+				Expect(err).To(MatchError(UnzipError{errors.New(errorMessage)}))
 
 				Expect(path).To(BeEmpty())
 			})

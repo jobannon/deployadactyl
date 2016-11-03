@@ -12,10 +12,6 @@ import (
 	"github.com/spf13/afero"
 )
 
-const niceFixYourZipMessage = `Please double check your zip compression method and that the correct files are zipped.
-You can try confirming that it's valid on your computer by opening or performing some other action on it.
-Once you've confirmed that it's valid, please try again.`
-
 // Extractor has a file system from which files are extracted from.
 type Extractor struct {
 	Log        *logging.Logger
@@ -32,7 +28,7 @@ func (e *Extractor) Unzip(source, destination, manifest string) error {
 
 	err := e.FileSystem.MkdirAll(destination, 0755)
 	if err != nil {
-		return fmt.Errorf("cannot create directory: %s", err)
+		return CreateDirectoryError{err}
 	}
 
 	file, err := e.FileSystem.Open(source)
@@ -48,26 +44,26 @@ func (e *Extractor) Unzip(source, destination, manifest string) error {
 
 	reader, err := zip.NewReader(file, fileStat.Size())
 	if err != nil {
-		return fmt.Errorf("cannot open zip file: %s: %s\n%s", source, err, niceFixYourZipMessage)
+		return OpenZipError{source, err}
 	}
 
 	for _, file := range reader.File {
 		err := e.unzipFile(destination, file)
 		if err != nil {
-			return fmt.Errorf("cannot extract file from archive: %s: %s", file.Name, err)
+			return ExtractFileError{file.Name, err}
 		}
 	}
 
 	if manifest != "" {
 		manifestFile, err := e.FileSystem.OpenFile(path.Join(destination, "manifest.yml"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
-			return fmt.Errorf("cannot open manifest file: %s", err)
+			return OpenManifestError{err}
 		}
 		defer manifestFile.Close()
 
 		_, err = fmt.Fprint(manifestFile, manifest)
 		if err != nil {
-			return fmt.Errorf("cannot print to open manifest file: %s", err)
+			return PrintToManifestError{err}
 		}
 	}
 
@@ -78,7 +74,7 @@ func (e *Extractor) Unzip(source, destination, manifest string) error {
 func (e *Extractor) unzipFile(destination string, file *zip.File) error {
 	contents, err := file.Open()
 	if err != nil {
-		return fmt.Errorf("cannot extract file from archive: %s", err)
+		return ExtractFileError{file.Name, err}
 	}
 	defer contents.Close()
 
@@ -90,19 +86,19 @@ func (e *Extractor) unzipFile(destination string, file *zip.File) error {
 	directory := path.Dir(savedLocation)
 	err = e.FileSystem.MkdirAll(directory, 0755)
 	if err != nil {
-		return fmt.Errorf("cannot make directory: %s: %s", directory, err)
+		return MakeDirectoryError{directory, err}
 	}
 
 	mode := file.Mode()
 	newFile, err := e.FileSystem.OpenFile(savedLocation, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 	if err != nil {
-		return fmt.Errorf("cannot open file for writing: %s: %s", savedLocation, err)
+		return OpenFileError{savedLocation, err}
 	}
 	defer newFile.Close()
 
 	_, err = io.Copy(newFile, contents)
 	if err != nil {
-		return fmt.Errorf("cannot write to file: %s: %s", savedLocation, err)
+		return WriteFileError{savedLocation, err}
 	}
 
 	return nil

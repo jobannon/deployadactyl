@@ -125,7 +125,7 @@ var _ = Describe("Config", func() {
 			Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 
 			badConfig, err := Custom(env.Get, badConfigPath)
-			Expect(err).To(MatchError("environments key not specified in the configuration"))
+			Expect(err).To(MatchError(EnvironmentsNotSpecifiedError{}))
 
 			Expect(badConfig.Environments).To(BeEmpty())
 		})
@@ -140,7 +140,7 @@ environments:
 				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 
 				badConfig, err := Custom(env.Get, badConfigPath)
-				Expect(err).To(MatchError("missing required parameter in the environments key"))
+				Expect(err).To(MatchError(MissingParameterError{}))
 
 				Expect(badConfig.Environments).To(BeEmpty())
 			})
@@ -154,7 +154,7 @@ environments:
 				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 
 				badConfig, err := Custom(env.Get, badConfigPath)
-				Expect(err).To(MatchError("missing required parameter in the environments key"))
+				Expect(err).To(MatchError(MissingParameterError{}))
 
 				Expect(badConfig.Environments).To(BeEmpty())
 			})
@@ -168,7 +168,7 @@ environments:
 				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 
 				badConfig, err := Custom(env.Get, badConfigPath)
-				Expect(err).To(MatchError("missing required parameter in the environments key"))
+				Expect(err).To(MatchError(MissingParameterError{}))
 
 				Expect(badConfig.Environments).To(BeEmpty())
 			})

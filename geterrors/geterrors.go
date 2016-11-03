@@ -23,9 +23,11 @@ type ErrGetter struct {
 // If the key is missing it makes a slice of missing keys.
 func (g *ErrGetter) Get(key string) string {
 	val := g.get(key)
+
 	if len(val) == 0 {
 		g.missingKeys = append(g.missingKeys, key)
 	}
+
 	return val
 }
 
@@ -36,8 +38,6 @@ func (g *ErrGetter) Err(message string) error {
 	if len(g.missingKeys) == 0 {
 		return nil
 	}
-	return fmt.Errorf(
-		"%s: %s",
-		message, strings.Join(g.missingKeys, ", "),
-	)
+
+	return fmt.Errorf("%s: %s", message, strings.Join(g.missingKeys, ", "))
 }

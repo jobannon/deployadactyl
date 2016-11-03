@@ -3,7 +3,6 @@ package prechecker
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -27,7 +26,7 @@ func (p Prechecker) AssertAllFoundationsUp(environment config.Environment) error
 
 		p.EventManager.Emit(S.Event{Type: "validate.foundationsUnavailable", Data: precheckerEventData})
 
-		return errors.New(precheckerEventData.Description)
+		return NoFoundationsConfiguredError{}
 	}
 
 	insecureClient := &http.Client{
@@ -40,16 +39,18 @@ func (p Prechecker) AssertAllFoundationsUp(environment config.Environment) error
 	for _, foundationURL := range environment.Foundations {
 		resp, err := insecureClient.Get(fmt.Sprintf("%s/v2/info", foundationURL))
 		if err != nil {
-			return fmt.Errorf("deploy aborted: one or more CF foundations unavailable: cannot get: %s", err)
+			return InvalidGetRequestError{foundationURL, err}
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			precheckerEventData.Description = "deploy aborted: one or more CF foundations unavailable"
+			err := FoundationUnavailableError{foundationURL, resp.Status}
+
+			precheckerEventData.Description = err.Error()
 
 			p.EventManager.Emit(S.Event{Type: "validate.foundationsUnavailable", Data: precheckerEventData})
 
-			return fmt.Errorf("an api endpoint failed: %s: %s", foundationURL, resp.Status)
+			return err
 		}
 	}
 

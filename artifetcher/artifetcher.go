@@ -2,7 +2,6 @@
 package artifetcher
 
 import (
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -30,7 +29,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	artifactFile, err := a.FileSystem.TempFile("", "deployadactyl-zip-")
 	if err != nil {
-		return "", fmt.Errorf("cannot create temp file: %s", err)
+		return "", CreateTempFileError{err}
 	}
 	defer artifactFile.Close()
 	defer a.FileSystem.Remove(artifactFile.Name())
@@ -50,33 +49,34 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", fmt.Errorf("cannot create artifactory request: %s", err)
+		return "", ArtifactoryRequestError{err}
 	}
 
 	response, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("cannot GET url: %s: %s", url, err)
+		return "", GetUrlError{url, err}
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("cannot GET url: %s: %s", url, response.Status)
+		return "", GetStatusError{url, response.Status}
 	}
 
 	_, err = io.Copy(artifactFile, response.Body)
 	if err != nil {
-		return "", fmt.Errorf("cannot write response to file: %s", err)
+		return "", WriteResponseError{err}
 	}
 
 	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-unzipped-")
 	if err != nil {
-		return "", fmt.Errorf("cannot create temp directory: %s", err)
+		return "", CreateTempDirectoryError{err}
 	}
 
 	err = a.Extractor.Unzip(artifactFile.Name(), unzippedPath, manifest)
 	if err != nil {
 		a.FileSystem.RemoveAll(unzippedPath)
-		return "", fmt.Errorf("cannot unzip artifact: %s", err)
+		return "", UnzipError{err}
+
 	}
 
 	a.Log.Debug("fetched and unzipped to tempdir: %s", unzippedPath)
@@ -89,7 +89,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 func (a *Artifetcher) FetchZipFromRequest(req *http.Request) (string, error) {
 	zipFile, err := a.FileSystem.TempFile("", "deployadactyl-")
 	if err != nil {
-		return "", fmt.Errorf("cannot create temp file: %s", err)
+		return "", CreateTempFileError{err}
 	}
 	defer zipFile.Close()
 	defer a.FileSystem.Remove(zipFile.Name())
@@ -97,18 +97,18 @@ func (a *Artifetcher) FetchZipFromRequest(req *http.Request) (string, error) {
 	a.Log.Info("fetching zip file %s", zipFile.Name())
 
 	if _, err = io.Copy(zipFile, req.Body); err != nil {
-		return "", fmt.Errorf("cannot write response to file: %s", err)
+		return "", WriteResponseError{err}
 	}
 
 	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-")
 	if err != nil {
-		return "", fmt.Errorf("cannot create temp directory: %s", err)
+		return "", CreateTempDirectoryError{err}
 	}
 
 	err = a.Extractor.Unzip(zipFile.Name(), unzippedPath, "")
 	if err != nil {
 		a.FileSystem.RemoveAll(unzippedPath)
-		return "", fmt.Errorf("cannot unzip artifact: %s", err)
+		return "", UnzipError{err}
 	}
 
 	a.Log.Debug("fetched and unzipped to tempdir %s", unzippedPath)

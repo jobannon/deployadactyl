@@ -288,7 +288,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).ToNot(Succeed())
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(MatchError(PushFailRollbackError{}))
 
 			for i, pusher := range pushers {
 				foundationURL := environment.Foundations[i]
@@ -351,7 +351,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).ToNot(Succeed())
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(MatchError(PushFailNoRollbackError{}))
 
 			for i, pusher := range pushers {
 				foundationURL := environment.Foundations[i]

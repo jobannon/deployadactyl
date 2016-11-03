@@ -2,7 +2,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"strconv"
@@ -12,15 +11,7 @@ import (
 	"github.com/compozed/deployadactyl/geterrors"
 )
 
-const (
-	unableToGetLogLevel    = "unable to get log level"
-	cannotParsePort        = "cannot parse $PORT"
-	cannotCreateGetRequest = "cannot create GET request"
-	cannotSendGetRequest   = "cannot send GET request"
-	cannotReadResponseBody = "cannot read response body"
-	cannotParseYamlFile    = "cannot parse yaml file"
-	defaultConfigPath      = "./config.yml"
-)
+const defaultConfigPath = "./config.yml"
 
 // Config is a representation of a config yaml. It can contain multiple Environments.
 type Config struct {
@@ -99,7 +90,7 @@ func getPortFromEnv(getenv func(string) string) (int, error) {
 
 	cfgPort, err := strconv.Atoi(envPort)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %s: %s", cannotParsePort, envPort, err)
+		return 0, fmt.Errorf("cannot parse $PORT: %s: %s", envPort, err)
 	}
 
 	return cfgPort, nil
@@ -117,13 +108,13 @@ func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
 	}
 
 	if foundationConfig.Environments == nil || len(foundationConfig.Environments) == 0 {
-		return nil, errors.New("environments key not specified in the configuration")
+		return nil, EnvironmentsNotSpecifiedError{}
 	}
 
 	environments := map[string]Environment{}
 	for _, environment := range foundationConfig.Environments {
 		if environment.Name == "" || environment.Domain == "" || environment.Foundations == nil || len(environment.Foundations) == 0 {
-			return nil, errors.New("missing required parameter in the environments key")
+			return nil, MissingParameterError{}
 		}
 
 		if environment.Instances < 1 {
@@ -141,7 +132,7 @@ func parseYamlFromBody(data []byte) (configYaml, error) {
 
 	err := candiedyaml.Unmarshal(data, &foundationConfig)
 	if err != nil {
-		return configYaml{}, fmt.Errorf("%s: %s", cannotParseYamlFile, err)
+		return configYaml{}, ParseYamlError{err}
 	}
 
 	return foundationConfig, nil

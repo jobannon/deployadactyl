@@ -35,6 +35,7 @@ var _ = Describe("Bluegreen", func() {
 		environment     config.Environment
 		deploymentInfo  S.DeploymentInfo
 		response        *Buffer
+		logBuffer       *Buffer
 	)
 
 	BeforeEach(func() {
@@ -48,15 +49,17 @@ var _ = Describe("Bluegreen", func() {
 		username = "username-" + randomizer.StringRunes(10)
 		password = "password-" + randomizer.StringRunes(10)
 		response = NewBuffer()
+		logBuffer = NewBuffer()
 
 		pusherFactory = &mocks.PusherCreator{}
 		pushers = nil
 
-		log = logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "test")
+		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "test")
 
-		blueGreen = BlueGreen{pusherFactory, log}
+		blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
 
 		environment = config.Environment{Name: environmentName}
+		environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
 		deploymentInfo = S.DeploymentInfo{
 			Username: username,
@@ -67,14 +70,31 @@ var _ = Describe("Bluegreen", func() {
 		}
 	})
 
+	Context("when pusher factory fails", func() {
+		It("returns an error", func() {
+			for i := range environment.Foundations {
+				if i == 0 {
+					pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, &mocks.Pusher{})
+					pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, nil)
+				} else {
+					pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+					pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, errors.New("push creator failed"))
+				}
+			}
+
+			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+
+			Expect(err).To(MatchError("push creator failed"))
+		})
+	})
+
 	Context("when a login command fails", func() {
 		It("should not start to deploy", func() {
-			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
-
 			for index := range environment.Foundations {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
 
 				if index == 0 {
 					By("making the first login command fail")
@@ -109,6 +129,7 @@ var _ = Describe("Bluegreen", func() {
 			pusher := &mocks.Pusher{}
 			pushers = append(pushers, pusher)
 			pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+			pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
 
 			pusher.LoginCall.Write.Output = loginOutput
 			pusher.LoginCall.Returns.Error = nil
@@ -138,6 +159,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
 
 				pusher.LoginCall.Write.Output = loginOutput
 				pusher.LoginCall.Returns.Error = nil
@@ -165,91 +187,93 @@ var _ = Describe("Bluegreen", func() {
 			Expect(response).To(Say(pushOutput))
 			Expect(response).To(Say(loginOutput))
 			Expect(response).To(Say(pushOutput))
+		})
+
+		Context("when deleting the venerable fails", func() {
+			It("logs an error", func() {
+				foundationURL := "foundationURL-" + randomizer.StringRunes(10)
+				environment.Foundations = []string{foundationURL}
+
+				pusher := &mocks.Pusher{}
+				pushers = append(pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+
+				pusher.DeleteVenerableCall.Returns.Error = errors.New("delete venerable failed")
+
+				Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
+
+				Eventually(logBuffer).Should(Say("delete venerable failed"))
+			})
 		})
 	})
 
 	Context("when pushing to multiple foundations", func() {
 		It("checks if the app exists on each foundation", func() {
-
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10), randomizer.StringRunes(10), randomizer.StringRunes(10)}
-
-			for i := range environment.Foundations {
-				pusher := &mocks.Pusher{}
-				pushers = append(pushers, pusher)
-				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
-
-				pusher.LoginCall.Write.Output = loginOutput
-				pusher.LoginCall.Returns.Error = nil
-				pusher.PushCall.Write.Output = pushOutput
-				pusher.PushCall.Returns.Error = nil
-
-				if i == 0 {
-					pusher.ExistsCall.Returns.Exists = true
-				} else {
-					pusher.ExistsCall.Returns.Exists = false
-				}
-			}
-
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
-
-			for i, pusher := range pushers {
-				if i == 0 {
-					Expect(pusher.PushCall.Received.AppExists).To(Equal(true))
-				} else {
-					Expect(pusher.PushCall.Received.AppExists).To(Equal(false))
-				}
-
-			}
-		})
-	})
-
-	Context("when app-venerable already exists on cf", func() {
-		It("should rollback before push", func() {
-			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
 			for range environment.Foundations {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
-
-				pusher.LoginCall.Write.Output = loginOutput
-				pusher.LoginCall.Returns.Error = nil
-				pusher.ExistsCall.Returns.Exists = true
-				pusher.PushCall.Write.Output = pushOutput
-				pusher.PushCall.Returns.Error = nil
-				pusher.DeleteVenerableCall.Returns.Error = nil
-				pusher.CleanUpCall.Returns.Error = nil
+				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
 			}
 
 			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
 
-			for i, pusher := range pushers {
-				foundationURL := environment.Foundations[i]
+			for i := range environment.Foundations {
+				Expect(pushers[i].ExistsCall.Received.AppName).To(Equal(appName))
+			}
+		})
+	})
 
-				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
-				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.RollbackCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
-				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+	Context("when app-venerable already exists on Cloud Foundry", func() {
+		It("should delete venerable instances before push", func() {
+			for range environment.Foundations {
+				pusher := &mocks.Pusher{}
+				pushers = append(pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+
+				pusher.DeleteVenerableCall.Returns.Error = nil
+			}
+
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
+
+			for _, pusher := range pushers {
 				Expect(pusher.DeleteVenerableCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			}
+		})
+
+		Context("when delete venerable fails", func() {
+			It("logs an error", func() {
+				for range environment.Foundations {
+					pusher := &mocks.Pusher{}
+					pushers = append(pushers, pusher)
+					pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+					pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+
+					pusher.DeleteVenerableCall.Returns.Error = errors.New("delete failed")
+				}
+
+				Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
+
+				Eventually(logBuffer).Should(Say("delete failed"))
+			})
 		})
 	})
 
 	Context("when at least one push command is unsuccessful", func() {
 		It("should rollback all recent pushes and print Cloud Foundry logs", func() {
-			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
-
 			for index := range environment.Foundations {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
 
 				pusher.LoginCall.Write.Output = loginOutput
 				pusher.LoginCall.Returns.Error = nil
-				pusher.ExistsCall.Returns.Exists = true
 
 				if index == 0 {
 					pusher.PushCall.Write.Output = pushOutput
@@ -264,7 +288,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).ToNot(Succeed())
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(MatchError(PushFailRollbackError{}))
 
 			for i, pusher := range pushers {
 				foundationURL := environment.Foundations[i]
@@ -283,15 +307,34 @@ var _ = Describe("Bluegreen", func() {
 			Expect(response).To(Say(pushOutput))
 		})
 
+		Context("when rollback fails", func() {
+			It("logs an error", func() {
+				for index := range environment.Foundations {
+					pusher := &mocks.Pusher{}
+					pushers = append(pushers, pusher)
+					pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+					pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+
+					if index == 0 {
+						pusher.PushCall.Returns.Error = errors.New("bork")
+						pusher.RollbackCall.Returns.Error = errors.New("rollback error")
+					}
+				}
+
+				Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).ToNot(Succeed())
+
+				Eventually(logBuffer).Should(Say("rollback error"))
+			})
+		})
+
 		It("should not rollback any pushes on the first deploy when first deploy rollback is disabled", func() {
 			environment.DisableFirstDeployRollback = true
-
-			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
 			for index := range environment.Foundations {
 				pusher := &mocks.Pusher{}
 				pushers = append(pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
 
 				pusher.LoginCall.Write.Output = loginOutput
 				pusher.LoginCall.Returns.Error = nil
@@ -308,7 +351,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.CleanUpCall.Returns.Error = nil
 			}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).ToNot(Succeed())
+			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(MatchError(PushFailNoRollbackError{}))
 
 			for i, pusher := range pushers {
 				foundationURL := environment.Foundations[i]

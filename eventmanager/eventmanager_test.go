@@ -52,7 +52,9 @@ var _ = Describe("Events", func() {
 		It("should fail if a nil value is passed in as an argument", func() {
 			eventManager := NewEventManager(log)
 
-			Expect(eventManager.AddHandler(nil, eventType)).ToNot(Succeed())
+			err := eventManager.AddHandler(nil, eventType)
+
+			Expect(err).To(MatchError(InvalidArgumentError{}))
 		})
 	})
 
@@ -73,14 +75,13 @@ var _ = Describe("Events", func() {
 		})
 
 		It("should return an error if the handler returns an error", func() {
-			eventHandler.OnEventCall.Returns.Error = errors.New("bork")
+			eventHandler.OnEventCall.Returns.Error = errors.New("on event error")
 
 			event := S.Event{Type: eventType, Data: eventData}
 
 			eventManager.AddHandler(eventHandler, eventType)
 
-			Expect(eventManager.Emit(event)).ToNot(Succeed())
-
+			Expect(eventManager.Emit(event)).To(MatchError("on event error"))
 			Expect(eventHandler.OnEventCall.Received.Event).To(Equal(event))
 		})
 
@@ -94,7 +95,7 @@ var _ = Describe("Events", func() {
 			Expect(eventManager.Emit(event)).To(Succeed())
 
 			Expect(eventHandler.OnEventCall.Received.Event).To(Equal(event))
-			Eventually(logBuffer).Should(gbytes.Say("An event %s has been emitted", eventType))
+			Eventually(logBuffer).Should(gbytes.Say("a %s event has been emitted", eventType))
 		})
 	})
 

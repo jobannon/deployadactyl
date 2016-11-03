@@ -2,24 +2,16 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/compozed/deployadactyl/geterrors"
-	"github.com/go-errors/errors"
 )
 
-const (
-	unableToGetLogLevel    = "unable to get log level"
-	cannotParsePort        = "cannot parse $PORT"
-	cannotCreateGetRequest = "cannot create GET request"
-	cannotSendGetRequest   = "cannot send GET request"
-	cannotReadResponseBody = "cannot read response body"
-	cannotParseYamlFile    = "cannot parse yaml file"
-	defaultConfigPath      = "./config.yml"
-)
+const defaultConfigPath = "./config.yml"
 
 // Config is a representation of a config yaml. It can contain multiple Environments.
 type Config struct {
@@ -52,7 +44,7 @@ type foundationYaml struct {
 func Default(getenv func(string) string) (Config, error) {
 	environments, err := getEnvironmentsFromFile(defaultConfigPath)
 	if err != nil {
-		return Config{}, errors.New(err)
+		return Config{}, err
 	}
 	return createConfig(getenv, environments)
 }
@@ -61,7 +53,7 @@ func Default(getenv func(string) string) (Config, error) {
 func Custom(getenv func(string) string, configPath string) (Config, error) {
 	environments, err := getEnvironmentsFromFile(configPath)
 	if err != nil {
-		return Config{}, errors.New(err)
+		return Config{}, err
 	}
 	return createConfig(getenv, environments)
 }
@@ -73,12 +65,12 @@ func createConfig(getenv func(string) string, environments map[string]Environmen
 	password := getter.Get("CF_PASSWORD")
 
 	if err := getter.Err("missing environment variables"); err != nil {
-		return Config{}, errors.New(err)
+		return Config{}, err
 	}
 
 	port, err := getPortFromEnv(getenv)
 	if err != nil {
-		return Config{}, errors.New(err)
+		return Config{}, err
 	}
 
 	config := Config{
@@ -98,7 +90,7 @@ func getPortFromEnv(getenv func(string) string) (int, error) {
 
 	cfgPort, err := strconv.Atoi(envPort)
 	if err != nil {
-		return 0, errors.Errorf("%s: %s: %s", cannotParsePort, envPort, err)
+		return 0, fmt.Errorf("cannot parse $PORT: %s: %s", envPort, err)
 	}
 
 	return cfgPort, nil
@@ -107,22 +99,22 @@ func getPortFromEnv(getenv func(string) string) (int, error) {
 func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
 	foundationConfig, err := parseYamlFromBody(file)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
 	if foundationConfig.Environments == nil || len(foundationConfig.Environments) == 0 {
-		return nil, errors.New("environments key not specified in the configuration")
+		return nil, EnvironmentsNotSpecifiedError{}
 	}
 
 	environments := map[string]Environment{}
 	for _, environment := range foundationConfig.Environments {
 		if environment.Name == "" || environment.Domain == "" || environment.Foundations == nil || len(environment.Foundations) == 0 {
-			return nil, errors.New("missing required parameter in the environments key")
+			return nil, MissingParameterError{}
 		}
 
 		if environment.Instances < 1 {
@@ -140,7 +132,7 @@ func parseYamlFromBody(data []byte) (configYaml, error) {
 
 	err := candiedyaml.Unmarshal(data, &foundationConfig)
 	if err != nil {
-		return configYaml{}, errors.Errorf("%s: %s", cannotParseYamlFile, err)
+		return configYaml{}, ParseYamlError{err}
 	}
 
 	return foundationConfig, nil

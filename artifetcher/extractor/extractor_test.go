@@ -51,6 +51,7 @@ var _ = Describe("Extracting", func() {
 
 		extractedFile, err := af.ReadFile(path.Join(destination, "index.html"))
 		Expect(err).ToNot(HaveOccurred())
+
 		Expect(extractedFile).To(ContainSubstring("public/assets/images/pterodactyl.png"))
 	})
 
@@ -60,6 +61,7 @@ var _ = Describe("Extracting", func() {
 
 			extractedManifest, err := af.ReadFile(path.Join(destination, "manifest.yml"))
 			Expect(err).ToNot(HaveOccurred())
+
 			Expect(extractedManifest).To(BeEquivalentTo(deployadactylManifest))
 		})
 	})
@@ -71,6 +73,7 @@ var _ = Describe("Extracting", func() {
 
 			extractedManifest, err := af.ReadFile(path.Join(destination, "manifest.yml"))
 			Expect(err).ToNot(HaveOccurred())
+
 			Expect(extractedManifest).To(BeEquivalentTo(manifestContents))
 		})
 	})

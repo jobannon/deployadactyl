@@ -38,7 +38,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 	if err != nil {
 		c.Log.Errorf("%s: %s", "cannot deploy application", err)
 		g.Writer.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(response, "cannot deploy application: %s\n", err.Error())
+		fmt.Fprintf(response, "cannot deploy application: %s\n", err)
 		g.Error(err)
 		return
 	}

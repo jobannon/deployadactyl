@@ -305,6 +305,16 @@ var _ = Describe("Deployer", func() {
 		})
 	})
 
+	Describe("deploying with an unknown request type", func() {
+		It("returns an http.StatusBadRequest and an error", func() {
+
+			statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/bork", response)
+			Expect(err).To(MatchError(InvalidContentTypeError{}))
+
+			Expect(statusCode).To(Equal(http.StatusBadRequest))
+		})
+	})
+
 	Describe("setting the number of instances in the deployment", func() {
 		Context("when a manifest with instances is provided", func() {
 			It("uses the instances declared in the manifest", func() {
@@ -395,7 +405,7 @@ applications:
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/json", response)
-				Expect(err).To(MatchError("an error occurred in the deploy.start event: deploy.start error"))
+				Expect(err).To(MatchError(EventError{"deploy.start", errors.New("deploy.start error")}))
 
 				Expect(statusCode).To(Equal(http.StatusInternalServerError))
 				Expect(response.String()).To(ContainSubstring("deploy.start error"))

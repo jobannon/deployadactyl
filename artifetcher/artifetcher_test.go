@@ -39,9 +39,12 @@ var _ = Describe("Artifetcher", func() {
 		}))
 	})
 
+	AfterEach(func() {
+		testserver.Close()
+	})
+
 	Describe("fetching a zip file", func() {
 		It("can fetch a jar file", func() {
-			defer testserver.Close()
 			extractor.UnzipCall.Returns.Error = nil
 
 			unzippedPath, err := artifetcher.Fetch(testserver.URL, "")
@@ -49,6 +52,7 @@ var _ = Describe("Artifetcher", func() {
 
 			Expect(af.IsDir(unzippedPath)).To(BeTrue())
 
+			Expect(extractor.UnzipCall.Received.Source).To(ContainSubstring("deployadactyl-zip"))
 			Expect(extractor.UnzipCall.Received.Destination).To(Equal(unzippedPath))
 			Expect(extractor.UnzipCall.Received.Manifest).To(BeEmpty())
 		})
@@ -59,13 +63,22 @@ var _ = Describe("Artifetcher", func() {
 		})
 
 		It("returns an error when the URL returns a 404 not found", func() {
-			testserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			testserver = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "not found", 404)
 			}))
-			defer testserver.Close()
 
 			_, err := artifetcher.Fetch(testserver.URL, manifest)
 			Expect(err).To(HaveOccurred())
+		})
+
+		Context("when extractor fails", func() {
+			It("returns an error", func() {
+				extractor.UnzipCall.Returns.Error = errors.New("unzip call failed")
+
+				_, err := artifetcher.Fetch(testserver.URL, "")
+
+				Expect(err).To(MatchError(UnzipError{errors.New("unzip call failed")}))
+			})
 		})
 	})
 
@@ -87,21 +100,23 @@ var _ = Describe("Artifetcher", func() {
 			Expect(extractor.UnzipCall.Received.Destination).To(Equal(path))
 		})
 
-		It("returns an error when extractor fails", func() {
-			errorMessage := "test extract fail"
-			extractor.UnzipCall.Returns.Error = errors.New(errorMessage)
+		Context("when extractor fails", func() {
+			It("returns an error", func() {
+				errorMessage := "test extract fail"
+				extractor.UnzipCall.Returns.Error = errors.New(errorMessage)
 
-			body, err := os.Open("./fixtures/artifact-with-manifest.jar")
-			Expect(err).ToNot(HaveOccurred())
+				body, err := os.Open("./fixtures/artifact-with-manifest.jar")
+				Expect(err).ToNot(HaveOccurred())
 
-			// for go 1.7 change this to httptest
-			req, err := http.NewRequest("POST", "https://example.com", body)
-			Expect(err).ToNot(HaveOccurred())
+				// for go 1.7 change this to httptest
+				req, err := http.NewRequest("POST", "https://example.com", body)
+				Expect(err).ToNot(HaveOccurred())
 
-			path, err := artifetcher.FetchZipFromRequest(req)
-			Expect(err).To(MatchError("cannot unzip artifact: " + errorMessage))
+				path, err := artifetcher.FetchZipFromRequest(req)
+				Expect(err).To(MatchError(UnzipError{errors.New(errorMessage)}))
 
-			Expect(path).To(BeEmpty())
+				Expect(path).To(BeEmpty())
+			})
 		})
 	})
 })

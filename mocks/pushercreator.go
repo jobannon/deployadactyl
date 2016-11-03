@@ -8,7 +8,7 @@ type PusherCreator struct {
 		TimesCalled int
 		Returns     struct {
 			Pushers []interfaces.Pusher
-			Error   error
+			Error   []error
 		}
 	}
 }
@@ -17,5 +17,5 @@ type PusherCreator struct {
 func (p *PusherCreator) CreatePusher() (interfaces.Pusher, error) {
 	defer func() { p.CreatePusherCall.TimesCalled++ }()
 
-	return p.CreatePusherCall.Returns.Pushers[p.CreatePusherCall.TimesCalled], p.CreatePusherCall.Returns.Error
+	return p.CreatePusherCall.Returns.Pushers[p.CreatePusherCall.TimesCalled], p.CreatePusherCall.Returns.Error[p.CreatePusherCall.TimesCalled]
 }

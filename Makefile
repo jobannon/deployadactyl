@@ -1,28 +1,25 @@
-.PHONY: install build doc fmt lint test watch godep server
-
-install:
-	go get -t -v ./...
+.PHONY: build dependencies doc fmt lint server test watch
 
 build:
 	go build
+
+dependencies:
+	git submodule update --init --recursive
 
 doc:
 	godoc -http=:6060
 
 fmt:
-	go fmt ./...
+	for package in $$(go list ./... | grep -v /vendor/); do go fmt $$package; done
 
 lint:
-	golint ./...
+	for package in $$(go list ./... | grep -v /vendor/); do golint $$package; done
+
+server:
+	go run server.go
 
 test:
 	ginkgo -r
 
 watch:
 	ginkgo watch -r
-
-godep:
-	godep save ./...
-
-server:
-	go run server.go

@@ -1,4 +1,4 @@
-.PHONY: build dependencies doc fmt lint server test watch
+.PHONY: build dependencies doc fmt lint server test watch push
 
 build:
 	go build
@@ -23,3 +23,7 @@ test:
 
 watch:
 	ginkgo watch -r
+
+push: dependencies
+	cf login
+	cf push

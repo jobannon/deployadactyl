@@ -20,7 +20,9 @@ Deployadactyl is a Go library for deploying applications to multiple [Cloud Foun
 	- [Configuration File](#configuration-file)
 		- [Example Configuration Yaml](#example-configuration-yaml)
 		- [Environment Variables](#environment-variables)
+- [How to Download Dependencies](#how-to-download-dependencies)
 - [How To Run Deployadactyl](#how-to-run-deployadactyl)
+- [How to Push Deployadactyl to Cloud Foundry](#how-to-push-deployadactyl-to-cloud-foundry)
 	- [Available Flags](#available-flags)
 	- [API](#api)
 		- [Example Curl](#example-curl)
@@ -115,6 +117,20 @@ $ export CF_PASSWORD=some-password
 
 *Optional:* The log level can be changed by defining `DEPLOYADACTYL_LOGLEVEL`. `DEBUG` is the default log level.
 
+## How to Download Dependencies
+
+We have our dependencies using [git submodules](https://git-scm.com/docs/git-submodule). To download the dependencies when you clone Deployadactyl you can use the following command:
+
+```bash
+$ git clone --recursive https://github.com/compozed/deployadactyl
+```
+
+If you have already cloned Deployadactyl you can use our Makefile to get the dependencies with this command:
+
+```bash
+$ make dependencies
+```
+
 ## How To Run Deployadactyl
 
 After a configuration yaml has been created and environment variables have been set, the server can be run using the following commands:
@@ -127,6 +143,22 @@ or
 
 ```bash
 $ go build && ./deployadactyl
+```
+
+## How to Push Deployadactyl to Cloud Foundry
+
+To push Deployadactyl to Cloud Foundry, edit the `manifest.yml` to include your `CF_USERNAME` and `CF_PASSWORD` environment variables. In addition, be sure to create a `config.yaml`.
+
+```bash
+$ make push
+```
+
+or
+
+```bash
+$ git submodule update --init --recursive
+$ cf login
+$ cf push
 ```
 
 ### Available Flags

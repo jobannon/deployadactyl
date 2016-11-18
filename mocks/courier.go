@@ -110,8 +110,8 @@ type Courier struct {
 }
 
 // Login mock method.
-func (c *Courier) Login(api, username, password, org, space string, skipSSL bool) ([]byte, error) {
-	c.LoginCall.Received.FoundationURL = api
+func (c *Courier) Login(foundationURL, username, password, org, space string, skipSSL bool) ([]byte, error) {
+	c.LoginCall.Received.FoundationURL = foundationURL
 	c.LoginCall.Received.Username = username
 	c.LoginCall.Received.Password = password
 	c.LoginCall.Received.Org = org

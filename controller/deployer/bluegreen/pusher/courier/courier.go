@@ -15,13 +15,13 @@ type Courier struct {
 // Login runs the Cloud Foundry login command.
 //
 // Returns the combined standard output and standard error.
-func (c Courier) Login(api, username, password, org, space string, skipSSL bool) ([]byte, error) {
+func (c Courier) Login(foundationURL, username, password, org, space string, skipSSL bool) ([]byte, error) {
 	var s string
 	if skipSSL {
 		s = "--skip-ssl-validation"
 	}
 
-	return c.Executor.Execute("login", "-a", api, "-u", username, "-p", password, "-o", org, "-s", space, s)
+	return c.Executor.Execute("login", "-a", foundationURL, "-u", username, "-p", password, "-o", org, "-s", space, s)
 }
 
 // Delete runs the Cloud Foundry delete command.

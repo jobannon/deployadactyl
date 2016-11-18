@@ -2,7 +2,7 @@ package interfaces
 
 // Courier interface.
 type Courier interface {
-	Login(api, username, password, org, space string, skipSSL bool) ([]byte, error)
+	Login(foundationURL, username, password, org, space string, skipSSL bool) ([]byte, error)
 	Delete(appName string) ([]byte, error)
 	Push(appName, appLocation string, instances uint16) ([]byte, error)
 	Rename(oldName, newName string) ([]byte, error)

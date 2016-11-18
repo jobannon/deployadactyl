@@ -31,19 +31,19 @@ var _ = Describe("Courier", func() {
 	Describe("logging in", func() {
 		It("should get a valid Cloud Foundry login command", func() {
 			var (
-				api          = "api-" + randomizer.StringRunes(10)
-				org          = "org-" + randomizer.StringRunes(10)
-				password     = "password-" + randomizer.StringRunes(10)
-				space        = "space-" + randomizer.StringRunes(10)
-				user         = "user-" + randomizer.StringRunes(10)
-				skipSSL      = false
-				expectedArgs = []string{"login", "-a", api, "-u", user, "-p", password, "-o", org, "-s", space, ""}
+				foundationURL = "foundationURL-" + randomizer.StringRunes(10)
+				org           = "org-" + randomizer.StringRunes(10)
+				password      = "password-" + randomizer.StringRunes(10)
+				space         = "space-" + randomizer.StringRunes(10)
+				user          = "user-" + randomizer.StringRunes(10)
+				skipSSL       = false
+				expectedArgs  = []string{"login", "-a", foundationURL, "-u", user, "-p", password, "-o", org, "-s", space, ""}
 			)
 
 			executor.ExecuteCall.Returns.Output = []byte(output)
 			executor.ExecuteCall.Returns.Error = nil
 
-			out, err := courier.Login(api, user, password, org, space, skipSSL)
+			out, err := courier.Login(foundationURL, user, password, org, space, skipSSL)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
@@ -52,19 +52,19 @@ var _ = Describe("Courier", func() {
 
 		It("can skip ssl validation", func() {
 			var (
-				api          = "api-" + randomizer.StringRunes(10)
-				org          = "org-" + randomizer.StringRunes(10)
-				password     = "password-" + randomizer.StringRunes(10)
-				space        = "space-" + randomizer.StringRunes(10)
-				user         = "user-" + randomizer.StringRunes(10)
-				skipSSL      = true
-				expectedArgs = []string{"login", "-a", api, "-u", user, "-p", password, "-o", org, "-s", space, "--skip-ssl-validation"}
+				foundationURL = "foundationURL-" + randomizer.StringRunes(10)
+				org           = "org-" + randomizer.StringRunes(10)
+				password      = "password-" + randomizer.StringRunes(10)
+				space         = "space-" + randomizer.StringRunes(10)
+				user          = "user-" + randomizer.StringRunes(10)
+				skipSSL       = true
+				expectedArgs  = []string{"login", "-a", foundationURL, "-u", user, "-p", password, "-o", org, "-s", space, "--skip-ssl-validation"}
 			)
 
 			executor.ExecuteCall.Returns.Output = []byte(output)
 			executor.ExecuteCall.Returns.Error = nil
 
-			out, err := courier.Login(api, user, password, org, space, skipSSL)
+			out, err := courier.Login(foundationURL, user, password, org, space, skipSSL)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))

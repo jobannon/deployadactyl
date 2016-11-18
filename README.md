@@ -18,7 +18,7 @@ Deployadactyl is a Go library for deploying applications to multiple [Cloud Foun
 - [Usage Requirements](#usage-requirements)
 	- [Dependencies](#dependencies)
 	- [Configuration File](#configuration-file)
-		- [Example Configuration Yaml](#example-configuration-yaml)
+		- [Example Configuration yml](#example-configuration-yml)
 		- [Environment Variables](#environment-variables)
 - [How to Download Dependencies](#how-to-download-dependencies)
 - [How To Run Deployadactyl](#how-to-run-deployadactyl)
@@ -64,7 +64,7 @@ Deployadactyl has the following dependencies within the environment:
 
 ### Configuration File
 
-Deployadactyl needs a `yaml` configuration file to specify your environments. Each environment has a name, domain and a list of foundations.
+Deployadactyl needs a `yml` configuration file to specify your environments. Each environment has a name, domain and a list of foundations.
 
 The configuration file can be placed anywhere within your project directory as long as you specify the location.
 
@@ -78,7 +78,7 @@ The configuration file can be placed anywhere within your project directory as l
 |`disable_first_deploy_rollback` |*Optional*|`bool`| Used to disable automatic rollback on first deploy so that initial logs are kept.|
 |`instances` |*Optional*|`int`| Used to set the number of instances an application is deployed with. If the number of instances is specified in a Cloud Foundry manifest, that will be used instead. |
 
-#### Example Configuration Yaml
+#### Example Configuration yml
 
 ```yaml
 ---
@@ -133,7 +133,7 @@ $ make dependencies
 
 ## How To Run Deployadactyl
 
-After a configuration yaml has been created and environment variables have been set, the server can be run using the following commands:
+After a configuration yml has been created and environment variables have been set, the server can be run using the following commands:
 
 ```bash
 $ go run server.go
@@ -147,7 +147,7 @@ $ go build && ./deployadactyl
 
 ## How to Push Deployadactyl to Cloud Foundry
 
-To push Deployadactyl to Cloud Foundry, edit the `manifest.yml` to include your `CF_USERNAME` and `CF_PASSWORD` environment variables. In addition, be sure to create a `config.yaml`.
+To push Deployadactyl to Cloud Foundry, edit the `manifest.yml` to include your `CF_USERNAME` and `CF_PASSWORD` environment variables. In addition, be sure to create a `config.yml`.
 
 ```bash
 $ make push

@@ -1,4 +1,4 @@
-package service_test
+package mocks
 
 import (
 	"io"
@@ -14,7 +14,6 @@ import (
 	"github.com/compozed/deployadactyl/eventmanager"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
-	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
@@ -23,6 +22,13 @@ import (
 	"github.com/spf13/afero"
 )
 
+// ENDPOINT is used by the handler to define the deployment endpoint.
+const ENDPOINT = "/v1/apps/:environment/:org/:space/:appName"
+
+// Handmade Creator mock.
+// Uses a mock prechecker to skip verifying the foundations are up and running.
+// Uses a mock Courier and Executor to mock pushing an application.
+// Uses a mock FileSystem to mock writing to the operating system.
 type Creator struct {
 	config       config.Config
 	eventManager I.EventManager
@@ -31,7 +37,7 @@ type Creator struct {
 	fileSystem   *afero.Afero
 }
 
-func New(level string, configFilename string) (Creator, error) {
+func NewCreator(level string, configFilename string) (Creator, error) {
 	cfg, err := config.Custom(os.Getenv, configFilename)
 	if err != nil {
 		return Creator{}, err
@@ -111,7 +117,7 @@ func (c Creator) createFetcher() I.Fetcher {
 }
 
 func (c Creator) CreatePusher() (I.Pusher, error) {
-	courier := &mocks.Courier{}
+	courier := &Courier{}
 
 	courier.LoginCall.Returns.Output = []byte("logged in\t")
 	courier.LoginCall.Returns.Error = nil
@@ -147,7 +153,7 @@ func (c Creator) CreateConfig() config.Config {
 }
 
 func (c Creator) CreatePrechecker() I.Prechecker {
-	prechecker := &mocks.Prechecker{}
+	prechecker := &Prechecker{}
 
 	prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
 

@@ -8,13 +8,13 @@ import (
 	"os"
 	"path"
 
-	"github.com/op/go-logging"
+	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/spf13/afero"
 )
 
 // Extractor has a file system from which files are extracted from.
 type Extractor struct {
-	Log        *logging.Logger
+	Log        I.Logger
 	FileSystem *afero.Afero
 }
 

@@ -4,11 +4,12 @@ package logger
 import (
 	"io"
 
+	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/op/go-logging"
 )
 
 // DefaultLogger returns a logging.Logger with a specific logging format.
-func DefaultLogger(out io.Writer, level logging.Level, module string) *logging.Logger {
+func DefaultLogger(out io.Writer, level logging.Level, module string) I.Logger {
 
 	var log = logging.MustGetLogger(module)
 

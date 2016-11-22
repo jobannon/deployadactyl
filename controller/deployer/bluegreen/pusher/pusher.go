@@ -8,13 +8,12 @@ import (
 
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/op/go-logging"
 )
 
 // Pusher has a courier used to push applications to Cloud Foundry.
 type Pusher struct {
 	Courier   I.Courier
-	Log       *logging.Logger
+	Log       I.Logger
 	appExists bool
 }
 

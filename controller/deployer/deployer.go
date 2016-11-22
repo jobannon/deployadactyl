@@ -14,7 +14,6 @@ import (
 	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/op/go-logging"
 	"github.com/spf13/afero"
 )
 
@@ -41,7 +40,7 @@ type Deployer struct {
 	Prechecker   I.Prechecker
 	EventManager I.EventManager
 	Randomizer   I.Randomizer
-	Log          *logging.Logger
+	Log          I.Logger
 	FileSystem   *afero.Afero
 }
 

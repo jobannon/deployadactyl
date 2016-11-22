@@ -11,13 +11,12 @@ import (
 	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/op/go-logging"
 )
 
 // BlueGreen has a PusherCreator to creater pushers for blue green deployments.
 type BlueGreen struct {
 	PusherCreator I.PusherFactory
-	Log           *logging.Logger
+	Log           I.Logger
 	actors        []actor
 	buffers       []*bytes.Buffer
 }

@@ -4,17 +4,16 @@ package eventmanager
 import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/op/go-logging"
 )
 
 // EventManager has handlers for each registered event type.
 type EventManager struct {
 	handlers map[string][]I.Handler
-	Log      *logging.Logger
+	Log      I.Logger
 }
 
 // NewEventManager returns an EventManager.
-func NewEventManager(l *logging.Logger) *EventManager {
+func NewEventManager(l I.Logger) *EventManager {
 	return &EventManager{
 		handlers: make(map[string][]I.Handler),
 		Log:      l,

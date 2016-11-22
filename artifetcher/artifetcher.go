@@ -8,7 +8,6 @@ import (
 	"time"
 
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/op/go-logging"
 	"github.com/spf13/afero"
 )
 
@@ -16,7 +15,7 @@ import (
 type Artifetcher struct {
 	FileSystem *afero.Afero
 	Extractor  I.Extractor
-	Log        *logging.Logger
+	Log        I.Logger
 }
 
 // Fetch downloads an artifact located at URL.

@@ -35,7 +35,7 @@ const ENDPOINT = "/v1/apps/:environment/:org/:space/:appName"
 type Creator struct {
 	config       config.Config
 	eventManager I.EventManager
-	logger       *logging.Logger
+	logger       I.Logger
 	writer       io.Writer
 	fileSystem   *afero.Afero
 }
@@ -111,7 +111,7 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 }
 
 // CreateLogger returns a Logger.
-func (c Creator) CreateLogger() *logging.Logger {
+func (c Creator) CreateLogger() I.Logger {
 	return c.logger
 }
 

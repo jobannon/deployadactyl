@@ -9,13 +9,12 @@ import (
 
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/gin-gonic/gin"
-	"github.com/op/go-logging"
 )
 
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
 	Deployer I.Deployer
-	Log      *logging.Logger
+	Log      I.Logger
 }
 
 // Deploy checks the request content type and passes it to the Deployer.

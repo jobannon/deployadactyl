@@ -5,6 +5,7 @@ import (
 
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen"
+	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
@@ -30,7 +31,7 @@ var _ = Describe("Bluegreen", func() {
 		password        string
 		pusherFactory   *mocks.PusherCreator
 		pushers         []*mocks.Pusher
-		log             *logging.Logger
+		log             I.Logger
 		blueGreen       BlueGreen
 		environment     config.Environment
 		deploymentInfo  S.DeploymentInfo

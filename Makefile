@@ -1,10 +1,12 @@
-.PHONY: build dependencies doc fmt lint server test watch push
+.PHONY: build dependencies doc fmt install lint push server test watch
 
 build:
 	go build
 
 dependencies:
-	git submodule update --init --recursive
+	go get -u github.com/tools/godep
+	rm -rf Godeps
+	godep save ./...
 
 doc:
 	godoc -http=:6060
@@ -12,8 +14,14 @@ doc:
 fmt:
 	for package in $$(go list ./... | grep -v /vendor/); do go fmt $$package; done
 
+install: dependencies
+
 lint:
 	for package in $$(go list ./... | grep -v /vendor/); do golint $$package; done
+
+push:
+	cf login
+	cf push
 
 server:
 	go run server.go
@@ -23,7 +31,3 @@ test:
 
 watch:
 	ginkgo watch -r
-
-push: dependencies
-	cf login
-	cf push

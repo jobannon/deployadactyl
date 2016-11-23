@@ -9,7 +9,7 @@
 [![Slack Status](https://deployadactyl-invite.cfapps.io/badge.svg)](https://deployadactyl-invite.cfapps.io)
 [![GoDoc](https://godoc.org/github.com/compozed/deployadactyl?status.svg)](https://godoc.org/github.com/compozed/deployadactyl)
 
-Deployadactyl is a Go library for deploying applications to multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push your application it will rollback to the previous version. It also utilizes Go channels for concurrent deployments across the multiple Cloud Foundry instances.
+Deployadactyl is a Go library for deploying applications to multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push an application it will rollback to the previous version. It also utilizes Go channels for concurrent deployments across the multiple Cloud Foundry instances.
 
 <!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
@@ -36,7 +36,7 @@ Deployadactyl is a Go library for deploying applications to multiple [Cloud Foun
 
 ## How It Works
 
-Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to push your application. The general flow is to get a list of Cloud Foundry instances, check that the instances are available, download your artifact, log into each instance, and concurrently call `cf push` in the deploying applications directory. If your application fails to deploy on any instance, Deployadactyl will automatically roll the application back to the previous version.
+Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to push an application. The general flow is to get a list of Cloud Foundry instances, check that the instances are available, download an artifact, log into each instance, and concurrently call `cf push` in the deploying applications directory. If an application fails to deploy on any instance, Deployadactyl will automatically roll the application back to the previous version.
 
 ## Why Use Deployadactyl?
 
@@ -64,9 +64,9 @@ Deployadactyl has the following dependencies within the environment:
 
 ### Configuration File
 
-Deployadactyl needs a `yml` configuration file to specify your environments. Each environment has a name, domain and a list of foundations.
+Deployadactyl needs a `yml` configuration file to specify environments to deploy to. Each environment has a name, domain and a list of foundations.
 
-The configuration file can be placed anywhere within your project directory as long as you specify the location.
+The configuration file can be placed anywhere within the Deployadactyl directory, or outside, as long as the location is specified when running the server.
 
 |**Param**|**Necessity**|**Type**|**Description**|
 |---|:---:|---|---|
@@ -119,13 +119,15 @@ $ export CF_PASSWORD=some-password
 
 ## How to Download Dependencies
 
-We have our dependencies using [git submodules](https://git-scm.com/docs/git-submodule). To download the dependencies when you clone Deployadactyl you can use the following command:
+We use [Godeps](https://github.com/tools/godep) to vendor our dependencies. To grab the dependencies and save them to the vendor folder, run the following commands:
 
 ```bash
-$ git clone --recursive https://github.com/compozed/deployadactyl
+$ go get -u github.com/tools/godep
+$ rm -rf Godeps                      # this will clean the repo of it's dependencies
+$ godep save ./...
 ```
 
-If you have already cloned Deployadactyl you can use our Makefile to get the dependencies with this command:
+or
 
 ```bash
 $ make dependencies
@@ -133,7 +135,7 @@ $ make dependencies
 
 ## How To Run Deployadactyl
 
-After a configuration yml has been created and environment variables have been set, the server can be run using the following commands:
+After a [configuration file](#configuration-file) has been created and environment variables have been set, the server can be run using the following commands:
 
 ```bash
 $ go run server.go
@@ -147,18 +149,17 @@ $ go build && ./deployadactyl
 
 ## How to Push Deployadactyl to Cloud Foundry
 
-To push Deployadactyl to Cloud Foundry, edit the `manifest.yml` to include your `CF_USERNAME` and `CF_PASSWORD` environment variables. In addition, be sure to create a `config.yml`.
+To push Deployadactyl to Cloud Foundry, edit the `manifest.yml` to include the `CF_USERNAME` and `CF_PASSWORD` environment variables. In addition, be sure to create a `config.yml`. Then you can push to Cloud Foundry like normal:
 
 ```bash
-$ make push
+$ cf login
+$ cf push
 ```
 
 or
 
 ```bash
-$ git submodule update --init --recursive
-$ cf login
-$ cf push
+$ make push
 ```
 
 ### Available Flags
@@ -195,7 +196,7 @@ With Deployadactyl you can optionally register event handlers to perform any add
 |`deploy.failure`|[DeployEventData](structs/deploy_event_data.go)|When a deployment fails
 |`deploy.error`|[DeployEventData](structs/deploy_event_data.go)|When a deployment throws an error
 |`deploy.finish`|[DeployEventData](structs/deploy_event_data.go)|When a deployment finishes, regardless of success or failure
-|`validate.foundationsUnavailable`|[PrecheckerEventData](structs/prechecker_event_data.go)|When a foundation you're deploying to is down
+|`validate.foundationsUnavailable`|[PrecheckerEventData](structs/prechecker_event_data.go)|When a foundation you're deploying to is not running
 
 ### Event Handler Example
 

@@ -92,7 +92,7 @@ var _ = Describe("Service", func() {
 
 				Expect(resp.StatusCode).To(Equal(http.StatusOK), string(responseBody))
 
-				fmt.Fprintf(GinkgoWriter, "\nUser Output:\n%s\n%s\n%s", strings.Repeat("-", 60), string(responseBody), strings.Repeat("-", 60))
+				fmt.Fprintf(GinkgoWriter, "\nUser Output:\n%s\n%s\n%s\n", strings.Repeat("-", 60), string(responseBody), strings.Repeat("-", 60))
 			})
 		})
 
@@ -115,6 +115,8 @@ var _ = Describe("Service", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(resp.StatusCode).To(Equal(http.StatusOK), string(responseBody))
+
+				fmt.Fprintf(GinkgoWriter, "\nUser Output:\n%s\n%s\n%s\n", strings.Repeat("-", 60), string(responseBody), strings.Repeat("-", 60))
 			})
 		})
 	})

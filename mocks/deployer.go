@@ -16,7 +16,7 @@ type Deployer struct {
 			Space       string
 			AppName     string
 			ContentType string
-			Out         io.Writer
+			Response    io.ReadWriter
 		}
 		Write struct {
 			Output string
@@ -29,14 +29,14 @@ type Deployer struct {
 }
 
 // Deploy mock method.
-func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, out io.Writer) (int, error) {
+func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, out io.ReadWriter) (int, error) {
 	d.DeployCall.Received.Request = req
 	d.DeployCall.Received.Environment = environment
 	d.DeployCall.Received.Org = org
 	d.DeployCall.Received.Space = space
 	d.DeployCall.Received.AppName = appName
 	d.DeployCall.Received.ContentType = contentType
-	d.DeployCall.Received.Out = out
+	d.DeployCall.Received.Response = out
 
 	fmt.Fprint(out, d.DeployCall.Write.Output)
 

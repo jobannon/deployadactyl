@@ -45,7 +45,7 @@ type Deployer struct {
 }
 
 // Deploy takes the deployment information, checks the foundations, fetches the artifact and deploys the application.
-func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, response io.Writer) (statusCode int, err error) {
+func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, response io.ReadWriter) (statusCode int, err error) {
 	var (
 		deploymentInfo         = S.DeploymentInfo{}
 		environments           = d.Config.Environments
@@ -144,7 +144,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	d.Log.Info(deploymentMessage)
 	fmt.Fprintln(response, deploymentMessage)
 
-	deployEventData = S.DeployEventData{Writer: response, DeploymentInfo: &deploymentInfo, RequestBody: req.Body}
+	deployEventData = S.DeployEventData{Response: response, DeploymentInfo: &deploymentInfo, RequestBody: req.Body}
 
 	defer emitDeployFinish(d, deployEventData, response, &err, &statusCode)
 
@@ -200,7 +200,7 @@ func isJSON(contentType string) bool {
 	return contentType == "application/json"
 }
 
-func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, response io.Writer, err *error, statusCode *int) {
+func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, response io.ReadWriter, err *error, statusCode *int) {
 	d.Log.Debug("emitting a deploy.finish event")
 
 	finishErr := d.EventManager.Emit(S.Event{Type: "deploy.finish", Data: deployEventData})
@@ -212,7 +212,7 @@ func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, response io
 	}
 }
 
-func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response io.Writer, err *error, statusCode *int) {
+func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response io.ReadWriter, err *error, statusCode *int) {
 	deployEvent := S.Event{Type: "deploy.success", Data: deployEventData}
 	if *err != nil {
 		deployEvent.Type = "deploy.failure"

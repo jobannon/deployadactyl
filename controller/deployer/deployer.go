@@ -21,7 +21,9 @@ const (
 	successfulDeploy = `Your deploy was successful! (^_^)b
 If you experience any problems after this point, check that you can manually push your application to Cloud Foundry on a lower environment.
 It is likely that it is an error with your application and not with Deployadactyl.
-Thanks for using Deployadactyl! Please push down pull up on your lap bar and exit to your left.`
+Thanks for using Deployadactyl! Please push down pull up on your lap bar and exit to your left.
+
+`
 
 	deploymentOutput = `Deployment Parameters:
 Artifact URL: %s,
@@ -221,6 +223,7 @@ func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response i
 	d.Log.Debug(fmt.Sprintf("emitting a %s event", deployEvent.Type))
 	eventErr := d.EventManager.Emit(deployEvent)
 	if eventErr != nil {
+		d.Log.Errorf("an error occurred when emitting a %s event: %s", deployEvent.Type, eventErr)
 		fmt.Fprintln(response, eventErr)
 	}
 }

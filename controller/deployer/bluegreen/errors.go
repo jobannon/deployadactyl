@@ -9,5 +9,5 @@ func (e PushFailRollbackError) Error() string {
 type PushFailNoRollbackError struct{}
 
 func (e PushFailNoRollbackError) Error() string {
-	return "push failed: first deploy, rollback not enabled"
+	return "push failed: this is the first deploy, so no rollback occurred"
 }

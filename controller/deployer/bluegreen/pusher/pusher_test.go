@@ -240,6 +240,7 @@ var _ = Describe("Pusher", func() {
 	Describe("completing a deployment", func() {
 		It("deletes venerable", func() {
 			courier.DeleteCall.Returns.Error = nil
+			courier.ExistsCall.Returns.Bool = true
 
 			Expect(pusher.DeleteVenerable(deploymentInfo)).To(Succeed())
 
@@ -250,9 +251,19 @@ var _ = Describe("Pusher", func() {
 
 		Context("when deleting the venerable fails", func() {
 			It("returns an error", func() {
+				courier.ExistsCall.Returns.Bool = true
+
 				courier.DeleteCall.Returns.Error = errors.New("delete error")
 
 				Expect(pusher.DeleteVenerable(deploymentInfo)).To(MatchError(DeleteVenerableError{appNameVenerable, errors.New("delete error")}))
+			})
+		})
+
+		Context("when the application does not exist", func() {
+			It("returns nil", func() {
+				err := pusher.DeleteVenerable(deploymentInfo)
+
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})

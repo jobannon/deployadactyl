@@ -94,7 +94,6 @@ func (bg BlueGreen) loginAll(deploymentInfo S.DeploymentInfo) bool {
 func (bg BlueGreen) cleanUpAll(deploymentInfo S.DeploymentInfo) {
 	for _, a := range bg.actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			pusher.Exists(deploymentInfo.AppName + "-venerable")
 			return pusher.DeleteVenerable(deploymentInfo)
 		}
 	}

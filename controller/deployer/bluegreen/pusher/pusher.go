@@ -71,19 +71,22 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo) error {
 	venerableName := deploymentInfo.AppName + "-venerable"
 
-	_, err := p.Courier.Delete(deploymentInfo.AppName + "-venerable")
-	if err != nil {
-		return DeleteVenerableError{venerableName, err}
-	}
+	if p.Courier.Exists(venerableName) {
+		p.Log.Debugf("deleting appName %s", venerableName)
 
-	p.Log.Infof("deleted %s", venerableName)
+		_, err := p.Courier.Delete(venerableName)
+		if err != nil {
+			return DeleteVenerableError{venerableName, err}
+		}
+
+		p.Log.Infof("deleted %s", venerableName)
+	}
 
 	return nil
 }
 
-// Rollback will rollback Push.
-// Deletes the new application.
-// Renames appName-venerable back to appName if this is not the first deploy.
+// Rollback will rollback the push, delete the new application,
+// renames appName-venerable back to appName if it is not the first deploy.
 func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
 	p.Log.Errorf("rolling back deploy of %s", deploymentInfo.AppName)
 	venerableName := deploymentInfo.AppName + "-venerable"

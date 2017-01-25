@@ -1,9 +1,13 @@
 package bluegreen
 
-type PushFailRollbackError struct{}
+import "fmt"
+
+type PushFailRollbackError struct {
+	Err error
+}
 
 func (e PushFailRollbackError) Error() string {
-	return "push failed: rollback triggered"
+	return fmt.Sprintf("push failed: rollback triggered: %s", e.Err)
 }
 
 type PushFailNoRollbackError struct{}

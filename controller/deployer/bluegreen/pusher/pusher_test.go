@@ -201,10 +201,11 @@ var _ = Describe("Pusher", func() {
 		})
 
 		Context("when deleting fails", func() {
-			It("writes a message to the info log", func() {
+			It("returns an error and writes a message to the info log", func() {
 				courier.DeleteCall.Returns.Error = errors.New("delete error")
 
-				Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
+				err := pusher.Rollback(deploymentInfo)
+				Expect(err).To(MatchError(DeleteApplicationError{appName, errors.New("delete error")}))
 
 				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("unable to delete %s: %s", deploymentInfo.AppName, "delete error")))
 			})
@@ -214,6 +215,7 @@ var _ = Describe("Pusher", func() {
 			courier.ExistsCall.Returns.Bool = true
 
 			pusher.Exists(appName)
+
 			Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(appNameVenerable))
@@ -223,18 +225,18 @@ var _ = Describe("Pusher", func() {
 		})
 
 		Context("when renaming fails", func() {
-			It("writes a message to the info log", func() {
+			It("returns an error and writes a message to the info log", func() {
 				courier.ExistsCall.Returns.Bool = true
 				courier.RenameCall.Returns.Error = errors.New("rename error")
 
 				pusher.Exists(appName)
 
-				Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
+				err := pusher.Rollback(deploymentInfo)
+				Expect(err).To(MatchError(RenameApplicationError{appName, errors.New("rename error")}))
 
 				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("unable to rename venerable app %s: %s", appNameVenerable, "rename error")))
 			})
 		})
-
 	})
 
 	Describe("completing a deployment", func() {
@@ -255,7 +257,7 @@ var _ = Describe("Pusher", func() {
 
 				courier.DeleteCall.Returns.Error = errors.New("delete error")
 
-				Expect(pusher.DeleteVenerable(deploymentInfo)).To(MatchError(DeleteVenerableError{appNameVenerable, errors.New("delete error")}))
+				Expect(pusher.DeleteVenerable(deploymentInfo)).To(MatchError(DeleteApplicationError{appNameVenerable, errors.New("delete error")}))
 			})
 		})
 

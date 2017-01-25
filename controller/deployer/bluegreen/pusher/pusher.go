@@ -10,6 +10,8 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
+const temporaryNameSuffix = "-venerable"
+
 // Pusher has a courier used to push applications to Cloud Foundry.
 type Pusher struct {
 	Courier   I.Courier
@@ -24,12 +26,12 @@ type Pusher struct {
 // Returns Cloud Foundry logs if there is an error.
 func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
 	if p.appExists {
-		_, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
+		_, err := p.Courier.Rename(deploymentInfo.AppName, deploymentInfo.AppName+temporaryNameSuffix)
 		if err != nil {
 			return RenameFailError{err}
 		}
 
-		p.Log.Infof("renamed app from %s to %s", deploymentInfo.AppName, deploymentInfo.AppName+"-venerable")
+		p.Log.Infof("renamed app from %s to %s", deploymentInfo.AppName, deploymentInfo.AppName+temporaryNameSuffix)
 	} else {
 		p.Log.Infof("new app detected")
 	}
@@ -69,19 +71,18 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 
 // DeleteVenerable will delete the venerable instance of your application.
 func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo) error {
-	venerableName := deploymentInfo.AppName + "-venerable"
+	venerableName := deploymentInfo.AppName + temporaryNameSuffix
 
 	if p.Courier.Exists(venerableName) {
 		p.Log.Debugf("deleting appName %s", venerableName)
 
 		_, err := p.Courier.Delete(venerableName)
 		if err != nil {
-			return DeleteVenerableError{venerableName, err}
+			return DeleteApplicationError{venerableName, err}
 		}
 
 		p.Log.Infof("deleted %s", venerableName)
 	}
-
 	return nil
 }
 
@@ -89,22 +90,23 @@ func (p Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo) error {
 // renames appName-venerable back to appName if it is not the first deploy.
 func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
 	p.Log.Errorf("rolling back deploy of %s", deploymentInfo.AppName)
-	venerableName := deploymentInfo.AppName + "-venerable"
+	venerableName := deploymentInfo.AppName + temporaryNameSuffix
 
 	_, err := p.Courier.Delete(deploymentInfo.AppName)
 	if err != nil {
 		p.Log.Infof("unable to delete %s: %s", deploymentInfo.AppName, err)
-	} else {
-		p.Log.Infof("deleted %s", deploymentInfo.AppName)
+		return DeleteApplicationError{deploymentInfo.AppName, err}
 	}
+	p.Log.Infof("deleted %s", deploymentInfo.AppName)
 
 	if p.appExists {
 		_, err = p.Courier.Rename(venerableName, deploymentInfo.AppName)
 		if err != nil {
 			p.Log.Infof("unable to rename venerable app %s: %s", venerableName, err)
-		} else {
-			p.Log.Infof("renamed app from %s to %s", venerableName, deploymentInfo.AppName)
+			return RenameApplicationError{deploymentInfo.AppName, err}
 		}
+
+		p.Log.Infof("renamed app from %s to %s", venerableName, deploymentInfo.AppName)
 	}
 
 	return nil
@@ -146,4 +148,5 @@ func (p Pusher) CleanUp() error {
 // Exists uses the courier to check if the application exists.
 func (p *Pusher) Exists(appName string) {
 	p.appExists = p.Courier.Exists(appName)
+	// p.venerableAppExists = p.Courier.Exists(appName + temporaryNameSuffix)
 }

@@ -60,10 +60,15 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 
 	failed = bg.pushAll(appPath, deploymentInfo)
 	if failed {
+
 		if !environment.DisableFirstDeployRollback {
-			bg.rollbackAll(deploymentInfo)
-			return PushFailRollbackError{}
+			manyErrors := bg.rollbackAll(deploymentInfo)
+
+			err := makeErrorString(manyErrors)
+
+			return PushFailRollbackError{err}
 		}
+
 		return PushFailNoRollbackError{}
 	}
 
@@ -113,6 +118,7 @@ func (bg BlueGreen) existsAll(deploymentInfo S.DeploymentInfo) (exists bool) {
 	}
 	for _, a := range bg.actors {
 		if err := <-a.errs; err != nil {
+			// noop
 		}
 	}
 	return
@@ -135,7 +141,7 @@ func (bg BlueGreen) pushAll(appPath string, deploymentInfo S.DeploymentInfo) (fa
 	return
 }
 
-func (bg BlueGreen) rollbackAll(deploymentInfo S.DeploymentInfo) {
+func (bg BlueGreen) rollbackAll(deploymentInfo S.DeploymentInfo) (manyErrors []string) {
 	for _, a := range bg.actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
 			return pusher.Rollback(deploymentInfo)
@@ -145,8 +151,11 @@ func (bg BlueGreen) rollbackAll(deploymentInfo S.DeploymentInfo) {
 	for _, a := range bg.actors {
 		if err := <-a.errs; err != nil {
 			bg.Log.Error(err.Error())
+			manyErrors = append(manyErrors, err.Error())
 		}
 	}
+
+	return
 }
 
 func (bg BlueGreen) finishPushAll(deploymentInfo S.DeploymentInfo) {
@@ -161,4 +170,17 @@ func (bg BlueGreen) finishPushAll(deploymentInfo S.DeploymentInfo) {
 			bg.Log.Error(err.Error())
 		}
 	}
+}
+
+func makeErrorString(manyErrors []string) error {
+	var s string
+	for i, e := range manyErrors {
+		if i == 0 {
+			s = e
+		} else {
+			s = fmt.Sprintf("%s: %s", s, e)
+		}
+	}
+
+	return errors.New(s)
 }

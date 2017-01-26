@@ -31,6 +31,7 @@ type Courier struct {
 		Received struct {
 			AppName   string
 			AppPath   string
+			Hostname  string
 			Instances uint16
 		}
 		Returns struct {
@@ -62,8 +63,9 @@ type Courier struct {
 
 	MapRouteCall struct {
 		Received struct {
-			AppName string
-			Domain  string
+			AppName  string
+			Domain   string
+			Hostname string
 		}
 		Returns struct {
 			Output []byte
@@ -129,9 +131,10 @@ func (c *Courier) Delete(appName string) ([]byte, error) {
 }
 
 // Push mock method.
-func (c *Courier) Push(appName, appLocation string, instances uint16) ([]byte, error) {
+func (c *Courier) Push(appName, appLocation, hostname string, instances uint16) ([]byte, error) {
 	c.PushCall.Received.AppName = appName
 	c.PushCall.Received.AppPath = appLocation
+	c.PushCall.Received.Hostname = hostname
 	c.PushCall.Received.Instances = instances
 
 	return c.PushCall.Returns.Output, c.PushCall.Returns.Error
@@ -146,9 +149,10 @@ func (c *Courier) Rename(appName, newAppName string) ([]byte, error) {
 }
 
 // MapRoute mock method.
-func (c *Courier) MapRoute(appName, domain string) ([]byte, error) {
+func (c *Courier) MapRoute(appName, domain, hostname string) ([]byte, error) {
 	c.MapRouteCall.Received.AppName = appName
 	c.MapRouteCall.Received.Domain = domain
+	c.MapRouteCall.Received.Hostname = hostname
 
 	return c.MapRouteCall.Returns.Output, c.MapRouteCall.Returns.Error
 }

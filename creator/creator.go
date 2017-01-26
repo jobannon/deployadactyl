@@ -26,6 +26,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
@@ -172,6 +173,13 @@ func (c Creator) createBlueGreener() I.BlueGreener {
 	return bluegreen.BlueGreen{
 		PusherCreator: c,
 		Log:           c.CreateLogger(),
+	}
+}
+
+func (c Creator) CreateEnvVarHandler() I.Handler {
+	return handlers.Envvarhandler{
+		Logger:     c.CreateLogger(),
+		FileSystem: c.createFileSystem(),
 	}
 }
 

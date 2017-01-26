@@ -117,6 +117,7 @@ var _ = Describe("Deployer", func() {
 			Instances:   instances,
 			Manifest:    manifest,
 			Domain:      domain,
+			AppPath:     appPath,
 		}
 
 		foundations = []string{randomizer.StringRunes(10)}

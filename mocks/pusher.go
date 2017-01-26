@@ -99,8 +99,8 @@ func (p *Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
 	return p.RollbackCall.Returns.Error
 }
 
-// DeleteVenerable mock method.
-func (p *Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo) error {
+// FinishPush mock method.
+func (p *Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
 	p.DeleteVenerableCall.Received.DeploymentInfo = deploymentInfo
 
 	return p.DeleteVenerableCall.Returns.Error

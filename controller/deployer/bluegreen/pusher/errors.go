@@ -21,11 +21,11 @@ func (e CloudFoundryGetLogsError) Error() string {
 
 type DeleteApplicationError struct {
 	ApplicationName string
-	Err             error
+	Out             []byte
 }
 
 func (e DeleteApplicationError) Error() string {
-	return fmt.Sprintf("cannot delete %s: %s", e.ApplicationName, e.Err)
+	return fmt.Sprintf("cannot delete %s: %s", e.ApplicationName, string(e.Out))
 }
 
 type LoginError struct {

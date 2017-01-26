@@ -228,11 +228,12 @@ var _ = Describe("Pusher", func() {
 			It("returns an error and writes a message to the info log", func() {
 				courier.ExistsCall.Returns.Bool = true
 				courier.RenameCall.Returns.Error = errors.New("rename error")
+				courier.RenameCall.Returns.Output = []byte("rename error")
 
 				pusher.Exists(appName)
 
 				err := pusher.Rollback(deploymentInfo)
-				Expect(err).To(MatchError(RenameApplicationError{appName, errors.New("rename error")}))
+				Expect(err).To(MatchError(RenameApplicationError{appName, []byte("rename error")}))
 
 				Eventually(logBuffer).Should(gbytes.Say(fmt.Sprintf("unable to rename venerable app %s: %s", appNameVenerable, "rename error")))
 			})

@@ -39,9 +39,9 @@ func (e LoginError) Error() string {
 
 type RenameApplicationError struct {
 	ApplicationName string
-	Err             error
+	Out             []byte
 }
 
 func (e RenameApplicationError) Error() string {
-	return fmt.Sprintf("cannot rename %s: %s", e.ApplicationName, e.Err)
+	return fmt.Sprintf("cannot rename %s: %s", e.ApplicationName, string(e.Out))
 }

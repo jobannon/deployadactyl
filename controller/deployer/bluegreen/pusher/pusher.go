@@ -19,6 +19,34 @@ type Pusher struct {
 	appExists bool
 }
 
+// Login will login to a Cloud Foundry instance.
+func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
+	p.Log.Debugf(
+		`logging into cloud foundry with parameters:
+		foundation URL: %+v
+		username: %+v
+		org: %+v
+		space: %+v`,
+		foundationURL, deploymentInfo.Username, deploymentInfo.Org, deploymentInfo.Space,
+	)
+
+	loginOutput, err := p.Courier.Login(
+		foundationURL,
+		deploymentInfo.Username,
+		deploymentInfo.Password,
+		deploymentInfo.Org,
+		deploymentInfo.Space,
+		deploymentInfo.SkipSSL,
+	)
+	response.Write(loginOutput)
+	if err != nil {
+		return LoginError{foundationURL, err}
+	}
+	p.Log.Infof("logged into cloud foundry %s", foundationURL)
+
+	return nil
+}
+
 // Push pushes a single application to a Clound Foundry instance using blue green deployment.
 // Blue green is done by renaming the current application to appName-venerable.
 // Pushes the new application to the existing appName route with an included load balanced domain if provided.
@@ -100,42 +128,14 @@ func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
 	p.Log.Infof("deleted %s", deploymentInfo.AppName)
 
 	if p.appExists {
-		_, err = p.Courier.Rename(venerableName, deploymentInfo.AppName)
+		out, err := p.Courier.Rename(venerableName, deploymentInfo.AppName)
 		if err != nil {
-			p.Log.Infof("unable to rename venerable app %s: %s", venerableName, err)
-			return RenameApplicationError{deploymentInfo.AppName, err}
+			p.Log.Infof("unable to rename venerable app %s: %s", venerableName, out)
+			return RenameApplicationError{deploymentInfo.AppName, out}
 		}
 
 		p.Log.Infof("renamed app from %s to %s", venerableName, deploymentInfo.AppName)
 	}
-
-	return nil
-}
-
-// Login will login to a Cloud Foundry instance.
-func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
-	p.Log.Debugf(
-		`logging into cloud foundry with parameters:
-		foundation URL: %+v
-		username: %+v
-		org: %+v
-		space: %+v`,
-		foundationURL, deploymentInfo.Username, deploymentInfo.Org, deploymentInfo.Space,
-	)
-
-	loginOutput, err := p.Courier.Login(
-		foundationURL,
-		deploymentInfo.Username,
-		deploymentInfo.Password,
-		deploymentInfo.Org,
-		deploymentInfo.Space,
-		deploymentInfo.SkipSSL,
-	)
-	response.Write(loginOutput)
-	if err != nil {
-		return LoginError{foundationURL, err}
-	}
-	p.Log.Infof("logged into cloud foundry %s", foundationURL)
 
 	return nil
 }
@@ -148,5 +148,4 @@ func (p Pusher) CleanUp() error {
 // Exists uses the courier to check if the application exists.
 func (p *Pusher) Exists(appName string) {
 	p.appExists = p.Courier.Exists(appName)
-	// p.venerableAppExists = p.Courier.Exists(appName + temporaryNameSuffix)
 }

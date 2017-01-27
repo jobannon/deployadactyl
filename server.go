@@ -7,9 +7,9 @@ import (
 	"os"
 
 	"github.com/compozed/deployadactyl/creator"
+	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/op/go-logging"
-	I "github.com/compozed/deployadactyl/interfaces"
 )
 
 const (
@@ -44,7 +44,10 @@ func main() {
 	em := c.CreateEventManager()
 
 	if *envVarHandlerEnabled {
+		log.Infof("Adding Environment Variable Event Handler")
 		em.AddHandler(c.CreateEnvVarHandler(), I.ENV_VARS_FOUND_EVENT)
+	} else {
+		log.Info("No Event Handlers added...")
 	}
 
 	l := c.CreateListener()

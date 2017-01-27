@@ -81,4 +81,22 @@ var _ = Describe("Server", func() {
 			Eventually(session.Out).Should(Say("no such file or directory"))
 		})
 	})
+
+	Context("when no env arg", func() {
+		It("no handler is added", func() {
+			session, err = gexec.Start(exec.Command(pathToCLI), GinkgoWriter, GinkgoWriter)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(session.Out).Should(Say("No Event Handlers added"))
+		})
+	})
+
+	Context("when env arg", func() {
+		It("handler is added", func() {
+			session, err = gexec.Start(exec.Command(pathToCLI, "-env"), GinkgoWriter, GinkgoWriter)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(session.Out).Should(Say("Adding Environment Variable Event Handler"))
+		})
+	})
 })

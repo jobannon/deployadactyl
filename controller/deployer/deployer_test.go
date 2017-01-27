@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
+	"flag"
 	"fmt"
 	"math/rand"
 	"net/http"
 
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer"
+	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
@@ -58,13 +60,12 @@ var _ = Describe("Deployer", func() {
 		password             string
 		testManifestLocation string
 		response             *bytes.Buffer
-		logBuffer            = NewBuffer()
-
-		deploymentInfo S.DeploymentInfo
-		foundations    []string
-		environments   = map[string]config.Environment{}
-		log            = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
-		af             *afero.Afero
+		logBuffer            *Buffer
+		log                  interfaces.Logger
+		deploymentInfo       S.DeploymentInfo
+		foundations          []string
+		environments         = map[string]config.Environment{}
+		af                   *afero.Afero
 	)
 
 	BeforeEach(func() {
@@ -140,6 +141,9 @@ var _ = Describe("Deployer", func() {
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
 
 		testManifestLocation, _ = af.TempDir("", "")
+
+		logBuffer = NewBuffer()
+		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
 
 		deployer = Deployer{
 			c,
@@ -354,6 +358,63 @@ applications:
 		})
 	})
 
+	Describe("detecting environment variables in the request during a deploy", func() {
+		Context("when environment variables are in the request", func() {
+			It("emits an environment variables found event", func() {
+				deploymentInfo.Manifest = `---
+applications:
+- name: deployadactyl
+instances: 1337
+`
+				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+				requestBody = bytes.NewBufferString(fmt.Sprintf(`{
+					 					"artifact_url": "%s",
+					 					"manifest": "%s",
+					 					"environment_variables": { "bubba":"gump" }
+					 				}`,
+					artifactURL,
+					base64Manifest,
+				))
+
+				req, _ = http.NewRequest("POST", "", requestBody)
+
+				_, err := deployer.Deploy(req, environment, org, space, appName, "application/json", response)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Start, Finish, Success, and Env.Var Found.
+				Expect(len(eventManager.EmitCall.Received.Events)).To(Equal(4))
+			})
+		})
+
+		Context("when environment variables are not the request", func() {
+			It("it does not emit an environment variables found event", func() {
+				deploymentInfo.Manifest = `---
+applications:
+- name: deployadactyl
+instances: 1337
+`
+				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+				requestBody = bytes.NewBufferString(fmt.Sprintf(`{
+					 					"artifact_url": "%s",
+					 					"manifest": "%s"
+					 				}`,
+					artifactURL,
+					base64Manifest,
+				))
+
+				req, _ = http.NewRequest("POST", "", requestBody)
+
+				_, err := deployer.Deploy(req, environment, org, space, appName, "application/json", response)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Start, Finish, and Success.
+				Expect(len(eventManager.EmitCall.Received.Events)).To(Equal(3))
+			})
+		})
+	})
+
 	Describe("not finding an environment in the config", func() {
 		It("returns an error and an http.StatusInternalServerError", func() {
 			deployer = Deployer{
@@ -522,30 +583,94 @@ applications:
 	})
 
 	Describe("removing files after deploying", func() {
-		It("deletes the unzipped folder from the fetcher", func() {
-			af = &afero.Afero{Fs: afero.NewMemMapFs()}
-			deployer = Deployer{
-				c,
-				blueGreener,
-				fetcher,
-				prechecker,
-				eventManager,
-				randomizerMock,
-				log,
-				af,
-			}
+		Context("with no -cleanupOnFail flag set", func() {
+			It("deletes the unzipped folder from the fetcher", func() {
+				af = &afero.Afero{Fs: afero.NewMemMapFs()}
+				deployer = Deployer{
+					c,
+					blueGreener,
+					fetcher,
+					prechecker,
+					eventManager,
+					randomizerMock,
+					log,
+					af,
+				}
 
-			directoryName, err := af.TempDir("", "deployadactyl-")
-			Expect(err).ToNot(HaveOccurred())
+				directoryName, err := af.TempDir("", "deployadactyl-")
+				Expect(err).ToNot(HaveOccurred())
 
-			fetcher.FetchCall.Returns.AppPath = directoryName
+				fetcher.FetchCall.Returns.AppPath = directoryName
 
-			deployer.Deploy(req, environment, org, space, appName, "application/json", response)
+				deployer.Deploy(req, environment, org, space, appName, "application/json", response)
 
-			exists, err := af.DirExists(directoryName)
-			Expect(err).ToNot(HaveOccurred())
+				exists, err := af.DirExists(directoryName)
+				Expect(err).ToNot(HaveOccurred())
 
-			Expect(exists).ToNot(BeTrue())
+				Expect(exists).ToNot(BeTrue())
+			})
+		})
+
+		Context("with  -cleanupOnFail flag set", func() {
+			It("deletes the unzipped folder from the fetcher", func() {
+				af = &afero.Afero{Fs: afero.NewMemMapFs()}
+				deployer = Deployer{
+					c,
+					blueGreener,
+					fetcher,
+					prechecker,
+					eventManager,
+					randomizerMock,
+					log,
+					af,
+				}
+				flag.Bool(interfaces.ENABLE_DISABLE_FILESYSTEM_CLEANUP_ON_DEPLOY_FAILURE_FLAG_ARG, true, "enable/disable cleanup of temp file system on deploy failure. (default: true")
+				flag.Set(interfaces.ENABLE_DISABLE_FILESYSTEM_CLEANUP_ON_DEPLOY_FAILURE_FLAG_ARG, "true")
+
+				directoryName, err := af.TempDir("", "deployadactyl-")
+				Expect(err).ToNot(HaveOccurred())
+
+				fetcher.FetchCall.Returns.AppPath = directoryName
+				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
+
+				deployer.Deploy(req, environment, org, space, appName, "application/json", response)
+
+				exists, err := af.DirExists(directoryName)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(exists).ToNot(BeTrue())
+			})
+		})
+
+		Context("with  -cleanupOnFail flag set false", func() {
+			It("does not delete the unzipped folder from the fetcher if deploy fails", func() {
+				af = &afero.Afero{Fs: afero.NewMemMapFs()}
+				deployer = Deployer{
+					c,
+					blueGreener,
+					fetcher,
+					prechecker,
+					eventManager,
+					randomizerMock,
+					log,
+					af,
+				}
+
+				flag.Set(interfaces.ENABLE_DISABLE_FILESYSTEM_CLEANUP_ON_DEPLOY_FAILURE_FLAG_ARG, "false")
+
+				directoryName, err := af.TempDir("", "deployadactyl-")
+				Expect(err).ToNot(HaveOccurred())
+
+				fetcher.FetchCall.Returns.AppPath = directoryName
+				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
+
+				deployer.Deploy(req, environment, org, space, appName, "application/json", response)
+
+				exists, err := af.DirExists(directoryName)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(exists).To(BeTrue())
+			})
 		})
 	})
 

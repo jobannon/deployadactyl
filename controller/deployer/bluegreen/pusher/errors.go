@@ -2,14 +2,6 @@ package pusher
 
 import "fmt"
 
-type RenameFailError struct {
-	Err error
-}
-
-func (e RenameFailError) Error() string {
-	return fmt.Sprintf("rename failed: %s", e.Err)
-}
-
 type CloudFoundryGetLogsError struct {
 	CfTaskErr error
 	CfLogErr  error
@@ -30,18 +22,18 @@ func (e DeleteApplicationError) Error() string {
 
 type LoginError struct {
 	FoundationURL string
-	Err           error
+	Out           []byte
 }
 
 func (e LoginError) Error() string {
-	return fmt.Sprintf("cannot login to %s: %s", e.FoundationURL, e.Err)
+	return fmt.Sprintf("cannot login to %s: %s", e.FoundationURL, string(e.Out))
 }
 
-type RenameApplicationError struct {
+type RenameError struct {
 	ApplicationName string
 	Out             []byte
 }
 
-func (e RenameApplicationError) Error() string {
+func (e RenameError) Error() string {
 	return fmt.Sprintf("cannot rename %s: %s", e.ApplicationName, string(e.Out))
 }

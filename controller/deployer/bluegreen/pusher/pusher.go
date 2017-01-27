@@ -31,7 +31,7 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, res
 		foundationURL, deploymentInfo.Username, deploymentInfo.Org, deploymentInfo.Space,
 	)
 
-	loginOutput, err := p.Courier.Login(
+	output, err := p.Courier.Login(
 		foundationURL,
 		deploymentInfo.Username,
 		deploymentInfo.Password,
@@ -39,9 +39,9 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, res
 		deploymentInfo.Space,
 		deploymentInfo.SkipSSL,
 	)
-	response.Write(loginOutput)
+	response.Write(output)
 	if err != nil {
-		return LoginError{foundationURL, err}
+		return LoginError{foundationURL, output}
 	}
 	p.Log.Infof("logged into cloud foundry %s", foundationURL)
 
@@ -61,9 +61,9 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 	)
 
 	if p.appExists {
-		_, err := p.Courier.Rename(deploymentInfo.AppName, appNameVenerableWithUUID)
+		output, err := p.Courier.Rename(deploymentInfo.AppName, appNameVenerableWithUUID)
 		if err != nil {
-			return RenameFailError{err}
+			return RenameError{deploymentInfo.AppName, output}
 		}
 
 		p.Log.Infof("renamed app from %s to %s", deploymentInfo.AppName, appNameVenerableWithUUID)
@@ -75,7 +75,7 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 	p.Log.Debugf("tempdir for app %s: %s", appNameWithUUID, appPath)
 
 	pushOutput, err := p.Courier.Push(appNameWithUUID, appPath, deploymentInfo.AppName, deploymentInfo.Instances)
-	fmt.Fprint(response, string(pushOutput))
+	response.Write(pushOutput)
 	if err != nil {
 		logs, newErr := p.Courier.Logs(appNameWithUUID)
 		fmt.Fprintf(response, "\n%s", string(logs))
@@ -89,7 +89,7 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 	p.Log.Debugf("mapping route for %s to %s", deploymentInfo.AppName, deploymentInfo.Domain)
 
 	mapRouteOutput, err := p.Courier.MapRoute(appNameWithUUID, deploymentInfo.Domain, deploymentInfo.AppName)
-	fmt.Fprint(response, string(mapRouteOutput))
+	response.Write(mapRouteOutput)
 	if err != nil {
 		logs, newErr := p.Courier.Logs(appNameWithUUID)
 		fmt.Fprintf(response, "\n%s", string(logs))
@@ -110,7 +110,7 @@ func (p Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
 	out, err := p.Courier.Rename(deploymentInfo.AppName+deploymentInfo.UUID, deploymentInfo.AppName)
 	if err != nil {
 		p.Log.Errorf("could not rename %s to %s", deploymentInfo.AppName+deploymentInfo.UUID, deploymentInfo.AppName)
-		return RenameApplicationError{deploymentInfo.AppName + deploymentInfo.UUID, out}
+		return RenameError{deploymentInfo.AppName + deploymentInfo.UUID, out}
 	}
 	p.Log.Infof("renamed %s to %s", deploymentInfo.AppName+deploymentInfo.UUID, deploymentInfo.AppName)
 
@@ -149,7 +149,7 @@ func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
 		out, err = p.Courier.Rename(appNameVenerableWithUUID, deploymentInfo.AppName)
 		if err != nil {
 			p.Log.Infof("unable to rename venerable app %s: %s", appNameVenerableWithUUID, out)
-			return RenameApplicationError{appNameVenerableWithUUID, out}
+			return RenameError{appNameVenerableWithUUID, out}
 		}
 
 		p.Log.Infof("renamed app from %s to %s", appNameVenerableWithUUID, deploymentInfo.AppName)

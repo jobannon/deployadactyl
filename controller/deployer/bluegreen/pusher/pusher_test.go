@@ -100,13 +100,13 @@ var _ = Describe("Pusher", func() {
 
 		Context("when login fails", func() {
 			It("writes the output of the courier to the writer", func() {
-				courier.LoginCall.Returns.Output = []byte("login failed")
-				courier.LoginCall.Returns.Error = errors.New("bork")
+				courier.LoginCall.Returns.Output = []byte("login output")
+				courier.LoginCall.Returns.Error = errors.New("login error")
 
 				err := pusher.Login(foundationURL, deploymentInfo, response)
-				Expect(err).To(MatchError(LoginError{foundationURL, errors.New("bork")}))
+				Expect(err).To(MatchError(LoginError{foundationURL, []byte("login output")}))
 
-				Eventually(response).Should(Say("login failed"))
+				Eventually(response).Should(Say("login output"))
 			})
 		})
 	})
@@ -134,12 +134,13 @@ var _ = Describe("Pusher", func() {
 			Context("renaming the existing app fails", func() {
 				It("returns an error", func() {
 					courier.ExistsCall.Returns.Bool = true
-					courier.RenameCall.Returns.Error = errors.New("bork")
+					courier.RenameCall.Returns.Output = []byte("rename output")
+					courier.RenameCall.Returns.Error = errors.New("rename error")
 
 					pusher.Exists(appName)
 
 					err := pusher.Push(appPath, deploymentInfo, response)
-					Expect(err).To(MatchError(RenameFailError{errors.New("bork")}))
+					Expect(err).To(MatchError(RenameError{deploymentInfo.AppName, []byte("rename output")}))
 
 					Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
 					Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable + randomUUID))
@@ -268,7 +269,7 @@ var _ = Describe("Pusher", func() {
 					courier.RenameCall.Returns.Output = []byte("rename error")
 
 					err := pusher.Rollback(deploymentInfo)
-					Expect(err).To(MatchError(RenameApplicationError{appNameVenerable + randomUUID, []byte("rename error")}))
+					Expect(err).To(MatchError(RenameError{appNameVenerable + randomUUID, []byte("rename error")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("unable to rename venerable app %s: %s", appNameVenerable+randomUUID, "rename error")))
 				})
@@ -302,7 +303,7 @@ var _ = Describe("Pusher", func() {
 				courier.RenameCall.Returns.Error = errors.New("rename error")
 
 				err := pusher.FinishPush(deploymentInfo)
-				Expect(err).To(MatchError(RenameApplicationError{appName + randomUUID, []byte("rename output")}))
+				Expect(err).To(MatchError(RenameError{appName + randomUUID, []byte("rename output")}))
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(appName + randomUUID))
 				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appName))

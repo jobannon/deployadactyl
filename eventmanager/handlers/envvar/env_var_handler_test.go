@@ -77,4 +77,25 @@ var _ = Describe("Env_Var_Handler", func() {
 		})
 	})
 
+	Context("when an envvarhandler is called with bogus manifest in deploy info", func() {
+		It("it should be succeed", func() {
+
+			content := `---
+			applications{ buuba:gump]`
+
+			info := S.DeploymentInfo{
+				AppName:              "testApp",
+				AppPath:              "/tmp",
+				Manifest:             content,
+			}
+
+			event.Data = S.EventVarEventData{DeploymentInfo: &info}
+
+			err := eventHandler.OnEvent(event)
+
+			Expect(err).ToNot(BeNil())
+		})
+
+	})
+
 })

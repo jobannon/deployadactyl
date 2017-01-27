@@ -41,12 +41,10 @@ var _ = Describe("Manifest Tests", func() {
 	})
 
 	Context("when manifest not valid", func() {
-		It("returns nil", func() {
-			manifest, _ := CreateManifest("", "bork", filesystem, log)
+		It("CreateManifest returns an err!", func() {
+			_, err := CreateManifest("", "bork", filesystem, log)
 
-			result := manifest.GetInstances()
-
-			Expect(result).To(BeNil())
+			Expect(err).ToNot(BeNil())
 		})
 	})
 
@@ -139,14 +137,6 @@ applications:
 			manifest, err := CreateManifest("", "", filesystem, log)
 
 			Expect(len(manifest.Content.Applications)).To(Equal(1))
-			Expect(err).To(BeNil())
-		})
-	})
-
-	Context("when manifest not valid", func() {
-		It("returns an empty Applications Collection", func() {
-			manifest, err := CreateManifest("", "bork", filesystem, log)
-			Expect(len(manifest.Content.Applications)).To(Equal(0))
 			Expect(err).To(BeNil())
 		})
 	})
@@ -276,5 +266,109 @@ applications:
 			})
 		})
 	})
+
+	Context("when I create a manifest", func() {
+		Context("And then marshall/write it", func() {
+			It("exists", func() {
+
+				path := "/tmp"
+				filesystem.MkdirAll(path, 0755)
+
+				content := `applications:
+- name: some-application
+  memory: 1536M
+  timeout: 180
+  instances: 2
+`
+				manifest, err := CreateManifest("testApp", content, filesystem, log)
+
+				Expect(err).To(BeNil())
+				Expect(manifest).ToNot(BeNil())
+
+				//Write the manifest to a location!
+				manifest.WriteManifest(path, false)
+
+				exists, err := filesystem.Exists(path + "/manifest.yml")
+
+				Expect(err).To(BeNil())
+				Expect(exists).To(BeTrue())
+
+			})
+		})
+	})
+
+	Context("when I create a manifest", func() {
+		Context("And then marshall/write it with include prefix = true", func() {
+			It("it exists and contains the prefix", func() {
+
+				path := "/tmp"
+				filesystem.MkdirAll(path, 0755)
+
+				content := `applications:
+- name: some-application
+  memory: 1536M
+  timeout: 180
+  instances: 2
+`
+				manifest, err := CreateManifest("testApp", content, filesystem, log)
+
+				Expect(err).To(BeNil())
+				Expect(manifest).ToNot(BeNil())
+
+				//Write the manifest to a location!
+				manifest.WriteManifest(path, true)
+
+				exists, err := filesystem.Exists(path + "/manifest.yml")
+
+				Expect(err).To(BeNil())
+				Expect(exists).To(BeTrue())
+
+				data, err := filesystem.ReadFile(path + "/manifest.yml")
+
+				Expect(err).To(BeNil())
+				Expect(string(data)).To(ContainSubstring("---"))
+
+			})
+		})
+	})
+
+	Context("when I create a manifest", func() {
+		Context("And then marshall/write it and then read it back", func() {
+			It("the manifests match", func() {
+
+				path := "/tmp"
+				filesystem.MkdirAll(path, 0755)
+
+				content := `applications:
+- name: some-application
+  memory: 1536M
+  timeout: 180
+  instances: 2
+`
+				manifest, err := CreateManifest("testApp", content, filesystem, log)
+
+				Expect(err).To(BeNil())
+				Expect(manifest).ToNot(BeNil())
+
+				//Write the manifest to a location!
+				manifest.WriteManifest(path, true)
+
+				exists, err := filesystem.Exists(path + "/manifest.yml")
+
+				Expect(err).To(BeNil())
+				Expect(exists).To(BeTrue())
+
+				readManifest, err := ReadManifest(path+"/manifest.yml", log, filesystem)
+
+				Expect(err).To(BeNil())
+				Expect(manifest.Content.Applications[0].Name).To(Equal(readManifest.Content.Applications[0].Name))
+				Expect(manifest.Content.Applications[0].Memory).To(Equal(readManifest.Content.Applications[0].Memory))
+				Expect(manifest.Content.Applications[0].Instances).To(Equal(readManifest.Content.Applications[0].Instances))
+				Expect(manifest.Content.Applications[0].Timeout).To(Equal(readManifest.Content.Applications[0].Timeout))
+
+			})
+		})
+	})
+
 
 })

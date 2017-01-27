@@ -59,7 +59,12 @@ func (e ManifestError) Error() string {
 
 func CreateManifest(appName string, content string, filesystem *afero.Afero, logger I.Logger) (manifest *Manifest, err error) {
 	manifest = &Manifest{Name: appName, Yaml: content, FileSystem: filesystem, Log: logger }
-	manifest.UnMarshal()
+	_, err = manifest.UnMarshal()
+
+	if err != nil {
+		logger.Errorf("Error Occurred during manifest creation/unmarshal! Details: %+v", err)
+	}
+
 	return manifest, err
 }
 

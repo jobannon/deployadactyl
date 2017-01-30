@@ -174,11 +174,12 @@ var _ = Describe("Pusher", func() {
 
 		Context("when the push fails", func() {
 			It("returns an error", func() {
+				courier.PushCall.Returns.Output = []byte("push output")
 				courier.PushCall.Returns.Error = errors.New("push error")
 
 				err := pusher.Push(appPath, deploymentInfo, response)
 
-				Expect(err).To(MatchError("push error"))
+				Expect(err).To(MatchError("push output"))
 			})
 		})
 

@@ -2,6 +2,7 @@
 package pusher
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -82,7 +83,7 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 		if newErr != nil {
 			return CloudFoundryGetLogsError{err, newErr}
 		}
-		return err
+		return errors.New(string(pushOutput))
 	}
 
 	p.Log.Infof(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))

@@ -118,7 +118,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	deploymentInfo.Org = org
 	deploymentInfo.Space = space
 	deploymentInfo.AppName = appName
-	deploymentInfo.UUID = d.Randomizer.StringRunes(128)
+	deploymentInfo.UUID = d.Randomizer.StringRunes(10)
 	deploymentInfo.SkipSSL = environments[environment].SkipSSL
 	deploymentInfo.Manifest = string(manifest)
 	deploymentInfo.Domain = environments[environment].Domain

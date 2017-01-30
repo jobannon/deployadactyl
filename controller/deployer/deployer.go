@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"regexp"
-	"flag"
 
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
@@ -57,10 +56,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 		manifest               []byte
 		appPath                string
 	)
-
-	deployFailed := false
-
-	defer func() { d.cleanup(appPath, deployFailed) }()
+	defer func() { d.FileSystem.RemoveAll(appPath) }()
 
 	d.Log.Debug("prechecking the foundations")
 	err = d.Prechecker.AssertAllFoundationsUp(environments[environment])
@@ -165,7 +161,6 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	d.Log.Debug("emitting a deploy.start event")
 	err = d.EventManager.Emit(S.Event{Type: I.DEPLOY_START_EVENT, Data: deployEventData})
 	if err != nil {
-		deployFailed = true
 		fmt.Fprintln(response, err)
 		return http.StatusInternalServerError, EventError{I.DEPLOY_START_EVENT, err}
 	}
@@ -174,7 +169,6 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 
 	err = d.BlueGreener.Push(e, appPath, deploymentInfo, response)
 	if err != nil {
-		deployFailed = true
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
 			return http.StatusBadRequest, err
 		}
@@ -183,27 +177,6 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 
 	fmt.Fprintf(response, "\n%s", successfulDeploy)
 	return http.StatusOK, err
-}
-
-func (d Deployer) cleanup(appPath string, deployFailed bool) {
-
-	d.Log.Infof("Begin Performing Cleanup...")
-	cleanup := true
-	cleanupFlag := flag.Lookup(I.ENABLE_DISABLE_FILESYSTEM_CLEANUP_ON_DEPLOY_FAILURE_FLAG_ARG)
-
-	if cleanupFlag != nil {
-		cleanup = cleanupFlag.Value.(flag.Getter).Get().(bool)
-	}
-
-	d.Log.Debugf("Temp File System Cleanup Enabled for Failed Deploys? [%t]", cleanup)
-
-	if cleanup || !deployFailed {
-		d.FileSystem.RemoveAll(appPath)
-
-		d.Log.Infof("File System [%s] deleted!", appPath)
-	} else {
-		d.Log.Infof("File System [%s] not removed. Deploy Failed and Cleanup on Fail is disabled!", appPath)
-	}
 }
 
 func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {

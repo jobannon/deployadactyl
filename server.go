@@ -20,7 +20,6 @@ const (
 func main() {
 	config := flag.String("config", defaultConfig, "location of the config file")
 	envVarHandlerEnabled := flag.Bool(I.ENABLE_ENV_VAR_HANDLER_FLAG_ARG, false, "enable the environment variable handler (default: false)")
-	flag.Bool(I.ENABLE_DISABLE_FILESYSTEM_CLEANUP_ON_DEPLOY_FAILURE_FLAG_ARG, true, "enable/disable cleanup of temp file system on deploy failure. (default: true")
 	flag.Parse()
 
 	level := os.Getenv("DEPLOYADACTYL_LOGLEVEL")

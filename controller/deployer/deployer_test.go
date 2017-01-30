@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
-	"flag"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -583,7 +582,7 @@ instances: 1337
 	})
 
 	Describe("removing files after deploying", func() {
-		Context("with no -cleanupOnFail flag set", func() {
+		Context("with no error", func() {
 			It("deletes the unzipped folder from the fetcher", func() {
 				af = &afero.Afero{Fs: afero.NewMemMapFs()}
 				deployer = Deployer{
@@ -611,7 +610,7 @@ instances: 1337
 			})
 		})
 
-		Context("with  -cleanupOnFail flag set", func() {
+		Context("with  error", func() {
 			It("deletes the unzipped folder from the fetcher", func() {
 				af = &afero.Afero{Fs: afero.NewMemMapFs()}
 				deployer = Deployer{
@@ -624,8 +623,6 @@ instances: 1337
 					log,
 					af,
 				}
-				flag.Bool(interfaces.ENABLE_DISABLE_FILESYSTEM_CLEANUP_ON_DEPLOY_FAILURE_FLAG_ARG, true, "enable/disable cleanup of temp file system on deploy failure. (default: true")
-				flag.Set(interfaces.ENABLE_DISABLE_FILESYSTEM_CLEANUP_ON_DEPLOY_FAILURE_FLAG_ARG, "true")
 
 				directoryName, err := af.TempDir("", "deployadactyl-")
 				Expect(err).ToNot(HaveOccurred())
@@ -642,36 +639,6 @@ instances: 1337
 			})
 		})
 
-		Context("with  -cleanupOnFail flag set false", func() {
-			It("does not delete the unzipped folder from the fetcher if deploy fails", func() {
-				af = &afero.Afero{Fs: afero.NewMemMapFs()}
-				deployer = Deployer{
-					c,
-					blueGreener,
-					fetcher,
-					prechecker,
-					eventManager,
-					randomizerMock,
-					log,
-					af,
-				}
-
-				flag.Set(interfaces.ENABLE_DISABLE_FILESYSTEM_CLEANUP_ON_DEPLOY_FAILURE_FLAG_ARG, "false")
-
-				directoryName, err := af.TempDir("", "deployadactyl-")
-				Expect(err).ToNot(HaveOccurred())
-
-				fetcher.FetchCall.Returns.AppPath = directoryName
-				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
-
-				deployer.Deploy(req, environment, org, space, appName, "application/json", response)
-
-				exists, err := af.DirExists(directoryName)
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(exists).To(BeTrue())
-			})
-		})
 	})
 
 	Describe("happy path deploying with json in the request body", func() {

@@ -9,20 +9,16 @@ import (
 	"github.com/compozed/deployadactyl/creator"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/op/go-logging"
-)
-
-const (
-	defaultConfig = "./config.yml"
-	defaultLevel  = "DEBUG"
+	C "github.com/compozed/deployadactyl/constants"
 )
 
 func main() {
-	config := flag.String("config", defaultConfig, "location of the config file")
+	config := flag.String(C.CONFIG_FILE_ARG, C.DEFAULT_CONFIG_FILE_PATH, "location of the config file")
 	flag.Parse()
 
-	level := os.Getenv("DEPLOYADACTYL_LOGLEVEL")
+	level := os.Getenv(C.LOG_LEVEL_ENV_VAR_NAME)
 	if level == "" {
-		level = defaultLevel
+		level = C.DEFAULT_LOG_LEVEL
 	}
 
 	logLevel, err := logging.LogLevel(level)

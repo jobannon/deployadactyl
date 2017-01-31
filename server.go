@@ -7,24 +7,19 @@ import (
 	"os"
 
 	"github.com/compozed/deployadactyl/creator"
-	I "github.com/compozed/deployadactyl/interfaces"
+	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/op/go-logging"
 )
 
-const (
-	defaultConfig = "./config.yml"
-	defaultLevel  = "DEBUG"
-)
-
 func main() {
-	config := flag.String("config", defaultConfig, "location of the config file")
-	envVarHandlerEnabled := flag.Bool(I.ENABLE_ENV_VAR_HANDLER_FLAG_ARG, false, "enable the environment variable handler (default: false)")
+	config := flag.String("config", C.DEFAULT_CONFIG_FILE_PATH, "location of the config file")
+	envVarHandlerEnabled := flag.Bool(C.ENABLE_ENV_VAR_HANDLER_FLAG_ARG, false, "enable the environment variable handler (default: false)")
 	flag.Parse()
 
 	level := os.Getenv("DEPLOYADACTYL_LOGLEVEL")
 	if level == "" {
-		level = defaultLevel
+		level = C.DEFAULT_LOG_LEVEL
 	}
 
 	logLevel, err := logging.LogLevel(level)
@@ -44,7 +39,7 @@ func main() {
 
 	if *envVarHandlerEnabled {
 		log.Infof("Adding Environment Variable Event Handler")
-		em.AddHandler(c.CreateEnvVarHandler(), I.ENV_VARS_FOUND_EVENT)
+		em.AddHandler(c.CreateEnvVarHandler(), C.DEPLOY_START_EVENT)
 	} else {
 		log.Info("No Event Handlers added...")
 	}

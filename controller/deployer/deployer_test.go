@@ -9,15 +9,11 @@ import (
 	"net/http"
 
 	"github.com/compozed/deployadactyl/config"
-	. "github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
 )
@@ -357,63 +353,6 @@ applications:
 		})
 	})
 
-	Describe("detecting environment variables in the request during a deploy", func() {
-		Context("when environment variables are in the request", func() {
-			It("emits an environment variables found event", func() {
-				deploymentInfo.Manifest = `---
-applications:
-- name: deployadactyl
-instances: 1337
-`
-				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
-
-				requestBody = bytes.NewBufferString(fmt.Sprintf(`{
-					 					"artifact_url": "%s",
-					 					"manifest": "%s",
-					 					"environment_variables": { "bubba":"gump" }
-					 				}`,
-					artifactURL,
-					base64Manifest,
-				))
-
-				req, _ = http.NewRequest("POST", "", requestBody)
-
-				_, err := deployer.Deploy(req, environment, org, space, appName, "application/json", response)
-				Expect(err).ToNot(HaveOccurred())
-
-				// Start, Finish, Success, and Env.Var Found.
-				Expect(len(eventManager.EmitCall.Received.Events)).To(Equal(4))
-			})
-		})
-
-		Context("when environment variables are not the request", func() {
-			It("it does not emit an environment variables found event", func() {
-				deploymentInfo.Manifest = `---
-applications:
-- name: deployadactyl
-instances: 1337
-`
-				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
-
-				requestBody = bytes.NewBufferString(fmt.Sprintf(`{
-					 					"artifact_url": "%s",
-					 					"manifest": "%s"
-					 				}`,
-					artifactURL,
-					base64Manifest,
-				))
-
-				req, _ = http.NewRequest("POST", "", requestBody)
-
-				_, err := deployer.Deploy(req, environment, org, space, appName, "application/json", response)
-				Expect(err).ToNot(HaveOccurred())
-
-				// Start, Finish, and Success.
-				Expect(len(eventManager.EmitCall.Received.Events)).To(Equal(3))
-			})
-		})
-	})
-
 	Describe("not finding an environment in the config", func() {
 		It("returns an error and an http.StatusInternalServerError", func() {
 			deployer = Deployer{
@@ -582,63 +521,31 @@ instances: 1337
 	})
 
 	Describe("removing files after deploying", func() {
-		Context("with no error", func() {
-			It("deletes the unzipped folder from the fetcher", func() {
-				af = &afero.Afero{Fs: afero.NewMemMapFs()}
-				deployer = Deployer{
-					c,
-					blueGreener,
-					fetcher,
-					prechecker,
-					eventManager,
-					randomizerMock,
-					log,
-					af,
-				}
+		It("deletes the unzipped folder from the fetcher", func() {
+			af = &afero.Afero{Fs: afero.NewMemMapFs()}
+			deployer = Deployer{
+				c,
+				blueGreener,
+				fetcher,
+				prechecker,
+				eventManager,
+				randomizerMock,
+				log,
+				af,
+			}
 
-				directoryName, err := af.TempDir("", "deployadactyl-")
-				Expect(err).ToNot(HaveOccurred())
+			directoryName, err := af.TempDir("", "deployadactyl-")
+			Expect(err).ToNot(HaveOccurred())
 
-				fetcher.FetchCall.Returns.AppPath = directoryName
+			fetcher.FetchCall.Returns.AppPath = directoryName
 
-				deployer.Deploy(req, environment, org, space, appName, "application/json", response)
+			deployer.Deploy(req, environment, org, space, appName, "application/json", response)
 
-				exists, err := af.DirExists(directoryName)
-				Expect(err).ToNot(HaveOccurred())
+			exists, err := af.DirExists(directoryName)
+			Expect(err).ToNot(HaveOccurred())
 
-				Expect(exists).ToNot(BeTrue())
-			})
+			Expect(exists).ToNot(BeTrue())
 		})
-
-		Context("with  error", func() {
-			It("deletes the unzipped folder from the fetcher", func() {
-				af = &afero.Afero{Fs: afero.NewMemMapFs()}
-				deployer = Deployer{
-					c,
-					blueGreener,
-					fetcher,
-					prechecker,
-					eventManager,
-					randomizerMock,
-					log,
-					af,
-				}
-
-				directoryName, err := af.TempDir("", "deployadactyl-")
-				Expect(err).ToNot(HaveOccurred())
-
-				fetcher.FetchCall.Returns.AppPath = directoryName
-				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
-
-				deployer.Deploy(req, environment, org, space, appName, "application/json", response)
-
-				exists, err := af.DirExists(directoryName)
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(exists).ToNot(BeTrue())
-			})
-		})
-
 	})
 
 	Describe("happy path deploying with json in the request body", func() {

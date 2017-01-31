@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
@@ -27,7 +25,7 @@ var _ = Describe("Manifest Tests", func() {
 		logBuffer = gbytes.NewBuffer()
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")
 		eventHandler = Envvarhandler{Logger: log, FileSystem:filesystem, }
-		event = S.Event{Type: "test-event", Data: S.EventVarEventData{}}
+		event = S.Event{Type: "test-event", Data: S.DeployEventData{}}
 	})
 
 	Context("when manifest is empty", func() {

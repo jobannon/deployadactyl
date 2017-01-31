@@ -14,13 +14,14 @@ type Envvarhandler struct {
 
 func (handler Envvarhandler) OnEvent(event S.Event) error {
 
-	info := event.Data.(S.EventVarEventData)
+	handler.Logger.Debugf("Environment Variable Handler Processing Event => %+v", event)
 
-	if info.DeploymentInfo == nil {
+	info := event.Data.(S.DeployEventData)
+
+	if info.DeploymentInfo == nil || !info.DeploymentInfo.HasEnvironmentVariables() {
+		handler.Logger.Info("No Deployment Info or Environment Variables to process!")
 		return nil
 	}
-
-	handler.Logger.Debugf("Environment Variable Handler Processing Event => %+v", info)
 
 	m, err := CreateManifest(info.DeploymentInfo.AppName, info.DeploymentInfo.Manifest, handler.FileSystem, handler.Logger)
 

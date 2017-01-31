@@ -37,3 +37,15 @@ type RenameError struct {
 func (e RenameError) Error() string {
 	return fmt.Sprintf("cannot rename %s: %s", e.ApplicationName, string(e.Out))
 }
+
+type PushError struct{}
+
+func (e PushError) Error() string {
+	return "push failed: check the Cloud Foundry output above for more information"
+}
+
+type MapRouteError struct{}
+
+func (e MapRouteError) Error() string {
+	return "map route failed: check the Cloud Foundry output above for more information"
+}

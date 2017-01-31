@@ -2,7 +2,6 @@
 package pusher
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -83,7 +82,8 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 		if newErr != nil {
 			return CloudFoundryGetLogsError{err, newErr}
 		}
-		return errors.New(string(pushOutput))
+
+		return PushError{}
 	}
 
 	p.Log.Infof(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
@@ -97,7 +97,8 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 		if newErr != nil {
 			return CloudFoundryGetLogsError{err, newErr}
 		}
-		return err
+
+		return MapRouteError{}
 	}
 	p.Log.Debugf(string(mapRouteOutput))
 	p.Log.Infof("application route created at %s.%s", deploymentInfo.AppName, deploymentInfo.Domain)

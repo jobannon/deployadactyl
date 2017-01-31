@@ -174,12 +174,11 @@ var _ = Describe("Pusher", func() {
 
 		Context("when the push fails", func() {
 			It("returns an error", func() {
-				courier.PushCall.Returns.Output = []byte("push output")
 				courier.PushCall.Returns.Error = errors.New("push error")
 
 				err := pusher.Push(appPath, deploymentInfo, response)
 
-				Expect(err).To(MatchError("push output"))
+				Expect(err).To(MatchError(PushError{}))
 			})
 		})
 
@@ -203,7 +202,7 @@ var _ = Describe("Pusher", func() {
 					courier.MapRouteCall.Returns.Error = errors.New("map route error")
 
 					err := pusher.Push(appPath, deploymentInfo, response)
-					Expect(err).To(MatchError("map route error"))
+					Expect(err).To(MatchError(MapRouteError{}))
 
 					Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName + randomUUID))
 					Expect(courier.MapRouteCall.Received.Domain).To(Equal(domain))

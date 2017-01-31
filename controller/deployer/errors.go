@@ -30,3 +30,11 @@ type EventError struct {
 func (e EventError) Error() string {
 	return fmt.Sprintf("an error occurred in the %s event: %s", e.Type, e.Err)
 }
+
+type EnvironmentNotFoundError struct {
+	Environment string
+}
+
+func (e EnvironmentNotFoundError) Error() string {
+	return fmt.Sprintf("environment not found: %s", e.Environment)
+}

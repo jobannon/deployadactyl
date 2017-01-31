@@ -58,6 +58,12 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	)
 	defer func() { d.FileSystem.RemoveAll(appPath) }()
 
+	e, ok := environments[environment]
+	if !ok {
+		fmt.Fprintln(response, EnvironmentNotFoundError{environment}.Error())
+		return http.StatusInternalServerError, EnvironmentNotFoundError{environment}
+	}
+
 	d.Log.Debug("prechecking the foundations")
 	err = d.Prechecker.AssertAllFoundationsUp(environments[environment])
 	if err != nil {

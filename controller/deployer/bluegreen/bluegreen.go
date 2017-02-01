@@ -124,7 +124,7 @@ func (bg BlueGreen) pushAll(appPath string, deploymentInfo S.DeploymentInfo) (ma
 func (bg BlueGreen) rollbackAll(deploymentInfo S.DeploymentInfo) (manyErrors []error) {
 	for _, a := range bg.actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.Rollback(deploymentInfo)
+			return pusher.UndoPush(deploymentInfo)
 		}
 	}
 

@@ -92,8 +92,8 @@ func (p *Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, out io.Wr
 	return p.PushCall.Returns.Error
 }
 
-// Rollback mock method.
-func (p *Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
+// UndoPush mock method.
+func (p *Pusher) UndoPush(deploymentInfo S.DeploymentInfo) error {
 	p.RollbackCall.Received.DeploymentInfo = deploymentInfo
 
 	return p.RollbackCall.Returns.Error

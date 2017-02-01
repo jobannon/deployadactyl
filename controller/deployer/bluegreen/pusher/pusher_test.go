@@ -22,21 +22,20 @@ var _ = Describe("Pusher", func() {
 		courier *mocks.Courier
 		pusher  Pusher
 
-		foundationURL    string
-		username         string
-		password         string
-		org              string
-		space            string
-		skipSSL          bool
-		domain           string
-		appPath          string
-		appName          string
-		appNameVenerable string
-		instances        uint16
-		randomUUID       string
-		deploymentInfo   S.DeploymentInfo
-		response         *Buffer
-		logBuffer        *Buffer
+		foundationURL  string
+		username       string
+		password       string
+		org            string
+		space          string
+		skipSSL        bool
+		domain         string
+		appPath        string
+		appName        string
+		instances      uint16
+		randomUUID     string
+		deploymentInfo S.DeploymentInfo
+		response       *Buffer
+		logBuffer      *Buffer
 	)
 
 	BeforeEach(func() {
@@ -50,7 +49,6 @@ var _ = Describe("Pusher", func() {
 		domain = "domain-" + randomizer.StringRunes(10)
 		appPath = "appPath-" + randomizer.StringRunes(10)
 		appName = "appName-" + randomizer.StringRunes(10)
-		appNameVenerable = appName + "-venerable"
 		randomUUID = randomizer.StringRunes(10)
 		instances = uint16(rand.Uint32())
 
@@ -112,42 +110,6 @@ var _ = Describe("Pusher", func() {
 	})
 
 	Describe("pushing an app", func() {
-		Context("when an app with the same name already exists", func() {
-			It("renames the existing app and pushes", func() {
-				courier.ExistsCall.Returns.Bool = true
-
-				By("making the app exist")
-				pusher.Exists(appName)
-
-				Expect(pusher.Push(appPath, deploymentInfo, response)).To(Succeed())
-
-				Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
-				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable + randomUUID))
-
-				Expect(courier.PushCall.Received.AppName).To(Equal(appName + randomUUID))
-				Expect(courier.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(courier.PushCall.Received.Instances).To(Equal(instances))
-
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("renamed app from %s to %s", appName, appNameVenerable+randomUUID)))
-			})
-
-			Context("renaming the existing app fails", func() {
-				It("returns an error", func() {
-					courier.ExistsCall.Returns.Bool = true
-					courier.RenameCall.Returns.Output = []byte("rename output")
-					courier.RenameCall.Returns.Error = errors.New("rename error")
-
-					pusher.Exists(appName)
-
-					err := pusher.Push(appPath, deploymentInfo, response)
-					Expect(err).To(MatchError(RenameError{deploymentInfo.AppName, []byte("rename output")}))
-
-					Expect(courier.RenameCall.Received.AppName).To(Equal(appName))
-					Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appNameVenerable + randomUUID))
-				})
-			})
-		})
-
 		Context("when an app with the same name does not exist", func() {
 			It("reports that the app is new", func() {
 				Expect(pusher.Push(appPath, deploymentInfo, response)).To(Succeed())
@@ -160,14 +122,14 @@ var _ = Describe("Pusher", func() {
 
 				Expect(pusher.Push(appPath, deploymentInfo, response)).To(Succeed())
 
-				Expect(courier.PushCall.Received.AppName).To(Equal(appName + randomUUID))
+				Expect(courier.PushCall.Received.AppName).To(Equal(appName + TemporaryNameSuffix + randomUUID))
 				Expect(courier.PushCall.Received.AppPath).To(Equal(appPath))
 				Expect(courier.PushCall.Received.Instances).To(Equal(instances))
 
 				Eventually(response).Should(Say("push succeeded"))
 
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("pushing app %s to %s", appName+randomUUID, domain)))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", appName+randomUUID, appPath)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("pushing app %s to %s", appName+TemporaryNameSuffix+randomUUID, domain)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", appName+TemporaryNameSuffix+randomUUID, appPath)))
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("push succeeded")))
 			})
 		})
@@ -188,12 +150,29 @@ var _ = Describe("Pusher", func() {
 
 				Expect(pusher.Push(appPath, deploymentInfo, response)).To(Succeed())
 
-				Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName + randomUUID))
+				Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName + TemporaryNameSuffix + randomUUID))
 				Expect(courier.MapRouteCall.Received.Domain).To(Equal(domain))
 
 				Eventually(response).Should(Say("mapped route"))
 
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("mapping route for %s to %s", appName, domain)))
+			})
+
+			Context("when a domain is not provided", func() {
+				It("does not map the domain", func() {
+					courier.MapRouteCall.Returns.Output = []byte("mapped route")
+
+					deploymentInfo.Domain = ""
+
+					Expect(pusher.Push(appPath, deploymentInfo, response)).To(Succeed())
+
+					Expect(courier.MapRouteCall.Received.AppName).To(BeEmpty())
+					Expect(courier.MapRouteCall.Received.Domain).To(BeEmpty())
+
+					Eventually(response).ShouldNot(Say("mapped route"))
+
+					Eventually(logBuffer).ShouldNot(Say(fmt.Sprintf("mapping route for %s to ", appName)))
+				})
 			})
 
 			Context("when MapRoute fails", func() {
@@ -204,7 +183,7 @@ var _ = Describe("Pusher", func() {
 					err := pusher.Push(appPath, deploymentInfo, response)
 					Expect(err).To(MatchError(MapRouteError{}))
 
-					Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName + randomUUID))
+					Expect(courier.MapRouteCall.Received.AppName).To(Equal(appName + TemporaryNameSuffix + randomUUID))
 					Expect(courier.MapRouteCall.Received.Domain).To(Equal(domain))
 
 					Eventually(response).Should(Say("unable to map route"))
@@ -226,7 +205,7 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("rolling back a deployment", func() {
+	Describe("when a push fails", func() {
 		Context("when the app exists", func() {
 			BeforeEach(func() {
 				courier.ExistsCall.Returns.Bool = true
@@ -235,9 +214,9 @@ var _ = Describe("Pusher", func() {
 			})
 
 			It("deletes the app that was pushed", func() {
-				Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
+				Expect(pusher.UndoPush(deploymentInfo)).To(Succeed())
 
-				Expect(courier.DeleteCall.Received.AppName).To(Equal(appName + randomUUID))
+				Expect(courier.DeleteCall.Received.AppName).To(Equal(appName + TemporaryNameSuffix + randomUUID))
 
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("rolling back deploy of %s", appName)))
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("deleted %s", appName)))
@@ -247,20 +226,22 @@ var _ = Describe("Pusher", func() {
 				It("returns an error and writes a message to the info log", func() {
 					courier.DeleteCall.Returns.Error = errors.New("delete error")
 
-					err := pusher.Rollback(deploymentInfo)
+					err := pusher.UndoPush(deploymentInfo)
 					Expect(err).ToNot(HaveOccurred())
 
-					Eventually(logBuffer).Should(Say(fmt.Sprintf("unable to delete %s", appName+randomUUID)))
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("unable to delete %s", appName+TemporaryNameSuffix+randomUUID)))
 				})
 			})
+		})
 
-			It("renames the venerable app", func() {
-				Expect(pusher.Rollback(deploymentInfo)).To(Succeed())
+		Context("when the app does not exist", func() {
+			It("renames the newly built app to the intended application name", func() {
+				Expect(pusher.UndoPush(deploymentInfo)).To(Succeed())
 
-				Expect(courier.RenameCall.Received.AppName).To(Equal(appNameVenerable + randomUUID))
+				Expect(courier.RenameCall.Received.AppName).To(Equal(appName + TemporaryNameSuffix + randomUUID))
 				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appName))
 
-				Eventually(logBuffer).Should(Say("renamed app from %s to %s", appNameVenerable+randomUUID, appName))
+				Eventually(logBuffer).Should(Say("renamed app from %s to %s", appName+TemporaryNameSuffix+randomUUID, appName))
 			})
 
 			Context("when renaming fails", func() {
@@ -268,33 +249,23 @@ var _ = Describe("Pusher", func() {
 					courier.RenameCall.Returns.Error = errors.New("rename error")
 					courier.RenameCall.Returns.Output = []byte("rename error")
 
-					err := pusher.Rollback(deploymentInfo)
-					Expect(err).To(MatchError(RenameError{appNameVenerable + randomUUID, []byte("rename error")}))
+					err := pusher.UndoPush(deploymentInfo)
+					Expect(err).To(MatchError(RenameError{appName + TemporaryNameSuffix + randomUUID, []byte("rename error")}))
 
-					Eventually(logBuffer).Should(Say(fmt.Sprintf("unable to rename venerable app %s: %s", appNameVenerable+randomUUID, "rename error")))
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("unable to rename venerable app %s: %s", appName+TemporaryNameSuffix+randomUUID, "rename error")))
 				})
-			})
-		})
-
-		Context("when the app does not exist", func() {
-			It("does no operation and logs no roll back", func() {
-				err := pusher.Rollback(deploymentInfo)
-				Expect(err).ToNot(HaveOccurred())
-
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("app %s did not previously exist: not rolling back", appName)))
 			})
 		})
 	})
 
 	Describe("completing a deployment", func() {
-
 		It("renames the newly pushed app to the original name", func() {
 			Expect(pusher.FinishPush(deploymentInfo)).To(Succeed())
 
-			Expect(courier.RenameCall.Received.AppName).To(Equal(appName + randomUUID))
+			Expect(courier.RenameCall.Received.AppName).To(Equal(appName + TemporaryNameSuffix + randomUUID))
 			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appName))
 
-			Eventually(logBuffer).Should(Say("renamed %s to %s", appName+randomUUID, appName))
+			Eventually(logBuffer).Should(Say("renamed %s to %s", appName+TemporaryNameSuffix+randomUUID, appName))
 		})
 
 		Context("when rename fail", func() {
@@ -303,28 +274,28 @@ var _ = Describe("Pusher", func() {
 				courier.RenameCall.Returns.Error = errors.New("rename error")
 
 				err := pusher.FinishPush(deploymentInfo)
-				Expect(err).To(MatchError(RenameError{appName + randomUUID, []byte("rename output")}))
+				Expect(err).To(MatchError(RenameError{appName + TemporaryNameSuffix + randomUUID, []byte("rename output")}))
 
-				Expect(courier.RenameCall.Received.AppName).To(Equal(appName + randomUUID))
+				Expect(courier.RenameCall.Received.AppName).To(Equal(appName + TemporaryNameSuffix + randomUUID))
 				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(appName))
 
-				Eventually(logBuffer).Should(Say("could not rename %s to %s", appName+randomUUID, appName))
+				Eventually(logBuffer).Should(Say("could not rename %s to %s", appName+TemporaryNameSuffix+randomUUID, appName))
 			})
 		})
 
 		Context("when the app exists", func() {
-			It("deletes venerable ", func() {
+			It("deletes the original application ", func() {
 				courier.ExistsCall.Returns.Bool = true
 
 				pusher.Exists(appName)
 				Expect(pusher.FinishPush(deploymentInfo)).To(Succeed())
 
-				Expect(courier.DeleteCall.Received.AppName).To(Equal(appNameVenerable + randomUUID))
+				Expect(courier.DeleteCall.Received.AppName).To(Equal(appName))
 
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("deleted %s", appNameVenerable+randomUUID)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("deleted %s", appName)))
 			})
 
-			Context("when deleting the venerable fails", func() {
+			Context("when deleting the original app fails", func() {
 				It("returns an error", func() {
 					courier.ExistsCall.Returns.Bool = true
 					courier.DeleteCall.Returns.Output = []byte("delete output")
@@ -333,16 +304,15 @@ var _ = Describe("Pusher", func() {
 					pusher.Exists(appName)
 
 					err := pusher.FinishPush(deploymentInfo)
+					Expect(err).To(MatchError(DeleteApplicationError{appName, []byte("delete output")}))
 
-					Expect(err).To(MatchError(DeleteApplicationError{appNameVenerable + randomUUID, []byte("delete output")}))
-
-					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not delete %s", appNameVenerable+randomUUID)))
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not delete %s", appName)))
 				})
 			})
 		})
 
 		Context("when the application does not exist", func() {
-			It("does not delete the non-existant venerable app", func() {
+			It("does not delete the non-existant original application", func() {
 				courier.ExistsCall.Returns.Bool = false
 
 				pusher.Exists(appName)

@@ -10,7 +10,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
-const temporaryNameSuffix = "-venerable"
+const TemporaryNameSuffix = "-new-build-"
 
 // Pusher has a courier used to push applications to Cloud Foundry.
 // It represents logging into a single foundation to perform operations.
@@ -49,35 +49,26 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, res
 }
 
 // Push pushes a single application to a Clound Foundry instance using blue green deployment.
-// Blue green is done by renaming the current application to appName-venerable+UUID.
-// It pushes the new application to the existing appName route with an included load balanced domain if provided.
+// Blue green is done by pushing a new application with the appName+TemporaryNameSuffix+UUID.
+// It pushes the new application with the existing appName route.
+// It will map a load balanced domain if provided in the config.yml.
 //
 // Returns Cloud Foundry logs if there is an error.
 func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
 
-	var (
-		appNameWithUUID          = deploymentInfo.AppName + deploymentInfo.UUID
-		appNameVenerableWithUUID = deploymentInfo.AppName + temporaryNameSuffix + deploymentInfo.UUID
-	)
+	tempAppWithUUID := deploymentInfo.AppName + TemporaryNameSuffix + deploymentInfo.UUID
 
-	if p.appExists {
-		output, err := p.Courier.Rename(deploymentInfo.AppName, appNameVenerableWithUUID)
-		if err != nil {
-			return RenameError{deploymentInfo.AppName, output}
-		}
-
-		p.Log.Infof("renamed app from %s to %s", deploymentInfo.AppName, appNameVenerableWithUUID)
-	} else {
+	if !p.appExists {
 		p.Log.Infof("new app detected")
 	}
 
-	p.Log.Debugf("pushing app %s to %s", appNameWithUUID, deploymentInfo.Domain)
-	p.Log.Debugf("tempdir for app %s: %s", appNameWithUUID, appPath)
+	p.Log.Debugf("pushing app %s to %s", tempAppWithUUID, deploymentInfo.Domain)
+	p.Log.Debugf("tempdir for app %s: %s", tempAppWithUUID, appPath)
 
-	pushOutput, err := p.Courier.Push(appNameWithUUID, appPath, deploymentInfo.AppName, deploymentInfo.Instances)
+	pushOutput, err := p.Courier.Push(tempAppWithUUID, appPath, deploymentInfo.AppName, deploymentInfo.Instances)
 	response.Write(pushOutput)
 	if err != nil {
-		logs, newErr := p.Courier.Logs(appNameWithUUID)
+		logs, newErr := p.Courier.Logs(tempAppWithUUID)
 		fmt.Fprintf(response, "\n%s", string(logs))
 		if newErr != nil {
 			return CloudFoundryGetLogsError{err, newErr}
@@ -89,76 +80,75 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 	p.Log.Infof(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
 	p.Log.Debugf("mapping route for %s to %s", deploymentInfo.AppName, deploymentInfo.Domain)
 
-	mapRouteOutput, err := p.Courier.MapRoute(appNameWithUUID, deploymentInfo.Domain, deploymentInfo.AppName)
-	response.Write(mapRouteOutput)
-	if err != nil {
-		logs, newErr := p.Courier.Logs(appNameWithUUID)
-		fmt.Fprintf(response, "\n%s", string(logs))
-		if newErr != nil {
-			return CloudFoundryGetLogsError{err, newErr}
-		}
+	if deploymentInfo.Domain != "" {
+		mapRouteOutput, err := p.Courier.MapRoute(tempAppWithUUID, deploymentInfo.Domain, deploymentInfo.AppName)
+		response.Write(mapRouteOutput)
+		if err != nil {
+			logs, newErr := p.Courier.Logs(tempAppWithUUID)
+			fmt.Fprintf(response, "\n%s", string(logs))
+			if newErr != nil {
+				return CloudFoundryGetLogsError{err, newErr}
+			}
 
-		return MapRouteError{}
+			return MapRouteError{}
+		}
+		p.Log.Debugf(string(mapRouteOutput))
+		p.Log.Infof("application route created at %s.%s", deploymentInfo.AppName, deploymentInfo.Domain)
 	}
-	p.Log.Debugf(string(mapRouteOutput))
-	p.Log.Infof("application route created at %s.%s", deploymentInfo.AppName, deploymentInfo.Domain)
 
 	return nil
 }
 
-// FinishPush will rename appName+UUID to appName. If this is not the first time the application
-// has been deployed it will delete appName-venerable+UUID from the blue green operation.
+// FinishPush will delete the original application if it existed. It will always
+// rename the the newly pushed application to the appName.
 func (p Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
-	out, err := p.Courier.Rename(deploymentInfo.AppName+deploymentInfo.UUID, deploymentInfo.AppName)
-	if err != nil {
-		p.Log.Errorf("could not rename %s to %s", deploymentInfo.AppName+deploymentInfo.UUID, deploymentInfo.AppName)
-		return RenameError{deploymentInfo.AppName + deploymentInfo.UUID, out}
-	}
-	p.Log.Infof("renamed %s to %s", deploymentInfo.AppName+deploymentInfo.UUID, deploymentInfo.AppName)
-
 	if p.appExists {
-		out, err = p.Courier.Delete(deploymentInfo.AppName + temporaryNameSuffix + deploymentInfo.UUID)
+		out, err := p.Courier.Delete(deploymentInfo.AppName)
 		if err != nil {
-			p.Log.Errorf("could not delete %s", deploymentInfo.AppName+temporaryNameSuffix+deploymentInfo.UUID)
-			return DeleteApplicationError{deploymentInfo.AppName + temporaryNameSuffix + deploymentInfo.UUID, out}
+			p.Log.Errorf("could not delete %s", deploymentInfo.AppName)
+			return DeleteApplicationError{deploymentInfo.AppName, out}
 		}
-		p.Log.Infof("deleted %s", deploymentInfo.AppName+temporaryNameSuffix+deploymentInfo.UUID)
+		p.Log.Infof("deleted %s", deploymentInfo.AppName)
 	}
+
+	out, err := p.Courier.Rename(deploymentInfo.AppName+TemporaryNameSuffix+deploymentInfo.UUID, deploymentInfo.AppName)
+	if err != nil {
+		p.Log.Errorf("could not rename %s to %s", deploymentInfo.AppName+TemporaryNameSuffix+deploymentInfo.UUID, deploymentInfo.AppName)
+		return RenameError{deploymentInfo.AppName + TemporaryNameSuffix + deploymentInfo.UUID, out}
+	}
+	p.Log.Infof("renamed %s to %s", deploymentInfo.AppName+TemporaryNameSuffix+deploymentInfo.UUID, deploymentInfo.AppName)
 
 	return nil
 }
 
-// Rollback will delete appName+UUID and rename appName-venerable+UUID to appName on a failed Push.
-// It performs no operation if this is the first time an application has been deployed in order to
-// preserve the application for debugging the deployment.
-func (p Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
+// UndoPush is only called when a Push fails. If it is not the first deployment, UndoPush will
+// delete the temporary application that was pushed.
+// If is the first deployment, UndoPush will rename the failed push to have the appName.
+func (p Pusher) UndoPush(deploymentInfo S.DeploymentInfo) error {
+
+	tempAppWithUUID := deploymentInfo.AppName + TemporaryNameSuffix + deploymentInfo.UUID
 
 	if p.appExists {
-		var (
-			appNameWithUUID          = deploymentInfo.AppName + deploymentInfo.UUID
-			appNameVenerableWithUUID = deploymentInfo.AppName + temporaryNameSuffix + deploymentInfo.UUID
-		)
+		p.Log.Errorf("rolling back deploy of %s", tempAppWithUUID)
 
-		p.Log.Errorf("rolling back deploy of %s", appNameWithUUID)
-
-		out, err := p.Courier.Delete(appNameWithUUID)
+		out, err := p.Courier.Delete(tempAppWithUUID)
 		if err != nil {
-			p.Log.Infof("unable to delete %s: %s", appNameWithUUID, out)
+			p.Log.Infof("unable to delete %s: %s", tempAppWithUUID, out)
 		} else {
-			p.Log.Infof("deleted %s", appNameWithUUID)
+			p.Log.Infof("deleted %s", tempAppWithUUID)
 		}
 
-		out, err = p.Courier.Rename(appNameVenerableWithUUID, deploymentInfo.AppName)
+	} else {
+		out, err := p.Courier.Rename(tempAppWithUUID, deploymentInfo.AppName)
 		if err != nil {
-			p.Log.Infof("unable to rename venerable app %s: %s", appNameVenerableWithUUID, out)
-			return RenameError{appNameVenerableWithUUID, out}
+			p.Log.Infof("unable to rename venerable app %s: %s", tempAppWithUUID, out)
+			return RenameError{tempAppWithUUID, out}
 		}
+		p.Log.Infof("renamed app from %s to %s", tempAppWithUUID, deploymentInfo.AppName)
 
-		p.Log.Infof("renamed app from %s to %s", appNameVenerableWithUUID, deploymentInfo.AppName)
-		return nil
+		p.Log.Infof("app %s did not previously exist: not rolling back", deploymentInfo.AppName)
 	}
 
-	p.Log.Infof("app %s did not previously exist: not rolling back", deploymentInfo.AppName)
 	return nil
 }
 

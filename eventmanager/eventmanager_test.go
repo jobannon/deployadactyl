@@ -9,6 +9,7 @@ import (
 	"github.com/op/go-logging"
 
 	. "github.com/compozed/deployadactyl/eventmanager"
+	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
@@ -24,7 +25,7 @@ var _ = Describe("Events", func() {
 		eventHandlerTwo *mocks.Handler
 		eventManager    *EventManager
 		logBuffer       *gbytes.Buffer
-		log             *logging.Logger
+		log             I.Logger
 	)
 
 	BeforeEach(func() {

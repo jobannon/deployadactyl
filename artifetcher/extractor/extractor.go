@@ -8,13 +8,13 @@ import (
 	"os"
 	"path"
 
-	"github.com/op/go-logging"
+	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/spf13/afero"
 )
 
 // Extractor has a file system from which files are extracted from.
 type Extractor struct {
-	Log        *logging.Logger
+	Log        I.Logger
 	FileSystem *afero.Afero
 }
 
@@ -22,7 +22,7 @@ type Extractor struct {
 // If there is no manifest provided to this function, it will attempt to read a manifest file within the zip file.
 func (e *Extractor) Unzip(source, destination, manifest string) error {
 	e.Log.Info("extracting application")
-	e.Log.Debug(`parameters for extractor:
+	e.Log.Debugf(`parameters for extractor:
 	source: %+v
 	destination: %+v`, source, destination)
 

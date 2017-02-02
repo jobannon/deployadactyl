@@ -30,11 +30,11 @@ var _ = Describe("Controller", func() {
 		resp       *httptest.ResponseRecorder
 		jsonBuffer *bytes.Buffer
 
-		apiURL      string
-		appName     string
-		environment string
-		org         string
-		space       string
+		foundationURL string
+		appName       string
+		environment   string
+		org           string
+		space         string
 	)
 
 	BeforeEach(func() {
@@ -60,9 +60,9 @@ var _ = Describe("Controller", func() {
 	Describe("Deploy handler", func() {
 		Context("when deployer succeeds", func() {
 			It("deploys and returns http.StatusOK", func() {
-				apiURL = fmt.Sprintf("/v1/apps/%s/%s/%s/%s", environment, org, space, appName)
+				foundationURL = fmt.Sprintf("/v1/apps/%s/%s/%s/%s", environment, org, space, appName)
 
-				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 
 				deployer.DeployCall.Returns.Error = nil
@@ -83,9 +83,9 @@ var _ = Describe("Controller", func() {
 
 		Context("when deployer fails", func() {
 			It("doesn't deploy and gives http.StatusInternalServerError", func() {
-				apiURL = fmt.Sprintf("/v1/apps/%s/%s/%s/%s", environment, org, space, appName)
+				foundationURL = fmt.Sprintf("/v1/apps/%s/%s/%s/%s", environment, org, space, appName)
 
-				req, err := http.NewRequest("POST", apiURL, jsonBuffer)
+				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 
 				deployer.DeployCall.Returns.Error = errors.New("bork")
@@ -95,6 +95,23 @@ var _ = Describe("Controller", func() {
 
 				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
 				Expect(resp.Body).To(ContainSubstring("bork"))
+			})
+		})
+
+		Context("when parameters are added to the url", func() {
+			It("does not return an error", func() {
+				foundationURL = fmt.Sprintf("/v1/apps/%s/%s/%s/%s?broken=false", environment, org, space, appName)
+
+				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
+				Expect(err).ToNot(HaveOccurred())
+
+				deployer.DeployCall.Write.Output = "deploy success"
+				deployer.DeployCall.Returns.StatusCode = http.StatusOK
+
+				router.ServeHTTP(resp, req)
+
+				Expect(resp.Code).To(Equal(http.StatusOK))
+				Expect(resp.Body).To(ContainSubstring("deploy success"))
 			})
 		})
 	})

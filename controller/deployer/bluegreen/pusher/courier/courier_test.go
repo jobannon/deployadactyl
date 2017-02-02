@@ -14,6 +14,7 @@ import (
 var _ = Describe("Courier", func() {
 	var (
 		appName  string
+		hostname string
 		output   string
 		courier  Courier
 		executor *mocks.Executor
@@ -21,6 +22,7 @@ var _ = Describe("Courier", func() {
 
 	BeforeEach(func() {
 		appName = "appName-" + randomizer.StringRunes(10)
+		hostname = "hostname-" + randomizer.StringRunes(10)
 		output = "output-" + randomizer.StringRunes(10)
 		executor = &mocks.Executor{}
 		courier = Courier{
@@ -31,19 +33,19 @@ var _ = Describe("Courier", func() {
 	Describe("logging in", func() {
 		It("should get a valid Cloud Foundry login command", func() {
 			var (
-				api          = "api-" + randomizer.StringRunes(10)
-				org          = "org-" + randomizer.StringRunes(10)
-				password     = "password-" + randomizer.StringRunes(10)
-				space        = "space-" + randomizer.StringRunes(10)
-				user         = "user-" + randomizer.StringRunes(10)
-				skipSSL      = false
-				expectedArgs = []string{"login", "-a", api, "-u", user, "-p", password, "-o", org, "-s", space, ""}
+				foundationURL = "foundationURL-" + randomizer.StringRunes(10)
+				org           = "org-" + randomizer.StringRunes(10)
+				password      = "password-" + randomizer.StringRunes(10)
+				space         = "space-" + randomizer.StringRunes(10)
+				user          = "user-" + randomizer.StringRunes(10)
+				skipSSL       = false
+				expectedArgs  = []string{"login", "-a", foundationURL, "-u", user, "-p", password, "-o", org, "-s", space, ""}
 			)
 
 			executor.ExecuteCall.Returns.Output = []byte(output)
 			executor.ExecuteCall.Returns.Error = nil
 
-			out, err := courier.Login(api, user, password, org, space, skipSSL)
+			out, err := courier.Login(foundationURL, user, password, org, space, skipSSL)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
@@ -52,19 +54,19 @@ var _ = Describe("Courier", func() {
 
 		It("can skip ssl validation", func() {
 			var (
-				api          = "api-" + randomizer.StringRunes(10)
-				org          = "org-" + randomizer.StringRunes(10)
-				password     = "password-" + randomizer.StringRunes(10)
-				space        = "space-" + randomizer.StringRunes(10)
-				user         = "user-" + randomizer.StringRunes(10)
-				skipSSL      = true
-				expectedArgs = []string{"login", "-a", api, "-u", user, "-p", password, "-o", org, "-s", space, "--skip-ssl-validation"}
+				foundationURL = "foundationURL-" + randomizer.StringRunes(10)
+				org           = "org-" + randomizer.StringRunes(10)
+				password      = "password-" + randomizer.StringRunes(10)
+				space         = "space-" + randomizer.StringRunes(10)
+				user          = "user-" + randomizer.StringRunes(10)
+				skipSSL       = true
+				expectedArgs  = []string{"login", "-a", foundationURL, "-u", user, "-p", password, "-o", org, "-s", space, "--skip-ssl-validation"}
 			)
 
 			executor.ExecuteCall.Returns.Output = []byte(output)
 			executor.ExecuteCall.Returns.Error = nil
 
-			out, err := courier.Login(api, user, password, org, space, skipSSL)
+			out, err := courier.Login(foundationURL, user, password, org, space, skipSSL)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
@@ -92,13 +94,13 @@ var _ = Describe("Courier", func() {
 			var (
 				appLocation  = "appLocation-" + randomizer.StringRunes(10)
 				instances    = uint16(rand.Uint32())
-				expectedArgs = []string{"push", appName, "-i", fmt.Sprint(instances)}
+				expectedArgs = []string{"push", appName, "-i", fmt.Sprint(instances), "-n", hostname}
 			)
 
 			executor.ExecuteInDirectoryCall.Returns.Output = []byte(output)
 			executor.ExecuteInDirectoryCall.Returns.Error = nil
 
-			out, err := courier.Push(appName, appLocation, instances)
+			out, err := courier.Push(appName, appLocation, hostname, instances)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteInDirectoryCall.Received.Args).To(Equal(expectedArgs))
@@ -128,13 +130,13 @@ var _ = Describe("Courier", func() {
 		It("should get a valid Cloud Foundry map-route command", func() {
 			var (
 				domain       = "domain-" + randomizer.StringRunes(10)
-				expectedArgs = []string{"map-route", appName, domain, "-n", appName}
+				expectedArgs = []string{"map-route", appName, domain, "-n", hostname}
 			)
 
 			executor.ExecuteCall.Returns.Output = []byte(output)
 			executor.ExecuteCall.Returns.Error = nil
 
-			out, err := courier.MapRoute(appName, domain)
+			out, err := courier.MapRoute(appName, domain, hostname)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))

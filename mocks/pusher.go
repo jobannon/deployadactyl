@@ -48,7 +48,7 @@ type Pusher struct {
 		}
 	}
 
-	DeleteVenerableCall struct {
+	FinishPushCall struct {
 		Received struct {
 			DeploymentInfo S.DeploymentInfo
 		}
@@ -92,18 +92,18 @@ func (p *Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, out io.Wr
 	return p.PushCall.Returns.Error
 }
 
-// Rollback mock method.
-func (p *Pusher) Rollback(deploymentInfo S.DeploymentInfo) error {
+// UndoPush mock method.
+func (p *Pusher) UndoPush(deploymentInfo S.DeploymentInfo) error {
 	p.RollbackCall.Received.DeploymentInfo = deploymentInfo
 
 	return p.RollbackCall.Returns.Error
 }
 
-// DeleteVenerable mock method.
-func (p *Pusher) DeleteVenerable(deploymentInfo S.DeploymentInfo) error {
-	p.DeleteVenerableCall.Received.DeploymentInfo = deploymentInfo
+// FinishPush mock method.
+func (p *Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
+	p.FinishPushCall.Received.DeploymentInfo = deploymentInfo
 
-	return p.DeleteVenerableCall.Returns.Error
+	return p.FinishPushCall.Returns.Error
 }
 
 // CleanUp mock method.

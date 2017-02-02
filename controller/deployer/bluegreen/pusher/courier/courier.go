@@ -15,13 +15,13 @@ type Courier struct {
 // Login runs the Cloud Foundry login command.
 //
 // Returns the combined standard output and standard error.
-func (c Courier) Login(api, username, password, org, space string, skipSSL bool) ([]byte, error) {
+func (c Courier) Login(foundationURL, username, password, org, space string, skipSSL bool) ([]byte, error) {
 	var s string
 	if skipSSL {
 		s = "--skip-ssl-validation"
 	}
 
-	return c.Executor.Execute("login", "-a", api, "-u", username, "-p", password, "-o", org, "-s", space, s)
+	return c.Executor.Execute("login", "-a", foundationURL, "-u", username, "-p", password, "-o", org, "-s", space, s)
 }
 
 // Delete runs the Cloud Foundry delete command.
@@ -34,8 +34,8 @@ func (c Courier) Delete(appName string) ([]byte, error) {
 // Push runs the Cloud Foundry push command.
 //
 // Returns the combined standard output and standard error.
-func (c Courier) Push(appName, appLocation string, instances uint16) ([]byte, error) {
-	return c.Executor.ExecuteInDirectory(appLocation, "push", appName, "-i", fmt.Sprint(instances))
+func (c Courier) Push(appName, appLocation, hostname string, instances uint16) ([]byte, error) {
+	return c.Executor.ExecuteInDirectory(appLocation, "push", appName, "-i", fmt.Sprint(instances), "-n", hostname)
 }
 
 // Rename runs the Cloud Foundry rename command.
@@ -48,8 +48,8 @@ func (c Courier) Rename(appName, newAppName string) ([]byte, error) {
 // MapRoute runs the Cloud Foundry map-route command.
 //
 // Returns the combined standard output and standard error.
-func (c Courier) MapRoute(appName, domain string) ([]byte, error) {
-	return c.Executor.Execute("map-route", appName, domain, "-n", appName)
+func (c Courier) MapRoute(appName, domain, hostname string) ([]byte, error) {
+	return c.Executor.Execute("map-route", appName, domain, "-n", hostname)
 }
 
 // Logs runs the Cloud Foundry logs command.

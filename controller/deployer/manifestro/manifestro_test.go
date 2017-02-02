@@ -84,10 +84,8 @@ applications:
 		Context("when applications is not found", func() {
 			It("returns nil", func() {
 				manifest := `---
-host: dispatch-dev
-domain: auth-platform-sandbox.allstate.com
 env:
-  DISPATCH_BACKEND_URL: https://dispatch-server-dev.apps.nonprod-mpn.ro11.allstate.com
+  COOL_DINOSAUR: majungasaurus
 `
 				result := GetInstances(manifest)
 

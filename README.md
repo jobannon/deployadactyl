@@ -9,7 +9,7 @@
 [![Slack Status](https://deployadactyl-invite.cfapps.io/badge.svg)](https://deployadactyl-invite.cfapps.io)
 [![GoDoc](https://godoc.org/github.com/compozed/deployadactyl?status.svg)](https://godoc.org/github.com/compozed/deployadactyl)
 
-Deployadactyl is a Go library for deploying applications to multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push your application it will rollback to the previous version. It also utilizes Go channels for concurrent deployments across the multiple Cloud Foundry instances.
+Deployadactyl is a Go library for deploying applications to multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push an application it will rollback to the previous version. It also utilizes Go channels for concurrent deployments across the multiple Cloud Foundry instances.
 
 <!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
@@ -18,9 +18,11 @@ Deployadactyl is a Go library for deploying applications to multiple [Cloud Foun
 - [Usage Requirements](#usage-requirements)
 	- [Dependencies](#dependencies)
 	- [Configuration File](#configuration-file)
-		- [Example Configuration Yaml](#example-configuration-yaml)
+		- [Example Configuration yml](#example-configuration-yml)
 		- [Environment Variables](#environment-variables)
+- [How to Download Dependencies](#how-to-download-dependencies)
 - [How To Run Deployadactyl](#how-to-run-deployadactyl)
+- [How to Push Deployadactyl to Cloud Foundry](#how-to-push-deployadactyl-to-cloud-foundry)
 	- [Available Flags](#available-flags)
 	- [API](#api)
 		- [Example Curl](#example-curl)
@@ -34,7 +36,7 @@ Deployadactyl is a Go library for deploying applications to multiple [Cloud Foun
 
 ## How It Works
 
-Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to push your application. The general flow is to get a list of Cloud Foundry instances, check that the instances are available, download your artifact, log into each instance, and concurrently call `cf push` in the deploying applications directory. If your application fails to deploy on any instance, Deployadactyl will automatically roll the application back to the previous version.
+Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to push an application. The general flow is to get a list of Cloud Foundry instances, check that the instances are available, download an artifact, log into each instance, and concurrently call `cf push` in the deploying applications directory. If an application fails to deploy on any instance, Deployadactyl will automatically roll the application back to the previous version.
 
 ## Why Use Deployadactyl?
 
@@ -62,9 +64,9 @@ Deployadactyl has the following dependencies within the environment:
 
 ### Configuration File
 
-Deployadactyl needs a `yaml` configuration file to specify your environments. Each environment has a name, domain and a list of foundations.
+Deployadactyl needs a `yml` configuration file to specify environments to deploy to. Each environment has a name, domain and a list of foundations.
 
-The configuration file can be placed anywhere within your project directory as long as you specify the location.
+The configuration file can be placed anywhere within the Deployadactyl directory, or outside, as long as the location is specified when running the server.
 
 |**Param**|**Necessity**|**Type**|**Description**|
 |---|:---:|---|---|
@@ -76,7 +78,7 @@ The configuration file can be placed anywhere within your project directory as l
 |`disable_first_deploy_rollback` |*Optional*|`bool`| Used to disable automatic rollback on first deploy so that initial logs are kept.|
 |`instances` |*Optional*|`int`| Used to set the number of instances an application is deployed with. If the number of instances is specified in a Cloud Foundry manifest, that will be used instead. |
 
-#### Example Configuration Yaml
+#### Example Configuration yml
 
 ```yaml
 ---
@@ -115,9 +117,25 @@ $ export CF_PASSWORD=some-password
 
 *Optional:* The log level can be changed by defining `DEPLOYADACTYL_LOGLEVEL`. `DEBUG` is the default log level.
 
+## How to Download Dependencies
+
+We use [Godeps](https://github.com/tools/godep) to vendor our dependencies. To grab the dependencies and save them to the vendor folder, run the following commands:
+
+```bash
+$ go get -u github.com/tools/godep
+$ rm -rf Godeps                      # this will clean the repo of it's dependencies
+$ godep save ./...
+```
+
+or
+
+```bash
+$ make dependencies
+```
+
 ## How To Run Deployadactyl
 
-After a configuration yaml has been created and environment variables have been set, the server can be run using the following commands:
+After a [configuration file](#configuration-file) has been created and environment variables have been set, the server can be run using the following commands:
 
 ```bash
 $ go run server.go
@@ -127,6 +145,21 @@ or
 
 ```bash
 $ go build && ./deployadactyl
+```
+
+## How to Push Deployadactyl to Cloud Foundry
+
+To push Deployadactyl to Cloud Foundry, edit the `manifest.yml` to include the `CF_USERNAME` and `CF_PASSWORD` environment variables. In addition, be sure to create a `config.yml`. Then you can push to Cloud Foundry like normal:
+
+```bash
+$ cf login
+$ cf push
+```
+
+or
+
+```bash
+$ make push
 ```
 
 ### Available Flags
@@ -163,7 +196,7 @@ With Deployadactyl you can optionally register event handlers to perform any add
 |`deploy.failure`|[DeployEventData](structs/deploy_event_data.go)|When a deployment fails
 |`deploy.error`|[DeployEventData](structs/deploy_event_data.go)|When a deployment throws an error
 |`deploy.finish`|[DeployEventData](structs/deploy_event_data.go)|When a deployment finishes, regardless of success or failure
-|`validate.foundationsUnavailable`|[PrecheckerEventData](structs/prechecker_event_data.go)|When a foundation you're deploying to is down
+|`validate.foundationsUnavailable`|[PrecheckerEventData](structs/prechecker_event_data.go)|When a foundation you're deploying to is not running
 
 ### Event Handler Example
 

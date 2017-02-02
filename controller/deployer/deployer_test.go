@@ -355,22 +355,11 @@ applications:
 
 	Describe("not finding an environment in the config", func() {
 		It("returns an error and an http.StatusInternalServerError", func() {
-			deployer = Deployer{
-				config.Config{},
-				blueGreener,
-				fetcher,
-				prechecker,
-				eventManager,
-				randomizerMock,
-				log,
-				&afero.Afero{Fs: afero.NewMemMapFs()},
-			}
-
-			statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/json", response)
-			Expect(err).To(MatchError(fmt.Sprintf("environment not found: %s", environment)))
+			statusCode, err := deployer.Deploy(req, "doesnt_exist", org, space, appName, "application/json", response)
+			Expect(err).To(MatchError(EnvironmentNotFoundError{"doesnt_exist"}))
 
 			Expect(statusCode).To(Equal(http.StatusInternalServerError))
-			Expect(response.String()).To(ContainSubstring(fmt.Sprintf("environment not found: %s", environment)))
+			Expect(response.String()).To(ContainSubstring("environment not found: doesnt_exist"))
 		})
 	})
 

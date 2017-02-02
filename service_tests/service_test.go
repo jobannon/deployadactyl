@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
@@ -36,10 +37,8 @@ environments:
 var _ = Describe("Service", func() {
 
 	var (
-		err                 error
 		deployadactylServer *httptest.Server
 		artifactServer      *httptest.Server
-		creator             Creator
 		org                 = randomizer.StringRunes(10)
 		space               = randomizer.StringRunes(10)
 		appName             = randomizer.StringRunes(10)
@@ -51,7 +50,7 @@ var _ = Describe("Service", func() {
 
 		Expect(ioutil.WriteFile(CONFIGPATH, []byte(TESTCONFIG), 0644)).To(Succeed())
 
-		creator, err = New("debug", CONFIGPATH)
+		creator, err := mocks.NewCreator("debug", CONFIGPATH)
 		Expect(err).ToNot(HaveOccurred())
 
 		deployadactylHandler := creator.CreateControllerHandler()
@@ -93,7 +92,7 @@ var _ = Describe("Service", func() {
 
 				Expect(resp.StatusCode).To(Equal(http.StatusOK), string(responseBody))
 
-				fmt.Fprintf(GinkgoWriter, "\nUser Output:\n%s\n%s\n%s", strings.Repeat("-", 60), string(responseBody), strings.Repeat("-", 60))
+				fmt.Fprintf(GinkgoWriter, "\nUser Output:\n%s\n%s\n%s\n", strings.Repeat("-", 60), string(responseBody), strings.Repeat("-", 60))
 			})
 		})
 
@@ -116,6 +115,8 @@ var _ = Describe("Service", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(resp.StatusCode).To(Equal(http.StatusOK), string(responseBody))
+
+				fmt.Fprintf(GinkgoWriter, "\nUser Output:\n%s\n%s\n%s\n", strings.Repeat("-", 60), string(responseBody), strings.Repeat("-", 60))
 			})
 		})
 	})

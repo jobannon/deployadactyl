@@ -12,20 +12,20 @@ import (
 )
 
 const (
-	default_config_file_path = "./config.yml"
-	config_file_arg          = "config"
-	default_log_level        = "DEBUG"
-	log_level_env_var_name   = "DEPLOYADACTYL_LOGLEVEL"
+	defaultConfigFilePath = "./config.yml"
+	configFileArg         = "config"
+	defaultLogLevel       = "DEBUG"
+	logLevelEnvVarName    = "DEPLOYADACTYL_LOGLEVEL"
 )
 
 
 func main() {
-	config := flag.String(config_file_arg, default_config_file_path, "location of the config file")
+	config := flag.String(configFileArg, defaultConfigFilePath, "location of the config file")
 	flag.Parse()
 
-	level := os.Getenv(log_level_env_var_name)
+	level := os.Getenv(logLevelEnvVarName)
 	if level == "" {
-		level = default_log_level
+		level = defaultLogLevel
 	}
 
 	logLevel, err := logging.LogLevel(level)

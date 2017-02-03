@@ -400,37 +400,37 @@ applications:
 			eventManager.EmitCall.Returns.Error = nil
 		})
 
-		Context("when EventManager fails on "+C.DEPLOY_START_EVENT, func() {
+		Context("when EventManager fails on "+C.DeployStartEvent, func() {
 			It("returns an error and an http.StatusInternalServerError", func() {
-				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(C.DEPLOY_START_EVENT+" error"))
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(C.DeployStartEvent+" error"))
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/json", response)
-				Expect(err).To(MatchError(EventError{C.DEPLOY_START_EVENT, errors.New(C.DEPLOY_START_EVENT + " error")}))
+				Expect(err).To(MatchError(EventError{C.DeployStartEvent, errors.New(C.DeployStartEvent + " error")}))
 
 				Expect(statusCode).To(Equal(http.StatusInternalServerError))
-				Expect(response.String()).To(ContainSubstring(C.DEPLOY_START_EVENT + " error"))
+				Expect(response.String()).To(ContainSubstring(C.DeployStartEvent + " error"))
 				Expect(eventManager.EmitCall.TimesCalled).To(Equal(2), eventManagerNotEnoughCalls)
 			})
 
-			Context("when EventManager also fails on "+C.DEPLOY_FINISH_EVENT, func() {
-				It("outputs "+C.DEPLOY_FINISH_EVENT+" error", func() {
-					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(C.DEPLOY_START_EVENT+" error"))
-					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(""+C.DEPLOY_FINISH_EVENT+" error"))
+			Context("when EventManager also fails on "+C.DeployFinishEvent, func() {
+				It("outputs "+C.DeployFinishEvent+" error", func() {
+					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(C.DeployStartEvent+" error"))
+					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(""+C.DeployFinishEvent+" error"))
 
 					statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/json", response)
-					Expect(err).To(MatchError("an error occurred in the " + C.DEPLOY_START_EVENT + " event: " + C.DEPLOY_START_EVENT + " error: an error occurred in the " + C.DEPLOY_FINISH_EVENT + " event: " + C.DEPLOY_FINISH_EVENT + " error"))
+					Expect(err).To(MatchError("an error occurred in the " + C.DeployStartEvent + " event: " + C.DeployStartEvent + " error: an error occurred in the " + C.DeployFinishEvent + " event: " + C.DeployFinishEvent + " error"))
 
 					Expect(statusCode).To(Equal(http.StatusInternalServerError))
-					Expect(response.String()).To(ContainSubstring(C.DEPLOY_START_EVENT + " error"))
-					Expect(response.String()).To(ContainSubstring(C.DEPLOY_FINISH_EVENT + " error"))
+					Expect(response.String()).To(ContainSubstring(C.DeployStartEvent + " error"))
+					Expect(response.String()).To(ContainSubstring(C.DeployFinishEvent + " error"))
 					Expect(eventManager.EmitCall.TimesCalled).To(Equal(2), eventManagerNotEnoughCalls)
 				})
 			})
 		})
 
 		Context("when the blue greener fails", func() {
-			It("returns an error and outputs "+C.DEPLOY_FAILURE_EVENT, func() {
+			It("returns an error and outputs "+C.DeployFailureEvent, func() {
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
@@ -441,12 +441,12 @@ applications:
 				Expect(err).To(MatchError("blue greener failed"))
 
 				Expect(statusCode).To(Equal(http.StatusInternalServerError))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DEPLOY_FAILURE_EVENT))
+				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeployFailureEvent))
 			})
 		})
 
 		Context("when blue greener succeeds", func() {
-			It("does not return an error and outputs a "+C.DEPLOY_SUCCESS_EVENT+" and http.StatusOK", func() {
+			It("does not return an error and outputs a "+C.DeploySuccessEvent+" and http.StatusOK", func() {
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
@@ -455,11 +455,11 @@ applications:
 				Expect(err).To(BeNil())
 
 				Expect(statusCode).To(Equal(http.StatusOK))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DEPLOY_SUCCESS_EVENT))
+				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
 			})
 
-			Context("when emitting a "+C.DEPLOY_SUCCESS_EVENT+" event fails", func() {
-				It("return an error and outputs a "+C.DEPLOY_SUCCESS_EVENT+" and http.StatusOK", func() {
+			Context("when emitting a "+C.DeploySuccessEvent+" event fails", func() {
+				It("return an error and outputs a "+C.DeploySuccessEvent+" and http.StatusOK", func() {
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New("event error"))
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
@@ -469,7 +469,7 @@ applications:
 
 					Expect(statusCode).To(Equal(http.StatusOK))
 					Expect(response.String()).To(ContainSubstring("event error"))
-					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DEPLOY_SUCCESS_EVENT))
+					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
 				})
 			})
 		})
@@ -567,16 +567,16 @@ applications:
 				Eventually(logBuffer).Should(Say("deploying from json request"))
 				Eventually(logBuffer).Should(Say("building deploymentInfo"))
 				Eventually(logBuffer).Should(Say("Deployment Parameters"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DEPLOY_START_EVENT + " event"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DEPLOY_SUCCESS_EVENT + " event"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DEPLOY_FINISH_EVENT + " event"))
+				Eventually(logBuffer).Should(Say("emitting a " + C.DeployStartEvent + " event"))
+				Eventually(logBuffer).Should(Say("emitting a " + C.DeploySuccessEvent + " event"))
+				Eventually(logBuffer).Should(Say("emitting a " + C.DeployFinishEvent + " event"))
 
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
 				Expect(fetcher.FetchCall.Received.Manifest).To(Equal(manifest))
-				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DEPLOY_START_EVENT))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DEPLOY_SUCCESS_EVENT))
-				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.DEPLOY_FINISH_EVENT))
+				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
+				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
+				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.DeployFinishEvent))
 				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
 				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
@@ -603,15 +603,15 @@ applications:
 				Eventually(logBuffer).Should(Say("checking for basic auth"))
 				Eventually(logBuffer).Should(Say("deploying from zip request"))
 				Eventually(logBuffer).Should(Say("Deployment Parameters"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DEPLOY_START_EVENT + " event"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DEPLOY_SUCCESS_EVENT + " event"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DEPLOY_FINISH_EVENT + " event"))
+				Eventually(logBuffer).Should(Say("emitting a " + C.DeployStartEvent + " event"))
+				Eventually(logBuffer).Should(Say("emitting a " + C.DeploySuccessEvent + " event"))
+				Eventually(logBuffer).Should(Say("emitting a " + C.DeployFinishEvent + " event"))
 
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(fetcher.FetchFromZipCall.Received.Request).To(Equal(req))
-				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DEPLOY_START_EVENT))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DEPLOY_SUCCESS_EVENT))
-				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.DEPLOY_FINISH_EVENT))
+				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
+				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
+				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.DeployFinishEvent))
 				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(testManifestLocation))
 				Expect(blueGreener.PushCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))

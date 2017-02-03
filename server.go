@@ -7,19 +7,25 @@ import (
 	"os"
 
 	"github.com/compozed/deployadactyl/creator"
-	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/op/go-logging"
 )
 
+const (
+	defaultConfigFilePath = "./config.yml"
+	configFileArg         = "config"
+	defaultLogLevel       = "DEBUG"
+	logLevelEnvVarName    = "DEPLOYADACTYL_LOGLEVEL"
+)
+
+
 func main() {
-	config := flag.String("config", C.DEFAULT_CONFIG_FILE_PATH, "location of the config file")
-	envVarHandlerEnabled := flag.Bool(C.ENABLE_ENV_VAR_HANDLER_FLAG_ARG, false, "enable the environment variable handler (default: false)")
+	config := flag.String(configFileArg, defaultConfigFilePath, "location of the config file")
 	flag.Parse()
 
-	level := os.Getenv("DEPLOYADACTYL_LOGLEVEL")
+	level := os.Getenv(logLevelEnvVarName)
 	if level == "" {
-		level = C.DEFAULT_LOG_LEVEL
+		level = defaultLogLevel
 	}
 
 	logLevel, err := logging.LogLevel(level)

@@ -14,6 +14,7 @@ import (
 var _ = Describe("Courier", func() {
 	var (
 		appName  string
+		hostname string
 		output   string
 		courier  Courier
 		executor *mocks.Executor
@@ -21,6 +22,7 @@ var _ = Describe("Courier", func() {
 
 	BeforeEach(func() {
 		appName = "appName-" + randomizer.StringRunes(10)
+		hostname = "hostname-" + randomizer.StringRunes(10)
 		output = "output-" + randomizer.StringRunes(10)
 		executor = &mocks.Executor{}
 		courier = Courier{
@@ -92,13 +94,13 @@ var _ = Describe("Courier", func() {
 			var (
 				appLocation  = "appLocation-" + randomizer.StringRunes(10)
 				instances    = uint16(rand.Uint32())
-				expectedArgs = []string{"push", appName, "-i", fmt.Sprint(instances)}
+				expectedArgs = []string{"push", appName, "-i", fmt.Sprint(instances), "-n", hostname}
 			)
 
 			executor.ExecuteInDirectoryCall.Returns.Output = []byte(output)
 			executor.ExecuteInDirectoryCall.Returns.Error = nil
 
-			out, err := courier.Push(appName, appLocation, instances)
+			out, err := courier.Push(appName, appLocation, hostname, instances)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteInDirectoryCall.Received.Args).To(Equal(expectedArgs))
@@ -128,13 +130,13 @@ var _ = Describe("Courier", func() {
 		It("should get a valid Cloud Foundry map-route command", func() {
 			var (
 				domain       = "domain-" + randomizer.StringRunes(10)
-				expectedArgs = []string{"map-route", appName, domain, "-n", appName}
+				expectedArgs = []string{"map-route", appName, domain, "-n", hostname}
 			)
 
 			executor.ExecuteCall.Returns.Output = []byte(output)
 			executor.ExecuteCall.Returns.Error = nil
 
-			out, err := courier.MapRoute(appName, domain)
+			out, err := courier.MapRoute(appName, domain, hostname)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))

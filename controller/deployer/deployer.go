@@ -33,7 +33,6 @@ Environment:  %s,
 Org:          %s,
 Space:        %s,
 AppName:      %s`
-
 )
 
 // Deployer contains the bluegreener for deployments, environment variables, a fetcher for artifacts, a prechecker and event manager.
@@ -59,6 +58,12 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 		appPath                string
 	)
 	defer func() { d.FileSystem.RemoveAll(appPath) }()
+
+	e, ok := environments[environment]
+	if !ok {
+		fmt.Fprintln(response, EnvironmentNotFoundError{environment}.Error())
+		return http.StatusInternalServerError, EnvironmentNotFoundError{environment}
+	}
 
 	d.Log.Debug("prechecking the foundations")
 	err = d.Prechecker.AssertAllFoundationsUp(environments[environment])
@@ -120,7 +125,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	deploymentInfo.Org = org
 	deploymentInfo.Space = space
 	deploymentInfo.AppName = appName
-	deploymentInfo.UUID = d.Randomizer.StringRunes(128)
+	deploymentInfo.UUID = d.Randomizer.StringRunes(10)
 	deploymentInfo.SkipSSL = environments[environment].SkipSSL
 	deploymentInfo.Manifest = string(manifest)
 	deploymentInfo.Domain = environments[environment].Domain
@@ -135,7 +140,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 
 	e, found := environments[deploymentInfo.Environment]
 	if !found {
-		err = d.EventManager.Emit(S.Event{Type: C.DEPLOY_ERROR_EVENT, Data: deployEventData})
+		err = d.EventManager.Emit(S.Event{Type: C.DeployErrorEvent, Data: deployEventData})
 		if err != nil {
 			fmt.Fprintln(response, err)
 		}
@@ -153,11 +158,11 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 
 	defer emitDeployFinish(d, deployEventData, response, &err, &statusCode)
 
-	d.Log.Debug("emitting a deploy.start event")
-	err = d.EventManager.Emit(S.Event{Type: C.DEPLOY_START_EVENT, Data: deployEventData})
+	d.Log.Debugf("emitting a %s event", C.DeployStartEvent)
+	err = d.EventManager.Emit(S.Event{Type: C.DeployStartEvent, Data: deployEventData})
 	if err != nil {
 		fmt.Fprintln(response, err)
-		return http.StatusInternalServerError, EventError{C.DEPLOY_START_EVENT, err}
+		return http.StatusInternalServerError, EventError{C.DeployStartEvent, err}
 	}
 
 	defer emitDeploySuccess(d, deployEventData, response, &err, &statusCode)
@@ -206,21 +211,21 @@ func isJSON(contentType string) bool {
 }
 
 func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, response io.ReadWriter, err *error, statusCode *int) {
-	d.Log.Debugf("emitting a %s event", C.DEPLOY_FINISH_EVENT)
+	d.Log.Debugf("emitting a %s event", C.DeployFinishEvent)
 
-	finishErr := d.EventManager.Emit(S.Event{Type: C.DEPLOY_FINISH_EVENT, Data: deployEventData})
+	finishErr := d.EventManager.Emit(S.Event{Type: C.DeployFinishEvent, Data: deployEventData})
 	if finishErr != nil {
 		fmt.Fprintln(response, finishErr)
 
-		*err = fmt.Errorf("%s: %s", *err, EventError{C.DEPLOY_FINISH_EVENT, finishErr})
+		*err = fmt.Errorf("%s: %s", *err, EventError{C.DeployFinishEvent, finishErr})
 		*statusCode = http.StatusInternalServerError
 	}
 }
 
 func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response io.ReadWriter, err *error, statusCode *int) {
-	deployEvent := S.Event{Type: C.DEPLOY_SUCCESS_EVENT, Data: deployEventData}
+	deployEvent := S.Event{Type: C.DeploySuccessEvent, Data: deployEventData}
 	if *err != nil {
-		deployEvent.Type = C.DEPLOY_FAILURE_EVENT
+		deployEvent.Type = C.DeployFailureEvent
 	}
 
 	d.Log.Debug(fmt.Sprintf("emitting a %s event", deployEvent.Type))

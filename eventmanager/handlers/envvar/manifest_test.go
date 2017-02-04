@@ -5,6 +5,8 @@ import (
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
 
+	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"

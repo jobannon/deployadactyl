@@ -8,15 +8,21 @@ import (
 	"math/rand"
 	"net/http"
 
-	"github.com/compozed/deployadactyl/config"
-	"github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
-	"github.com/compozed/deployadactyl/mocks"
-	"github.com/compozed/deployadactyl/randomizer"
-	S "github.com/compozed/deployadactyl/structs"
+	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
+
+	. "github.com/compozed/deployadactyl/controller/deployer"
 	C "github.com/compozed/deployadactyl/constants"
+	"github.com/compozed/deployadactyl/mocks"
+	"github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/logger"
+	"github.com/compozed/deployadactyl/config"
+	S "github.com/compozed/deployadactyl/structs"
+
 )
 
 const (

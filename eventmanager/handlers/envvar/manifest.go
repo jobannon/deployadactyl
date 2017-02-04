@@ -68,19 +68,6 @@ func CreateManifest(appName string, content string, filesystem *afero.Afero, log
 	return manifest, err
 }
 
-func ReadManifest(path string, logger I.Logger, filesystem *afero.Afero) (manifest *Manifest, err error) {
-
-	file, err := filesystem.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	manifest = &Manifest{Log:logger, FileSystem: filesystem }
-	manifest.Yaml = string(file)
-	_, err = manifest.UnMarshal()
-
-	return manifest, err
-}
 
 // GetInstances reads a Cloud Foundry m as a string and returns the number of Instances
 // defined in the m, if there are any.

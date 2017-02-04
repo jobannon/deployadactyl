@@ -372,3 +372,18 @@ applications:
 
 
 })
+
+func ReadManifest(path string, logger I.Logger, filesystem *afero.Afero) (manifest *Manifest, err error) {
+
+	file, err := filesystem.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	manifest = &Manifest{Log: logger, FileSystem: filesystem }
+	manifest.Yaml = string(file)
+	_, err = manifest.UnMarshal()
+
+	return manifest, err
+}
+

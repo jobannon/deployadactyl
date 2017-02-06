@@ -8,18 +8,21 @@ import (
 	"math/rand"
 	"net/http"
 
-	"github.com/compozed/deployadactyl/config"
-	. "github.com/compozed/deployadactyl/controller/deployer"
-	"github.com/compozed/deployadactyl/logger"
-	"github.com/compozed/deployadactyl/mocks"
-	"github.com/compozed/deployadactyl/randomizer"
-	S "github.com/compozed/deployadactyl/structs"
-	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
+
+	. "github.com/compozed/deployadactyl/controller/deployer"
 	C "github.com/compozed/deployadactyl/constants"
+	"github.com/compozed/deployadactyl/mocks"
+	"github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/logger"
+	"github.com/compozed/deployadactyl/config"
+	S "github.com/compozed/deployadactyl/structs"
+
 )
 
 const (
@@ -59,13 +62,12 @@ var _ = Describe("Deployer", func() {
 		password             string
 		testManifestLocation string
 		response             *bytes.Buffer
-		logBuffer            = NewBuffer()
-
-		deploymentInfo S.DeploymentInfo
-		foundations    []string
-		environments   = map[string]config.Environment{}
-		log            = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
-		af             *afero.Afero
+		logBuffer            *Buffer
+		log                  interfaces.Logger
+		deploymentInfo       S.DeploymentInfo
+		foundations          []string
+		environments         = map[string]config.Environment{}
+		af                   *afero.Afero
 	)
 
 	BeforeEach(func() {
@@ -118,6 +120,7 @@ var _ = Describe("Deployer", func() {
 			Instances:   instances,
 			Manifest:    manifest,
 			Domain:      domain,
+			AppPath:     appPath,
 		}
 
 		foundations = []string{randomizer.StringRunes(10)}
@@ -140,6 +143,9 @@ var _ = Describe("Deployer", func() {
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
 
 		testManifestLocation, _ = af.TempDir("", "")
+
+		logBuffer = NewBuffer()
+		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
 
 		deployer = Deployer{
 			c,

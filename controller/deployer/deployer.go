@@ -14,8 +14,8 @@ import (
 	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/spf13/afero"
 	C "github.com/compozed/deployadactyl/constants"
+	"github.com/spf13/afero"
 )
 
 const (
@@ -129,6 +129,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	deploymentInfo.SkipSSL = environments[environment].SkipSSL
 	deploymentInfo.Manifest = string(manifest)
 	deploymentInfo.Domain = environments[environment].Domain
+	deploymentInfo.AppPath = appPath
 
 	instances := manifestro.GetInstances(deploymentInfo.Manifest)
 	if instances != nil {

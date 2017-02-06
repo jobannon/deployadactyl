@@ -6,6 +6,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
+
 // EventManager has handlers for each registered event type.
 type EventManager struct {
 	handlers map[string][]I.Handler
@@ -26,6 +27,7 @@ func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 		return InvalidArgumentError{}
 	}
 	e.handlers[eventType] = append(e.handlers[eventType], handler)
+	e.Log.Debugf("Handler for [%s] event successfully added!", eventType)
 	return nil
 }
 

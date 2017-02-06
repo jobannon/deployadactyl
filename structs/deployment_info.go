@@ -21,7 +21,3 @@ type DeploymentInfo struct {
 	// Generic map used for users to provide their own deployment properties in JSON format.
 	Data map[string]interface{} `json:"data"`
 }
-
-func (info *DeploymentInfo) HasEnvironmentVariables() (bool) {
-	return info.EnvironmentVariables != nil && len(info.EnvironmentVariables) > 0
-}

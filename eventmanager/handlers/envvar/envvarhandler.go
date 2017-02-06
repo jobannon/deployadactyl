@@ -18,7 +18,7 @@ func (handler Envvarhandler) OnEvent(event S.Event) error {
 
 	info := event.Data.(S.DeployEventData)
 
-	if info.DeploymentInfo == nil || !info.DeploymentInfo.HasEnvironmentVariables() {
+	if info.DeploymentInfo == nil || !deploymentInfoHasEnvironmentVariables(info.DeploymentInfo) {
 		handler.Logger.Info("No Deployment Info or Environment Variables to process!")
 		return nil
 	}
@@ -43,4 +43,8 @@ func (handler Envvarhandler) OnEvent(event S.Event) error {
 	}
 
 	return nil
+}
+
+func deploymentInfoHasEnvironmentVariables(info *S.DeploymentInfo) (bool) {
+	return info.EnvironmentVariables != nil && len(info.EnvironmentVariables) > 0
 }

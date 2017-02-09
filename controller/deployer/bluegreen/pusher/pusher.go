@@ -71,6 +71,7 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 	if err != nil {
 		logs, newErr := p.Courier.Logs(tempAppWithUUID)
 		fmt.Fprintf(response, "\n%s", string(logs))
+		p.Log.Debugf(fmt.Sprintf("logs from %s:\n%s\n%s\n%s", tempAppWithUUID, strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
 		if newErr != nil {
 			return CloudFoundryGetLogsError{err, newErr}
 		}

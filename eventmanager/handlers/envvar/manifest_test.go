@@ -5,11 +5,11 @@ import (
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
 
-	. "github.com/onsi/gomega"
-	. "github.com/onsi/ginkgo"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Manifest Tests", func() {
@@ -26,7 +26,7 @@ var _ = Describe("Manifest Tests", func() {
 		filesystem = &afero.Afero{Fs: afero.NewMemMapFs()}
 		logBuffer = gbytes.NewBuffer()
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")
-		eventHandler = Envvarhandler{Logger: log, FileSystem:filesystem, }
+		eventHandler = Envvarhandler{Logger: log, FileSystem: filesystem}
 		event = S.Event{Type: "test-event", Data: S.DeployEventData{}}
 	})
 
@@ -167,8 +167,8 @@ applications:
 				Expect(len(manifest.Content.Applications[0].Env)).To(Equal(0))
 
 				envs := map[string]string{
-					"bubba": "gump",
-					"shrimp":"co",
+					"bubba":  "gump",
+					"shrimp": "co",
 				}
 				manifest.AddEnvironmentVariables(envs)
 
@@ -370,7 +370,6 @@ applications:
 		})
 	})
 
-
 })
 
 func ReadManifest(path string, logger I.Logger, filesystem *afero.Afero) (manifest *Manifest, err error) {
@@ -380,10 +379,9 @@ func ReadManifest(path string, logger I.Logger, filesystem *afero.Afero) (manife
 		return nil, err
 	}
 
-	manifest = &Manifest{Log: logger, FileSystem: filesystem }
+	manifest = &Manifest{Log: logger, FileSystem: filesystem}
 	manifest.Yaml = string(file)
 	_, err = manifest.UnMarshal()
 
 	return manifest, err
 }
-

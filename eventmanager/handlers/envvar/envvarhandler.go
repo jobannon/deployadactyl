@@ -3,8 +3,8 @@ package handlers
 import (
 	"github.com/spf13/afero"
 
-	S "github.com/compozed/deployadactyl/structs"
 	I "github.com/compozed/deployadactyl/interfaces"
+	S "github.com/compozed/deployadactyl/structs"
 )
 
 type Envvarhandler struct {
@@ -45,6 +45,6 @@ func (handler Envvarhandler) OnEvent(event S.Event) error {
 	return nil
 }
 
-func deploymentInfoHasEnvironmentVariables(info *S.DeploymentInfo) (bool) {
+func deploymentInfoHasEnvironmentVariables(info *S.DeploymentInfo) bool {
 	return info.EnvironmentVariables != nil && len(info.EnvironmentVariables) > 0
 }

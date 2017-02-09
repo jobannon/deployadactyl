@@ -25,7 +25,7 @@ var _ = Describe("Env_Var_Handler", func() {
 		logBuffer = gbytes.NewBuffer()
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")
 		event = S.Event{Type: "test-event", Data: S.DeployEventData{}}
-		eventHandler = Envvarhandler{Logger: log, FileSystem: filesystem, }
+		eventHandler = Envvarhandler{Logger: log, FileSystem: filesystem}
 	})
 
 	Context("when an envvarhandler is called with event without deploy info", func() {

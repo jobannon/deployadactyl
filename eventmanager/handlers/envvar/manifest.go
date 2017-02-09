@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"path"
-	"os"
 	"fmt"
+	"os"
+	"path"
 	"strings"
 
-	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/cloudfoundry-incubator/candiedyaml"
+	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/spf13/afero"
 )
 
@@ -16,26 +16,26 @@ type manifestYaml struct {
 }
 
 type Application struct {
-	Name              string `yaml:"name"`
-	Memory            string `yaml:"memory,omitempty"`
-	Timeout           *uint16 `yaml:"timeout,omitempty"`
-	Instances         *uint16 `yaml:"instances,omitempty"`
-	Path              string `yaml:"path,omitempty"`
-	Java_opts         string `yaml:"JAVA_OPTS,omitempty"`
-	Command           string `yaml:"command,omitempty"`
-	Buildpack         string `yaml:"buildpack,omitempty"`
-	Disk_quota        string `yaml:"disk_quota,omitempty"`
-	Domain            string `yaml:"domain,omitempty"`
+	Name              string   `yaml:"name"`
+	Memory            string   `yaml:"memory,omitempty"`
+	Timeout           *uint16  `yaml:"timeout,omitempty"`
+	Instances         *uint16  `yaml:"instances,omitempty"`
+	Path              string   `yaml:"path,omitempty"`
+	Java_opts         string   `yaml:"JAVA_OPTS,omitempty"`
+	Command           string   `yaml:"command,omitempty"`
+	Buildpack         string   `yaml:"buildpack,omitempty"`
+	Disk_quota        string   `yaml:"disk_quota,omitempty"`
+	Domain            string   `yaml:"domain,omitempty"`
 	Domains           []string `yaml:"domains,omitempty"`
-	Stack             string `yaml:"stack,omitempty"`
-	Health_check_type string `yaml:"health-check-type,omitempty"`
-	Host              string `yaml:"host,omitempty"`
+	Stack             string   `yaml:"stack,omitempty"`
+	Health_check_type string   `yaml:"health-check-type,omitempty"`
+	Host              string   `yaml:"host,omitempty"`
 	Hosts             []string `yaml:"hosts,omitempty"`
-	No_Hostname       string `yaml:"no-hostname,omitempty"`
-	Routes []struct {
+	No_Hostname       string   `yaml:"no-hostname,omitempty"`
+	Routes            []struct {
 		Route string `yaml:"route,omitempty"`
 	} `yaml:"routes,omitempty"`
-	Services []string `yaml:"services,omitempty"`
+	Services []string          `yaml:"services,omitempty"`
 	Env      map[string]string `yaml:"env,omitempty"`
 }
 
@@ -58,7 +58,7 @@ func (e ManifestError) Error() string {
 }
 
 func CreateManifest(appName string, content string, filesystem *afero.Afero, logger I.Logger) (manifest *Manifest, err error) {
-	manifest = &Manifest{Name: appName, Yaml: content, FileSystem: filesystem, Log: logger }
+	manifest = &Manifest{Name: appName, Yaml: content, FileSystem: filesystem, Log: logger}
 	_, err = manifest.UnMarshal()
 
 	if err != nil {
@@ -67,7 +67,6 @@ func CreateManifest(appName string, content string, filesystem *afero.Afero, log
 
 	return manifest, err
 }
-
 
 // GetInstances reads a Cloud Foundry m as a string and returns the number of Instances
 // defined in the m, if there are any.
@@ -144,7 +143,7 @@ func (m *Manifest) AddEnvironmentVariables(env map[string]string) (result bool, 
 	return result, err
 }
 
-func (m *Manifest) HasApplications() (bool) {
+func (m *Manifest) HasApplications() bool {
 
 	var (
 		result bool = true

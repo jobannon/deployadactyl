@@ -67,6 +67,7 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 
 	pushOutput, err := p.Courier.Push(tempAppWithUUID, appPath, deploymentInfo.AppName, deploymentInfo.Instances)
 	response.Write(pushOutput)
+	p.Log.Infof(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
 	if err != nil {
 		logs, newErr := p.Courier.Logs(tempAppWithUUID)
 		fmt.Fprintf(response, "\n%s", string(logs))
@@ -77,7 +78,6 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 		return PushError{}
 	}
 
-	p.Log.Infof(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
 	p.Log.Debugf("mapping route for %s to %s", deploymentInfo.AppName, deploymentInfo.Domain)
 
 	if deploymentInfo.Domain != "" {

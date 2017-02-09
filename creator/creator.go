@@ -20,13 +20,13 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier/executor"
 	"github.com/compozed/deployadactyl/controller/deployer/prechecker"
 	"github.com/compozed/deployadactyl/eventmanager"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
-	"github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.

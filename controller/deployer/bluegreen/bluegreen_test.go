@@ -279,7 +279,7 @@ var _ = Describe("Bluegreen", func() {
 			})
 		})
 
-		It("should not rollback any pushes on the first deploy when first deploy rollback is disabled", func() {
+		It("should not rollback any pushes on the first deploy", func() {
 			for _, pusher := range pushers {
 				pusher.LoginCall.Write.Output = loginOutput
 				pusher.PushCall.Write.Output = pushOutput

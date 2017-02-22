@@ -41,7 +41,7 @@ func (e RenameError) Error() string {
 type PushError struct{}
 
 func (e PushError) Error() string {
-	return "push failed: check the Cloud Foundry output above for more information"
+	return "check the Cloud Foundry output above for more information"
 }
 
 type MapRouteError struct{}

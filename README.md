@@ -77,7 +77,6 @@ The configuration file can be placed anywhere within the Deployadactyl directory
 |`foundations` |**Required**|`[]string`|A list of Cloud Foundry instance URLs.|
 |`authenticate` |*Optional*|`bool`| Used to specify if basic authentication is required for users. See the [authentication section](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-v1.0.0#authentication) in the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) for more details|
 |`skip_ssl` |*Optional*|`bool`| Used to skip SSL verification when Deployadactyl logs into Cloud Foundry.|
-|`disable_first_deploy_rollback` |*Optional*|`bool`| Used to disable automatic rollback on first deploy so that initial logs are kept.|
 |`instances` |*Optional*|`int`| Used to set the number of instances an application is deployed with. If the number of instances is specified in a Cloud Foundry manifest, that will be used instead. |
 
 #### Example Configuration yml
@@ -92,7 +91,6 @@ environments:
     - https://preproduction.foundation-2.example.com
     authenticate: false
     skip_ssl: true
-    disable_first_deploy_rollback: true
     instances: 2
 
   - name: production
@@ -104,7 +102,6 @@ environments:
     - https://production.foundation-4.example.com
     authenticate: true
     skip_ssl: false
-    disable_first_deploy_rollback: false
     instances: 4
 ```
 

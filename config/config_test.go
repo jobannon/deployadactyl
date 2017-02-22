@@ -29,7 +29,6 @@ environments:
   - api3.example.com
   - api4.example.com
   skip_ssl: false
-  disable_first_deploy_rollback: true
 `
 	badConfigPath = "./test_bad_config.yml"
 )
@@ -58,12 +57,11 @@ var _ = Describe("Config", func() {
 				Instances:   3,
 			},
 			"prod": {
-				Name:                       "Prod",
-				Foundations:                []string{"api3.example.com", "api4.example.com"},
-				Domain:                     "example.com",
-				SkipSSL:                    false,
-				DisableFirstDeployRollback: true,
-				Instances:                  1,
+				Name:        "Prod",
+				Foundations: []string{"api3.example.com", "api4.example.com"},
+				Domain:      "example.com",
+				SkipSSL:     false,
+				Instances:   1,
 			},
 		}
 

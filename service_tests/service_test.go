@@ -24,8 +24,6 @@ const (
 	TESTCONFIG      = `---
 environments:
 - name: Test
-  domain: test.example.com
-  skip_ssl: true
   foundations:
   - api1.example.com
   - api2.example.com

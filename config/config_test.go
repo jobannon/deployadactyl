@@ -132,8 +132,9 @@ var _ = Describe("Config", func() {
 			It("returns an error when name is missing", func() {
 				testBadConfig := `---
 environments:
-- foundations: []
-  domain: test.example.com
+  - name:
+    foundations:
+    - api1.example.com
 `
 				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 
@@ -148,20 +149,6 @@ environments:
 environments:
 - name: production
   domain: test.example.com
-`
-				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
-
-				badConfig, err := Custom(env.Get, badConfigPath)
-				Expect(err).To(MatchError(MissingParameterError{}))
-
-				Expect(badConfig.Environments).To(BeEmpty())
-			})
-
-			It("returns an error when domain is missing", func() {
-				testBadConfig := `---
-environments:
-- name: production
-  foundations: []
 `
 				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 

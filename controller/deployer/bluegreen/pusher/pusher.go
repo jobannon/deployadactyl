@@ -15,9 +15,10 @@ const TemporaryNameSuffix = "-new-build-"
 // Pusher has a courier used to push applications to Cloud Foundry.
 // It represents logging into a single foundation to perform operations.
 type Pusher struct {
-	Courier   I.Courier
-	Log       I.Logger
-	appExists bool
+	Courier       I.Courier
+	HealthChecker I.HealthChecker
+	Log           I.Logger
+	appExists     bool
 }
 
 // Login will login to a Cloud Foundry instance.
@@ -95,6 +96,17 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 		}
 		p.Log.Debugf(string(mapRouteOutput))
 		p.Log.Infof("application route created at %s.%s", deploymentInfo.AppName, deploymentInfo.Domain)
+	}
+
+	if deploymentInfo.HealthCheckEndpoint != "" {
+		p.Log.Debugf(fmt.Sprintf("attempting to health check %s with endpoint %s", tempAppWithUUID, deploymentInfo.HealthCheckEndpoint))
+		err = p.HealthChecker.Check(deploymentInfo.HealthCheckEndpoint, fmt.Sprintf("https://%s.%s", tempAppWithUUID, deploymentInfo.Domain))
+		if err != nil {
+			fmt.Fprintf(response, "health check failed for endpoint: %s", deploymentInfo.HealthCheckEndpoint)
+			return err
+		}
+
+		p.Log.Info("finished health check successfully")
 	}
 
 	return nil

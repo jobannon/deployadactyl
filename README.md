@@ -178,7 +178,7 @@ curl -X POST \
      -u your_username:your_password \
      -H "Accept: application/json" \
      -H "Content-Type: application/json" \
-     -d '{ "artifact_url": "https://example.com/lib/release/my_artifact.jar"}' \
+     -d '{ "artifact_url": "https://example.com/lib/release/my_artifact.jar", "health_check_endpoint": "/health" }' \
      https://preproduction.example.com/v1/apps/environment/org/space/t-rex
 ```
 

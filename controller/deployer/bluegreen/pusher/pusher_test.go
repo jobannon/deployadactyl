@@ -19,8 +19,9 @@ import (
 
 var _ = Describe("Pusher", func() {
 	var (
-		courier *mocks.Courier
-		pusher  Pusher
+		courier       *mocks.Courier
+		pusher        Pusher
+		healthchecker *mocks.HealthChecker
 
 		foundationURL  string
 		username       string
@@ -33,6 +34,8 @@ var _ = Describe("Pusher", func() {
 		appName        string
 		instances      uint16
 		randomUUID     string
+		randomEndpoint string
+		randomURL      string
 		deploymentInfo S.DeploymentInfo
 		response       *Buffer
 		logBuffer      *Buffer
@@ -40,6 +43,7 @@ var _ = Describe("Pusher", func() {
 
 	BeforeEach(func() {
 		courier = &mocks.Courier{}
+		healthchecker = &mocks.HealthChecker{}
 
 		foundationURL = "foundationURL-" + randomizer.StringRunes(10)
 		username = "username-" + randomizer.StringRunes(10)
@@ -51,25 +55,29 @@ var _ = Describe("Pusher", func() {
 		appName = "appName-" + randomizer.StringRunes(10)
 		randomUUID = randomizer.StringRunes(10)
 		instances = uint16(rand.Uint32())
+		randomEndpoint = "randomEndpoint-" + randomizer.StringRunes(10)
+		randomURL = "randomURL-" + randomizer.StringRunes(10)
 
 		response = NewBuffer()
 		logBuffer = NewBuffer()
 
 		pusher = Pusher{
-			Courier: courier,
-			Log:     logger.DefaultLogger(logBuffer, logging.DEBUG, "extractor_test"),
+			Courier:       courier,
+			HealthChecker: healthchecker,
+			Log:           logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
 		}
 
 		deploymentInfo = S.DeploymentInfo{
-			Username:  username,
-			Password:  password,
-			Org:       org,
-			Space:     space,
-			AppName:   appName,
-			SkipSSL:   skipSSL,
-			Instances: instances,
-			Domain:    domain,
-			UUID:      randomUUID,
+			Username:            username,
+			Password:            password,
+			Org:                 org,
+			Space:               space,
+			AppName:             appName,
+			SkipSSL:             skipSSL,
+			Instances:           instances,
+			Domain:              domain,
+			UUID:                randomUUID,
+			HealthCheckEndpoint: randomEndpoint,
 		}
 	})
 
@@ -200,6 +208,53 @@ var _ = Describe("Pusher", func() {
 					err := pusher.Push(appPath, deploymentInfo, response)
 
 					Expect(err).To(MatchError(CloudFoundryGetLogsError{errors.New("map route failed"), errors.New("logs error")}))
+				})
+			})
+		})
+
+		Describe("checking the health of an endpoint ", func() {
+			Context("when the endpoint returns a http.StatusOK", func() {
+				It("does not return an error", func() {
+
+					err := pusher.Push(appPath, deploymentInfo, response)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(healthchecker.CheckCall.Received.Endpoint).To(Equal(randomEndpoint))
+					Expect(healthchecker.CheckCall.Received.URL).To(Equal(fmt.Sprintf("https://%s.%s/%s", appName+TemporaryNameSuffix+randomUUID, domain, randomEndpoint)))
+
+					Eventually(logBuffer).Should(Say("finished health check successfully"))
+				})
+			})
+
+			Context("when the endpoint does not return a http.StatusOK", func() {
+				It("does not return an error", func() {
+					healthchecker.CheckCall.Returns.Error = errors.New("health check error")
+
+					err := pusher.Push(appPath, deploymentInfo, response)
+
+					Expect(err).To(MatchError(errors.New("health check error")))
+				})
+
+				It("logs the error", func() {
+					healthchecker.CheckCall.Returns.Error = errors.New("health check error")
+
+					pusher.Push(appPath, deploymentInfo, response)
+
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("attempting to health check %s with endpoint %s", appName+TemporaryNameSuffix+randomUUID, randomEndpoint)))
+					Eventually(response).Should(Say(fmt.Sprintf("health check failed for endpoint: %s", randomEndpoint)))
+				})
+			})
+
+			Context("when a healthcheck endpoint is not provided", func() {
+				It("return nil and not perform the health check", func() {
+					deploymentInfo.HealthCheckEndpoint = ""
+					err := pusher.Push(appPath, deploymentInfo, response)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(healthchecker.CheckCall.Received.Endpoint).To(BeEmpty())
+					Expect(healthchecker.CheckCall.Received.URL).To(BeEmpty())
+
+					Eventually(logBuffer).ShouldNot(Say("finished health check successfully"))
 				})
 			})
 		})

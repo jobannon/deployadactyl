@@ -70,7 +70,8 @@ var _ = Describe("Service", func() {
 		Context("receiving an artifact url", func() {
 			It("can deploy an application without the internet", func() {
 				j, err := json.Marshal(gin.H{
-					"artifact_url": artifactServer.URL,
+					"artifact_url":          artifactServer.URL,
+					"health_check_endpoint": "/health",
 				})
 				Expect(err).ToNot(HaveOccurred())
 				jsonBuffer := bytes.NewBuffer(j)
@@ -82,6 +83,7 @@ var _ = Describe("Service", func() {
 				req.Header.Add("Content-Type", "application/json")
 
 				client := &http.Client{}
+
 				resp, err := client.Do(req)
 				Expect(err).ToNot(HaveOccurred())
 

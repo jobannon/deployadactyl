@@ -33,7 +33,6 @@ var _ = Describe("Env_Var_Handler", func() {
 
 			Expect(eventHandler.OnEvent(event)).To(Succeed())
 		})
-
 	})
 
 	Context("when an envvarhandler is called with event without env variables", func() {
@@ -43,7 +42,6 @@ var _ = Describe("Env_Var_Handler", func() {
 
 			Expect(eventHandler.OnEvent(event)).To(Succeed())
 		})
-
 	})
 
 	Context("when an envvarhandler is called with event with env variables", func() {
@@ -99,7 +97,5 @@ var _ = Describe("Env_Var_Handler", func() {
 
 			Expect(err).ToNot(BeNil())
 		})
-
 	})
-
 })

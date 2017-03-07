@@ -131,6 +131,7 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 	courier.MapRouteCall.Returns.Error = nil
 	courier.ExistsCall.Returns.Bool = false
 	courier.CleanUpCall.Returns.Error = nil
+	courier.ExistsCall.Returns.Bool = true
 
 	p := &pusher.Pusher{
 		Courier: courier,

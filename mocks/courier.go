@@ -73,6 +73,18 @@ type Courier struct {
 		}
 	}
 
+	UnmapRouteCall struct {
+		Received struct {
+			AppName  string
+			Domain   string
+			Hostname string
+		}
+		Returns struct {
+			Output []byte
+			Error  error
+		}
+	}
+
 	ExistsCall struct {
 		Received struct {
 			AppName string
@@ -155,6 +167,15 @@ func (c *Courier) MapRoute(appName, domain, hostname string) ([]byte, error) {
 	c.MapRouteCall.Received.Hostname = hostname
 
 	return c.MapRouteCall.Returns.Output, c.MapRouteCall.Returns.Error
+}
+
+// UnmapRoute mock method.
+func (c *Courier) UnmapRoute(appName, domain, hostname string) ([]byte, error) {
+	c.UnmapRouteCall.Received.AppName = appName
+	c.UnmapRouteCall.Received.Domain = domain
+	c.UnmapRouteCall.Received.Hostname = hostname
+
+	return c.UnmapRouteCall.Returns.Output, c.UnmapRouteCall.Returns.Error
 }
 
 // Logs mock method.

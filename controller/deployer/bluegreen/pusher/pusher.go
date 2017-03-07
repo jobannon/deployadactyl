@@ -104,6 +104,13 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 // rename the the newly pushed application to the appName.
 func (p Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
 	if p.appExists {
+		_, err := p.Courier.UnmapRoute(deploymentInfo.AppName, deploymentInfo.Domain, deploymentInfo.AppName)
+		if err != nil {
+			p.Log.Errorf("could not unmap %s", deploymentInfo.AppName)
+		} else {
+			p.Log.Infof("unmapped route %s", deploymentInfo.AppName)
+		}
+
 		out, err := p.Courier.Delete(deploymentInfo.AppName)
 		if err != nil {
 			p.Log.Errorf("could not delete %s", deploymentInfo.AppName)

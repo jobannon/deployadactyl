@@ -52,6 +52,13 @@ func (c Courier) MapRoute(appName, domain, hostname string) ([]byte, error) {
 	return c.Executor.Execute("map-route", appName, domain, "-n", hostname)
 }
 
+// UnmapRoute runs the Cloud Foundry unmap-route command.
+//
+// Returns the combined standard output and standard error.
+func (c Courier) UnmapRoute(appName, domain, hostname string) ([]byte, error) {
+	return c.Executor.Execute("unmap-route", appName, domain, "-n", hostname)
+}
+
 // Logs runs the Cloud Foundry logs command.
 //
 // Returns the combined standard output and standard error.

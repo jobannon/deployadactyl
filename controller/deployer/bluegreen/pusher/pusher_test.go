@@ -290,9 +290,24 @@ var _ = Describe("Pusher", func() {
 				pusher.Exists(appName)
 				Expect(pusher.FinishPush(deploymentInfo)).To(Succeed())
 
+				Expect(courier.UnmapRouteCall.Received.AppName).To(Equal(appName))
 				Expect(courier.DeleteCall.Received.AppName).To(Equal(appName))
 
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("deleted %s", appName)))
+			})
+
+			Context("when unmapping the route fails", func() {
+				It("only logs an error", func() {
+					courier.ExistsCall.Returns.Bool = true
+					courier.UnmapRouteCall.Returns.Error = errors.New("Unmap Error")
+
+					pusher.Exists(appName)
+
+					err := pusher.FinishPush(deploymentInfo)
+					Expect(err).ToNot(HaveOccurred())
+
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not unmap %s", appName)))
+				})
 			})
 
 			Context("when deleting the original app fails", func() {

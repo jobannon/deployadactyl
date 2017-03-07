@@ -138,13 +138,13 @@ $ make dependencies
 After a [configuration file](#configuration-file) has been created and environment variables have been set, the server can be run using the following commands:
 
 ```bash
-$ go run server.go
+$ cd ~/go/src/github.com/compozed/deployadactyl && go run server.go
 ```
 
 or
 
 ```bash
-$ go build && ./deployadactyl
+$ cd ~/go/src/github.com/compozed/deployadactyl && go build && ./deployadactyl
 ```
 
 ## How to Push Deployadactyl to Cloud Foundry

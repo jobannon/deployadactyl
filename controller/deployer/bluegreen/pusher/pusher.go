@@ -10,15 +10,18 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
+// TemporaryNameSuffix is used when deploying the new application in order to
+// not overide the existing application name.
 const TemporaryNameSuffix = "-new-build-"
 
 // Pusher has a courier used to push applications to Cloud Foundry.
 // It represents logging into a single foundation to perform operations.
 type Pusher struct {
-	Courier       I.Courier
-	HealthChecker I.HealthChecker
-	Log           I.Logger
-	appExists     bool
+	Courier         I.Courier
+	HealthChecker   I.HealthChecker
+	Log             I.Logger
+	appExists       bool
+	tempAppWithUUID string
 }
 
 // Login will login to a Cloud Foundry instance.
@@ -55,24 +58,24 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, res
 // It will map a load balanced domain if provided in the config.yml.
 //
 // Returns Cloud Foundry logs if there is an error.
-func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
+func (p Pusher) Push(appPath, foundationURL string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
 
-	tempAppWithUUID := deploymentInfo.AppName + TemporaryNameSuffix + deploymentInfo.UUID
+	p.tempAppWithUUID = deploymentInfo.AppName + TemporaryNameSuffix + deploymentInfo.UUID
 
 	if !p.appExists {
 		p.Log.Infof("new app detected")
 	}
 
-	p.Log.Debugf("pushing app %s to %s", tempAppWithUUID, deploymentInfo.Domain)
-	p.Log.Debugf("tempdir for app %s: %s", tempAppWithUUID, appPath)
+	p.Log.Debugf("pushing app %s to %s", p.tempAppWithUUID, deploymentInfo.Domain)
+	p.Log.Debugf("tempdir for app %s: %s", p.tempAppWithUUID, appPath)
 
-	pushOutput, err := p.Courier.Push(tempAppWithUUID, appPath, deploymentInfo.AppName, deploymentInfo.Instances)
+	pushOutput, err := p.Courier.Push(p.tempAppWithUUID, appPath, deploymentInfo.AppName, deploymentInfo.Instances)
 	response.Write(pushOutput)
 	p.Log.Infof(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
 	if err != nil {
-		logs, newErr := p.Courier.Logs(tempAppWithUUID)
+		logs, newErr := p.Courier.Logs(p.tempAppWithUUID)
 		fmt.Fprintf(response, "\n%s", string(logs))
-		p.Log.Debugf(fmt.Sprintf("logs from %s:\n%s\n%s\n%s", tempAppWithUUID, strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
+		p.Log.Debugf(fmt.Sprintf("logs from %s:\n%s\n%s\n%s", p.tempAppWithUUID, strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
 		if newErr != nil {
 			return CloudFoundryGetLogsError{err, newErr}
 		}
@@ -83,10 +86,10 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 	p.Log.Debugf("mapping route for %s to %s", deploymentInfo.AppName, deploymentInfo.Domain)
 
 	if deploymentInfo.Domain != "" {
-		mapRouteOutput, err := p.Courier.MapRoute(tempAppWithUUID, deploymentInfo.Domain, deploymentInfo.AppName)
+		mapRouteOutput, err := p.Courier.MapRoute(p.tempAppWithUUID, deploymentInfo.Domain, deploymentInfo.AppName)
 		response.Write(mapRouteOutput)
 		if err != nil {
-			logs, newErr := p.Courier.Logs(tempAppWithUUID)
+			logs, newErr := p.Courier.Logs(p.tempAppWithUUID)
 			fmt.Fprintf(response, "\n%s", string(logs))
 			if newErr != nil {
 				return CloudFoundryGetLogsError{err, newErr}
@@ -99,8 +102,8 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 	}
 
 	if deploymentInfo.HealthCheckEndpoint != "" {
-		p.Log.Debugf(fmt.Sprintf("attempting to health check %s with endpoint %s", tempAppWithUUID, deploymentInfo.HealthCheckEndpoint))
-		err = p.HealthChecker.Check(deploymentInfo.HealthCheckEndpoint, fmt.Sprintf("https://%s.%s", tempAppWithUUID, deploymentInfo.Domain))
+		p.Log.Debugf(fmt.Sprintf("attempting to health check %s with endpoint %s", p.tempAppWithUUID, deploymentInfo.HealthCheckEndpoint))
+		err = p.HealthChecker.Check(deploymentInfo.HealthCheckEndpoint, fmt.Sprintf("https://%s.%s", p.tempAppWithUUID, foundationURL))
 		if err != nil {
 			return err
 		}

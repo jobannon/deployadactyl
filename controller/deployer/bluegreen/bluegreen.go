@@ -108,7 +108,7 @@ func (bg BlueGreen) pushAll(appPath string, deploymentInfo S.DeploymentInfo) (ma
 	for i, a := range bg.actors {
 		buffer := bg.buffers[i]
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.Push(appPath, deploymentInfo, buffer)
+			return pusher.Push(appPath, foundationURL, deploymentInfo, buffer)
 		}
 	}
 	for _, a := range bg.actors {

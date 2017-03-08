@@ -26,6 +26,7 @@ type Pusher struct {
 	PushCall struct {
 		Received struct {
 			AppPath        string
+			FoundationURL  string
 			AppExists      bool
 			DeploymentInfo S.DeploymentInfo
 			Out            io.Writer
@@ -82,8 +83,9 @@ func (p *Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, ou
 }
 
 // Push mock method.
-func (p *Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
+func (p *Pusher) Push(appPath, foundationURL string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
 	p.PushCall.Received.AppPath = appPath
+	p.PushCall.Received.FoundationURL = foundationURL
 	p.PushCall.Received.DeploymentInfo = deploymentInfo
 	p.PushCall.Received.Out = out
 

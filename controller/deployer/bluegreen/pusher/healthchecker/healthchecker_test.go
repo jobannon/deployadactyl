@@ -50,7 +50,7 @@ var _ = Describe("Healthchecker", func() {
 				defer testServer.Close()
 
 				err := healthchecker.Check(endpoint, testServer.URL)
-				Expect(err).To(MatchError(HealthCheckError{}))
+				Expect(err).To(MatchError(HealthCheckError{endpoint}))
 
 				Expect(requestURL).To(Equal(endpoint))
 			})

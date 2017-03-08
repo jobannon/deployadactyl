@@ -241,7 +241,6 @@ var _ = Describe("Pusher", func() {
 					pusher.Push(appPath, deploymentInfo, response)
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("attempting to health check %s with endpoint %s", appName+TemporaryNameSuffix+randomUUID, randomEndpoint)))
-					Eventually(response).Should(Say(fmt.Sprintf("health check failed for endpoint: %s", randomEndpoint)))
 				})
 			})
 

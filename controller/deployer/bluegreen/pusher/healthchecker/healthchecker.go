@@ -13,14 +13,14 @@ type HealthChecker struct{}
 // status and return an error if it is not http.StatusOK.
 func (h HealthChecker) Check(endpoint, serverURL string) error {
 
-	endpoint = strings.TrimPrefix(endpoint, "/")
-	resp, err := http.Get(fmt.Sprintf("%s/%s", serverURL, endpoint))
+	trimmedEndpoint := strings.TrimPrefix(endpoint, "/")
+	resp, err := http.Get(fmt.Sprintf("%s/%s", serverURL, trimmedEndpoint))
 	if err != nil {
 		return err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return HealthCheckError{}
+		return HealthCheckError{endpoint}
 	}
 
 	return nil

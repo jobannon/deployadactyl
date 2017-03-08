@@ -102,7 +102,6 @@ func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response i
 		p.Log.Debugf(fmt.Sprintf("attempting to health check %s with endpoint %s", tempAppWithUUID, deploymentInfo.HealthCheckEndpoint))
 		err = p.HealthChecker.Check(deploymentInfo.HealthCheckEndpoint, fmt.Sprintf("https://%s.%s", tempAppWithUUID, deploymentInfo.Domain))
 		if err != nil {
-			fmt.Fprintf(response, "health check failed for endpoint: %s", deploymentInfo.HealthCheckEndpoint)
 			return err
 		}
 

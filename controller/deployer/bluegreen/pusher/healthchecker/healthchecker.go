@@ -6,7 +6,12 @@ import (
 	"strings"
 )
 
-func Check(endpoint, serverURL string) error {
+// HealthChecker will check an endpoint for a http.StatusOK
+type HealthChecker struct{}
+
+// Check takes an endpoint and a serverURL. It does an http.Get to get the response
+// status and return an error if it is not http.StatusOK.
+func (h HealthChecker) Check(endpoint, serverURL string) error {
 
 	endpoint = strings.TrimPrefix(endpoint, "/")
 	resp, err := http.Get(fmt.Sprintf("%s/%s", serverURL, endpoint))

@@ -18,6 +18,7 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier/executor"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/healthchecker"
 	"github.com/compozed/deployadactyl/controller/deployer/prechecker"
 	"github.com/compozed/deployadactyl/eventmanager"
 	"github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
@@ -105,7 +106,8 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 		Courier: courier.Courier{
 			Executor: ex,
 		},
-		Log: c.CreateLogger(),
+		HealthChecker: healthchecker.HealthChecker{},
+		Log:           c.CreateLogger(),
 	}
 
 	return p, nil

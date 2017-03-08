@@ -13,7 +13,14 @@ import (
 
 var _ = Describe("Healthchecker", func() {
 
-	var requestURL string
+	var (
+		requestURL    string
+		healthchecker HealthChecker
+	)
+
+	BeforeEach(func() {
+		healthchecker = HealthChecker{}
+	})
 
 	Describe("checking the health of an endpoint", func() {
 		Context("when the endpoint returns a http.StatusOK", func() {
@@ -25,7 +32,7 @@ var _ = Describe("Healthchecker", func() {
 				}))
 				defer testServer.Close()
 
-				err := Check(endpoint, testServer.URL)
+				err := healthchecker.Check(endpoint, testServer.URL)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(requestURL).To(Equal(endpoint))
@@ -42,7 +49,7 @@ var _ = Describe("Healthchecker", func() {
 				}))
 				defer testServer.Close()
 
-				err := Check(endpoint, testServer.URL)
+				err := healthchecker.Check(endpoint, testServer.URL)
 				Expect(err).To(MatchError(HealthCheckError{}))
 
 				Expect(requestURL).To(Equal(endpoint))
@@ -60,7 +67,7 @@ var _ = Describe("Healthchecker", func() {
 				}))
 				defer testServer.Close()
 
-				err := Check(endpoint, testServer.URL)
+				err := healthchecker.Check(endpoint, testServer.URL)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(requestURL).To(Equal(fmt.Sprintf("%s/%s", testServer.URL, endpoint)))
@@ -76,7 +83,7 @@ var _ = Describe("Healthchecker", func() {
 				}))
 				defer testServer.Close()
 
-				err := Check(endpoint, testServer.URL)
+				err := healthchecker.Check(endpoint, testServer.URL)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(requestURL).To(Equal(fmt.Sprintf("%s%s", testServer.URL, endpoint)))

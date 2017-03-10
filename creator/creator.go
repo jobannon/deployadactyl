@@ -126,6 +126,11 @@ func (c Creator) CreateEventManager() I.EventManager {
 	return c.eventManager
 }
 
+// CreateFileSystem returns a file system.
+func (c Creator) CreateFileSystem() *afero.Afero {
+	return c.fileSystem
+}
+
 func (c Creator) createController() controller.Controller {
 	return controller.Controller{
 		Deployer: c.createDeployer(),
@@ -195,10 +200,6 @@ func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
 		&afero.Afero{Fs: afero.NewOsFs()},
 	}, nil
 
-}
-
-func (c Creator) CreateFileSystem() *afero.Afero {
-	return c.fileSystem
 }
 
 func ensureCLI() error {

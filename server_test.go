@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 
+	"github.com/compozed/deployadactyl/randomizer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -75,6 +76,25 @@ var _ = Describe("Server", func() {
 		})
 	})
 	Describe("command line flags", func() {
+
+		var (
+			cfUsername string
+			cfPassword string
+		)
+
+		BeforeEach(func() {
+			cfUsername = os.Getenv("CF_USERNAME")
+			cfPassword = os.Getenv("CF_PASSWORD")
+
+			os.Setenv("CF_USERNAME", randomizer.StringRunes(10))
+			os.Setenv("CF_PASSWORD", randomizer.StringRunes(10))
+		})
+
+		AfterEach(func() {
+			os.Setenv("CF_USERNAME", cfUsername)
+			os.Setenv("CF_PASSWORD", cfPassword)
+		})
+
 		Describe("config flag", func() {
 			Context("when the config flag is not provided", func() {
 				It("throws an error", func() {

@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
-	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/healthchecker"
+	. "github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
+	"github.com/compozed/deployadactyl/randomizer"
+	S "github.com/compozed/deployadactyl/structs"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,12 +17,12 @@ import (
 var _ = Describe("Healthchecker", func() {
 
 	var (
-		requestURL    string
 		healthchecker HealthChecker
+		requestURL    string
 	)
 
 	BeforeEach(func() {
-		healthchecker = HealthChecker{}
+
 	})
 
 	Describe("checking the health of an endpoint", func() {
@@ -32,7 +35,7 @@ var _ = Describe("Healthchecker", func() {
 				}))
 				defer testServer.Close()
 
-				err := healthchecker.Check(endpoint, testServer.URL)
+				err := healthchecker.Check(testServer.URL, endpoint)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(requestURL).To(Equal(endpoint))
@@ -49,7 +52,7 @@ var _ = Describe("Healthchecker", func() {
 				}))
 				defer testServer.Close()
 
-				err := healthchecker.Check(endpoint, testServer.URL)
+				err := healthchecker.Check(testServer.URL, endpoint)
 				Expect(err).To(MatchError(HealthCheckError{endpoint}))
 
 				Expect(requestURL).To(Equal(endpoint))
@@ -67,7 +70,7 @@ var _ = Describe("Healthchecker", func() {
 				}))
 				defer testServer.Close()
 
-				err := healthchecker.Check(endpoint, testServer.URL)
+				err := healthchecker.Check(testServer.URL, endpoint)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(requestURL).To(Equal(fmt.Sprintf("%s/%s", testServer.URL, endpoint)))
@@ -83,10 +86,69 @@ var _ = Describe("Healthchecker", func() {
 				}))
 				defer testServer.Close()
 
-				err := healthchecker.Check(endpoint, testServer.URL)
+				err := healthchecker.Check(testServer.URL, endpoint)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(requestURL).To(Equal(fmt.Sprintf("%s%s", testServer.URL, endpoint)))
+			})
+		})
+	})
+
+	Describe("event handling", func() {
+		Context("the application is healthy", func() {
+			It("does not return an error", func() {
+				randomAppName := "randomAppName-" + randomizer.StringRunes(10)
+
+				testserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				}))
+
+				event := S.Event{
+					Data: S.PushEventData{
+						TempAppWithUUID: randomAppName,
+						FoundationURL:   fmt.Sprintf("http://api.%s", strings.TrimPrefix(testserver.URL, "http://")),
+						DeploymentInfo: &S.DeploymentInfo{
+							HealthCheckEndpoint: "/health",
+						},
+					},
+				}
+
+				healthchecker = HealthChecker{
+					OldURL: randomAppName + ".api.",
+					NewURL: "",
+				}
+
+				err := healthchecker.OnEvent(event)
+
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("does not return an error", func() {
+				randomAppName := "randomAppName-" + randomizer.StringRunes(10)
+
+				testserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				}))
+
+				event := S.Event{
+					Data: S.PushEventData{
+						TempAppWithUUID: randomAppName,
+						FoundationURL:   testserver.URL,
+						DeploymentInfo: &S.DeploymentInfo{
+							HealthCheckEndpoint: "/health",
+						},
+					},
+				}
+
+				By("not providing OldURL and NewURL")
+				healthchecker = HealthChecker{
+					OldURL: "",
+					NewURL: "",
+				}
+
+				err := healthchecker.OnEvent(event)
+
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})

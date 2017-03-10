@@ -127,9 +127,9 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 	courier.ExistsCall.Returns.Bool = true
 
 	p := &pusher.Pusher{
-		Courier:       courier,
-		HealthChecker: &HealthChecker{},
-		Log:           c.CreateLogger(),
+		Courier:      courier,
+		EventManager: c.CreateEventManager(),
+		Log:          c.CreateLogger(),
 	}
 
 	return p, nil

@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	C "github.com/compozed/deployadactyl/constants"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
 )
@@ -18,7 +19,7 @@ const TemporaryNameSuffix = "-new-build-"
 // It represents logging into a single foundation to perform operations.
 type Pusher struct {
 	Courier         I.Courier
-	HealthChecker   I.HealthChecker
+	EventManager    I.EventManager
 	Log             I.Logger
 	appExists       bool
 	tempAppWithUUID string
@@ -58,7 +59,7 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, res
 // It will map a load balanced domain if provided in the config.yml.
 //
 // Returns Cloud Foundry logs if there is an error.
-func (p Pusher) Push(appPath, foundationURL string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
+func (p Pusher) Push(appPath, foundationURL string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) error {
 
 	p.tempAppWithUUID = deploymentInfo.AppName + TemporaryNameSuffix + deploymentInfo.UUID
 
@@ -97,18 +98,22 @@ func (p Pusher) Push(appPath, foundationURL string, deploymentInfo S.DeploymentI
 
 			return MapRouteError{}
 		}
+
 		p.Log.Debugf(string(mapRouteOutput))
 		p.Log.Infof("application route created at %s.%s", deploymentInfo.AppName, deploymentInfo.Domain)
 	}
 
-	if deploymentInfo.HealthCheckEndpoint != "" {
-		p.Log.Debugf(fmt.Sprintf("attempting to health check %s with endpoint %s", p.tempAppWithUUID, deploymentInfo.HealthCheckEndpoint))
-		err = p.HealthChecker.Check(deploymentInfo.HealthCheckEndpoint, fmt.Sprintf("https://%s.%s", p.tempAppWithUUID, foundationURL))
-		if err != nil {
-			return err
-		}
+	pushData := S.PushEventData{
+		AppPath:         appPath,
+		FoundationURL:   foundationURL,
+		TempAppWithUUID: p.tempAppWithUUID,
+		DeploymentInfo:  &deploymentInfo,
+		Response:        response,
+	}
 
-		p.Log.Info("finished health check successfully")
+	err = p.EventManager.Emit(S.Event{Type: C.PushFinishedEvent, Data: pushData})
+	if err != nil {
+		return err
 	}
 
 	return nil

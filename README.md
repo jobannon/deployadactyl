@@ -165,7 +165,9 @@ $ make push
 
 |**Flag**|**Usage**|
 |---|---|
-|`-config`|location of the config file (default "./config.yml")|
+|`-config`|location of the config file (default "./config.yml")
+|`-envvar`|turns on the environment variable handler that will bind environment variables to your application at deploy time
+|`-health-check`|turns on the health check handler that confirms an application is up and running before finishing a push
 
 ### API
 
@@ -184,9 +186,9 @@ curl -X POST \
 
 ## Event Handling
 
-With Deployadactyl you can optionally register event handlers to perform any additional actions your deployment flow may require. For us, this meant adding handlers that would open and close change records, as well as notify anyone on pager duty of significant events.
+With Deployadactyl you can optionally register event handlers to perform any additional actions your deployment flow may require. For example, you may want to do an additional health check before the new application overwrites the old application.
 
-### Available Emitted Event Types
+### Available Events
 
 |**Event Type**|**Returned Struct**|**Emitted**|
 |---|---|---|---|---|
@@ -195,68 +197,12 @@ With Deployadactyl you can optionally register event handlers to perform any add
 |`deploy.failure`|[DeployEventData](structs/deploy_event_data.go)|When a deployment fails
 |`deploy.error`|[DeployEventData](structs/deploy_event_data.go)|When a deployment throws an error
 |`deploy.finish`|[DeployEventData](structs/deploy_event_data.go)|When a deployment finishes, regardless of success or failure
+|`push.finished`|[PushEventData](structs/push_event_data.go)| Happens before a push finishes. If it receives an error, it will stop the deployment and trigger an undo push
 |`validate.foundationsUnavailable`|[PrecheckerEventData](structs/prechecker_event_data.go)|When a foundation you're deploying to is not running
 
 ### Event Handler Example
 
-```go
-package pagehandler
-
-type Pager interface {
-  Page(description string)
-}
-
-import (
-	DS "github.com/compozed/deployadactyl/structs"
-)
-
-type PageHandler struct {
-	Pager        Pager
-	Environments map[string]bool
-}
-
-func (p PageHandler) OnEvent(event DS.Event) error {
-	var (
-		precheckerEventData = event.Data.(DS.PrecheckerEventData)
-		environmentName     = precheckerEventData.Environment.Name
-		allowPage           = p.Environments[environmentName]
-	)
-
-	if allowPage {
-		p.Pager.Page(precheckerEventData.Description)
-	}
-
-	return nil
-}
-```
-
-```go
-package page
-
-type Page struct {
-  Token string
-  Log   I.Logger
-}
-
-func (p *Page) Page(description string) {
-  // pagerduty code
-}
-```
-
-### Event Handling Example
-
-```go
-  // server.go
-
-  p := pagehandler.PageHandler{Pager: pager, Config: config}
-
-  em := creator.CreateEventManager()
-  em.AddHandler(p, "deploy.start")
-  em.AddHandler(p, "deploy.success")
-  em.AddHandler(p, "deploy.failure")
-  em.AddHandler(p, "deploy.error")
-  em.AddHandler(p, "deploy.finish")
-```
+See the [Health Checker](eventmanager/handlers/healthchecker/healthchecker.go) for an example of how to write an event handler.
 
 ## Contributing
 

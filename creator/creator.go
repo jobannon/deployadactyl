@@ -18,10 +18,8 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier/executor"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/healthchecker"
 	"github.com/compozed/deployadactyl/controller/deployer/prechecker"
 	"github.com/compozed/deployadactyl/eventmanager"
-	"github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
@@ -97,7 +95,7 @@ func (c Creator) CreateListener() net.Listener {
 //
 // Returns a pusher and error.
 func (c Creator) CreatePusher() (I.Pusher, error) {
-	ex, err := executor.New(c.createFileSystem())
+	ex, err := executor.New(c.CreateFileSystem())
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +104,8 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 		Courier: courier.Courier{
 			Executor: ex,
 		},
-		HealthChecker: healthchecker.HealthChecker{},
-		Log:           c.CreateLogger(),
+		EventManager: c.CreateEventManager(),
+		Log:          c.CreateLogger(),
 	}
 
 	return p, nil
@@ -144,16 +142,16 @@ func (c Creator) createDeployer() I.Deployer {
 		EventManager: c.CreateEventManager(),
 		Randomizer:   c.createRandomizer(),
 		Log:          c.CreateLogger(),
-		FileSystem:   c.createFileSystem(),
+		FileSystem:   c.CreateFileSystem(),
 	}
 }
 
 func (c Creator) createFetcher() I.Fetcher {
 	return &artifetcher.Artifetcher{
-		FileSystem: c.createFileSystem(),
+		FileSystem: c.CreateFileSystem(),
 		Extractor: &extractor.Extractor{
 			Log:        c.CreateLogger(),
-			FileSystem: c.createFileSystem(),
+			FileSystem: c.CreateFileSystem(),
 		},
 		Log: c.CreateLogger(),
 	}
@@ -164,7 +162,9 @@ func (c Creator) createRandomizer() I.Randomizer {
 }
 
 func (c Creator) createPrechecker() I.Prechecker {
-	return prechecker.Prechecker{c.CreateEventManager()}
+	return prechecker.Prechecker{
+		EventManager: c.CreateEventManager(),
+	}
 }
 
 func (c Creator) createWriter() io.Writer {
@@ -175,13 +175,6 @@ func (c Creator) createBlueGreener() I.BlueGreener {
 	return bluegreen.BlueGreen{
 		PusherCreator: c,
 		Log:           c.CreateLogger(),
-	}
-}
-
-func (c Creator) CreateEnvVarHandler() I.Handler {
-	return handlers.Envvarhandler{
-		Logger:     c.CreateLogger(),
-		FileSystem: c.createFileSystem(),
 	}
 }
 
@@ -204,7 +197,7 @@ func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
 
 }
 
-func (c Creator) createFileSystem() *afero.Afero {
+func (c Creator) CreateFileSystem() *afero.Afero {
 	return c.fileSystem
 }
 

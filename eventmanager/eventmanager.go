@@ -6,7 +6,6 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
-
 // EventManager has handlers for each registered event type.
 type EventManager struct {
 	handlers map[string][]I.Handler
@@ -14,10 +13,10 @@ type EventManager struct {
 }
 
 // NewEventManager returns an EventManager.
-func NewEventManager(l I.Logger) *EventManager {
+func NewEventManager(log I.Logger) *EventManager {
 	return &EventManager{
 		handlers: make(map[string][]I.Handler),
-		Log:      l,
+		Log:      log,
 	}
 }
 

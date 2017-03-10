@@ -1,4 +1,4 @@
-package handlers
+package envvar_test
 
 import (
 	. "github.com/onsi/ginkgo"

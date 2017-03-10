@@ -6,23 +6,26 @@ import (
 	"net/http"
 	"os"
 
+	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/creator"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/op/go-logging"
-	C "github.com/compozed/deployadactyl/constants"
 )
 
 const (
-	defaultConfigFilePath    = "./config.yml"
-	configFileArg            = "config"
-	defaultLogLevel          = "DEBUG"
-	logLevelEnvVarName       = "DEPLOYADACTYL_LOGLEVEL"
-	envVarHandlerEnabledFlag = "env"
+	defaultConfigFilePath = "./config.yml"
+	defaultLogLevel       = "DEBUG"
+	logLevelEnvVarName    = "DEPLOYADACTYL_LOGLEVEL"
 )
 
 func main() {
-	config := flag.String(configFileArg, defaultConfigFilePath, "location of the config file")
-	envVarHandlerEnabled := flag.Bool(envVarHandlerEnabledFlag, false, "enable environment variable handling")
+	var (
+		config               = flag.String("config", defaultConfigFilePath, "location of the config file")
+		envVarHandlerEnabled = flag.Bool("env", false, "enable environment variable handling")
+		healthCheckEnabled   = flag.Bool("health-check", false, "health checker to check endpoints during a deployment")
+	)
 	flag.Parse()
 
 	level := os.Getenv(logLevelEnvVarName)
@@ -46,10 +49,15 @@ func main() {
 	em := c.CreateEventManager()
 
 	if *envVarHandlerEnabled {
-		log.Infof("Adding Environment Variable Event Handler")
-		em.AddHandler(c.CreateEnvVarHandler(), C.DeployStartEvent)
-	} else {
-		log.Info("No Event Handlers added...")
+		envVarHandler := envvar.Envvarhandler{Logger: c.CreateLogger(), FileSystem: c.CreateFileSystem()}
+		log.Infof("adding environment variable event handler")
+		em.AddHandler(envVarHandler, C.DeployStartEvent)
+	}
+
+	if *healthCheckEnabled {
+		healthHandler := healthchecker.HealthChecker{}
+		log.Infof("health check handler registered")
+		em.AddHandler(healthHandler, C.DeployStartEvent)
 	}
 
 	l := c.CreateListener()

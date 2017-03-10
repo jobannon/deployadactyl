@@ -1,4 +1,4 @@
-package handlers
+package envvar
 
 import (
 	"fmt"

@@ -29,7 +29,7 @@ type Pusher struct {
 			FoundationURL  string
 			AppExists      bool
 			DeploymentInfo S.DeploymentInfo
-			Out            io.Writer
+			Out            io.ReadWriter
 		}
 		Write struct {
 			Output string
@@ -83,7 +83,7 @@ func (p *Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, ou
 }
 
 // Push mock method.
-func (p *Pusher) Push(appPath, foundationURL string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
+func (p *Pusher) Push(appPath, foundationURL string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
 	p.PushCall.Received.AppPath = appPath
 	p.PushCall.Received.FoundationURL = foundationURL
 	p.PushCall.Received.DeploymentInfo = deploymentInfo

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 
+	C "github.com/compozed/deployadactyl/constants"
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
@@ -19,9 +20,9 @@ import (
 
 var _ = Describe("Pusher", func() {
 	var (
-		courier       *mocks.Courier
-		pusher        Pusher
-		healthchecker *mocks.HealthChecker
+		pusher       Pusher
+		courier      *mocks.Courier
+		eventManager *mocks.EventManager
 
 		randomUsername      string
 		randomPassword      string
@@ -42,7 +43,7 @@ var _ = Describe("Pusher", func() {
 
 	BeforeEach(func() {
 		courier = &mocks.Courier{}
-		healthchecker = &mocks.HealthChecker{}
+		eventManager = &mocks.EventManager{}
 
 		randomFoundationURL = "randomFoundationURL-" + randomizer.StringRunes(10)
 		randomUsername = "randomUsername-" + randomizer.StringRunes(10)
@@ -59,10 +60,12 @@ var _ = Describe("Pusher", func() {
 		response = NewBuffer()
 		logBuffer = NewBuffer()
 
+		eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+
 		pusher = Pusher{
-			Courier:       courier,
-			HealthChecker: healthchecker,
-			Log:           logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
+			Courier:      courier,
+			EventManager: eventManager,
+			Log:          logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
 		}
 
 		deploymentInfo = S.DeploymentInfo{
@@ -176,110 +179,64 @@ var _ = Describe("Pusher", func() {
 				})
 			})
 		})
-	})
 
-	Describe("mapping routes to an application", func() {
-		It("maps the route to the app", func() {
-			courier.MapRouteCall.Returns.Output = []byte("mapped route")
-
-			Expect(pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)).To(Succeed())
-
-			Expect(courier.MapRouteCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-			Expect(courier.MapRouteCall.Received.Domain).To(Equal(randomDomain))
-
-			Eventually(response).Should(Say("mapped route"))
-
-			Eventually(logBuffer).Should(Say(fmt.Sprintf("mapping route for %s to %s", randomAppName, randomDomain)))
-		})
-
-		Context("when a randomDomain is not provided", func() {
-			It("does not map the randomDomain", func() {
+		Describe("mapping routes to an application", func() {
+			It("maps the route to the app", func() {
 				courier.MapRouteCall.Returns.Output = []byte("mapped route")
 
-				deploymentInfo.Domain = ""
-
 				Expect(pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)).To(Succeed())
-
-				Expect(courier.MapRouteCall.Received.AppName).To(BeEmpty())
-				Expect(courier.MapRouteCall.Received.Domain).To(BeEmpty())
-
-				Eventually(response).ShouldNot(Say("mapped route"))
-
-				Eventually(logBuffer).ShouldNot(Say(fmt.Sprintf("mapping route for %s to ", randomAppName)))
-			})
-		})
-
-		Context("when MapRoute fails", func() {
-			It("returns an error", func() {
-				courier.MapRouteCall.Returns.Output = []byte("unable to map route")
-				courier.MapRouteCall.Returns.Error = errors.New("map route error")
-
-				err := pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)
-				Expect(err).To(MatchError(MapRouteError{}))
 
 				Expect(courier.MapRouteCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
 				Expect(courier.MapRouteCall.Received.Domain).To(Equal(randomDomain))
 
-				Eventually(response).Should(Say("unable to map route"))
+				Eventually(response).Should(Say("mapped route"))
 
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("mapping route for %s to %s", randomAppName, randomDomain)))
 			})
-		})
 
-		Context("when the courier log call fails", func() {
-			It("returns an error", func() {
-				courier.MapRouteCall.Returns.Error = errors.New("map route failed")
-				courier.LogsCall.Returns.Error = errors.New("logs error")
+			Context("when a randomDomain is not provided", func() {
+				It("does not map the randomDomain", func() {
+					courier.MapRouteCall.Returns.Output = []byte("mapped route")
 
-				err := pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)
+					deploymentInfo.Domain = ""
 
-				Expect(err).To(MatchError(CloudFoundryGetLogsError{errors.New("map route failed"), errors.New("logs error")}))
-			})
-		})
-	})
+					Expect(pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)).To(Succeed())
 
-	Describe("checking the health of an endpoint ", func() {
-		Context("when the endpoint returns a http.StatusOK", func() {
-			It("does not return an error", func() {
+					Expect(courier.MapRouteCall.Received.AppName).To(BeEmpty())
+					Expect(courier.MapRouteCall.Received.Domain).To(BeEmpty())
 
-				err := pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)
-				Expect(err).ToNot(HaveOccurred())
+					Eventually(response).ShouldNot(Say("mapped route"))
 
-				Expect(healthchecker.CheckCall.Received.Endpoint).To(Equal(randomEndpoint))
-				Expect(healthchecker.CheckCall.Received.URL).To(Equal(fmt.Sprintf("https://%s.%s/%s", randomAppName+TemporaryNameSuffix+randomUUID, randomFoundationURL, randomEndpoint)))
-
-				Eventually(logBuffer).Should(Say("finished health check successfully"))
-			})
-		})
-
-		Context("when the endpoint does not return a http.StatusOK", func() {
-			It("does not return an error", func() {
-				healthchecker.CheckCall.Returns.Error = errors.New("health check error")
-
-				err := pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)
-
-				Expect(err).To(MatchError(errors.New("health check error")))
+					Eventually(logBuffer).ShouldNot(Say(fmt.Sprintf("mapping route for %s to ", randomAppName)))
+				})
 			})
 
-			It("logs the error", func() {
-				healthchecker.CheckCall.Returns.Error = errors.New("health check error")
+			Context("when MapRoute fails", func() {
+				It("returns an error", func() {
+					courier.MapRouteCall.Returns.Output = []byte("unable to map route")
+					courier.MapRouteCall.Returns.Error = errors.New("map route error")
 
-				pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)
+					err := pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)
+					Expect(err).To(MatchError(MapRouteError{}))
 
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("attempting to health check %s with endpoint %s", randomAppName+TemporaryNameSuffix+randomUUID, randomEndpoint)))
+					Expect(courier.MapRouteCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
+					Expect(courier.MapRouteCall.Received.Domain).To(Equal(randomDomain))
+
+					Eventually(response).Should(Say("unable to map route"))
+
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("mapping route for %s to %s", randomAppName, randomDomain)))
+				})
 			})
-		})
 
-		Context("when a healthcheck endpoint is not provided", func() {
-			It("return nil and not perform the health check", func() {
-				deploymentInfo.HealthCheckEndpoint = ""
-				err := pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)
-				Expect(err).ToNot(HaveOccurred())
+			Context("when the courier log call fails", func() {
+				It("returns an error", func() {
+					courier.MapRouteCall.Returns.Error = errors.New("map route failed")
+					courier.LogsCall.Returns.Error = errors.New("logs error")
 
-				Expect(healthchecker.CheckCall.Received.Endpoint).To(BeEmpty())
-				Expect(healthchecker.CheckCall.Received.URL).To(BeEmpty())
+					err := pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)
 
-				Eventually(logBuffer).ShouldNot(Say("finished health check successfully"))
+					Expect(err).To(MatchError(CloudFoundryGetLogsError{errors.New("map route failed"), errors.New("logs error")}))
+				})
 			})
 		})
 	})
@@ -436,6 +393,33 @@ var _ = Describe("Pusher", func() {
 			pusher.Exists(randomAppName)
 
 			Expect(courier.ExistsCall.Received.AppName).To(Equal(randomAppName))
+		})
+	})
+
+	Describe("event handling", func() {
+		Context("when a PushFinishedEvent is emitted", func() {
+			It("does not return an error", func() {
+				Expect(pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)).To(Succeed())
+
+				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.PushFinishedEvent))
+			})
+
+			It("has the temporary app name on the event", func() {
+				Expect(pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)).To(Succeed())
+
+				Expect(eventManager.EmitCall.Received.Events[0].Data.(S.PushEventData).TempAppWithUUID).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
+			})
+		})
+
+		Context("when an event fails", func() {
+			It("returns an error", func() {
+				eventManager.EmitCall.Returns.Error[0] = errors.New("event manager error")
+
+				err := pusher.Push(randomAppPath, randomFoundationURL, deploymentInfo, response)
+				Expect(err).To(MatchError("event manager error"))
+
+				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.PushFinishedEvent))
+			})
 		})
 	})
 })

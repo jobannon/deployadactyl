@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path"
 
-	"github.com/compozed/deployadactyl/randomizer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -75,26 +74,8 @@ var _ = Describe("Server", func() {
 			})
 		})
 	})
+
 	Describe("command line flags", func() {
-
-		var (
-			cfUsername string
-			cfPassword string
-		)
-
-		BeforeEach(func() {
-			cfUsername = os.Getenv("CF_USERNAME")
-			cfPassword = os.Getenv("CF_PASSWORD")
-
-			os.Setenv("CF_USERNAME", randomizer.StringRunes(10))
-			os.Setenv("CF_PASSWORD", randomizer.StringRunes(10))
-		})
-
-		AfterEach(func() {
-			os.Setenv("CF_USERNAME", cfUsername)
-			os.Setenv("CF_PASSWORD", cfPassword)
-		})
-
 		Describe("config flag", func() {
 			Context("when the config flag is not provided", func() {
 				It("throws an error", func() {
@@ -124,34 +105,6 @@ var _ = Describe("Server", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					Eventually(session.Out).Should(Say("missing required parameter"))
-				})
-			})
-		})
-
-		Describe("health check flag", func() {
-			Context("when -health-check is provided", func() {
-				It("says it has registered the health check event handler", func() {
-					configLocation := fmt.Sprintf("%s/config.yml", path.Dir(pathToCLI))
-
-					Expect(ioutil.WriteFile(configLocation, goodConfig, 0777)).To(Succeed())
-
-					session, err = gexec.Start(exec.Command(pathToCLI, "-config", configLocation, "-health-check"), GinkgoWriter, GinkgoWriter)
-					Expect(err).ToNot(HaveOccurred())
-
-					Eventually(session.Out).Should(Say("health check handler registered"))
-				})
-			})
-
-			Context("when -health-check is not provided", func() {
-				It("says nothing about health check", func() {
-					configLocation := fmt.Sprintf("%s/config.yml", path.Dir(pathToCLI))
-
-					Expect(ioutil.WriteFile(configLocation, goodConfig, 0777)).To(Succeed())
-
-					session, err = gexec.Start(exec.Command(pathToCLI, "-config", configLocation), GinkgoWriter, GinkgoWriter)
-					Expect(err).ToNot(HaveOccurred())
-
-					Eventually(session.Out).ShouldNot(Say("health check handler registered"))
 				})
 			})
 		})

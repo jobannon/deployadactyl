@@ -103,6 +103,7 @@ func (p Pusher) Push(appPath, foundationURL string, deploymentInfo S.DeploymentI
 		p.Log.Infof("application route created at %s.%s", deploymentInfo.AppName, deploymentInfo.Domain)
 	}
 
+	p.Log.Debugf("emitting a %s event", C.PushFinishedEvent)
 	pushData := S.PushEventData{
 		AppPath:         appPath,
 		FoundationURL:   foundationURL,
@@ -115,6 +116,7 @@ func (p Pusher) Push(appPath, foundationURL string, deploymentInfo S.DeploymentI
 	if err != nil {
 		return err
 	}
+	p.Log.Infof("emitted a %s event", C.PushFinishedEvent)
 
 	return nil
 }

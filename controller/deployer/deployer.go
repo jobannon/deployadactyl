@@ -10,11 +10,11 @@ import (
 	"regexp"
 
 	"github.com/compozed/deployadactyl/config"
+	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
 	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
-	C "github.com/compozed/deployadactyl/constants"
 	"github.com/spf13/afero"
 )
 
@@ -175,6 +175,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 		return http.StatusInternalServerError, err
 	}
 
+	d.Log.Infof("successfully deployed application %s", deploymentInfo.AppName)
 	fmt.Fprintf(response, "\n%s", successfulDeploy)
 	return http.StatusOK, err
 }

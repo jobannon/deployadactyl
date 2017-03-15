@@ -52,9 +52,10 @@ var _ = Describe("Bluegreen", func() {
 		deploymentInfo = S.DeploymentInfo{AppName: appName}
 
 		pusherFactory = &mocks.PusherCreator{}
+
 		pushers = nil
 		for range environment.Foundations {
-			pusher := &mocks.Pusher{}
+			pusher := &mocks.Pusher{Response: response}
 			pushers = append(pushers, pusher)
 			pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
 			pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
@@ -97,7 +98,6 @@ var _ = Describe("Bluegreen", func() {
 
 			for i, pusher := range pushers {
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
-				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			}
 
 			for range environment.Foundations {
@@ -111,7 +111,7 @@ var _ = Describe("Bluegreen", func() {
 			By("setting a single foundation")
 			var (
 				foundationURL = "foundationURL-" + randomizer.StringRunes(10)
-				pusher        = &mocks.Pusher{}
+				pusher        = &mocks.Pusher{Response: response}
 				pusherFactory = &mocks.PusherCreator{}
 			)
 
@@ -131,11 +131,8 @@ var _ = Describe("Bluegreen", func() {
 			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
 
 			Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
-			Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-			Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-			Expect(pusher.FinishPushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 
 			Eventually(response).Should(Say(loginOutput))
 			Eventually(response).Should(Say(pushOutput))
@@ -154,17 +151,14 @@ var _ = Describe("Bluegreen", func() {
 
 			for i, pusher := range pushers {
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
-				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.FinishPushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			}
 
 			Eventually(response).Should(Say(loginOutput))
-			Eventually(response).Should(Say(pushOutput))
 			Eventually(response).Should(Say(loginOutput))
+			Eventually(response).Should(Say(pushOutput))
 			Eventually(response).Should(Say(pushOutput))
 		})
 
@@ -172,7 +166,7 @@ var _ = Describe("Bluegreen", func() {
 			It("logs an error", func() {
 				var (
 					foundationURL = "foundationURL-" + randomizer.StringRunes(10)
-					pusher        = &mocks.Pusher{}
+					pusher        = &mocks.Pusher{Response: response}
 					pusherFactory = &mocks.PusherCreator{}
 				)
 
@@ -200,7 +194,7 @@ var _ = Describe("Bluegreen", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10), randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
 			for range environment.Foundations {
-				pusher := &mocks.Pusher{}
+				pusher := &mocks.Pusher{Response: response}
 				pushers = append(pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
 				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
@@ -219,7 +213,6 @@ var _ = Describe("Bluegreen", func() {
 			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
 
 			for _, pusher := range pushers {
-				Expect(pusher.FinishPushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			}
 		})
@@ -254,23 +247,20 @@ var _ = Describe("Bluegreen", func() {
 
 			for i, pusher := range pushers {
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
-				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.RollbackCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			}
 
 			Eventually(response).Should(Say(loginOutput))
-			Eventually(response).Should(Say(pushOutput))
 			Eventually(response).Should(Say(loginOutput))
+			Eventually(response).Should(Say(pushOutput))
 			Eventually(response).Should(Say(pushOutput))
 		})
 
 		Context("when rollback fails", func() {
 			It("logs an error", func() {
 				pushers[0].PushCall.Returns.Error = pushError
-				pushers[0].RollbackCall.Returns.Error = rollbackError
+				pushers[0].UndoPushCall.Returns.Error = rollbackError
 
 				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
 				Expect(err).To(MatchError(RollbackError{[]error{pushError}, []error{rollbackError}}))
@@ -291,16 +281,13 @@ var _ = Describe("Bluegreen", func() {
 
 			for i, pusher := range pushers {
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
-				Expect(pusher.LoginCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(pusher.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-				Expect(pusher.RollbackCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			}
 
 			Eventually(response).Should(Say(loginOutput))
-			Eventually(response).Should(Say(pushOutput))
 			Eventually(response).Should(Say(loginOutput))
+			Eventually(response).Should(Say(pushOutput))
 			Eventually(response).Should(Say(pushOutput))
 		})
 	})

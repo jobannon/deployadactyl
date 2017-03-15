@@ -49,3 +49,11 @@ type MapRouteError struct{}
 func (e MapRouteError) Error() string {
 	return "map route failed: check the Cloud Foundry output above for more information"
 }
+
+type UnmapRouteError struct {
+	ApplicationName string
+}
+
+func (e UnmapRouteError) Error() string {
+	return fmt.Sprintf("failed to unmap route for %s", e.ApplicationName)
+}

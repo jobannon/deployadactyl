@@ -23,6 +23,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
+	S "github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
@@ -94,7 +95,7 @@ func (c Creator) CreateListener() net.Listener {
 // CreatePusher is used by the BlueGreener.
 //
 // Returns a pusher and error.
-func (c Creator) CreatePusher() (I.Pusher, error) {
+func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (I.Pusher, error) {
 	ex, err := executor.New(c.CreateFileSystem())
 	if err != nil {
 		return nil, err
@@ -104,8 +105,10 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 		Courier: courier.Courier{
 			Executor: ex,
 		},
-		EventManager: c.CreateEventManager(),
-		Log:          c.CreateLogger(),
+		DeploymentInfo: deploymentInfo,
+		EventManager:   c.CreateEventManager(),
+		Response:       response,
+		Log:            c.CreateLogger(),
 	}
 
 	return p, nil

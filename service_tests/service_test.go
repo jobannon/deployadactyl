@@ -24,6 +24,7 @@ const (
 	TESTCONFIG      = `---
 environments:
 - name: Test
+  domain: example.com
   foundations:
   - api1.example.com
   - api2.example.com

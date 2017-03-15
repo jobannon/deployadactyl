@@ -3,17 +3,15 @@ package mocks
 import (
 	"fmt"
 	"io"
-
-	S "github.com/compozed/deployadactyl/structs"
 )
 
 // Pusher handmade mock for tests.
 type Pusher struct {
+	Response io.ReadWriter
+
 	LoginCall struct {
 		Received struct {
-			FoundationURL  string
-			DeploymentInfo S.DeploymentInfo
-			Out            io.Writer
+			FoundationURL string
 		}
 		Write struct {
 			Output string
@@ -25,11 +23,10 @@ type Pusher struct {
 
 	PushCall struct {
 		Received struct {
-			AppPath        string
-			FoundationURL  string
-			AppExists      bool
-			DeploymentInfo S.DeploymentInfo
-			Out            io.ReadWriter
+			AppPath       string
+			FoundationURL string
+			AppExists     bool
+			Out           io.ReadWriter
 		}
 		Write struct {
 			Output string
@@ -39,10 +36,9 @@ type Pusher struct {
 		}
 	}
 
-	RollbackCall struct {
+	UndoPushCall struct {
 		Received struct {
-			AppExists      bool
-			DeploymentInfo S.DeploymentInfo
+			AppExists bool
 		}
 		Returns struct {
 			Error error
@@ -50,9 +46,6 @@ type Pusher struct {
 	}
 
 	FinishPushCall struct {
-		Received struct {
-			DeploymentInfo S.DeploymentInfo
-		}
 		Returns struct {
 			Error error
 		}
@@ -72,40 +65,32 @@ type Pusher struct {
 }
 
 // Login mock method.
-func (p *Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, out io.Writer) error {
+func (p *Pusher) Login(foundationURL string) error {
 	p.LoginCall.Received.FoundationURL = foundationURL
-	p.LoginCall.Received.DeploymentInfo = deploymentInfo
-	p.LoginCall.Received.Out = out
 
-	fmt.Fprint(out, p.LoginCall.Write.Output)
+	fmt.Fprint(p.Response, p.LoginCall.Write.Output)
 
 	return p.LoginCall.Returns.Error
 }
 
 // Push mock method.
-func (p *Pusher) Push(appPath, foundationURL string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+func (p *Pusher) Push(appPath, foundationURL string) error {
 	p.PushCall.Received.AppPath = appPath
 	p.PushCall.Received.FoundationURL = foundationURL
-	p.PushCall.Received.DeploymentInfo = deploymentInfo
-	p.PushCall.Received.Out = out
 
-	fmt.Fprint(out, p.PushCall.Write.Output)
+	fmt.Fprint(p.Response, p.PushCall.Write.Output)
 
 	return p.PushCall.Returns.Error
 }
 
-// UndoPush mock method.
-func (p *Pusher) UndoPush(deploymentInfo S.DeploymentInfo) error {
-	p.RollbackCall.Received.DeploymentInfo = deploymentInfo
-
-	return p.RollbackCall.Returns.Error
+// FinishPush mock method.
+func (p *Pusher) FinishPush() error {
+	return p.FinishPushCall.Returns.Error
 }
 
-// FinishPush mock method.
-func (p *Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
-	p.FinishPushCall.Received.DeploymentInfo = deploymentInfo
-
-	return p.FinishPushCall.Returns.Error
+// UndoPush mock method.
+func (p *Pusher) UndoPush() error {
+	return p.UndoPushCall.Returns.Error
 }
 
 // CleanUp mock method.

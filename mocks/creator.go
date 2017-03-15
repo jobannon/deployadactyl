@@ -15,6 +15,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
+	S "github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	logging "github.com/op/go-logging"
@@ -116,7 +117,7 @@ func (c Creator) createFetcher() I.Fetcher {
 	}
 }
 
-func (c Creator) CreatePusher() (I.Pusher, error) {
+func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (I.Pusher, error) {
 	courier := &Courier{}
 
 	courier.LoginCall.Returns.Output = []byte("logged in\t")
@@ -127,9 +128,11 @@ func (c Creator) CreatePusher() (I.Pusher, error) {
 	courier.ExistsCall.Returns.Bool = true
 
 	p := &pusher.Pusher{
-		Courier:      courier,
-		EventManager: c.CreateEventManager(),
-		Log:          c.CreateLogger(),
+		Courier:        courier,
+		DeploymentInfo: deploymentInfo,
+		EventManager:   c.CreateEventManager(),
+		Response:       response,
+		Log:            c.CreateLogger(),
 	}
 
 	return p, nil

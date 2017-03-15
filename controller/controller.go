@@ -19,7 +19,7 @@ type Controller struct {
 
 // Deploy checks the request content type and passes it to the Deployer.
 func (c *Controller) Deploy(g *gin.Context) {
-	c.Log.Infof("Request originated from: %+v", g.Request.RemoteAddr)
+	c.Log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
 
 	response := &bytes.Buffer{}
 
@@ -35,7 +35,6 @@ func (c *Controller) Deploy(g *gin.Context) {
 		response,
 	)
 	if err != nil {
-		c.Log.Errorf("%s: %s", "cannot deploy application", err)
 		g.Writer.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(response, "cannot deploy application: %s\n", err)
 		return

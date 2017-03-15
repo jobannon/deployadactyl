@@ -8,7 +8,6 @@ import (
 	. "github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
-	S "github.com/compozed/deployadactyl/structs"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -16,19 +15,15 @@ import (
 var _ = Describe("Manifest Tests", func() {
 
 	var (
-		eventHandler Envvarhandler
-		logBuffer    *gbytes.Buffer
-		log          I.Logger
-		event        S.Event
-		filesystem   *afero.Afero
+		logBuffer  *gbytes.Buffer
+		log        I.Logger
+		filesystem *afero.Afero
 	)
 
 	BeforeEach(func() {
 		filesystem = &afero.Afero{Fs: afero.NewMemMapFs()}
 		logBuffer = gbytes.NewBuffer()
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")
-		eventHandler = Envvarhandler{Logger: log, FileSystem: filesystem}
-		event = S.Event{Type: "test-event", Data: S.DeployEventData{}}
 	})
 
 	Context("when manifest is empty", func() {

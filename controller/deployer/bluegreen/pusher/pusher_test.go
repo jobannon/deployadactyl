@@ -157,6 +157,7 @@ var _ = Describe("Pusher", func() {
 
 				Expect(courier.PushCall.Received.AppName).To(Equal(tempAppWithUUID))
 				Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
+				Expect(courier.PushCall.Received.Hostname).To(Equal(randomAppName))
 				Expect(courier.PushCall.Received.Instances).To(Equal(randomInstances))
 
 				Eventually(response).Should(Say("push succeeded"))

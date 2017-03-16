@@ -105,7 +105,7 @@ var _ = Describe("Healthchecker", func() {
 				courier.MapRouteCall.Returns.Error = errors.New("map route error")
 
 				err := healthchecker.OnEvent(event)
-				Expect(err).To(MatchError(MapRouteError{randomAppName}))
+				Expect(err).To(MatchError(MapRouteError{randomAppName, randomDomain}))
 			})
 		})
 

@@ -41,7 +41,7 @@ func (h HealthChecker) OnEvent(event S.Event) error {
 
 	_, err := h.Courier.MapRoute(tempAppWithUUID, domain, tempAppWithUUID)
 	if err != nil {
-		return MapRouteError{tempAppWithUUID}
+		return MapRouteError{tempAppWithUUID, domain}
 	}
 
 	defer func() { h.Courier.UnmapRoute(tempAppWithUUID, domain, tempAppWithUUID) }()

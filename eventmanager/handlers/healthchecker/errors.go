@@ -12,10 +12,11 @@ func (e HealthCheckError) Error() string {
 
 type MapRouteError struct {
 	AppName string
+	Domain  string
 }
 
 func (e MapRouteError) Error() string {
-	return fmt.Sprintf("could not map temporary health check route to %s", e.AppName)
+	return fmt.Sprintf("could not map temporary health check route %s.%s", e.AppName, e.Domain)
 }
 
 type ClientError struct {

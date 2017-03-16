@@ -16,8 +16,8 @@ type Client struct {
 }
 
 // Get mock method.
-func (c *Client) Get(url string) (http.Response, error) {
+func (c *Client) Get(url string) (*http.Response, error) {
 	c.GetCall.Received.URL = url
 
-	return c.GetCall.Returns.Response, c.GetCall.Returns.Error
+	return &c.GetCall.Returns.Response, c.GetCall.Returns.Error
 }

@@ -10,10 +10,6 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
-type Client interface {
-	Get(url string) (http.Response, error)
-}
-
 // HealthChecker will check an endpoint for a http.StatusOK
 type HealthChecker struct {
 	// OldURL is the prepend on the foundationURL to replace in order to build the
@@ -25,7 +21,7 @@ type HealthChecker struct {
 	// Eg: "cfapps"
 	NewURL string
 
-	Client  Client
+	Client  I.Client
 	Courier I.Courier
 }
 

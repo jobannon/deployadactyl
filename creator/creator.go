@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 
@@ -96,15 +97,13 @@ func (c Creator) CreateListener() net.Listener {
 //
 // Returns a pusher and error.
 func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (I.Pusher, error) {
-	ex, err := executor.New(c.CreateFileSystem())
+	newCourier, err := c.CreateCourier()
 	if err != nil {
 		return nil, err
 	}
 
 	p := &pusher.Pusher{
-		Courier: courier.Courier{
-			Executor: ex,
-		},
+		Courier:        newCourier,
 		DeploymentInfo: deploymentInfo,
 		EventManager:   c.CreateEventManager(),
 		Response:       response,
@@ -112,6 +111,18 @@ func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadW
 	}
 
 	return p, nil
+}
+
+// CreateCourier returns a courier with an executor.
+func (c Creator) CreateCourier() (I.Courier, error) {
+	ex, err := executor.New(c.CreateFileSystem())
+	if err != nil {
+		return nil, err
+	}
+
+	return courier.Courier{
+		Executor: ex,
+	}, nil
 }
 
 // CreateLogger returns a Logger.
@@ -132,6 +143,11 @@ func (c Creator) CreateEventManager() I.EventManager {
 // CreateFileSystem returns a file system.
 func (c Creator) CreateFileSystem() *afero.Afero {
 	return c.fileSystem
+}
+
+// CreateHTTPClient return an http client.
+func (c Creator) CreateHTTPClient() *http.Client {
+	return &http.Client{}
 }
 
 func (c Creator) createController() controller.Controller {

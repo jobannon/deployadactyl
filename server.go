@@ -55,7 +55,16 @@ func main() {
 	}
 
 	if *healthCheckEnabled {
-		healthHandler := healthchecker.HealthChecker{}
+		newCourier, err := c.CreateCourier()
+		if err != nil {
+			log.Fatal(err)
+		}
+		healthHandler := healthchecker.HealthChecker{
+			OldURL:  "",
+			NewURL:  "",
+			Courier: newCourier,
+			Client:  c.CreateHTTPClient(),
+		}
 		log.Infof("health check handler registered")
 		em.AddHandler(healthHandler, C.DeployStartEvent)
 	}

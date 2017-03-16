@@ -251,7 +251,7 @@ var _ = Describe("Pusher", func() {
 					courier.MapRouteCall.Returns.Error = errors.New("map route error")
 
 					err := pusher.Push(randomAppPath, randomFoundationURL)
-					Expect(err).To(MatchError(MapRouteError{}))
+					Expect(err).To(MatchError(MapRouteError{[]byte("unable to map route")}))
 
 					Expect(courier.MapRouteCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
 					Expect(courier.MapRouteCall.Received.Domain).To(Equal(randomDomain))
@@ -303,12 +303,13 @@ var _ = Describe("Pusher", func() {
 			Context("when unmapping the route fails", func() {
 				It("only logs an error", func() {
 					courier.ExistsCall.Returns.Bool = true
+					courier.UnmapRouteCall.Returns.Output = []byte("unmap output")
 					courier.UnmapRouteCall.Returns.Error = errors.New("Unmap Error")
 
 					pusher.Exists(randomAppName)
 
 					err := pusher.FinishPush()
-					Expect(err).To(MatchError(UnmapRouteError{randomAppName}))
+					Expect(err).To(MatchError(UnmapRouteError{randomAppName, []byte("unmap output")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not unmap %s", randomAppName)))
 				})

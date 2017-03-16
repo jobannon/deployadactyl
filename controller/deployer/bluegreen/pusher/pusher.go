@@ -198,10 +198,10 @@ func (p Pusher) pushApplication(appName, appPath string) error {
 func (p Pusher) mapTempAppToLoadBalancedDomain(appName string) error {
 	p.Log.Debugf("mapping route for %s to %s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
 
-	_, err := p.Courier.MapRoute(appName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
+	out, err := p.Courier.MapRoute(appName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
 	if err != nil {
 		p.Log.Errorf("could not map %s to %s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
-		return MapRouteError{}
+		return MapRouteError{out}
 	}
 
 	p.Log.Infof("application route created: %s.%s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
@@ -212,10 +212,10 @@ func (p Pusher) mapTempAppToLoadBalancedDomain(appName string) error {
 }
 
 func (p Pusher) unMapLoadBalancedRoute() error {
-	_, err := p.Courier.UnmapRoute(p.DeploymentInfo.AppName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
+	out, err := p.Courier.UnmapRoute(p.DeploymentInfo.AppName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
 	if err != nil {
 		p.Log.Errorf("could not unmap %s", p.DeploymentInfo.AppName)
-		return UnmapRouteError{p.DeploymentInfo.AppName}
+		return UnmapRouteError{p.DeploymentInfo.AppName, out}
 	}
 
 	p.Log.Infof("unmapped route %s", p.DeploymentInfo.AppName)

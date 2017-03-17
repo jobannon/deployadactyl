@@ -117,6 +117,24 @@ var _ = Describe("Healthchecker", func() {
 				Expect(err).To(MatchError(ClientError{errors.New("client GET error")}))
 			})
 		})
+
+		Context("when a health check endpoint is not provided", func() {
+			It("returns nil", func() {
+				event = S.Event{
+					Data: S.PushEventData{
+						TempAppWithUUID: randomAppName,
+						FoundationURL:   randomFoundationURL,
+						DeploymentInfo: &S.DeploymentInfo{
+							HealthCheckEndpoint: "",
+						},
+					},
+				}
+
+				err := healthchecker.OnEvent(event)
+
+				Expect(err).To(BeNil())
+			})
+		})
 	})
 
 	Describe("format of endpoint parameter", func() {

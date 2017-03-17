@@ -36,6 +36,10 @@ func (h HealthChecker) OnEvent(event S.Event) error {
 		deploymentInfo  = event.Data.(S.PushEventData).DeploymentInfo
 	)
 
+	if deploymentInfo.HealthCheckEndpoint == "" {
+		return nil
+	}
+
 	newFoundationURL := strings.Replace(foundationURL, h.OldURL, h.NewURL, 1)
 	domain := regexp.MustCompile(fmt.Sprintf("%s.*", h.NewURL)).FindString(newFoundationURL)
 

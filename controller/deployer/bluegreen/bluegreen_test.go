@@ -182,9 +182,8 @@ var _ = Describe("Bluegreen", func() {
 				blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
 
 				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
-				Expect(err).To(MatchError(FinishPushError{[]error{errors.New("finish push error")}}))
 
-				Eventually(logBuffer).Should(Say("finish push error"))
+				Expect(err).To(MatchError(FinishPushError{[]error{errors.New("finish push error")}}))
 			})
 		})
 	})
@@ -223,9 +222,8 @@ var _ = Describe("Bluegreen", func() {
 				pushers[0].FinishPushCall.Returns.Error = finishPushError
 
 				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
-				Expect(err).To(MatchError(FinishPushError{[]error{finishPushError}}))
 
-				Eventually(logBuffer).Should(Say("finish push error"))
+				Expect(err).To(MatchError(FinishPushError{[]error{finishPushError}}))
 			})
 		})
 	})
@@ -258,14 +256,13 @@ var _ = Describe("Bluegreen", func() {
 		})
 
 		Context("when rollback fails", func() {
-			It("logs an error", func() {
+			It("return an error", func() {
 				pushers[0].PushCall.Returns.Error = pushError
 				pushers[0].UndoPushCall.Returns.Error = rollbackError
 
 				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
-				Expect(err).To(MatchError(RollbackError{[]error{pushError}, []error{rollbackError}}))
 
-				Eventually(logBuffer).Should(Say("rollback error"))
+				Expect(err).To(MatchError(RollbackError{[]error{pushError}, []error{rollbackError}}))
 			})
 		})
 

@@ -82,7 +82,6 @@ func (bg BlueGreen) loginAll() (manyErrors []error) {
 	}
 	for _, a := range bg.actors {
 		if err := <-a.errs; err != nil {
-			bg.Log.Error(err.Error())
 			manyErrors = append(manyErrors, err)
 		}
 	}
@@ -112,7 +111,6 @@ func (bg BlueGreen) pushAll(appPath string) (manyErrors []error) {
 	}
 	for _, a := range bg.actors {
 		if err := <-a.errs; err != nil {
-			bg.Log.Error(err.Error())
 			manyErrors = append(manyErrors, err)
 		}
 	}
@@ -129,7 +127,6 @@ func (bg BlueGreen) finishPushAll() (manyErrors []error) {
 
 	for _, a := range bg.actors {
 		if err := <-a.errs; err != nil {
-			bg.Log.Error(err.Error())
 			manyErrors = append(manyErrors, err)
 		}
 	}
@@ -146,7 +143,6 @@ func (bg BlueGreen) undoPushAll() (manyErrors []error) {
 
 	for _, a := range bg.actors {
 		if err := <-a.errs; err != nil {
-			bg.Log.Error(err.Error())
 			manyErrors = append(manyErrors, err)
 		}
 	}

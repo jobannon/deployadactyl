@@ -50,7 +50,7 @@ func main() {
 
 	if *envVarHandlerEnabled {
 		envVarHandler := envvar.Envvarhandler{Logger: c.CreateLogger(), FileSystem: c.CreateFileSystem()}
-		log.Infof("adding environment variable event handler")
+		log.Infof("registering environment variable event handler")
 		em.AddHandler(envVarHandler, C.DeployStartEvent)
 	}
 
@@ -64,9 +64,10 @@ func main() {
 			NewURL:  "",
 			Courier: newCourier,
 			Client:  c.CreateHTTPClient(),
+			Log:     c.CreateLogger(),
 		}
-		log.Infof("health check handler registered")
-		em.AddHandler(healthHandler, C.DeployStartEvent)
+		log.Infof("registering health check handler")
+		em.AddHandler(healthHandler, C.PushFinishedEvent)
 	}
 
 	l := c.CreateListener()

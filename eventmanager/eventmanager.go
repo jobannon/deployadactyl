@@ -26,7 +26,7 @@ func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 		return InvalidArgumentError{}
 	}
 	e.handlers[eventType] = append(e.handlers[eventType], handler)
-	e.Log.Debugf("Handler for [%s] event successfully added!", eventType)
+	e.Log.Debugf("handler for [%s] event added successfully", eventType)
 	return nil
 }
 

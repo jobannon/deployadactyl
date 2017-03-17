@@ -34,3 +34,11 @@ type LoginError struct {
 func (e LoginError) Error() string {
 	return fmt.Sprintf("could not login")
 }
+
+type WrongEventTypeError struct {
+	Type string
+}
+
+func (e WrongEventTypeError) Error() string {
+	return fmt.Sprintf("wrong event type for healthchecker: %s", e.Type)
+}

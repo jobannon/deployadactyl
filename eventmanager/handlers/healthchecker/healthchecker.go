@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	C "github.com/compozed/deployadactyl/constants"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
 )
@@ -23,6 +24,7 @@ type HealthChecker struct {
 
 	Client  I.Client
 	Courier I.Courier
+	Log     I.Logger
 }
 
 // OnEvent is used for the EventManager to do health checking during deployments.
@@ -30,30 +32,36 @@ type HealthChecker struct {
 // domain URL.
 func (h HealthChecker) OnEvent(event S.Event) error {
 
+	if event.Type != C.PushFinishedEvent {
+		return WrongEventTypeError{event.Type}
+	}
+
 	var (
 		tempAppWithUUID = event.Data.(S.PushEventData).TempAppWithUUID
 		foundationURL   = event.Data.(S.PushEventData).FoundationURL
 		deploymentInfo  = event.Data.(S.PushEventData).DeploymentInfo
 	)
 
+	h.Log.Debugf("starting health check")
+
 	if deploymentInfo.HealthCheckEndpoint == "" {
 		return nil
 	}
 
-	out, err := h.Courier.Login(foundationURL, deploymentInfo.Username, deploymentInfo.Password, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.SkipSSL)
+	err := h.login(foundationURL, deploymentInfo)
 	if err != nil {
-		return LoginError{out}
+		return err
 	}
 
 	newFoundationURL := strings.Replace(foundationURL, h.OldURL, h.NewURL, 1)
 	domain := regexp.MustCompile(fmt.Sprintf("%s.*", h.NewURL)).FindString(newFoundationURL)
 
-	_, err = h.Courier.MapRoute(tempAppWithUUID, domain, tempAppWithUUID)
+	err = h.mapTemporaryRoute(tempAppWithUUID, domain)
 	if err != nil {
-		return MapRouteError{tempAppWithUUID, domain}
+		return err
 	}
 
-	defer func() { h.Courier.UnmapRoute(tempAppWithUUID, domain, tempAppWithUUID) }()
+	defer h.unmapTemporaryRoute(tempAppWithUUID, domain)
 
 	newFoundationURL = strings.Replace(newFoundationURL, h.NewURL, fmt.Sprintf("%s.%s", tempAppWithUUID, h.NewURL), 1)
 
@@ -65,14 +73,46 @@ func (h HealthChecker) OnEvent(event S.Event) error {
 func (h HealthChecker) Check(url, endpoint string) error {
 	trimmedEndpoint := strings.TrimPrefix(endpoint, "/")
 
+	h.Log.Debugf("checking route %s%s", url, endpoint)
 	resp, err := h.Client.Get(fmt.Sprintf("%s/%s", url, trimmedEndpoint))
 	if err != nil {
 		return ClientError{err}
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		h.Log.Error(HealthCheckError{endpoint}.Error())
 		return HealthCheckError{endpoint}
 	}
 
+	h.Log.Infof("health check successful for %s%s", url, endpoint)
 	return nil
+}
+
+func (h HealthChecker) login(foundationURL string, deploymentInfo *S.DeploymentInfo) error {
+	h.Log.Debugf("logging in to %s", foundationURL)
+	out, err := h.Courier.Login(foundationURL, deploymentInfo.Username, deploymentInfo.Password, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.SkipSSL)
+	if err != nil {
+		return LoginError{out}
+	}
+	h.Log.Infof("logged in to %s", foundationURL)
+
+	return nil
+}
+
+func (h HealthChecker) mapTemporaryRoute(tempAppWithUUID, domain string) error {
+	h.Log.Debugf("mapping temporary route %s.%s", tempAppWithUUID, domain)
+	_, err := h.Courier.MapRoute(tempAppWithUUID, domain, tempAppWithUUID)
+	if err != nil {
+		return MapRouteError{tempAppWithUUID, domain}
+	}
+	h.Log.Infof("mapped temporary route %s.%s", tempAppWithUUID, domain)
+
+	return nil
+}
+
+func (h HealthChecker) unmapTemporaryRoute(tempAppWithUUID, domain string) {
+	h.Log.Debugf("unmapping temporary route %s.%s", tempAppWithUUID, domain)
+	h.Courier.UnmapRoute(tempAppWithUUID, domain, tempAppWithUUID)
+	h.Log.Infof("unmapped temporary route %s.%s", tempAppWithUUID, domain)
+	h.Log.Infof("finished health check")
 }

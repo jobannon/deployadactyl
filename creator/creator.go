@@ -2,6 +2,7 @@
 package creator
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -147,7 +148,13 @@ func (c Creator) CreateFileSystem() *afero.Afero {
 
 // CreateHTTPClient return an http client.
 func (c Creator) CreateHTTPClient() *http.Client {
-	return &http.Client{}
+	insecureClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	return insecureClient
 }
 
 func (c Creator) createController() controller.Controller {

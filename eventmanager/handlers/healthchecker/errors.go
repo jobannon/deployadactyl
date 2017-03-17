@@ -26,3 +26,11 @@ type ClientError struct {
 func (e ClientError) Error() string {
 	return fmt.Sprintf("could not perform GET request: %s", e.Err.Error())
 }
+
+type LoginError struct {
+	Output []byte
+}
+
+func (e LoginError) Error() string {
+	return fmt.Sprintf("could not login")
+}

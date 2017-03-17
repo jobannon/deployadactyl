@@ -40,10 +40,15 @@ func (h HealthChecker) OnEvent(event S.Event) error {
 		return nil
 	}
 
+	out, err := h.Courier.Login(foundationURL, deploymentInfo.Username, deploymentInfo.Password, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.SkipSSL)
+	if err != nil {
+		return LoginError{out}
+	}
+
 	newFoundationURL := strings.Replace(foundationURL, h.OldURL, h.NewURL, 1)
 	domain := regexp.MustCompile(fmt.Sprintf("%s.*", h.NewURL)).FindString(newFoundationURL)
 
-	_, err := h.Courier.MapRoute(tempAppWithUUID, domain, tempAppWithUUID)
+	_, err = h.Courier.MapRoute(tempAppWithUUID, domain, tempAppWithUUID)
 	if err != nil {
 		return MapRouteError{tempAppWithUUID, domain}
 	}

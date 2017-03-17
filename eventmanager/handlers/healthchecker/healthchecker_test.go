@@ -21,6 +21,10 @@ var _ = Describe("Healthchecker", func() {
 		randomFoundationURL string
 		randomDomain        string
 		randomEndpoint      string
+		randomUsername      string
+		randomPassword      string
+		randomOrg           string
+		randomSpace         string
 
 		event         S.Event
 		healthchecker HealthChecker
@@ -38,12 +42,21 @@ var _ = Describe("Healthchecker", func() {
 
 		randomEndpoint = "/" + randomizer.StringRunes(10)
 
+		randomUsername = "randomUsername" + randomizer.StringRunes(10)
+		randomPassword = "randomPassword" + randomizer.StringRunes(10)
+		randomOrg = "randomOrg" + randomizer.StringRunes(10)
+		randomSpace = "randomSpace" + randomizer.StringRunes(10)
+
 		event = S.Event{
 			Data: S.PushEventData{
 				TempAppWithUUID: randomAppName,
 				FoundationURL:   randomFoundationURL,
 				DeploymentInfo: &S.DeploymentInfo{
 					HealthCheckEndpoint: randomEndpoint,
+					Username:            randomUsername,
+					Password:            randomPassword,
+					Org:                 randomOrg,
+					Space:               randomSpace,
 				},
 			},
 		}
@@ -66,6 +79,16 @@ var _ = Describe("Healthchecker", func() {
 
 				err := healthchecker.OnEvent(event)
 				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("logs into the foundation", func() {
+				healthchecker.OnEvent(event)
+
+				Expect(courier.LoginCall.Received.FoundationURL).To(Equal(randomFoundationURL))
+				Expect(courier.LoginCall.Received.Username).To(Equal(randomUsername))
+				Expect(courier.LoginCall.Received.Password).To(Equal(randomPassword))
+				Expect(courier.LoginCall.Received.Org).To(Equal(randomOrg))
+				Expect(courier.LoginCall.Received.Space).To(Equal(randomSpace))
 			})
 
 			It("maps a new temporary route", func() {
@@ -100,11 +123,23 @@ var _ = Describe("Healthchecker", func() {
 			})
 		})
 
+		Context("when the login fails", func() {
+			It("returns an error", func() {
+				courier.LoginCall.Returns.Output = []byte("login output")
+				courier.LoginCall.Returns.Error = errors.New("login error")
+
+				err := healthchecker.OnEvent(event)
+
+				Expect(err).To(MatchError(LoginError{[]byte("login output")}))
+			})
+		})
+
 		Context("when mapping the temporary route fails", func() {
 			It("returns an error", func() {
 				courier.MapRouteCall.Returns.Error = errors.New("map route error")
 
 				err := healthchecker.OnEvent(event)
+
 				Expect(err).To(MatchError(MapRouteError{randomAppName, randomDomain}))
 			})
 		})

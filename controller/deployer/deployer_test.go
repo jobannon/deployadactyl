@@ -8,21 +8,20 @@ import (
 	"math/rand"
 	"net/http"
 
-	. "github.com/onsi/gomega"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
 
-	. "github.com/compozed/deployadactyl/controller/deployer"
-	C "github.com/compozed/deployadactyl/constants"
-	"github.com/compozed/deployadactyl/mocks"
-	"github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/randomizer"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/config"
+	C "github.com/compozed/deployadactyl/constants"
+	. "github.com/compozed/deployadactyl/controller/deployer"
+	"github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/logger"
+	"github.com/compozed/deployadactyl/mocks"
+	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"
-
 )
 
 const (
@@ -404,7 +403,6 @@ applications:
 				Expect(err).To(MatchError(EventError{C.DeployStartEvent, errors.New(C.DeployStartEvent + " error")}))
 
 				Expect(statusCode).To(Equal(http.StatusInternalServerError))
-				Expect(response.String()).To(ContainSubstring(C.DeployStartEvent + " error"))
 				Expect(eventManager.EmitCall.TimesCalled).To(Equal(2), eventManagerNotEnoughCalls)
 			})
 
@@ -417,8 +415,6 @@ applications:
 					Expect(err).To(MatchError("an error occurred in the " + C.DeployStartEvent + " event: " + C.DeployStartEvent + " error: an error occurred in the " + C.DeployFinishEvent + " event: " + C.DeployFinishEvent + " error"))
 
 					Expect(statusCode).To(Equal(http.StatusInternalServerError))
-					Expect(response.String()).To(ContainSubstring(C.DeployStartEvent + " error"))
-					Expect(response.String()).To(ContainSubstring(C.DeployFinishEvent + " error"))
 					Expect(eventManager.EmitCall.TimesCalled).To(Equal(2), eventManagerNotEnoughCalls)
 				})
 			})

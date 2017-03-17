@@ -68,7 +68,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	d.Log.Debug("prechecking the foundations")
 	err = d.Prechecker.AssertAllFoundationsUp(environments[environment])
 	if err != nil {
-		fmt.Fprintln(response, err)
+		d.Log.Error(err)
 		return http.StatusInternalServerError, err
 	}
 
@@ -87,21 +87,21 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 		d.Log.Debug("building deploymentInfo")
 		deploymentInfo, err = getDeploymentInfo(req.Body)
 		if err != nil {
-			fmt.Fprintln(response, err)
+			d.Log.Error(err)
 			return http.StatusInternalServerError, err
 		}
 
 		if deploymentInfo.Manifest != "" {
 			manifest, err = base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
 			if err != nil {
-				fmt.Fprintln(response, err)
+				d.Log.Error(err)
 				return http.StatusBadRequest, ManifestError{err}
 			}
 		}
 
 		appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, string(manifest))
 		if err != nil {
-			fmt.Fprintln(response, err)
+			d.Log.Error(err)
 			return http.StatusInternalServerError, err
 		}
 
@@ -142,11 +142,11 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	if !found {
 		err = d.EventManager.Emit(S.Event{Type: C.DeployErrorEvent, Data: deployEventData})
 		if err != nil {
-			fmt.Fprintln(response, err)
+			d.Log.Error(err)
 		}
 
 		err = fmt.Errorf("environment not found: %s", deploymentInfo.Environment)
-		fmt.Fprintln(response, err)
+		d.Log.Error(err)
 		return http.StatusInternalServerError, err
 	}
 
@@ -161,7 +161,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	d.Log.Debugf("emitting a %s event", C.DeployStartEvent)
 	err = d.EventManager.Emit(S.Event{Type: C.DeployStartEvent, Data: deployEventData})
 	if err != nil {
-		fmt.Fprintln(response, err)
+		d.Log.Error(err)
 		return http.StatusInternalServerError, EventError{C.DeployStartEvent, err}
 	}
 

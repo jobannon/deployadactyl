@@ -7,7 +7,7 @@ type HealthCheckError struct {
 }
 
 func (e HealthCheckError) Error() string {
-	return fmt.Sprintf("health check failed for endpoint: %s", e.Endpoint)
+	return fmt.Sprintf("health check failed for endpoint %s", e.Endpoint)
 }
 
 type MapRouteError struct {
@@ -28,11 +28,11 @@ func (e ClientError) Error() string {
 }
 
 type LoginError struct {
-	Output []byte
+	FoundationURL string
 }
 
 func (e LoginError) Error() string {
-	return fmt.Sprintf("could not login")
+	return fmt.Sprintf("could not login to %s", e.FoundationURL)
 }
 
 type WrongEventTypeError struct {

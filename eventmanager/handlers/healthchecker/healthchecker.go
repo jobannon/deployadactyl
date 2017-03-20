@@ -74,13 +74,15 @@ func (h HealthChecker) Check(url, endpoint string) error {
 	trimmedEndpoint := strings.TrimPrefix(endpoint, "/")
 
 	h.Log.Debugf("checking route %s%s", url, endpoint)
+
 	resp, err := h.Client.Get(fmt.Sprintf("%s/%s", url, trimmedEndpoint))
 	if err != nil {
+		h.Log.Error(ClientError{err})
 		return ClientError{err}
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		h.Log.Error(HealthCheckError{endpoint}.Error())
+		h.Log.Error(HealthCheckError{endpoint})
 		return HealthCheckError{endpoint}
 	}
 
@@ -90,9 +92,11 @@ func (h HealthChecker) Check(url, endpoint string) error {
 
 func (h HealthChecker) login(foundationURL string, deploymentInfo *S.DeploymentInfo) error {
 	h.Log.Debugf("logging in to %s", foundationURL)
+
 	out, err := h.Courier.Login(foundationURL, deploymentInfo.Username, deploymentInfo.Password, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.SkipSSL)
 	if err != nil {
-		return LoginError{out}
+		h.Log.Errorf("failed to login: %s", out)
+		return LoginError{foundationURL}
 	}
 	h.Log.Infof("logged in to %s", foundationURL)
 
@@ -101,8 +105,10 @@ func (h HealthChecker) login(foundationURL string, deploymentInfo *S.DeploymentI
 
 func (h HealthChecker) mapTemporaryRoute(tempAppWithUUID, domain string) error {
 	h.Log.Debugf("mapping temporary route %s.%s", tempAppWithUUID, domain)
-	_, err := h.Courier.MapRoute(tempAppWithUUID, domain, tempAppWithUUID)
+
+	out, err := h.Courier.MapRoute(tempAppWithUUID, domain, tempAppWithUUID)
 	if err != nil {
+		h.Log.Errorf("failed to map temporary route: %s", out)
 		return MapRouteError{tempAppWithUUID, domain}
 	}
 	h.Log.Infof("mapped temporary route %s.%s", tempAppWithUUID, domain)
@@ -112,7 +118,13 @@ func (h HealthChecker) mapTemporaryRoute(tempAppWithUUID, domain string) error {
 
 func (h HealthChecker) unmapTemporaryRoute(tempAppWithUUID, domain string) {
 	h.Log.Debugf("unmapping temporary route %s.%s", tempAppWithUUID, domain)
-	h.Courier.UnmapRoute(tempAppWithUUID, domain, tempAppWithUUID)
-	h.Log.Infof("unmapped temporary route %s.%s", tempAppWithUUID, domain)
+
+	out, err := h.Courier.UnmapRoute(tempAppWithUUID, domain, tempAppWithUUID)
+	if err != nil {
+		h.Log.Errorf("failed to unmap temporary route: %s", out)
+	} else {
+		h.Log.Infof("unmapped temporary route %s.%s", tempAppWithUUID, domain)
+	}
+
 	h.Log.Infof("finished health check")
 }

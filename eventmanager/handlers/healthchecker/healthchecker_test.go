@@ -158,11 +158,13 @@ var _ = Describe("Healthchecker", func() {
 
 					Eventually(logBuffer).Should(Say("starting health check"))
 					Eventually(logBuffer).Should(Say("logging in to %s", randomFoundationURL))
-					Eventually(logBuffer).Should(Say("logged in to %s", randomFoundationURL))
+					Eventually(logBuffer).Should(Say("logged in to"))
+					Eventually(logBuffer).Should(Say(randomFoundationURL))
 					Eventually(logBuffer).Should(Say("mapping temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("mapped temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("checking route https://%s.%s%s", randomAppName, randomDomain, randomEndpoint))
-					Eventually(logBuffer).Should(Say("health check failed for endpoint: %s", randomEndpoint))
+					Eventually(logBuffer).Should(Say("health check failed for endpoint"))
+					Eventually(logBuffer).Should(Say(randomEndpoint))
 				})
 			})
 		})
@@ -183,17 +185,31 @@ var _ = Describe("Healthchecker", func() {
 
 				err := healthchecker.OnEvent(event)
 
-				Expect(err).To(MatchError(LoginError{[]byte("login output")}))
+				Expect(err).To(MatchError(LoginError{randomFoundationURL}))
+			})
+
+			It("prints errors to the logs", func() {
+				courier.LoginCall.Returns.Output = []byte("login output")
+				courier.LoginCall.Returns.Error = errors.New("login error")
+
+				healthchecker.OnEvent(event)
+
+				Eventually(logBuffer).Should(Say("logging in to"))
+				Eventually(logBuffer).Should(Say("failed to login"))
+				Eventually(logBuffer).Should(Say("login output"))
 			})
 		})
 
 		Context("when mapping the temporary route fails", func() {
 			It("returns an error", func() {
+				courier.MapRouteCall.Returns.Output = []byte("map route output")
 				courier.MapRouteCall.Returns.Error = errors.New("map route error")
 
-				err := healthchecker.OnEvent(event)
+				healthchecker.OnEvent(event)
 
-				Expect(err).To(MatchError(MapRouteError{randomAppName, randomDomain}))
+				Eventually(logBuffer).Should(Say("mapping temporary route"))
+				Eventually(logBuffer).Should(Say("failed to map temporary route"))
+				Eventually(logBuffer).Should(Say("map route output"))
 			})
 		})
 
@@ -204,6 +220,14 @@ var _ = Describe("Healthchecker", func() {
 				err := healthchecker.OnEvent(event)
 
 				Expect(err).To(MatchError(ClientError{errors.New("client GET error")}))
+			})
+
+			It("prints the error to the logs", func() {
+				client.GetCall.Returns.Error = errors.New("client GET error")
+
+				healthchecker.OnEvent(event)
+				Eventually(logBuffer).Should(Say("checking route"))
+				Eventually(logBuffer).Should(Say("client GET error"))
 			})
 		})
 
@@ -233,6 +257,20 @@ var _ = Describe("Healthchecker", func() {
 				err := healthchecker.OnEvent(event)
 
 				Expect(err).To(MatchError(WrongEventTypeError{event.Type}))
+			})
+		})
+
+		Context("when unmapping the temporary route fails", func() {
+			It("prints output to the logs", func() {
+				courier.UnmapRouteCall.Returns.Output = []byte("unmap route output")
+				courier.UnmapRouteCall.Returns.Error = errors.New("unmap route error")
+
+				healthchecker.OnEvent(event)
+
+				Eventually(logBuffer).Should(Say("unmapping temporary route"))
+				Eventually(logBuffer).Should(Say("failed to unmap temporary route"))
+				Eventually(logBuffer).Should(Say("unmap route output"))
+				Eventually(logBuffer).Should(Say("finished"))
 			})
 		})
 	})

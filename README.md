@@ -11,6 +11,8 @@
 
 Deployadactyl is a Go library for deploying applications to multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push an application it will rollback to the previous version. It also utilizes Go channels for concurrent deployments across the multiple Cloud Foundry instances.
 
+Check out our stories on [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/1912341)!
+
 <!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
 
 - [How It Works](#how-it-works)
@@ -71,11 +73,10 @@ The configuration file can be placed anywhere within the Deployadactyl directory
 |**Param**|**Necessity**|**Type**|**Description**|
 |---|:---:|---|---|
 |`name`|**Required**|`string`| Used in the deploy when the users are sending a request to Deployadactyl to specify which environment from the config they want to use.|
-|`domain`|**Required**|`string`| Used to specify a load balanced URL that has previously been created on the Cloud Foundry instances.|
 |`foundations` |**Required**|`[]string`|A list of Cloud Foundry instance URLs.|
+|`domain`|*Optional*|`string`| Used to specify a load balanced URL that has previously been created on the Cloud Foundry instances.|
 |`authenticate` |*Optional*|`bool`| Used to specify if basic authentication is required for users. See the [authentication section](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-v1.0.0#authentication) in the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) for more details|
 |`skip_ssl` |*Optional*|`bool`| Used to skip SSL verification when Deployadactyl logs into Cloud Foundry.|
-|`disable_first_deploy_rollback` |*Optional*|`bool`| Used to disable automatic rollback on first deploy so that initial logs are kept.|
 |`instances` |*Optional*|`int`| Used to set the number of instances an application is deployed with. If the number of instances is specified in a Cloud Foundry manifest, that will be used instead. |
 
 #### Example Configuration yml
@@ -90,7 +91,6 @@ environments:
     - https://preproduction.foundation-2.example.com
     authenticate: false
     skip_ssl: true
-    disable_first_deploy_rollback: true
     instances: 2
 
   - name: production
@@ -102,7 +102,6 @@ environments:
     - https://production.foundation-4.example.com
     authenticate: true
     skip_ssl: false
-    disable_first_deploy_rollback: false
     instances: 4
 ```
 
@@ -166,7 +165,9 @@ $ make push
 
 |**Flag**|**Usage**|
 |---|---|
-|`-config`|location of the config file (default "./config.yml")|
+|`-config`|location of the config file (default "./config.yml")
+|`-envvar`|turns on the environment variable handler that will bind environment variables to your application at deploy time
+|`-health-check`|turns on the health check handler that confirms an application is up and running before finishing a push
 
 ### API
 
@@ -179,15 +180,15 @@ curl -X POST \
      -u your_username:your_password \
      -H "Accept: application/json" \
      -H "Content-Type: application/json" \
-     -d '{ "artifact_url": "https://example.com/lib/release/my_artifact.jar"}' \
+     -d '{ "artifact_url": "https://example.com/lib/release/my_artifact.jar", "health_check_endpoint": "/health" }' \
      https://preproduction.example.com/v1/apps/environment/org/space/t-rex
 ```
 
 ## Event Handling
 
-With Deployadactyl you can optionally register event handlers to perform any additional actions your deployment flow may require. For us, this meant adding handlers that would open and close change records, as well as notify anyone on pager duty of significant events.
+With Deployadactyl you can optionally register event handlers to perform any additional actions your deployment flow may require. For example, you may want to do an additional health check before the new application overwrites the old application.
 
-### Available Emitted Event Types
+### Available Events
 
 |**Event Type**|**Returned Struct**|**Emitted**|
 |---|---|---|---|---|
@@ -196,68 +197,12 @@ With Deployadactyl you can optionally register event handlers to perform any add
 |`deploy.failure`|[DeployEventData](structs/deploy_event_data.go)|When a deployment fails
 |`deploy.error`|[DeployEventData](structs/deploy_event_data.go)|When a deployment throws an error
 |`deploy.finish`|[DeployEventData](structs/deploy_event_data.go)|When a deployment finishes, regardless of success or failure
+|`push.finished`|[PushEventData](structs/push_event_data.go)| Happens before a push finishes. If it receives an error, it will stop the deployment and trigger an undo push
 |`validate.foundationsUnavailable`|[PrecheckerEventData](structs/prechecker_event_data.go)|When a foundation you're deploying to is not running
 
 ### Event Handler Example
 
-```go
-package pagehandler
-
-type Pager interface {
-  Page(description string)
-}
-
-import (
-	DS "github.com/compozed/deployadactyl/structs"
-)
-
-type PageHandler struct {
-	Pager        Pager
-	Environments map[string]bool
-}
-
-func (p PageHandler) OnEvent(event DS.Event) error {
-	var (
-		precheckerEventData = event.Data.(DS.PrecheckerEventData)
-		environmentName     = precheckerEventData.Environment.Name
-		allowPage           = p.Environments[environmentName]
-	)
-
-	if allowPage {
-		p.Pager.Page(precheckerEventData.Description)
-	}
-
-	return nil
-}
-```
-
-```go
-package page
-
-type Page struct {
-  Token string
-  Log   I.Logger
-}
-
-func (p *Page) Page(description string) {
-  // pagerduty code
-}
-```
-
-### Event Handling Example
-
-```go
-  // server.go
-
-  p := pagehandler.PageHandler{Pager: pager, Config: config}
-
-  em := creator.CreateEventManager()
-  em.AddHandler(p, "deploy.start")
-  em.AddHandler(p, "deploy.success")
-  em.AddHandler(p, "deploy.failure")
-  em.AddHandler(p, "deploy.error")
-  em.AddHandler(p, "deploy.finish")
-```
+See the [Health Checker](eventmanager/handlers/healthchecker/healthchecker.go) for an example of how to write an event handler.
 
 ## Contributing
 

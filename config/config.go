@@ -23,13 +23,12 @@ type Config struct {
 
 // Environment is representation of a single environment configuration.
 type Environment struct {
-	Name                       string
-	Domain                     string
-	Foundations                []string `yaml:",flow"`
-	Authenticate               bool
-	SkipSSL                    bool `yaml:"skip_ssl"`
-	DisableFirstDeployRollback bool `yaml:"disable_first_deploy_rollback"`
-	Instances                  uint16
+	Name         string
+	Domain       string
+	Foundations  []string `yaml:",flow"`
+	Authenticate bool
+	SkipSSL      bool `yaml:"skip_ssl"`
+	Instances    uint16
 }
 
 type configYaml struct {
@@ -113,7 +112,7 @@ func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
 
 	environments := map[string]Environment{}
 	for _, environment := range foundationConfig.Environments {
-		if environment.Name == "" || environment.Domain == "" || environment.Foundations == nil || len(environment.Foundations) == 0 {
+		if environment.Name == "" || environment.Foundations == nil || len(environment.Foundations) == 0 {
 			return nil, MissingParameterError{}
 		}
 

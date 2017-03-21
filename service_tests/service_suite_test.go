@@ -22,8 +22,6 @@ func TestService(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	gin.SetMode(gin.TestMode)
-	username = os.Getenv("CF_USERNAME")
-	password = os.Getenv("CF_PASSWORD")
 })
 
 var _ = AfterSuite(func() {

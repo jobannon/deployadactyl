@@ -41,11 +41,22 @@ func (e RenameError) Error() string {
 type PushError struct{}
 
 func (e PushError) Error() string {
-	return "push failed: check the Cloud Foundry output above for more information"
+	return "check the Cloud Foundry output above for more information"
 }
 
-type MapRouteError struct{}
+type MapRouteError struct {
+	Out []byte
+}
 
 func (e MapRouteError) Error() string {
-	return "map route failed: check the Cloud Foundry output above for more information"
+	return fmt.Sprintf("map route failed: %s", string(e.Out))
+}
+
+type UnmapRouteError struct {
+	ApplicationName string
+	Out             []byte
+}
+
+func (e UnmapRouteError) Error() string {
+	return fmt.Sprintf("failed to unmap route for %s: %s", e.ApplicationName, string(e.Out))
 }

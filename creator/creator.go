@@ -2,10 +2,12 @@
 package creator
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 
@@ -23,6 +25,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
+	S "github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
@@ -94,20 +97,33 @@ func (c Creator) CreateListener() net.Listener {
 // CreatePusher is used by the BlueGreener.
 //
 // Returns a pusher and error.
-func (c Creator) CreatePusher() (I.Pusher, error) {
-	ex, err := executor.New(c.createFileSystem())
+func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (I.Pusher, error) {
+	newCourier, err := c.CreateCourier()
 	if err != nil {
 		return nil, err
 	}
 
 	p := &pusher.Pusher{
-		Courier: courier.Courier{
-			Executor: ex,
-		},
-		Log: c.CreateLogger(),
+		Courier:        newCourier,
+		DeploymentInfo: deploymentInfo,
+		EventManager:   c.CreateEventManager(),
+		Response:       response,
+		Log:            c.CreateLogger(),
 	}
 
 	return p, nil
+}
+
+// CreateCourier returns a courier with an executor.
+func (c Creator) CreateCourier() (I.Courier, error) {
+	ex, err := executor.New(c.CreateFileSystem())
+	if err != nil {
+		return nil, err
+	}
+
+	return courier.Courier{
+		Executor: ex,
+	}, nil
 }
 
 // CreateLogger returns a Logger.
@@ -123,6 +139,22 @@ func (c Creator) CreateConfig() config.Config {
 // CreateEventManager returns an EventManager.
 func (c Creator) CreateEventManager() I.EventManager {
 	return c.eventManager
+}
+
+// CreateFileSystem returns a file system.
+func (c Creator) CreateFileSystem() *afero.Afero {
+	return c.fileSystem
+}
+
+// CreateHTTPClient return an http client.
+func (c Creator) CreateHTTPClient() *http.Client {
+	insecureClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	return insecureClient
 }
 
 func (c Creator) createController() controller.Controller {
@@ -141,16 +173,16 @@ func (c Creator) createDeployer() I.Deployer {
 		EventManager: c.CreateEventManager(),
 		Randomizer:   c.createRandomizer(),
 		Log:          c.CreateLogger(),
-		FileSystem:   c.createFileSystem(),
+		FileSystem:   c.CreateFileSystem(),
 	}
 }
 
 func (c Creator) createFetcher() I.Fetcher {
 	return &artifetcher.Artifetcher{
-		FileSystem: c.createFileSystem(),
+		FileSystem: c.CreateFileSystem(),
 		Extractor: &extractor.Extractor{
 			Log:        c.CreateLogger(),
-			FileSystem: c.createFileSystem(),
+			FileSystem: c.CreateFileSystem(),
 		},
 		Log: c.CreateLogger(),
 	}
@@ -161,7 +193,9 @@ func (c Creator) createRandomizer() I.Randomizer {
 }
 
 func (c Creator) createPrechecker() I.Prechecker {
-	return prechecker.Prechecker{c.CreateEventManager()}
+	return prechecker.Prechecker{
+		EventManager: c.CreateEventManager(),
+	}
 }
 
 func (c Creator) createWriter() io.Writer {
@@ -192,10 +226,6 @@ func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
 		&afero.Afero{Fs: afero.NewOsFs()},
 	}, nil
 
-}
-
-func (c Creator) createFileSystem() *afero.Afero {
-	return c.fileSystem
 }
 
 func ensureCLI() error {

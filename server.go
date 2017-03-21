@@ -6,23 +6,31 @@ import (
 	"net/http"
 	"os"
 
+	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/creator"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/op/go-logging"
 )
 
 const (
-	defaultConfig = "./config.yml"
-	defaultLevel  = "DEBUG"
+	defaultConfigFilePath = "./config.yml"
+	defaultLogLevel       = "DEBUG"
+	logLevelEnvVarName    = "DEPLOYADACTYL_LOGLEVEL"
 )
 
 func main() {
-	config := flag.String("config", defaultConfig, "location of the config file")
+	var (
+		config               = flag.String("config", defaultConfigFilePath, "location of the config file")
+		envVarHandlerEnabled = flag.Bool("env", false, "enable environment variable handling")
+		healthCheckEnabled   = flag.Bool("health-check", false, "health checker to check endpoints during a deployment")
+	)
 	flag.Parse()
 
-	level := os.Getenv("DEPLOYADACTYL_LOGLEVEL")
+	level := os.Getenv(logLevelEnvVarName)
 	if level == "" {
-		level = defaultLevel
+		level = defaultLogLevel
 	}
 
 	logLevel, err := logging.LogLevel(level)
@@ -38,9 +46,24 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// uncomment the next two lines to add your event handlers
-	// em := c.CreateEventManager()
-	// em.AddHandler(myInstanceHandler, "deploy.start")
+	em := c.CreateEventManager()
+
+	if *envVarHandlerEnabled {
+		envVarHandler := envvar.Envvarhandler{Logger: c.CreateLogger(), FileSystem: c.CreateFileSystem()}
+		log.Infof("registering environment variable event handler")
+		em.AddHandler(envVarHandler, C.DeployStartEvent)
+	}
+
+	if *healthCheckEnabled {
+		healthHandler := healthchecker.HealthChecker{
+			OldURL: "",
+			NewURL: "",
+			Client: c.CreateHTTPClient(),
+			Log:    c.CreateLogger(),
+		}
+		log.Infof("registering health check handler")
+		em.AddHandler(healthHandler, C.PushFinishedEvent)
+	}
 
 	l := c.CreateListener()
 	deploy := c.CreateControllerHandler()

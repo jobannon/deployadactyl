@@ -4,45 +4,52 @@ package pusher
 import (
 	"fmt"
 	"io"
-	"strings"
 
+	C "github.com/compozed/deployadactyl/constants"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
 )
 
+// TemporaryNameSuffix is used when deploying the new application in order to
+// not overide the existing application name.
 const TemporaryNameSuffix = "-new-build-"
 
 // Pusher has a courier used to push applications to Cloud Foundry.
 // It represents logging into a single foundation to perform operations.
 type Pusher struct {
-	Courier   I.Courier
-	Log       I.Logger
-	appExists bool
+	Courier        I.Courier
+	DeploymentInfo S.DeploymentInfo
+	EventManager   I.EventManager
+	Response       io.ReadWriter
+	Log            I.Logger
+	appExists      bool
 }
 
 // Login will login to a Cloud Foundry instance.
-func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
+func (p Pusher) Login(foundationURL string) error {
 	p.Log.Debugf(
 		`logging into cloud foundry with parameters:
 		foundation URL: %+v
 		username: %+v
 		org: %+v
 		space: %+v`,
-		foundationURL, deploymentInfo.Username, deploymentInfo.Org, deploymentInfo.Space,
+		foundationURL, p.DeploymentInfo.Username, p.DeploymentInfo.Org, p.DeploymentInfo.Space,
 	)
 
 	output, err := p.Courier.Login(
 		foundationURL,
-		deploymentInfo.Username,
-		deploymentInfo.Password,
-		deploymentInfo.Org,
-		deploymentInfo.Space,
-		deploymentInfo.SkipSSL,
+		p.DeploymentInfo.Username,
+		p.DeploymentInfo.Password,
+		p.DeploymentInfo.Org,
+		p.DeploymentInfo.Space,
+		p.DeploymentInfo.SkipSSL,
 	)
-	response.Write(output)
+	p.Response.Write(output)
 	if err != nil {
+		p.Log.Errorf("could not login to %s", foundationURL)
 		return LoginError{foundationURL, output}
 	}
+
 	p.Log.Infof("logged into cloud foundry %s", foundationURL)
 
 	return nil
@@ -54,69 +61,67 @@ func (p Pusher) Login(foundationURL string, deploymentInfo S.DeploymentInfo, res
 // It will map a load balanced domain if provided in the config.yml.
 //
 // Returns Cloud Foundry logs if there is an error.
-func (p Pusher) Push(appPath string, deploymentInfo S.DeploymentInfo, response io.Writer) error {
+func (p Pusher) Push(appPath, foundationURL string) error {
 
-	tempAppWithUUID := deploymentInfo.AppName + TemporaryNameSuffix + deploymentInfo.UUID
+	var (
+		tempAppWithUUID = p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID
+		err             error
+	)
 
 	if !p.appExists {
 		p.Log.Infof("new app detected")
 	}
 
-	p.Log.Debugf("pushing app %s to %s", tempAppWithUUID, deploymentInfo.Domain)
-	p.Log.Debugf("tempdir for app %s: %s", tempAppWithUUID, appPath)
-
-	pushOutput, err := p.Courier.Push(tempAppWithUUID, appPath, deploymentInfo.AppName, deploymentInfo.Instances)
-	response.Write(pushOutput)
+	err = p.pushApplication(tempAppWithUUID, appPath)
 	if err != nil {
-		logs, newErr := p.Courier.Logs(tempAppWithUUID)
-		fmt.Fprintf(response, "\n%s", string(logs))
-		if newErr != nil {
-			return CloudFoundryGetLogsError{err, newErr}
-		}
-
-		return PushError{}
+		return err
 	}
 
-	p.Log.Infof(fmt.Sprintf("output from Cloud Foundry:\n%s\n%s\n%s", strings.Repeat("-", 60), string(pushOutput), strings.Repeat("-", 60)))
-	p.Log.Debugf("mapping route for %s to %s", deploymentInfo.AppName, deploymentInfo.Domain)
-
-	if deploymentInfo.Domain != "" {
-		mapRouteOutput, err := p.Courier.MapRoute(tempAppWithUUID, deploymentInfo.Domain, deploymentInfo.AppName)
-		response.Write(mapRouteOutput)
+	if p.DeploymentInfo.Domain != "" {
+		err = p.mapTempAppToLoadBalancedDomain(tempAppWithUUID)
 		if err != nil {
-			logs, newErr := p.Courier.Logs(tempAppWithUUID)
-			fmt.Fprintf(response, "\n%s", string(logs))
-			if newErr != nil {
-				return CloudFoundryGetLogsError{err, newErr}
-			}
-
-			return MapRouteError{}
+			return err
 		}
-		p.Log.Debugf(string(mapRouteOutput))
-		p.Log.Infof("application route created at %s.%s", deploymentInfo.AppName, deploymentInfo.Domain)
 	}
+
+	p.Log.Debugf("emitting a %s event", C.PushFinishedEvent)
+	pushData := S.PushEventData{
+		AppPath:         appPath,
+		FoundationURL:   foundationURL,
+		TempAppWithUUID: tempAppWithUUID,
+		DeploymentInfo:  &p.DeploymentInfo,
+		Courier:         p.Courier,
+		Response:        p.Response,
+	}
+
+	err = p.EventManager.Emit(S.Event{Type: C.PushFinishedEvent, Data: pushData})
+	if err != nil {
+		return err
+	}
+	p.Log.Infof("emitted a %s event", C.PushFinishedEvent)
 
 	return nil
 }
 
 // FinishPush will delete the original application if it existed. It will always
 // rename the the newly pushed application to the appName.
-func (p Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
+func (p Pusher) FinishPush() error {
 	if p.appExists {
-		out, err := p.Courier.Delete(deploymentInfo.AppName)
+		err := p.unMapLoadBalancedRoute()
 		if err != nil {
-			p.Log.Errorf("could not delete %s", deploymentInfo.AppName)
-			return DeleteApplicationError{deploymentInfo.AppName, out}
+			return err
 		}
-		p.Log.Infof("deleted %s", deploymentInfo.AppName)
+
+		err = p.deleteApplication(p.DeploymentInfo.AppName)
+		if err != nil {
+			return err
+		}
 	}
 
-	out, err := p.Courier.Rename(deploymentInfo.AppName+TemporaryNameSuffix+deploymentInfo.UUID, deploymentInfo.AppName)
+	err := p.renameNewBuildToOriginalAppName()
 	if err != nil {
-		p.Log.Errorf("could not rename %s to %s", deploymentInfo.AppName+TemporaryNameSuffix+deploymentInfo.UUID, deploymentInfo.AppName)
-		return RenameError{deploymentInfo.AppName + TemporaryNameSuffix + deploymentInfo.UUID, out}
+		return err
 	}
-	p.Log.Infof("renamed %s to %s", deploymentInfo.AppName+TemporaryNameSuffix+deploymentInfo.UUID, deploymentInfo.AppName)
 
 	return nil
 }
@@ -124,29 +129,25 @@ func (p Pusher) FinishPush(deploymentInfo S.DeploymentInfo) error {
 // UndoPush is only called when a Push fails. If it is not the first deployment, UndoPush will
 // delete the temporary application that was pushed.
 // If is the first deployment, UndoPush will rename the failed push to have the appName.
-func (p Pusher) UndoPush(deploymentInfo S.DeploymentInfo) error {
+func (p Pusher) UndoPush() error {
 
-	tempAppWithUUID := deploymentInfo.AppName + TemporaryNameSuffix + deploymentInfo.UUID
+	tempAppWithUUID := p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID
 
 	if p.appExists {
 		p.Log.Errorf("rolling back deploy of %s", tempAppWithUUID)
 
-		out, err := p.Courier.Delete(tempAppWithUUID)
+		err := p.deleteApplication(tempAppWithUUID)
 		if err != nil {
-			p.Log.Infof("unable to delete %s: %s", tempAppWithUUID, out)
-		} else {
-			p.Log.Infof("deleted %s", tempAppWithUUID)
+			return err
 		}
 
 	} else {
-		out, err := p.Courier.Rename(tempAppWithUUID, deploymentInfo.AppName)
-		if err != nil {
-			p.Log.Infof("unable to rename venerable app %s: %s", tempAppWithUUID, out)
-			return RenameError{tempAppWithUUID, out}
-		}
-		p.Log.Infof("renamed app from %s to %s", tempAppWithUUID, deploymentInfo.AppName)
+		p.Log.Errorf("app %s did not previously exist: not rolling back", p.DeploymentInfo.AppName)
 
-		p.Log.Infof("app %s did not previously exist: not rolling back", deploymentInfo.AppName)
+		err := p.renameNewBuildToOriginalAppName()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -161,4 +162,88 @@ func (p Pusher) CleanUp() error {
 // first time it has been pushed to Cloud Foundry.
 func (p *Pusher) Exists(appName string) {
 	p.appExists = p.Courier.Exists(appName)
+}
+
+func (p Pusher) pushApplication(appName, appPath string) error {
+	p.Log.Debugf("pushing app %s to %s", appName, p.DeploymentInfo.Domain)
+	p.Log.Debugf("tempdir for app %s: %s", appName, appPath)
+
+	var (
+		pushOutput          []byte
+		cloudFoundryLogs    []byte
+		err                 error
+		cloudFoundryLogsErr error
+	)
+
+	defer func() { p.Response.Write(cloudFoundryLogs) }()
+	defer func() { p.Response.Write(pushOutput) }()
+
+	pushOutput, err = p.Courier.Push(appName, appPath, p.DeploymentInfo.AppName, p.DeploymentInfo.Instances)
+	p.Log.Infof("output from Cloud Foundry: \n%s", pushOutput)
+	if err != nil {
+		defer p.Log.Errorf("logs from %s: \n%s", appName, cloudFoundryLogs)
+
+		cloudFoundryLogs, cloudFoundryLogsErr = p.Courier.Logs(appName)
+		if cloudFoundryLogsErr != nil {
+			return CloudFoundryGetLogsError{err, cloudFoundryLogsErr}
+		}
+
+		return PushError{}
+	}
+
+	p.Log.Infof("successfully deployed new build %s", appName)
+
+	return nil
+}
+
+func (p Pusher) mapTempAppToLoadBalancedDomain(appName string) error {
+	p.Log.Debugf("mapping route for %s to %s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
+
+	out, err := p.Courier.MapRoute(appName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
+	if err != nil {
+		p.Log.Errorf("could not map %s to %s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
+		return MapRouteError{out}
+	}
+
+	p.Log.Infof("application route created: %s.%s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
+
+	fmt.Fprintf(p.Response, "application route created: %s.%s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
+
+	return nil
+}
+
+func (p Pusher) unMapLoadBalancedRoute() error {
+	out, err := p.Courier.UnmapRoute(p.DeploymentInfo.AppName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
+	if err != nil {
+		p.Log.Errorf("could not unmap %s", p.DeploymentInfo.AppName)
+		return UnmapRouteError{p.DeploymentInfo.AppName, out}
+	}
+
+	p.Log.Infof("unmapped route %s", p.DeploymentInfo.AppName)
+
+	return nil
+}
+
+func (p Pusher) deleteApplication(appName string) error {
+	out, err := p.Courier.Delete(appName)
+	if err != nil {
+		p.Log.Errorf("could not delete %s", appName)
+		return DeleteApplicationError{appName, out}
+	}
+
+	p.Log.Infof("deleted %s", appName)
+
+	return nil
+}
+
+func (p Pusher) renameNewBuildToOriginalAppName() error {
+	out, err := p.Courier.Rename(p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
+	if err != nil {
+		p.Log.Errorf("could not rename %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
+		return RenameError{p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID, out}
+	}
+
+	p.Log.Infof("renamed %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
+
+	return nil
 }

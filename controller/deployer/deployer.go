@@ -10,6 +10,7 @@ import (
 	"regexp"
 
 	"github.com/compozed/deployadactyl/config"
+	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
 	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
@@ -67,7 +68,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	d.Log.Debug("prechecking the foundations")
 	err = d.Prechecker.AssertAllFoundationsUp(environments[environment])
 	if err != nil {
-		fmt.Fprintln(response, err)
+		d.Log.Error(err)
 		return http.StatusInternalServerError, err
 	}
 
@@ -86,21 +87,21 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 		d.Log.Debug("building deploymentInfo")
 		deploymentInfo, err = getDeploymentInfo(req.Body)
 		if err != nil {
-			fmt.Fprintln(response, err)
+			d.Log.Error(err)
 			return http.StatusInternalServerError, err
 		}
 
 		if deploymentInfo.Manifest != "" {
 			manifest, err = base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
 			if err != nil {
-				fmt.Fprintln(response, err)
+				d.Log.Error(err)
 				return http.StatusBadRequest, ManifestError{err}
 			}
 		}
 
 		appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, string(manifest))
 		if err != nil {
-			fmt.Fprintln(response, err)
+			d.Log.Error(err)
 			return http.StatusInternalServerError, err
 		}
 
@@ -128,6 +129,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 	deploymentInfo.SkipSSL = environments[environment].SkipSSL
 	deploymentInfo.Manifest = string(manifest)
 	deploymentInfo.Domain = environments[environment].Domain
+	deploymentInfo.AppPath = appPath
 
 	instances := manifestro.GetInstances(deploymentInfo.Manifest)
 	if instances != nil {
@@ -138,13 +140,13 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 
 	e, found := environments[deploymentInfo.Environment]
 	if !found {
-		err = d.EventManager.Emit(S.Event{Type: "deploy.error", Data: deployEventData})
+		err = d.EventManager.Emit(S.Event{Type: C.DeployErrorEvent, Data: deployEventData})
 		if err != nil {
-			fmt.Fprintln(response, err)
+			d.Log.Error(err)
 		}
 
 		err = fmt.Errorf("environment not found: %s", deploymentInfo.Environment)
-		fmt.Fprintln(response, err)
+		d.Log.Error(err)
 		return http.StatusInternalServerError, err
 	}
 
@@ -156,11 +158,11 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 
 	defer emitDeployFinish(d, deployEventData, response, &err, &statusCode)
 
-	d.Log.Debug("emitting a deploy.start event")
-	err = d.EventManager.Emit(S.Event{Type: "deploy.start", Data: deployEventData})
+	d.Log.Debugf("emitting a %s event", C.DeployStartEvent)
+	err = d.EventManager.Emit(S.Event{Type: C.DeployStartEvent, Data: deployEventData})
 	if err != nil {
-		fmt.Fprintln(response, err)
-		return http.StatusInternalServerError, EventError{"deploy.start", err}
+		d.Log.Error(err)
+		return http.StatusInternalServerError, EventError{C.DeployStartEvent, err}
 	}
 
 	defer emitDeploySuccess(d, deployEventData, response, &err, &statusCode)
@@ -173,6 +175,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 		return http.StatusInternalServerError, err
 	}
 
+	d.Log.Infof("successfully deployed application %s", deploymentInfo.AppName)
 	fmt.Fprintf(response, "\n%s", successfulDeploy)
 	return http.StatusOK, err
 }
@@ -209,21 +212,21 @@ func isJSON(contentType string) bool {
 }
 
 func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, response io.ReadWriter, err *error, statusCode *int) {
-	d.Log.Debug("emitting a deploy.finish event")
+	d.Log.Debugf("emitting a %s event", C.DeployFinishEvent)
 
-	finishErr := d.EventManager.Emit(S.Event{Type: "deploy.finish", Data: deployEventData})
+	finishErr := d.EventManager.Emit(S.Event{Type: C.DeployFinishEvent, Data: deployEventData})
 	if finishErr != nil {
 		fmt.Fprintln(response, finishErr)
 
-		*err = fmt.Errorf("%s: %s", *err, EventError{"deploy.finish", finishErr})
+		*err = fmt.Errorf("%s: %s", *err, EventError{C.DeployFinishEvent, finishErr})
 		*statusCode = http.StatusInternalServerError
 	}
 }
 
 func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response io.ReadWriter, err *error, statusCode *int) {
-	deployEvent := S.Event{Type: "deploy.success", Data: deployEventData}
+	deployEvent := S.Event{Type: C.DeploySuccessEvent, Data: deployEventData}
 	if *err != nil {
-		deployEvent.Type = "deploy.failure"
+		deployEvent.Type = C.DeployFailureEvent
 	}
 
 	d.Log.Debug(fmt.Sprintf("emitting a %s event", deployEvent.Type))

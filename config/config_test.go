@@ -29,7 +29,6 @@ environments:
   - api3.example.com
   - api4.example.com
   skip_ssl: false
-  disable_first_deploy_rollback: true
 `
 	badConfigPath = "./test_bad_config.yml"
 )
@@ -58,12 +57,11 @@ var _ = Describe("Config", func() {
 				Instances:   3,
 			},
 			"prod": {
-				Name:                       "Prod",
-				Foundations:                []string{"api3.example.com", "api4.example.com"},
-				Domain:                     "example.com",
-				SkipSSL:                    false,
-				DisableFirstDeployRollback: true,
-				Instances:                  1,
+				Name:        "Prod",
+				Foundations: []string{"api3.example.com", "api4.example.com"},
+				Domain:      "example.com",
+				SkipSSL:     false,
+				Instances:   1,
 			},
 		}
 
@@ -134,8 +132,9 @@ var _ = Describe("Config", func() {
 			It("returns an error when name is missing", func() {
 				testBadConfig := `---
 environments:
-- foundations: []
-  domain: test.example.com
+  - name:
+    foundations:
+    - api1.example.com
 `
 				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 
@@ -150,20 +149,6 @@ environments:
 environments:
 - name: production
   domain: test.example.com
-`
-				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
-
-				badConfig, err := Custom(env.Get, badConfigPath)
-				Expect(err).To(MatchError(MissingParameterError{}))
-
-				Expect(badConfig.Environments).To(BeEmpty())
-			})
-
-			It("returns an error when domain is missing", func() {
-				testBadConfig := `---
-environments:
-- name: production
-  foundations: []
 `
 				Expect(ioutil.WriteFile(badConfigPath, []byte(testBadConfig), 0644)).To(Succeed())
 

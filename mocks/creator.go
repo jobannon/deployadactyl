@@ -15,6 +15,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
+	S "github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	logging "github.com/op/go-logging"
@@ -116,25 +117,22 @@ func (c Creator) createFetcher() I.Fetcher {
 	}
 }
 
-func (c Creator) CreatePusher() (I.Pusher, error) {
+func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (I.Pusher, error) {
 	courier := &Courier{}
 
 	courier.LoginCall.Returns.Output = []byte("logged in\t")
-	courier.LoginCall.Returns.Error = nil
 	courier.DeleteCall.Returns.Output = []byte("deleted app\t")
-	courier.DeleteCall.Returns.Error = nil
 	courier.PushCall.Returns.Output = []byte("pushed app\t")
-	courier.PushCall.Returns.Error = nil
 	courier.RenameCall.Returns.Output = []byte("renamed app\t")
-	courier.RenameCall.Returns.Error = nil
 	courier.MapRouteCall.Returns.Output = []byte("mapped route\t")
-	courier.MapRouteCall.Returns.Error = nil
-	courier.ExistsCall.Returns.Bool = false
-	courier.CleanUpCall.Returns.Error = nil
+	courier.ExistsCall.Returns.Bool = true
 
 	p := &pusher.Pusher{
-		Courier: courier,
-		Log:     c.CreateLogger(),
+		Courier:        courier,
+		DeploymentInfo: deploymentInfo,
+		EventManager:   c.CreateEventManager(),
+		Response:       response,
+		Log:            c.CreateLogger(),
 	}
 
 	return p, nil
@@ -153,11 +151,7 @@ func (c Creator) CreateConfig() config.Config {
 }
 
 func (c Creator) CreatePrechecker() I.Prechecker {
-	prechecker := &Prechecker{}
-
-	prechecker.AssertAllFoundationsUpCall.Returns.Error = nil
-
-	return prechecker
+	return &Prechecker{}
 }
 
 func (c Creator) CreateWriter() io.Writer {

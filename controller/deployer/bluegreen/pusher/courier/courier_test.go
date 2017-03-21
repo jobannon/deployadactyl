@@ -144,6 +144,24 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
+	Describe("unmapping a route", func() {
+		It("should get a valid Cloud Foundry unmap-route command", func() {
+			var (
+				domain       = "domain-" + randomizer.StringRunes(10)
+				expectedArgs = []string{"unmap-route", appName, domain, "-n", hostname}
+			)
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.UnmapRoute(appName, domain, hostname)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
 	Describe("getting the logs for an application", func() {
 		It("should get the recent Cloud Foundry logs", func() {
 			expectedArgs := []string{"logs", appName, "--recent"}

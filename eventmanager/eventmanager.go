@@ -13,10 +13,10 @@ type EventManager struct {
 }
 
 // NewEventManager returns an EventManager.
-func NewEventManager(l I.Logger) *EventManager {
+func NewEventManager(log I.Logger) *EventManager {
 	return &EventManager{
 		handlers: make(map[string][]I.Handler),
-		Log:      l,
+		Log:      log,
 	}
 }
 
@@ -26,6 +26,7 @@ func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 		return InvalidArgumentError{}
 	}
 	e.handlers[eventType] = append(e.handlers[eventType], handler)
+	e.Log.Debugf("handler for [%s] event added successfully", eventType)
 	return nil
 }
 

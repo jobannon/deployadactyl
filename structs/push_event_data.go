@@ -1,6 +1,8 @@
 package structs
 
-import "io"
+import (
+	"io"
+)
 
 // PushEventData has a RequestBody and DeploymentInfo.
 type PushEventData struct {
@@ -9,5 +11,6 @@ type PushEventData struct {
 	TempAppWithUUID string
 
 	DeploymentInfo *DeploymentInfo
+	Courier        interface{}
 	Response       io.ReadWriter
 }

@@ -90,6 +90,7 @@ func (p Pusher) Push(appPath, foundationURL string) error {
 		FoundationURL:   foundationURL,
 		TempAppWithUUID: tempAppWithUUID,
 		DeploymentInfo:  &p.DeploymentInfo,
+		Courier:         p.Courier,
 		Response:        p.Response,
 	}
 

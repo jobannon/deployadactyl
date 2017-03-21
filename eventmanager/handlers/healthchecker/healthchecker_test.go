@@ -52,11 +52,15 @@ var _ = Describe("Healthchecker", func() {
 		randomOrg = "randomOrg" + randomizer.StringRunes(10)
 		randomSpace = "randomSpace" + randomizer.StringRunes(10)
 
+		courier = &mocks.Courier{}
+		client = &mocks.Client{}
+
 		event = S.Event{
 			Type: C.PushFinishedEvent,
 			Data: S.PushEventData{
 				TempAppWithUUID: randomAppName,
 				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
 				DeploymentInfo: &S.DeploymentInfo{
 					HealthCheckEndpoint: randomEndpoint,
 					Username:            randomUsername,
@@ -67,17 +71,12 @@ var _ = Describe("Healthchecker", func() {
 			},
 		}
 
-		client = &mocks.Client{}
-		courier = &mocks.Courier{}
-
 		logBuffer = NewBuffer()
-
 		healthchecker = HealthChecker{
-			OldURL:  "api.cf",
-			NewURL:  "apps",
-			Courier: courier,
-			Client:  client,
-			Log:     logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
+			OldURL: "api.cf",
+			NewURL: "apps",
+			Client: client,
+			Log:    logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
 		}
 	})
 
@@ -90,16 +89,6 @@ var _ = Describe("Healthchecker", func() {
 					err := healthchecker.OnEvent(event)
 
 					Expect(err).ToNot(HaveOccurred())
-				})
-
-				It("logs in to the foundation", func() {
-					healthchecker.OnEvent(event)
-
-					Expect(courier.LoginCall.Received.FoundationURL).To(Equal(randomFoundationURL))
-					Expect(courier.LoginCall.Received.Username).To(Equal(randomUsername))
-					Expect(courier.LoginCall.Received.Password).To(Equal(randomPassword))
-					Expect(courier.LoginCall.Received.Org).To(Equal(randomOrg))
-					Expect(courier.LoginCall.Received.Space).To(Equal(randomSpace))
 				})
 
 				It("maps a new temporary route", func() {
@@ -130,8 +119,6 @@ var _ = Describe("Healthchecker", func() {
 					healthchecker.OnEvent(event)
 
 					Eventually(logBuffer).Should(Say("starting health check"))
-					Eventually(logBuffer).Should(Say("logging in to %s", randomFoundationURL))
-					Eventually(logBuffer).Should(Say("logged in to %s", randomFoundationURL))
 					Eventually(logBuffer).Should(Say("mapping temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("mapped temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("checking route https://%s.%s%s", randomAppName, randomDomain, randomEndpoint))
@@ -157,9 +144,6 @@ var _ = Describe("Healthchecker", func() {
 					healthchecker.OnEvent(event)
 
 					Eventually(logBuffer).Should(Say("starting health check"))
-					Eventually(logBuffer).Should(Say("logging in to %s", randomFoundationURL))
-					Eventually(logBuffer).Should(Say("logged in to"))
-					Eventually(logBuffer).Should(Say(randomFoundationURL))
 					Eventually(logBuffer).Should(Say("mapping temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("mapped temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("checking route https://%s.%s%s", randomAppName, randomDomain, randomEndpoint))
@@ -175,28 +159,6 @@ var _ = Describe("Healthchecker", func() {
 
 				err := healthchecker.OnEvent(event)
 				Expect(err).To(MatchError(HealthCheckError{randomEndpoint}))
-			})
-		})
-
-		Context("when the login fails", func() {
-			It("returns an error", func() {
-				courier.LoginCall.Returns.Output = []byte("login output")
-				courier.LoginCall.Returns.Error = errors.New("login error")
-
-				err := healthchecker.OnEvent(event)
-
-				Expect(err).To(MatchError(LoginError{randomFoundationURL}))
-			})
-
-			It("prints errors to the logs", func() {
-				courier.LoginCall.Returns.Output = []byte("login output")
-				courier.LoginCall.Returns.Error = errors.New("login error")
-
-				healthchecker.OnEvent(event)
-
-				Eventually(logBuffer).Should(Say("logging in to"))
-				Eventually(logBuffer).Should(Say("failed to login"))
-				Eventually(logBuffer).Should(Say("login output"))
 			})
 		})
 
@@ -226,6 +188,7 @@ var _ = Describe("Healthchecker", func() {
 				client.GetCall.Returns.Error = errors.New("client GET error")
 
 				healthchecker.OnEvent(event)
+
 				Eventually(logBuffer).Should(Say("checking route"))
 				Eventually(logBuffer).Should(Say("client GET error"))
 			})
@@ -236,6 +199,7 @@ var _ = Describe("Healthchecker", func() {
 				event = S.Event{
 					Type: C.PushFinishedEvent,
 					Data: S.PushEventData{
+						Courier:         courier,
 						TempAppWithUUID: randomAppName,
 						FoundationURL:   randomFoundationURL,
 						DeploymentInfo: &S.DeploymentInfo{

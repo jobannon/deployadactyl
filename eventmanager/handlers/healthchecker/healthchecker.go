@@ -42,21 +42,18 @@ func (h HealthChecker) OnEvent(event S.Event) error {
 		deploymentInfo  = event.Data.(S.PushEventData).DeploymentInfo
 	)
 
+	h.Courier = event.Data.(S.PushEventData).Courier.(I.Courier)
+
 	h.Log.Debugf("starting health check")
 
 	if deploymentInfo.HealthCheckEndpoint == "" {
 		return nil
 	}
 
-	err := h.login(foundationURL, deploymentInfo)
-	if err != nil {
-		return err
-	}
-
 	newFoundationURL := strings.Replace(foundationURL, h.OldURL, h.NewURL, 1)
 	domain := regexp.MustCompile(fmt.Sprintf("%s.*", h.NewURL)).FindString(newFoundationURL)
 
-	err = h.mapTemporaryRoute(tempAppWithUUID, domain)
+	err := h.mapTemporaryRoute(tempAppWithUUID, domain)
 	if err != nil {
 		return err
 	}
@@ -87,19 +84,6 @@ func (h HealthChecker) Check(url, endpoint string) error {
 	}
 
 	h.Log.Infof("health check successful for %s%s", url, endpoint)
-	return nil
-}
-
-func (h HealthChecker) login(foundationURL string, deploymentInfo *S.DeploymentInfo) error {
-	h.Log.Debugf("logging in to %s", foundationURL)
-
-	out, err := h.Courier.Login(foundationURL, deploymentInfo.Username, deploymentInfo.Password, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.SkipSSL)
-	if err != nil {
-		h.Log.Errorf("failed to login: %s", out)
-		return LoginError{foundationURL}
-	}
-	h.Log.Infof("logged in to %s", foundationURL)
-
 	return nil
 }
 

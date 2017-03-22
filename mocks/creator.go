@@ -124,7 +124,7 @@ func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadW
 	courier.DeleteCall.Returns.Output = []byte("deleted app\t")
 	courier.PushCall.Returns.Output = []byte("pushed app\t")
 	courier.RenameCall.Returns.Output = []byte("renamed app\t")
-	courier.MapRouteCall.Returns.Output = []byte("mapped route\t")
+	courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route\t"))
 	courier.ExistsCall.Returns.Bool = true
 
 	p := &pusher.Pusher{

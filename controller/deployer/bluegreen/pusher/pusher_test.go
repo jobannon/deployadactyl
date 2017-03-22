@@ -211,8 +211,8 @@ var _ = Describe("Pusher", func() {
 				It("maps the route to the app", func() {
 					Expect(pusher.Push(randomAppPath, randomFoundationURL)).To(Succeed())
 
-					Expect(courier.MapRouteCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-					Expect(courier.MapRouteCall.Received.Domain).To(Equal(randomDomain))
+					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
+					Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
 
 					Eventually(response).Should(Say(fmt.Sprintf("application route created: %s.%s", randomAppName, randomDomain)))
 
@@ -222,8 +222,7 @@ var _ = Describe("Pusher", func() {
 
 			Context("when a randomDomain is not provided", func() {
 				It("does not map the randomDomain", func() {
-					courier.MapRouteCall.Returns.Output = []byte("mapped route")
-
+					courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route"))
 					deploymentInfo.Domain = ""
 
 					pusher = Pusher{
@@ -247,14 +246,14 @@ var _ = Describe("Pusher", func() {
 
 			Context("when MapRoute fails", func() {
 				It("returns an error", func() {
-					courier.MapRouteCall.Returns.Output = []byte("unable to map route")
-					courier.MapRouteCall.Returns.Error = errors.New("map route error")
+					courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("unable to map route"))
+					courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
 					err := pusher.Push(randomAppPath, randomFoundationURL)
 					Expect(err).To(MatchError(MapRouteError{[]byte("unable to map route")}))
 
-					Expect(courier.MapRouteCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-					Expect(courier.MapRouteCall.Received.Domain).To(Equal(randomDomain))
+					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
+					Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("mapping route for %s to %s", randomAppName, randomDomain)))
 				})

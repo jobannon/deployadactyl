@@ -213,13 +213,15 @@ func (p Pusher) mapTempAppToLoadBalancedDomain(appName string) error {
 }
 
 func (p Pusher) unMapLoadBalancedRoute() error {
-	out, err := p.Courier.UnmapRoute(p.DeploymentInfo.AppName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
-	if err != nil {
-		p.Log.Errorf("could not unmap %s", p.DeploymentInfo.AppName)
-		return UnmapRouteError{p.DeploymentInfo.AppName, out}
-	}
+	if p.DeploymentInfo.Domain != "" {
+		out, err := p.Courier.UnmapRoute(p.DeploymentInfo.AppName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
+		if err != nil {
+			p.Log.Errorf("could not unmap %s", p.DeploymentInfo.AppName)
+			return UnmapRouteError{p.DeploymentInfo.AppName, out}
+		}
 
-	p.Log.Infof("unmapped route %s", p.DeploymentInfo.AppName)
+		p.Log.Infof("unmapped route %s", p.DeploymentInfo.AppName)
+	}
 
 	return nil
 }

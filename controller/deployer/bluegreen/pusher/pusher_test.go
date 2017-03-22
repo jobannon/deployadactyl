@@ -288,16 +288,54 @@ var _ = Describe("Pusher", func() {
 		})
 
 		Context("when the app exists", func() {
+			It("unmaps the load balanced route", func() {
+				courier.ExistsCall.Returns.Bool = true
+
+				pusher.Exists(randomAppName)
+				Expect(pusher.FinishPush()).To(Succeed())
+
+				Expect(courier.DeleteCall.Received.AppName).To(Equal(randomAppName))
+
+				Expect(courier.UnmapRouteCall.Received.AppName).To(Equal(randomAppName))
+				Expect(courier.UnmapRouteCall.Received.Domain).To(Equal(randomDomain))
+				Expect(courier.UnmapRouteCall.Received.Hostname).To(Equal(randomAppName))
+
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("unmapped route %s", randomAppName)))
+			})
+
 			It("deletes the original application ", func() {
 				courier.ExistsCall.Returns.Bool = true
 
 				pusher.Exists(randomAppName)
 				Expect(pusher.FinishPush()).To(Succeed())
 
-				Expect(courier.UnmapRouteCall.Received.AppName).To(Equal(randomAppName))
 				Expect(courier.DeleteCall.Received.AppName).To(Equal(randomAppName))
 
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("deleted %s", randomAppName)))
+			})
+
+			Context("when domain is not provided", func() {
+				It("does not call unmap route", func() {
+					courier.ExistsCall.Returns.Bool = true
+
+					deploymentInfo.Domain = ""
+
+					pusher = Pusher{
+						Courier:        courier,
+						DeploymentInfo: deploymentInfo,
+						EventManager:   eventManager,
+						Response:       response,
+						Log:            logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
+					}
+
+					pusher.Exists(randomAppName)
+
+					pusher.FinishPush()
+
+					Expect(courier.UnmapRouteCall.Received.AppName).To(BeEmpty())
+					Expect(courier.UnmapRouteCall.Received.Domain).To(BeEmpty())
+					Expect(courier.UnmapRouteCall.Received.Hostname).To(BeEmpty())
+				})
 			})
 
 			Context("when unmapping the route fails", func() {

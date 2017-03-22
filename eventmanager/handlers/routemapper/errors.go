@@ -18,3 +18,11 @@ type InvalidRouteError struct {
 func (e InvalidRouteError) Error() string {
 	return fmt.Sprintf("invalid route provided, check that the domain exists in the foundation: %s", e.Route)
 }
+
+type ReadFileError struct {
+	Err error
+}
+
+func (e ReadFileError) Error() string {
+	return fmt.Sprintf("failed to read manifest file: %s", e.Err.Error())
+}

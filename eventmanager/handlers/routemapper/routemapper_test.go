@@ -12,6 +12,7 @@ import (
 	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"
 	logging "github.com/op/go-logging"
+	"github.com/spf13/afero"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -35,6 +36,7 @@ var _ = Describe("Routemapper", func() {
 		event          S.Event
 
 		courier   *mocks.Courier
+		af        *afero.Afero
 		logBuffer *Buffer
 
 		routemapper RouteMapper
@@ -64,6 +66,7 @@ var _ = Describe("Routemapper", func() {
 		}
 
 		courier = &mocks.Courier{}
+		af = &afero.Afero{Fs: afero.NewMemMapFs()}
 
 		event = S.Event{
 			Type: C.PushFinishedEvent,
@@ -78,7 +81,8 @@ var _ = Describe("Routemapper", func() {
 		logBuffer = NewBuffer()
 
 		routemapper = RouteMapper{
-			Log: logger.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test"),
+			FileSystem: af,
+			Log:        logger.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test"),
 		}
 	})
 
@@ -246,7 +250,7 @@ applications:
 	})
 
 	Context("when a bad yaml is provided", func() {
-		It("returns an unmarshall error mesage thingy", func() {
+		It("returns an unmarshall error", func() {
 			routes := []string{
 				fmt.Sprintf("%s0.%s0", randomHostName, randomDomain),
 				fmt.Sprintf("%s1.%s1", randomHostName, randomDomain),
@@ -267,26 +271,50 @@ applications:
 			)
 
 			err := routemapper.OnEvent(event)
+
 			Expect(err.Error()).To(ContainSubstring("while parsing a block mapping"))
 			Expect(err.Error()).To(ContainSubstring("did not find expected key"))
 		})
+
+		It("prints an error to the logs", func() {
+			routes := []string{
+				fmt.Sprintf("%s0.%s0", randomHostName, randomDomain),
+				fmt.Sprintf("%s1.%s1", randomHostName, randomDomain),
+				fmt.Sprintf("%s2.%s2", randomHostName, randomDomain),
+			}
+
+			deploymentInfo.Manifest = fmt.Sprintf(`
+---
+applications:
+  - name: example
+    routes:
+    - route: %s
+    route: %s
+    - route %s`,
+				routes[0],
+				routes[1],
+				routes[2],
+			)
+
+			routemapper.OnEvent(event)
+
+			Eventually(logBuffer).Should(Say("starting route mapper"))
+			Eventually(logBuffer).Should(Say("failed to parse manifest"))
+			Eventually(logBuffer).Should(Say("did not find expected key"))
+		})
 	})
 
-	Context("when a manifest is empty", func() {
+	Context("when a manifest is not provided in the request or application folder", func() {
 		It("returns an error", func() {
-			courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
-
 			err := routemapper.OnEvent(event)
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(logBuffer).Should(Say("starting route mapper"))
-			Eventually(logBuffer).Should(Say("finished mapping routes"))
-			Eventually(logBuffer).Should(Say("no manifest found"))
+			Eventually(logBuffer).Should(Say("finished route mapper: no manifest found"))
 		})
 	})
 
 	Context("when the domain is not found", func() {
-
 		It("returns an error", func() {
 			deploymentInfo.Manifest = fmt.Sprintf(`
 ---
@@ -301,6 +329,48 @@ applications:
 			err := routemapper.OnEvent(event)
 
 			Expect(err).To(MatchError(InvalidRouteError{"test.example.com"}))
+		})
+	})
+
+	Context("when manifest is bundled with the application", func() {
+		It("reads the manifest file", func() {
+			courier.DomainsCall.Returns.Domains = []string{randomDomain}
+
+			manifest := []byte(fmt.Sprintf(`---
+applications:
+- name: example
+  routes:
+  - route: %s.%s`, randomAppName, randomDomain),
+			)
+
+			manifestPath, _ := af.TempDir("", "")
+			af.WriteFile(manifestPath+"/manifest.yml", manifest, 0644)
+			deploymentInfo.AppPath = manifestPath
+
+			routemapper.OnEvent(event)
+
+			Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomTemporaryAppName))
+			Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
+			Expect(courier.MapRouteCall.Received.Hostname[0]).To(Equal(randomAppName))
+		})
+	})
+
+	Context("when reading the manifest file fails", func() {
+		It("returns an error", func() {
+			deploymentInfo.AppPath = "manifest.yml"
+
+			err := routemapper.OnEvent(event)
+
+			Expect(err.Error()).To(ContainSubstring("file does not exist"))
+		})
+
+		It("prints errors to the log", func() {
+			deploymentInfo.AppPath = "manifest.yml"
+
+			routemapper.OnEvent(event)
+
+			Eventually(logBuffer).Should(Say("starting route mapper"))
+			Eventually(logBuffer).Should(Say("file does not exist"))
 		})
 	})
 })

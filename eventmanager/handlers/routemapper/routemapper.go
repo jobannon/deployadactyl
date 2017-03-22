@@ -7,13 +7,15 @@ import (
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
+	"github.com/spf13/afero"
 )
 
 // RouteMapper will map additional routes to an application at
 // deploy time if they are specified in the manifest.
 type RouteMapper struct {
-	Courier I.Courier
-	Log     I.Logger
+	Courier    I.Courier
+	FileSystem *afero.Afero
+	Log        I.Logger
 }
 
 type manifest struct {
@@ -37,20 +39,32 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 	var (
 		tempAppWithUUID = event.Data.(S.PushEventData).TempAppWithUUID
 		deploymentInfo  = event.Data.(S.PushEventData).DeploymentInfo
+
+		manifestBytes []byte
+		err           error
 	)
 
 	r.Courier = event.Data.(S.PushEventData).Courier.(I.Courier)
 
-	if deploymentInfo.Manifest == "" {
-		r.Log.Info("finished mapping routes: no manifest found")
+	if deploymentInfo.Manifest != "" {
+		manifestBytes = []byte(deploymentInfo.Manifest)
+	} else if deploymentInfo.AppPath != "" {
+		manifestBytes, err = r.FileSystem.ReadFile(deploymentInfo.AppPath + "/manifest.yml")
+		if err != nil {
+			r.Log.Error(ReadFileError{err}.Error())
+			return ReadFileError{err}
+		}
+	} else {
+		r.Log.Info("finished route mapper: no manifest found")
 		return nil
 	}
 
 	m := &manifest{}
 
 	r.Log.Debugf("looking for routes in the manifest")
-	err := candiedyaml.Unmarshal([]byte(deploymentInfo.Manifest), m)
+	err = candiedyaml.Unmarshal(manifestBytes, m)
 	if err != nil {
+		r.Log.Error("failed to parse manifest: %s", err.Error())
 		return err
 	}
 

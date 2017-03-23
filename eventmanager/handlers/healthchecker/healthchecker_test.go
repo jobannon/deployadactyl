@@ -94,9 +94,9 @@ var _ = Describe("Healthchecker", func() {
 				It("maps a new temporary route", func() {
 					healthchecker.OnEvent(event)
 
-					Expect(courier.MapRouteCall.Received.AppName).To(Equal(randomAppName))
-					Expect(courier.MapRouteCall.Received.Domain).To(Equal(randomDomain))
-					Expect(courier.MapRouteCall.Received.Hostname).To(Equal(randomAppName))
+					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName))
+					Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
+					Expect(courier.MapRouteCall.Received.Hostname[0]).To(Equal(randomAppName))
 				})
 
 				It("formats the foundation url", func() {
@@ -164,8 +164,8 @@ var _ = Describe("Healthchecker", func() {
 
 		Context("when mapping the temporary route fails", func() {
 			It("returns an error", func() {
-				courier.MapRouteCall.Returns.Output = []byte("map route output")
-				courier.MapRouteCall.Returns.Error = errors.New("map route error")
+				courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("map route output"))
+				courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
 				healthchecker.OnEvent(event)
 

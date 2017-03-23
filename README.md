@@ -168,6 +168,7 @@ $ make push
 |`-config`|location of the config file (default "./config.yml")
 |`-envvar`|turns on the environment variable handler that will bind environment variables to your application at deploy time
 |`-health-check`|turns on the health check handler that confirms an application is up and running before finishing a push
+|`-route-mapper`|turns on the route mapper handler that will map additional routes to an application during a deployment. see the Cloud Foundry manifest documentation [here](https://docs.cloudfoundry.org/devguide/deploy-apps/manifest.html#routes) for more information
 
 ### API
 

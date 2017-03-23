@@ -10,6 +10,7 @@ import (
 	"github.com/compozed/deployadactyl/creator"
 	"github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
 	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/routemapper"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/op/go-logging"
 )
@@ -25,6 +26,7 @@ func main() {
 		config               = flag.String("config", defaultConfigFilePath, "location of the config file")
 		envVarHandlerEnabled = flag.Bool("env", false, "enable environment variable handling")
 		healthCheckEnabled   = flag.Bool("health-check", false, "health checker to check endpoints during a deployment")
+		routeMapperEnabled   = flag.Bool("route-mapper", false, "enables route mapper to map additional routes from a manifest")
 	)
 	flag.Parse()
 
@@ -63,6 +65,16 @@ func main() {
 		}
 		log.Infof("registering health check handler")
 		em.AddHandler(healthHandler, C.PushFinishedEvent)
+	}
+
+	if *routeMapperEnabled {
+		routeMapper := routemapper.RouteMapper{
+			FileSystem: c.CreateFileSystem(),
+			Log:        c.CreateLogger(),
+		}
+
+		log.Infof("registering health check handler")
+		em.AddHandler(routeMapper, C.PushFinishedEvent)
 	}
 
 	l := c.CreateListener()

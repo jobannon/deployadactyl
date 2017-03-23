@@ -211,8 +211,8 @@ var _ = Describe("Pusher", func() {
 				It("maps the route to the app", func() {
 					Expect(pusher.Push(randomAppPath, randomFoundationURL)).To(Succeed())
 
-					Expect(courier.MapRouteCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-					Expect(courier.MapRouteCall.Received.Domain).To(Equal(randomDomain))
+					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
+					Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
 
 					Eventually(response).Should(Say(fmt.Sprintf("application route created: %s.%s", randomAppName, randomDomain)))
 
@@ -222,8 +222,7 @@ var _ = Describe("Pusher", func() {
 
 			Context("when a randomDomain is not provided", func() {
 				It("does not map the randomDomain", func() {
-					courier.MapRouteCall.Returns.Output = []byte("mapped route")
-
+					courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route"))
 					deploymentInfo.Domain = ""
 
 					pusher = Pusher{
@@ -247,14 +246,14 @@ var _ = Describe("Pusher", func() {
 
 			Context("when MapRoute fails", func() {
 				It("returns an error", func() {
-					courier.MapRouteCall.Returns.Output = []byte("unable to map route")
-					courier.MapRouteCall.Returns.Error = errors.New("map route error")
+					courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("unable to map route"))
+					courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
 					err := pusher.Push(randomAppPath, randomFoundationURL)
 					Expect(err).To(MatchError(MapRouteError{[]byte("unable to map route")}))
 
-					Expect(courier.MapRouteCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-					Expect(courier.MapRouteCall.Received.Domain).To(Equal(randomDomain))
+					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
+					Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("mapping route for %s to %s", randomAppName, randomDomain)))
 				})
@@ -288,16 +287,54 @@ var _ = Describe("Pusher", func() {
 		})
 
 		Context("when the app exists", func() {
+			It("unmaps the load balanced route", func() {
+				courier.ExistsCall.Returns.Bool = true
+
+				pusher.Exists(randomAppName)
+				Expect(pusher.FinishPush()).To(Succeed())
+
+				Expect(courier.DeleteCall.Received.AppName).To(Equal(randomAppName))
+
+				Expect(courier.UnmapRouteCall.Received.AppName).To(Equal(randomAppName))
+				Expect(courier.UnmapRouteCall.Received.Domain).To(Equal(randomDomain))
+				Expect(courier.UnmapRouteCall.Received.Hostname).To(Equal(randomAppName))
+
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("unmapped route %s", randomAppName)))
+			})
+
 			It("deletes the original application ", func() {
 				courier.ExistsCall.Returns.Bool = true
 
 				pusher.Exists(randomAppName)
 				Expect(pusher.FinishPush()).To(Succeed())
 
-				Expect(courier.UnmapRouteCall.Received.AppName).To(Equal(randomAppName))
 				Expect(courier.DeleteCall.Received.AppName).To(Equal(randomAppName))
 
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("deleted %s", randomAppName)))
+			})
+
+			Context("when domain is not provided", func() {
+				It("does not call unmap route", func() {
+					courier.ExistsCall.Returns.Bool = true
+
+					deploymentInfo.Domain = ""
+
+					pusher = Pusher{
+						Courier:        courier,
+						DeploymentInfo: deploymentInfo,
+						EventManager:   eventManager,
+						Response:       response,
+						Log:            logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
+					}
+
+					pusher.Exists(randomAppName)
+
+					pusher.FinishPush()
+
+					Expect(courier.UnmapRouteCall.Received.AppName).To(BeEmpty())
+					Expect(courier.UnmapRouteCall.Received.Domain).To(BeEmpty())
+					Expect(courier.UnmapRouteCall.Received.Hostname).To(BeEmpty())
+				})
 			})
 
 			Context("when unmapping the route fails", func() {

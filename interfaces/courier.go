@@ -12,5 +12,6 @@ type Courier interface {
 	Exists(appName string) bool
 	Cups(appName string, body string) ([]byte, error)
 	Uups(appName string, body string) ([]byte, error)
+	Domains() ([]string, error)
 	CleanUp() error
 }

@@ -3,6 +3,7 @@ package courier
 
 import (
 	"fmt"
+	"strings"
 
 	I "github.com/compozed/deployadactyl/interfaces"
 )
@@ -86,6 +87,20 @@ func (c Courier) Uups(appName string, body string) ([]byte, error) {
 func (c Courier) Exists(appName string) bool {
 	_, err := c.Executor.Execute("app", appName)
 	return err == nil
+}
+
+// Domains returns a list of domain in a foundation.
+//
+// Returns the combined standard output and standard error.
+func (c Courier) Domains() ([]string, error) {
+	output, err := c.Executor.Execute("domains")
+
+	domains := strings.Split(string(output), "\n")[2:]
+	for i, domain := range domains {
+		domains[i] = strings.Split(domain, " ")[0]
+	}
+
+	return domains, err
 }
 
 // CleanUp removes the temporary directory created by the Executor.

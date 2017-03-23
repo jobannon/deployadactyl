@@ -228,6 +228,23 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
+	Describe("getting the list of domains", func() {
+		It("gets a valid domains command", func() {
+			expectedArgs := []string{"domains"}
+
+			executor.ExecuteCall.Returns.Output = []byte("getting domains in org\nname status\nexample0.com shared\nexample1.com shared\nexample2.com private")
+			executor.ExecuteCall.Returns.Error = nil
+
+			domains, err := courier.Domains()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(domains[0]).To(Equal("example0.com"))
+			Expect(domains[1]).To(Equal("example1.com"))
+			Expect(domains[2]).To(Equal("example2.com"))
+		})
+	})
+
 	Describe("cleaning up executor directories", func() {
 		It("should be successful", func() {
 			executor.CleanUpCall.Returns.Error = nil

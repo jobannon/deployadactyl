@@ -62,14 +62,15 @@ type Courier struct {
 	}
 
 	MapRouteCall struct {
-		Received struct {
-			AppName  string
-			Domain   string
-			Hostname string
+		TimesCalled int
+		Received    struct {
+			AppName  []string
+			Domain   []string
+			Hostname []string
 		}
 		Returns struct {
-			Output []byte
-			Error  error
+			Output [][]byte
+			Error  []error
 		}
 	}
 
@@ -113,6 +114,14 @@ type Courier struct {
 		Returns struct {
 			Output []byte
 			Error  error
+		}
+	}
+
+	DomainsCall struct {
+		TimesCalled int
+		Returns     struct {
+			Domains []string
+			Error   error
 		}
 	}
 
@@ -162,11 +171,21 @@ func (c *Courier) Rename(appName, newAppName string) ([]byte, error) {
 
 // MapRoute mock method.
 func (c *Courier) MapRoute(appName, domain, hostname string) ([]byte, error) {
-	c.MapRouteCall.Received.AppName = appName
-	c.MapRouteCall.Received.Domain = domain
-	c.MapRouteCall.Received.Hostname = hostname
+	defer func() { c.MapRouteCall.TimesCalled++ }()
 
-	return c.MapRouteCall.Returns.Output, c.MapRouteCall.Returns.Error
+	c.MapRouteCall.Received.AppName = append(c.MapRouteCall.Received.AppName, appName)
+	c.MapRouteCall.Received.Domain = append(c.MapRouteCall.Received.Domain, domain)
+	c.MapRouteCall.Received.Hostname = append(c.MapRouteCall.Received.Hostname, hostname)
+
+	if len(c.MapRouteCall.Returns.Output) == 0 && len(c.MapRouteCall.Returns.Error) == 0 {
+		return []byte{}, nil
+	} else if len(c.MapRouteCall.Returns.Output) == 0 {
+		return []byte{}, c.MapRouteCall.Returns.Error[c.MapRouteCall.TimesCalled]
+	} else if len(c.MapRouteCall.Returns.Error) == 0 {
+		return c.MapRouteCall.Returns.Output[c.MapRouteCall.TimesCalled], nil
+	}
+
+	return c.MapRouteCall.Returns.Output[c.MapRouteCall.TimesCalled], c.MapRouteCall.Returns.Error[c.MapRouteCall.TimesCalled]
 }
 
 // UnmapRoute mock method.
@@ -206,6 +225,13 @@ func (c *Courier) Uups(appName string, body string) ([]byte, error) {
 	c.UupsCall.Received.Body = body
 
 	return c.UupsCall.Returns.Output, c.UupsCall.Returns.Error
+}
+
+// Domains mock method.
+func (c *Courier) Domains() ([]string, error) {
+	defer func() { c.DomainsCall.TimesCalled++ }()
+
+	return c.DomainsCall.Returns.Domains, c.DomainsCall.Returns.Error
 }
 
 // CleanUp mock method.

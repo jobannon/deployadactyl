@@ -78,6 +78,11 @@ var _ = Describe("Healthchecker", func() {
 			Client: client,
 			Log:    logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
 		}
+
+		client.GetCall.Returns.Response = http.Response{
+			StatusCode: http.StatusOK,
+			Body:       NewBuffer(),
+		}
 	})
 
 	Describe("OnEvent", func() {
@@ -130,24 +135,36 @@ var _ = Describe("Healthchecker", func() {
 			})
 
 			Context("the endpoint provided is not valid", func() {
-				It("returns an error", func() {
-					client.GetCall.Returns.Response = http.Response{StatusCode: http.StatusNotFound}
+				BeforeEach(func() {
+					client.GetCall.Returns.Response = http.Response{
+						StatusCode: http.StatusNotFound,
+						Body:       NewBuffer(),
+					}
+				})
 
+				It("returns an error", func() {
+					body := []byte("Could not find page")
+
+					buf := NewBuffer()
+					buf.Write(body)
+
+					client.GetCall.Returns.Response = http.Response{
+						StatusCode: http.StatusNotFound,
+						Body:       buf,
+					}
 					err := healthchecker.OnEvent(event)
 
-					Expect(err).To(MatchError(HealthCheckError{randomEndpoint}))
+					Expect(err).To(MatchError(HealthCheckError{randomEndpoint, body}))
 				})
 
 				It("prints the endpoint error to the console", func() {
-					client.GetCall.Returns.Response = http.Response{StatusCode: http.StatusNotFound}
-
 					healthchecker.OnEvent(event)
 
 					Eventually(logBuffer).Should(Say("starting health check"))
 					Eventually(logBuffer).Should(Say("mapping temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("mapped temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("checking route https://%s.%s%s", randomAppName, randomDomain, randomEndpoint))
-					Eventually(logBuffer).Should(Say("health check failed for endpoint"))
+					Eventually(logBuffer).Should(Say("health check returned"))
 					Eventually(logBuffer).Should(Say(randomEndpoint))
 				})
 			})
@@ -155,10 +172,13 @@ var _ = Describe("Healthchecker", func() {
 
 		Context("the new build application is not healthy", func() {
 			It("returns an error", func() {
-				client.GetCall.Returns.Response = http.Response{StatusCode: http.StatusBadRequest}
+				client.GetCall.Returns.Response = http.Response{
+					StatusCode: http.StatusNotFound,
+					Body:       NewBuffer(),
+				}
 
 				err := healthchecker.OnEvent(event)
-				Expect(err).To(MatchError(HealthCheckError{randomEndpoint}))
+				Expect(err).To(MatchError(HealthCheckError{randomEndpoint, []byte{}}))
 			})
 		})
 

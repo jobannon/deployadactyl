@@ -1,13 +1,16 @@
 package healthchecker
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type HealthCheckError struct {
 	Endpoint string
+	Body     []byte
 }
 
 func (e HealthCheckError) Error() string {
-	return fmt.Sprintf("health check failed for endpoint %s", e.Endpoint)
+	return fmt.Sprintf("health check returned %s for endpoint %s", e.Body, e.Endpoint)
 }
 
 type MapRouteError struct {

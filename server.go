@@ -58,8 +58,8 @@ func main() {
 
 	if *healthCheckEnabled {
 		healthHandler := healthchecker.HealthChecker{
-			OldURL: "",
-			NewURL: "",
+			OldURL: "api.cf",
+			NewURL: "apps",
 			Client: c.CreateHTTPClient(),
 			Log:    c.CreateLogger(),
 		}

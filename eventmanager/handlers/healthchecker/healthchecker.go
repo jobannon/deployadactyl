@@ -2,6 +2,7 @@ package healthchecker
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
@@ -79,8 +80,9 @@ func (h HealthChecker) Check(url, endpoint string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		h.Log.Error(HealthCheckError{endpoint})
-		return HealthCheckError{endpoint}
+		body, _ := ioutil.ReadAll(resp.Body)
+		h.Log.Error(HealthCheckError{endpoint, body})
+		return HealthCheckError{endpoint, body}
 	}
 
 	h.Log.Infof("health check successful for %s%s", url, endpoint)

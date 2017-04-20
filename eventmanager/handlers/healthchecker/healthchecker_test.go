@@ -152,9 +152,10 @@ var _ = Describe("Healthchecker", func() {
 						StatusCode: http.StatusNotFound,
 						Body:       buf,
 					}
+
 					err := healthchecker.OnEvent(event)
 
-					Expect(err).To(MatchError(HealthCheckError{randomEndpoint, body}))
+					Expect(err).To(MatchError(HealthCheckError{http.StatusNotFound, randomEndpoint, body}))
 				})
 
 				It("prints the endpoint error to the console", func() {
@@ -164,7 +165,7 @@ var _ = Describe("Healthchecker", func() {
 					Eventually(logBuffer).Should(Say("mapping temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("mapped temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("checking route https://%s.%s%s", randomAppName, randomDomain, randomEndpoint))
-					Eventually(logBuffer).Should(Say("health check returned"))
+					Eventually(logBuffer).Should(Say("health check failed"))
 					Eventually(logBuffer).Should(Say(randomEndpoint))
 				})
 			})
@@ -178,7 +179,7 @@ var _ = Describe("Healthchecker", func() {
 				}
 
 				err := healthchecker.OnEvent(event)
-				Expect(err).To(MatchError(HealthCheckError{randomEndpoint, []byte{}}))
+				Expect(err).To(MatchError(HealthCheckError{http.StatusNotFound, randomEndpoint, []byte{}}))
 			})
 		})
 

@@ -81,8 +81,8 @@ func (h HealthChecker) Check(url, endpoint string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
-		h.Log.Error(HealthCheckError{endpoint, body})
-		return HealthCheckError{endpoint, body}
+		h.Log.Errorf("health check failed for endpoint %s", endpoint)
+		return HealthCheckError{resp.StatusCode, endpoint, body}
 	}
 
 	h.Log.Infof("health check successful for %s%s", url, endpoint)

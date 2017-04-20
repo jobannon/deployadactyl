@@ -5,12 +5,21 @@ import (
 )
 
 type HealthCheckError struct {
-	Endpoint string
-	Body     []byte
+	StatusCode int
+	Endpoint   string
+	Body       []byte
 }
 
 func (e HealthCheckError) Error() string {
-	return fmt.Sprintf("health check returned %s for endpoint %s", e.Body, e.Endpoint)
+	return fmt.Sprintf(`health check failed:
+  status code: %d
+  endpoint: %s
+  response body:
+    %s`,
+		e.StatusCode,
+		e.Endpoint,
+		e.Body,
+	)
 }
 
 type MapRouteError struct {

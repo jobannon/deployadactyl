@@ -305,12 +305,12 @@ applications:
 	})
 
 	Context("when a manifest is not provided in the request or application folder", func() {
-		It("returns an error", func() {
+		It("does not return an error", func() {
 			err := routemapper.OnEvent(event)
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(logBuffer).Should(Say("starting route mapper"))
-			Eventually(logBuffer).Should(Say("finished route mapper: no manifest found"))
+			Eventually(logBuffer).Should(Say("finished mapping routes: no manifest found"))
 		})
 	})
 

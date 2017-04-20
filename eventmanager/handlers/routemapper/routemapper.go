@@ -1,7 +1,6 @@
 package routemapper
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
@@ -51,11 +50,11 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 	} else if deploymentInfo.AppPath != "" {
 		manifestBytes, err = r.FileSystem.ReadFile(deploymentInfo.AppPath + "/manifest.yml")
 		if err != nil {
-			r.Log.Error(ReadFileError{err}.Error())
+			r.Log.Errorf("failed to read manifest file: %s", err.Error())
 			return ReadFileError{err}
 		}
 	} else {
-		r.Log.Info("finished route mapper: no manifest found")
+		r.Log.Info("finished mapping routes: no manifest found")
 		return nil
 	}
 
@@ -64,7 +63,7 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 	r.Log.Debugf("looking for routes in the manifest")
 	err = candiedyaml.Unmarshal(manifestBytes, m)
 	if err != nil {
-		r.Log.Error("failed to parse manifest: %s", err.Error())
+		r.Log.Errorf("failed to parse manifest: %s", err.Error())
 		return err
 	}
 
@@ -73,7 +72,7 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 		return nil
 	}
 
-	r.Log.Infof("found %s routes in the manifest", strconv.Itoa(len(m.Applications[0].Routes)))
+	r.Log.Infof("found %d routes in the manifest", len(m.Applications[0].Routes))
 
 	domains, _ := r.Courier.Domains()
 
@@ -84,13 +83,13 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 		if isRouteADomainInTheFoundation(route.Route, domains) {
 			output, err := r.Courier.MapRoute(tempAppWithUUID, route.Route, deploymentInfo.AppName)
 			if err != nil {
-				r.Log.Error(MapRouteError{route.Route, output})
+				r.Log.Errorf("failed to map route: %s: %s", route.Route, string(output))
 				return MapRouteError{route.Route, output}
 			}
 		} else if isRouteADomainInTheFoundation(s[1], domains) {
 			output, err := r.Courier.MapRoute(tempAppWithUUID, s[1], s[0])
 			if err != nil {
-				r.Log.Error(MapRouteError{route.Route, output})
+				r.Log.Errorf("failed to map route: %s: %s", route.Route, string(output))
 				return MapRouteError{route.Route, output}
 			}
 		} else {
@@ -100,7 +99,7 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 		r.Log.Infof("mapped route %s to %s", route.Route, tempAppWithUUID)
 	}
 
-	r.Log.Info("finished mapping routes")
+	r.Log.Info("route mapping successful: finished mapping routes")
 	return nil
 }
 

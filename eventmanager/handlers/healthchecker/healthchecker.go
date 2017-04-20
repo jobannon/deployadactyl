@@ -43,13 +43,13 @@ func (h HealthChecker) OnEvent(event S.Event) error {
 		deploymentInfo  = event.Data.(S.PushEventData).DeploymentInfo
 	)
 
-	h.Courier = event.Data.(S.PushEventData).Courier.(I.Courier)
-
-	h.Log.Debugf("starting health check")
-
 	if deploymentInfo.HealthCheckEndpoint == "" {
 		return nil
 	}
+
+	h.Courier = event.Data.(S.PushEventData).Courier.(I.Courier)
+
+	h.Log.Debugf("starting health check")
 
 	newFoundationURL := strings.Replace(foundationURL, h.OldURL, h.NewURL, 1)
 	domain := regexp.MustCompile(fmt.Sprintf("%s.*", h.NewURL)).FindString(newFoundationURL)
@@ -81,7 +81,7 @@ func (h HealthChecker) Check(url, endpoint string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
-		h.Log.Errorf("health check failed for endpoint %s", endpoint)
+		h.Log.Errorf("health check failed for %s/%s", url, trimmedEndpoint)
 		return HealthCheckError{resp.StatusCode, endpoint, body}
 	}
 

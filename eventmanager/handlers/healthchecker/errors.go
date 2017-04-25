@@ -11,7 +11,8 @@ type HealthCheckError struct {
 }
 
 func (e HealthCheckError) Error() string {
-	return fmt.Sprintf(`health check failed:
+	return fmt.Sprintf(`
+health check failed:
   status code: %d
   endpoint: %s
   response body:

@@ -214,6 +214,8 @@ func (p Pusher) mapTempAppToLoadBalancedDomain(appName string) error {
 
 func (p Pusher) unMapLoadBalancedRoute() error {
 	if p.DeploymentInfo.Domain != "" {
+		p.Log.Debugf("unmapping route %s", p.DeploymentInfo.AppName)
+
 		out, err := p.Courier.UnmapRoute(p.DeploymentInfo.AppName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
 		if err != nil {
 			p.Log.Errorf("could not unmap %s", p.DeploymentInfo.AppName)
@@ -227,6 +229,8 @@ func (p Pusher) unMapLoadBalancedRoute() error {
 }
 
 func (p Pusher) deleteApplication(appName string) error {
+	p.Log.Debugf("deleting %s", appName)
+
 	out, err := p.Courier.Delete(appName)
 	if err != nil {
 		p.Log.Errorf("could not delete %s", appName)
@@ -239,6 +243,8 @@ func (p Pusher) deleteApplication(appName string) error {
 }
 
 func (p Pusher) renameNewBuildToOriginalAppName() error {
+	p.Log.Debugf("renaming %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
+
 	out, err := p.Courier.Rename(p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
 	if err != nil {
 		p.Log.Errorf("could not rename %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)

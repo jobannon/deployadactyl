@@ -54,8 +54,6 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 		return LoginError{loginErrors}
 	}
 
-	bg.existsAll(deploymentInfo.AppName)
-
 	pushErrors := bg.pushAll(appPath)
 	if len(pushErrors) != 0 {
 		rollbackErrors := bg.undoPushAll()
@@ -87,20 +85,6 @@ func (bg BlueGreen) loginAll() (manyErrors []error) {
 	}
 
 	return
-}
-
-func (bg BlueGreen) existsAll(appName string) {
-	for _, a := range bg.actors {
-		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			pusher.Exists(appName)
-			return nil
-		}
-	}
-	for _, a := range bg.actors {
-		if err := <-a.errs; err != nil {
-			// noop
-		}
-	}
 }
 
 func (bg BlueGreen) pushAll(appPath string) (manyErrors []error) {

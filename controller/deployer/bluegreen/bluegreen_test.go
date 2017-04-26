@@ -131,7 +131,6 @@ var _ = Describe("Bluegreen", func() {
 			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
 
 			Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
-			Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 
 			Eventually(response).Should(Say(loginOutput))
@@ -151,9 +150,7 @@ var _ = Describe("Bluegreen", func() {
 
 			for i, pusher := range pushers {
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
-				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 			}
 
 			Eventually(response).Should(Say(loginOutput))
@@ -188,46 +185,6 @@ var _ = Describe("Bluegreen", func() {
 		})
 	})
 
-	Context("when pushing to multiple foundations", func() {
-		It("checks if the app exists on each foundation", func() {
-			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10), randomizer.StringRunes(10), randomizer.StringRunes(10)}
-
-			for range environment.Foundations {
-				pusher := &mocks.Pusher{Response: response}
-				pushers = append(pushers, pusher)
-				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
-				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
-			}
-
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
-
-			for i := range environment.Foundations {
-				Expect(pushers[i].ExistsCall.Received.AppName).To(Equal(appName))
-			}
-		})
-	})
-
-	Context("when app-venerable already exists on Cloud Foundry", func() {
-		It("should delete venerable instances before push", func() {
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
-
-			for _, pusher := range pushers {
-				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
-			}
-		})
-
-		Context("when finish push fails", func() {
-			It("returns and logs an error", func() {
-				finishPushError := errors.New("finish push error")
-				pushers[0].FinishPushCall.Returns.Error = finishPushError
-
-				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
-
-				Expect(err).To(MatchError(FinishPushError{[]error{finishPushError}}))
-			})
-		})
-	})
-
 	Context("when at least one push command is unsuccessful", func() {
 		It("should rollback all recent pushes and print Cloud Foundry logs", func() {
 
@@ -245,7 +202,6 @@ var _ = Describe("Bluegreen", func() {
 
 			for i, pusher := range pushers {
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
-				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 			}
 
@@ -278,7 +234,6 @@ var _ = Describe("Bluegreen", func() {
 
 			for i, pusher := range pushers {
 				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
-				Expect(pusher.ExistsCall.Received.AppName).To(Equal(deploymentInfo.AppName))
 				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
 			}
 

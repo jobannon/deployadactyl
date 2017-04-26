@@ -22,7 +22,6 @@ type Pusher struct {
 	EventManager   I.EventManager
 	Response       io.ReadWriter
 	Log            I.Logger
-	appExists      bool
 }
 
 // Login will login to a Cloud Foundry instance.
@@ -68,10 +67,6 @@ func (p Pusher) Push(appPath, foundationURL string) error {
 		err             error
 	)
 
-	if !p.appExists {
-		p.Log.Infof("new app detected")
-	}
-
 	err = p.pushApplication(tempAppWithUUID, appPath)
 	if err != nil {
 		return err
@@ -106,7 +101,7 @@ func (p Pusher) Push(appPath, foundationURL string) error {
 // FinishPush will delete the original application if it existed. It will always
 // rename the the newly pushed application to the appName.
 func (p Pusher) FinishPush() error {
-	if p.appExists {
+	if p.Courier.Exists(p.DeploymentInfo.AppName) {
 		err := p.unMapLoadBalancedRoute()
 		if err != nil {
 			return err
@@ -133,7 +128,7 @@ func (p Pusher) UndoPush() error {
 
 	tempAppWithUUID := p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID
 
-	if p.appExists {
+	if p.Courier.Exists(p.DeploymentInfo.AppName) {
 		p.Log.Errorf("rolling back deploy of %s", tempAppWithUUID)
 
 		err := p.deleteApplication(tempAppWithUUID)
@@ -156,12 +151,6 @@ func (p Pusher) UndoPush() error {
 // CleanUp removes the temporary directory created by the Executor.
 func (p Pusher) CleanUp() error {
 	return p.Courier.CleanUp()
-}
-
-// Exists uses the courier to check if the application already exists, meaning this is not the
-// first time it has been pushed to Cloud Foundry.
-func (p *Pusher) Exists(appName string) {
-	p.appExists = p.Courier.Exists(appName)
 }
 
 func (p Pusher) pushApplication(appName, appPath string) error {

@@ -142,14 +142,6 @@ var _ = Describe("Pusher", func() {
 
 	Describe("pushing an app", func() {
 		Context("when the push succeeds", func() {
-			Context("when an app with the same name does not exist", func() {
-				It("reports that the app is new", func() {
-					Expect(pusher.Push(randomAppPath, randomFoundationURL)).To(Succeed())
-
-					Eventually(logBuffer).Should(Say("new app detected"))
-				})
-			})
-
 			It("pushes the new app", func() {
 				courier.PushCall.Returns.Output = []byte("push succeeded")
 
@@ -287,13 +279,18 @@ var _ = Describe("Pusher", func() {
 		})
 
 		Context("when the app exists", func() {
-			It("unmaps the load balanced route", func() {
+			BeforeEach(func() {
 				courier.ExistsCall.Returns.Bool = true
+			})
 
-				pusher.Exists(randomAppName)
+			It("checks the application exists", func() {
 				Expect(pusher.FinishPush()).To(Succeed())
 
-				Expect(courier.DeleteCall.Received.AppName).To(Equal(randomAppName))
+				Expect(courier.ExistsCall.Received.AppName).To(Equal(randomAppName))
+			})
+
+			It("unmaps the load balanced route", func() {
+				Expect(pusher.FinishPush()).To(Succeed())
 
 				Expect(courier.UnmapRouteCall.Received.AppName).To(Equal(randomAppName))
 				Expect(courier.UnmapRouteCall.Received.Domain).To(Equal(randomDomain))
@@ -303,9 +300,6 @@ var _ = Describe("Pusher", func() {
 			})
 
 			It("deletes the original application ", func() {
-				courier.ExistsCall.Returns.Bool = true
-
-				pusher.Exists(randomAppName)
 				Expect(pusher.FinishPush()).To(Succeed())
 
 				Expect(courier.DeleteCall.Received.AppName).To(Equal(randomAppName))
@@ -315,8 +309,6 @@ var _ = Describe("Pusher", func() {
 
 			Context("when domain is not provided", func() {
 				It("does not call unmap route", func() {
-					courier.ExistsCall.Returns.Bool = true
-
 					deploymentInfo.Domain = ""
 
 					pusher = Pusher{
@@ -326,8 +318,6 @@ var _ = Describe("Pusher", func() {
 						Response:       response,
 						Log:            logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
 					}
-
-					pusher.Exists(randomAppName)
 
 					pusher.FinishPush()
 
@@ -339,11 +329,8 @@ var _ = Describe("Pusher", func() {
 
 			Context("when unmapping the route fails", func() {
 				It("only logs an error", func() {
-					courier.ExistsCall.Returns.Bool = true
 					courier.UnmapRouteCall.Returns.Output = []byte("unmap output")
 					courier.UnmapRouteCall.Returns.Error = errors.New("Unmap Error")
-
-					pusher.Exists(randomAppName)
 
 					err := pusher.FinishPush()
 					Expect(err).To(MatchError(UnmapRouteError{randomAppName, []byte("unmap output")}))
@@ -358,8 +345,6 @@ var _ = Describe("Pusher", func() {
 					courier.DeleteCall.Returns.Output = []byte("delete output")
 					courier.DeleteCall.Returns.Error = errors.New("delete error")
 
-					pusher.Exists(randomAppName)
-
 					err := pusher.FinishPush()
 					Expect(err).To(MatchError(DeleteApplicationError{randomAppName, []byte("delete output")}))
 
@@ -371,8 +356,6 @@ var _ = Describe("Pusher", func() {
 		Context("when the application does not exist", func() {
 			It("does not delete the non-existant original application", func() {
 				courier.ExistsCall.Returns.Bool = false
-
-				pusher.Exists(randomAppName)
 
 				err := pusher.FinishPush()
 				Expect(err).ToNot(HaveOccurred())
@@ -388,8 +371,11 @@ var _ = Describe("Pusher", func() {
 		Context("when the app exists", func() {
 			BeforeEach(func() {
 				courier.ExistsCall.Returns.Bool = true
+			})
 
-				pusher.Exists(randomAppName)
+			It("check that the app exists", func() {
+				Expect(pusher.UndoPush()).To(Succeed())
+				Expect(courier.ExistsCall.Received.AppName).To(Equal(randomAppName))
 			})
 
 			It("deletes the app that was pushed", func() {
@@ -443,16 +429,6 @@ var _ = Describe("Pusher", func() {
 			courier.CleanUpCall.Returns.Error = nil
 
 			Expect(pusher.CleanUp()).To(Succeed())
-		})
-	})
-
-	Describe("checking for an existing application", func() {
-		It("it is successful", func() {
-			courier.ExistsCall.Returns.Bool = true
-
-			pusher.Exists(randomAppName)
-
-			Expect(courier.ExistsCall.Received.AppName).To(Equal(randomAppName))
 		})
 	})
 

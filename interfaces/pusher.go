@@ -7,5 +7,4 @@ type Pusher interface {
 	FinishPush() error
 	UndoPush() error
 	CleanUp() error
-	Exists(appName string)
 }

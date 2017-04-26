@@ -56,12 +56,6 @@ type Pusher struct {
 			Error error
 		}
 	}
-
-	ExistsCall struct {
-		Received struct {
-			AppName string
-		}
-	}
 }
 
 // Login mock method.
@@ -96,9 +90,4 @@ func (p *Pusher) UndoPush() error {
 // CleanUp mock method.
 func (p *Pusher) CleanUp() error {
 	return p.CleanUpCall.Returns.Error
-}
-
-// Exists mock method.
-func (p *Pusher) Exists(appName string) {
-	p.ExistsCall.Received.AppName = appName
 }

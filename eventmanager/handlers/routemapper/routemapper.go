@@ -67,7 +67,7 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 		return err
 	}
 
-	if len(m.Applications[0].Routes) == 0 {
+	if m.Applications == nil || len(m.Applications[0].Routes) == 0 {
 		r.Log.Info("finished mapping routes: no routes to map")
 		return nil
 	}

@@ -373,4 +373,16 @@ applications:
 			Eventually(logBuffer).Should(Say("file does not exist"))
 		})
 	})
+
+	Context("when yaml is provided that is not a cloud foundry manifest", func() {
+		It("returns nil and prints no routes to map", func() {
+			deploymentInfo.Manifest = fmt.Sprintf(`---
+name: hey`)
+
+			err := routemapper.OnEvent(event)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(logBuffer).Should(Say("no routes to map"))
+		})
+	})
 })

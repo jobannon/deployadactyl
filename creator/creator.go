@@ -108,7 +108,7 @@ func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadW
 		DeploymentInfo: deploymentInfo,
 		EventManager:   c.CreateEventManager(),
 		Response:       response,
-		Log:            c.CreateLogger(),
+		Log:            logger.DeploymentLogger{c.CreateLogger(), deploymentInfo.UUID},
 	}
 
 	return p, nil

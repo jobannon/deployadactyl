@@ -25,3 +25,40 @@ func DefaultLogger(out io.Writer, level logging.Level, module string) I.Logger {
 
 	return log
 }
+
+type DeploymentLogger struct {
+	Log  I.Logger
+	UUID string
+}
+
+func (l DeploymentLogger) Error(args ...interface{}) {
+	args = append([]interface{}{l.UUID}, args...)
+	l.Log.Error(args...)
+}
+
+func (l DeploymentLogger) Errorf(str string, args ...interface{}) {
+	l.Log.Errorf(l.UUID+" "+str, args...)
+}
+
+func (l DeploymentLogger) Debug(args ...interface{}) {
+	args = append([]interface{}{l.UUID}, args...)
+	l.Log.Debug(args...)
+}
+
+func (l DeploymentLogger) Debugf(str string, args ...interface{}) {
+	l.Log.Debugf(l.UUID+" "+str, args...)
+}
+
+func (l DeploymentLogger) Info(args ...interface{}) {
+	args = append([]interface{}{l.UUID}, args...)
+	l.Log.Info(args...)
+}
+
+func (l DeploymentLogger) Infof(str string, args ...interface{}) {
+	l.Log.Infof(l.UUID+" "+str, args...)
+}
+
+func (l DeploymentLogger) Fatal(args ...interface{}) {
+	args = append([]interface{}{l.UUID}, args...)
+	l.Log.Fatal(args...)
+}

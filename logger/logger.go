@@ -10,11 +10,10 @@ import (
 
 // DefaultLogger returns a logging.Logger with a specific logging format.
 func DefaultLogger(out io.Writer, level logging.Level, module string) I.Logger {
-
 	var log = logging.MustGetLogger(module)
 
 	var format = logging.MustStringFormatter(
-		`%{time:2006/01/02 15:04:05} %{level:.4s} ▶ (%{shortfunc}) %{message}`,
+		`%{time:2006/01/02 15:04:05} %{level:.4s} ▶ %{message}`,
 	)
 
 	backend := logging.NewLogBackend(out, "", 0)

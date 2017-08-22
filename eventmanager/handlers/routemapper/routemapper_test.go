@@ -332,6 +332,25 @@ applications:
 		})
 	})
 
+	Context("When the domain is not found and the route is not formatted correctly", func() {
+		It("returns an error", func() {
+
+			deploymentInfo.Manifest = fmt.Sprintf(`
+---
+applications:
+- name: example
+  routes:
+  - route: example`,
+			)
+
+			courier.DomainsCall.Returns.Domains = []string{randomDomain}
+
+			err := routemapper.OnEvent(event)
+
+			Expect(err).To(MatchError(InvalidRouteError{"example"}))
+		})
+	})
+
 	Context("when manifest is bundled with the application", func() {
 		It("reads the manifest file", func() {
 			courier.DomainsCall.Returns.Domains = []string{randomDomain}

@@ -86,7 +86,7 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 				r.Log.Errorf("failed to map route: %s: %s", route.Route, string(output))
 				return MapRouteError{route.Route, output}
 			}
-		} else if isRouteADomainInTheFoundation(s[1], domains) {
+		} else if len(s) >= 2 && isRouteADomainInTheFoundation(s[1], domains) {
 			output, err := r.Courier.MapRoute(tempAppWithUUID, s[1], s[0])
 			if err != nil {
 				r.Log.Errorf("failed to map route: %s: %s", route.Route, string(output))

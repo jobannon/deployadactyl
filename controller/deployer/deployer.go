@@ -14,9 +14,9 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
 	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/spf13/afero"
-	"github.com/compozed/deployadactyl/logger"
 )
 
 const (
@@ -60,6 +60,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 		uuid                   = d.Randomizer.StringRunes(10)
 	)
 	defer func() { d.FileSystem.RemoveAll(appPath) }()
+	d.Log.Debugf("Starting deploy of %s with UUID %s", appName, uuid)
 	deploymentLogger := logger.DeploymentLogger{d.Log, uuid}
 
 	e, ok := environments[environment]

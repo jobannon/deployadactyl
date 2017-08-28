@@ -9,6 +9,7 @@ import (
 
 	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
 )
 
@@ -25,6 +26,8 @@ type BlueGreen struct {
 func (bg BlueGreen) Push(environment config.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) error {
 	bg.actors = make([]actor, len(environment.Foundations))
 	bg.buffers = make([]*bytes.Buffer, len(environment.Foundations))
+
+	deploymentLogger := logger.DeploymentLogger{bg.Log, deploymentInfo.UUID}
 
 	for i, foundationURL := range environment.Foundations {
 		bg.buffers[i] = &bytes.Buffer{}
@@ -56,7 +59,7 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 
 	pushErrors := bg.pushAll(appPath)
 	if len(pushErrors) != 0 {
-		rollbackErrors := bg.undoPushAll()
+		rollbackErrors := bg.undoPushAll(deploymentLogger)
 		if len(rollbackErrors) != 0 {
 			return RollbackError{pushErrors, rollbackErrors}
 		}
@@ -118,10 +121,14 @@ func (bg BlueGreen) finishPushAll() (manyErrors []error) {
 	return
 }
 
-func (bg BlueGreen) undoPushAll() (manyErrors []error) {
+func (bg BlueGreen) undoPushAll(log I.Logger) (manyErrors []error) {
 	for _, a := range bg.actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.UndoPush()
+			err := pusher.UndoPush()
+			if err != nil {
+				log.Errorf("Could not rollback app on foundation %s with error: %s", foundationURL, err.Error())
+			}
+			return err
 		}
 	}
 

@@ -426,13 +426,15 @@ applications:
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
-				blueGreener.PushCall.Returns.Error = errors.New("blue greener failed")
+				expectedError := errors.New("blue greener failed")
+				blueGreener.PushCall.Returns.Error = expectedError
 
 				statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/json", response)
 				Expect(err).To(MatchError("blue greener failed"))
 
 				Expect(statusCode).To(Equal(http.StatusInternalServerError))
 				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeployFailureEvent))
+				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(expectedError))
 			})
 		})
 

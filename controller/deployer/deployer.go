@@ -231,6 +231,7 @@ func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response i
 	deployEvent := S.Event{Type: C.DeploySuccessEvent, Data: deployEventData}
 	if *err != nil {
 		deployEvent.Type = C.DeployFailureEvent
+		deployEvent.Error = *err
 	}
 
 	deploymentLogger.Debug(fmt.Sprintf("emitting a %s event", deployEvent.Type))

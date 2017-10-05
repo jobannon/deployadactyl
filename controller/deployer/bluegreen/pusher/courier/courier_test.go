@@ -76,7 +76,7 @@ var _ = Describe("Courier", func() {
 
 	Describe("deleting an app", func() {
 		It("should get a valid Cloud Foundry delete command", func() {
-			expectedArgs := []string{"delete", appName, "-f"}
+			expectedArgs := []string{"delete", appName, "-f", "-r"}
 
 			executor.ExecuteCall.Returns.Output = []byte(output)
 			executor.ExecuteCall.Returns.Error = nil

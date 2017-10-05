@@ -44,6 +44,7 @@ var _ = Describe("Deployer", func() {
 		prechecker     *mocks.Prechecker
 		eventManager   *mocks.EventManager
 		randomizerMock *mocks.Randomizer
+		errorFinder    *mocks.ErrorFinder
 
 		req                  *http.Request
 		requestBody          *bytes.Buffer
@@ -75,6 +76,7 @@ var _ = Describe("Deployer", func() {
 		prechecker = &mocks.Prechecker{}
 		eventManager = &mocks.EventManager{}
 		randomizerMock = &mocks.Randomizer{}
+		errorFinder = &mocks.ErrorFinder{}
 
 		appName = "appName-" + randomizer.StringRunes(10)
 		appPath = "appPath-" + randomizer.StringRunes(10)
@@ -153,6 +155,7 @@ var _ = Describe("Deployer", func() {
 			prechecker,
 			eventManager,
 			randomizerMock,
+			errorFinder,
 			log,
 			af,
 		}
@@ -313,7 +316,6 @@ var _ = Describe("Deployer", func() {
 
 	Describe("deploying with an unknown request type", func() {
 		It("returns an http.StatusBadRequest and an error", func() {
-
 			statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/bork", response)
 			Expect(err).To(MatchError(InvalidContentTypeError{}))
 
@@ -436,6 +438,18 @@ applications:
 				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeployFailureEvent))
 				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(expectedError))
 			})
+
+			It("passes the response string to FindError and emits a deploy.failure event with the error returned from FindError", func(){
+				err := errors.New("blue greener failed")
+				blueGreener.PushCall.Returns.Error = err
+
+				expectedError := errors.New("Some error")
+				errorFinder.FindErrorCall.Returns.Error = expectedError
+
+				_, err = deployer.Deploy(req, environment, org, space, appName, "application/json", response)
+				Expect(errorFinder.FindErrorCall.Received.Response).To(ContainSubstring(response.String()))
+				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(expectedError))
+			})
 		})
 
 		Context("when blue greener succeeds", func() {
@@ -524,6 +538,7 @@ applications:
 				prechecker,
 				eventManager,
 				randomizerMock,
+				errorFinder,
 				log,
 				af,
 			}

@@ -409,7 +409,7 @@ applications:
 			})
 
 			Context("when EventManager also fails on "+C.DeployFinishEvent, func() {
-				FIt("outputs "+C.DeployFinishEvent+" error", func() {
+				It("outputs "+C.DeployFinishEvent+" error", func() {
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(C.DeployStartEvent+" error"))
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(""+C.DeployFinishEvent+" error"))

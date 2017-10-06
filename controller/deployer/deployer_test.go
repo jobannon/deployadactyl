@@ -405,19 +405,20 @@ applications:
 				Expect(err).To(MatchError(EventError{C.DeployStartEvent, errors.New(C.DeployStartEvent + " error")}))
 
 				Expect(statusCode).To(Equal(http.StatusInternalServerError))
-				Expect(eventManager.EmitCall.TimesCalled).To(Equal(2), eventManagerNotEnoughCalls)
+				Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
 			})
 
 			Context("when EventManager also fails on "+C.DeployFinishEvent, func() {
-				It("outputs "+C.DeployFinishEvent+" error", func() {
+				FIt("outputs "+C.DeployFinishEvent+" error", func() {
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(C.DeployStartEvent+" error"))
+					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(""+C.DeployFinishEvent+" error"))
 
 					statusCode, err := deployer.Deploy(req, environment, org, space, appName, "application/json", response)
 					Expect(err).To(MatchError("an error occurred in the " + C.DeployStartEvent + " event: " + C.DeployStartEvent + " error: an error occurred in the " + C.DeployFinishEvent + " event: " + C.DeployFinishEvent + " error"))
 
 					Expect(statusCode).To(Equal(http.StatusInternalServerError))
-					Expect(eventManager.EmitCall.TimesCalled).To(Equal(2), eventManagerNotEnoughCalls)
+					Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
 				})
 			})
 		})

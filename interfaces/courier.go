@@ -8,6 +8,7 @@ type Courier interface {
 	Rename(oldName, newName string) ([]byte, error)
 	MapRoute(appName, domain, hostname string) ([]byte, error)
 	UnmapRoute(appName, domain, hostname string) ([]byte, error)
+	DeleteRoute(domain, hostname string) ([]byte, error)
 	Logs(appName string) ([]byte, error)
 	Exists(appName string) bool
 	Cups(appName string, body string) ([]byte, error)

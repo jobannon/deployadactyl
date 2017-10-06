@@ -60,6 +60,10 @@ func (c Courier) UnmapRoute(appName, domain, hostname string) ([]byte, error) {
 	return c.Executor.Execute("unmap-route", appName, domain, "-n", hostname)
 }
 
+func (c Courier) DeleteRoute(domain, hostname string) ([]byte, error) {
+	return c.Executor.Execute("delete-route", domain, "-n", hostname, "-f" )
+}
+
 // Logs runs the Cloud Foundry logs command.
 //
 // Returns the combined standard output and standard error.

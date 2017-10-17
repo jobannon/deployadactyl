@@ -109,19 +109,24 @@ var _ = Describe("Deployer", func() {
 
 		req, _ = http.NewRequest("POST", "", requestBody)
 
+		customParams := make(map[string]interface{})
+		customParams["service_now_column_name"] = "u_change"
+		customParams["service_now_table_name"] = "u_table"
+
 		deploymentInfo = S.DeploymentInfo{
-			ArtifactURL: artifactURL,
-			Username:    username,
-			Password:    password,
-			Environment: environment,
-			Org:         org,
-			Space:       space,
-			AppName:     appName,
-			UUID:        uuid,
-			Instances:   instances,
-			Manifest:    manifest,
-			Domain:      domain,
-			AppPath:     appPath,
+			ArtifactURL:  artifactURL,
+			Username:     username,
+			Password:     password,
+			Environment:  environment,
+			Org:          org,
+			Space:        space,
+			AppName:      appName,
+			UUID:         uuid,
+			Instances:    instances,
+			Manifest:     manifest,
+			Domain:       domain,
+			AppPath:      appPath,
+			CustomParams: customParams,
 		}
 
 		foundations = []string{randomizer.StringRunes(10)}
@@ -129,10 +134,11 @@ var _ = Describe("Deployer", func() {
 
 		environments = map[string]config.Environment{}
 		environments[environment] = config.Environment{
-			Name:        environment,
-			Domain:      domain,
-			Foundations: foundations,
-			Instances:   instances,
+			Name:         environment,
+			Domain:       domain,
+			Foundations:  foundations,
+			Instances:    instances,
+			CustomParams: customParams,
 		}
 
 		c = config.Config{
@@ -440,7 +446,7 @@ applications:
 				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(expectedError))
 			})
 
-			It("passes the response string to FindError and emits a deploy.failure event with the error returned from FindError", func(){
+			It("passes the response string to FindError and emits a deploy.failure event with the error returned from FindError", func() {
 				err := errors.New("blue greener failed")
 				blueGreener.PushCall.Returns.Error = err
 
@@ -626,6 +632,15 @@ applications:
 				Expect(blueGreener.PushCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
 				Expect(blueGreener.PushCall.Received.DeploymentInfo.ArtifactURL).To(ContainSubstring(testManifestLocation))
 			})
+		})
+	})
+
+	Describe("extract custom params from yaml", func() {
+		It("should marshal params to deploymentInfo", func() {
+			deployer.Deploy(req, environment, org, space, appName, "application/json", response)
+
+			Expect(blueGreener.PushCall.Received.DeploymentInfo.CustomParams["service_now_column_name"].(string)).To(Equal("u_change"))
+			Expect(blueGreener.PushCall.Received.DeploymentInfo.CustomParams["service_now_table_name"].(string)).To(Equal("u_table"))
 		})
 	})
 })

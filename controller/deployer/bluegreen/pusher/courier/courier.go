@@ -29,7 +29,7 @@ func (c Courier) Login(foundationURL, username, password, org, space string, ski
 //
 // Returns the combined standard output and standard error.
 func (c Courier) Delete(appName string) ([]byte, error) {
-	return c.Executor.Execute("delete", appName, "-f", "-r")
+	return c.Executor.Execute("delete", appName, "-f")
 }
 
 // Push runs the Cloud Foundry push command.

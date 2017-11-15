@@ -45,17 +45,9 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 
 	r.Courier = event.Data.(S.PushEventData).Courier.(I.Courier)
 
-	if deploymentInfo.Manifest != "" {
-		manifestBytes = []byte(deploymentInfo.Manifest)
-	} else if deploymentInfo.AppPath != "" {
-		manifestBytes, err = r.FileSystem.ReadFile(deploymentInfo.AppPath + "/manifest.yml")
-		if err != nil {
-			r.Log.Errorf("failed to read manifest file: %s", err.Error())
-			return ReadFileError{err}
-		}
-	} else {
-		r.Log.Info("finished mapping routes: no manifest found")
-		return nil
+	manifestBytes, err = r.readManifest(deploymentInfo)
+	if err != nil || manifestBytes == nil {
+		return err
 	}
 
 	m := &manifest{}
@@ -77,8 +69,53 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 	domains, _ := r.Courier.Domains()
 
 	r.Log.Debugf("mapping routes to %s", tempAppWithUUID)
-	for _, route := range m.Applications[0].Routes {
-		s := strings.SplitN(route.Route, ".", 2)
+	return r.routeMapper(m, tempAppWithUUID, domains, deploymentInfo)
+}
+
+func isRouteADomainInTheFoundation(route string, domains []string) bool {
+	for _, domain := range domains {
+		if route == domain {
+			return true
+		}
+	}
+	return false
+}
+
+func (r RouteMapper) readManifest(deploymentInfo *S.DeploymentInfo) ([]byte, error) {
+	var (
+		manifestBytes []byte
+		err           error
+	)
+	if deploymentInfo.Manifest != "" {
+		manifestBytes = []byte(deploymentInfo.Manifest)
+		return manifestBytes, nil
+	} else if deploymentInfo.AppPath != "" {
+		manifestBytes, err = r.FileSystem.ReadFile(deploymentInfo.AppPath + "/manifest.yml")
+		if err != nil {
+			r.Log.Errorf("failed to read manifest file: %s", err.Error())
+			return nil, ReadFileError{err}
+		}
+		return manifestBytes, nil
+	} else {
+		r.Log.Info("finished mapping routes: no manifest found")
+		return nil, nil
+	}
+}
+
+// routeMapper is used to decide how to map an applications routes that are given to it from the manifest.
+// if the route does not include appname or path it will map the given domain to the given application by default
+// if the route has an app name it will remove the app name so it can map it with the given domain
+// if the route has an app name and a path it will remove the app name so it can map it with the given domain and the path as well
+func (r RouteMapper) routeMapper(manifest *manifest, tempAppWithUUID string, domains []string, deploymentInfo *S.DeploymentInfo) error {
+
+	for _, route := range manifest.Applications[0].Routes {
+		var domainAndPath []string
+
+		appNameAndDomain := strings.SplitN(route.Route, ".", 2)
+
+		if len(appNameAndDomain) >= 2 {
+			domainAndPath = strings.SplitN(appNameAndDomain[1], "/", 2)
+		}
 
 		if isRouteADomainInTheFoundation(route.Route, domains) {
 			output, err := r.Courier.MapRoute(tempAppWithUUID, route.Route, deploymentInfo.AppName)
@@ -86,10 +123,16 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 				r.Log.Errorf("failed to map route: %s: %s", route.Route, string(output))
 				return MapRouteError{route.Route, output}
 			}
-		} else if len(s) >= 2 && isRouteADomainInTheFoundation(s[1], domains) {
-			output, err := r.Courier.MapRoute(tempAppWithUUID, s[1], s[0])
+		} else if len(appNameAndDomain) >= 2 && isRouteADomainInTheFoundation(appNameAndDomain[1], domains) {
+			output, err := r.Courier.MapRoute(tempAppWithUUID, appNameAndDomain[1], appNameAndDomain[0])
 			if err != nil {
 				r.Log.Errorf("failed to map route: %s: %s", route.Route, string(output))
+				return MapRouteError{route.Route, output}
+			}
+		} else if domainAndPath != nil && isRouteADomainInTheFoundation(domainAndPath[0], domains) {
+			output, err := r.Courier.MapRouteWithPath(tempAppWithUUID, domainAndPath[0], appNameAndDomain[0], domainAndPath[1])
+			if err != nil {
+				r.Log.Error(MapRouteError{route.Route, output})
 				return MapRouteError{route.Route, output}
 			}
 		} else {
@@ -101,14 +144,4 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 
 	r.Log.Info("route mapping successful: finished mapping routes")
 	return nil
-}
-
-func isRouteADomainInTheFoundation(route string, domains []string) bool {
-	for _, domain := range domains {
-		if route == domain {
-			return true
-		}
-	}
-
-	return false
 }

@@ -25,7 +25,7 @@ import (
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
-const ENDPOINT = "/v1/apps/:environment/:org/:space/:appName"
+const ENDPOINT = "/v1/deploy/:environment/:org/:space/:appName"
 
 // Handmade Creator mock.
 // Uses a mock prechecker to skip verifying the foundations are up and running.

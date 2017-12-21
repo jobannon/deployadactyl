@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	ENDPOINT        = "/v1/apps/:environment/:org/:space/:appName"
+	ENDPOINT        = "/v1/deploy/:environment/:org/:space/:appName"
 	CONFIGPATH      = "./test_config.yml"
 	ENVIRONMENTNAME = "test"
 	TESTCONFIG      = `---
@@ -39,7 +39,7 @@ var _ = Describe("Service", func() {
 		deployadactylServer *httptest.Server
 		artifactServer      *httptest.Server
 		org                 = randomizer.StringRunes(10)
-		space               = randomizer.StringRunes(10)
+		space               = os.Getenv("SILENT_DEPLOY_SPACE")
 		appName             = randomizer.StringRunes(10)
 	)
 
@@ -77,7 +77,7 @@ var _ = Describe("Service", func() {
 				Expect(err).ToNot(HaveOccurred())
 				jsonBuffer := bytes.NewBuffer(j)
 
-				requestURL := fmt.Sprintf("%s/v1/apps/%s/%s/%s/%s", deployadactylServer.URL, ENVIRONMENTNAME, org, space, appName)
+				requestURL := fmt.Sprintf("%s/v1/deploy/%s/%s/%s/%s", deployadactylServer.URL, ENVIRONMENTNAME, org, space, appName)
 				req, err := http.NewRequest("POST", requestURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -102,7 +102,7 @@ var _ = Describe("Service", func() {
 				body, err := os.Open("fixtures/artifact-with-manifest.jar")
 				Expect(err).ToNot(HaveOccurred())
 
-				requestURL := fmt.Sprintf("%s/v1/apps/%s/%s/%s/%s", deployadactylServer.URL, ENVIRONMENTNAME, org, space, appName)
+				requestURL := fmt.Sprintf("%s/v1/deploy/%s/%s/%s/%s", deployadactylServer.URL, ENVIRONMENTNAME, org, space, appName)
 				req, err := http.NewRequest("POST", requestURL, body)
 				Expect(err).ToNot(HaveOccurred())
 

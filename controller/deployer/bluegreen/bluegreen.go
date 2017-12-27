@@ -58,7 +58,7 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 	}
 
 	pushErrors := bg.pushAll(appPath)
-	if len(pushErrors) != 0 {
+	if len(pushErrors) != 0 && environment.EnableRollback {
 		rollbackErrors := bg.undoPushAll(deploymentLogger)
 		if len(rollbackErrors) != 0 {
 			return RollbackError{pushErrors, rollbackErrors}

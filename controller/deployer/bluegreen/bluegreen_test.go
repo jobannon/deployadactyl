@@ -48,6 +48,7 @@ var _ = Describe("Bluegreen", func() {
 
 		environment = config.Environment{Name: randomizer.StringRunes(10)}
 		environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
+		environment.EnableRollback = true
 
 		deploymentInfo = S.DeploymentInfo{AppName: appName}
 
@@ -157,6 +158,39 @@ var _ = Describe("Bluegreen", func() {
 			Eventually(response).Should(Say(loginOutput))
 			Eventually(response).Should(Say(pushOutput))
 			Eventually(response).Should(Say(pushOutput))
+		})
+
+		Context("when enable_rollback is false", func() {
+			It("can push an app that does not rollback on fail", func() {
+				By("setting a single foundation")
+				var (
+					foundationURL = "foundationURL-" + randomizer.StringRunes(10)
+					pusher        = &mocks.Pusher{Response: response}
+					pusherFactory = &mocks.PusherCreator{}
+				)
+
+				environment.Foundations = []string{foundationURL}
+
+				pushers = nil
+				pushers = append(pushers, pusher)
+
+				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
+				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+
+				pusher.LoginCall.Write.Output = loginOutput
+				pusher.PushCall.Write.Output = pushOutput
+
+				blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
+
+				Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
+
+				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
+				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
+
+				Eventually(response).Should(Say(loginOutput))
+				Eventually(response).Should(Say(pushOutput))
+			})
+
 		})
 
 		Context("when deleting the venerable fails", func() {

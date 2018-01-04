@@ -219,7 +219,7 @@ var _ = Describe("Bluegreen", func() {
 		})
 	})
 
-	Context("when at least one push command is unsuccessful", func() {
+	Context("when at least one push command is unsuccessful and EnableRollback is true", func() {
 		It("should rollback all recent pushes and print Cloud Foundry logs", func() {
 
 			for i, pusher := range pushers {
@@ -275,6 +275,22 @@ var _ = Describe("Bluegreen", func() {
 			Eventually(response).Should(Say(loginOutput))
 			Eventually(response).Should(Say(pushOutput))
 			Eventually(response).Should(Say(pushOutput))
+		})
+	})
+
+	Context("when at least one push command is unsuccessful and EnableRollback is false", func() {
+		It("app is not rolled back to previous version", func() {
+			environment.EnableRollback = false
+
+			for _, pusher := range pushers {
+				pusher.PushCall.Returns.Error = pushError
+			}
+
+			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(pushers[0].UndoPushCall.Received.UndoPushWasCalled).To(Equal(false))
 		})
 	})
 })

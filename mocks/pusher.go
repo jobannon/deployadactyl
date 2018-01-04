@@ -38,7 +38,8 @@ type Pusher struct {
 
 	UndoPushCall struct {
 		Received struct {
-			AppExists bool
+			AppExists         bool
+			UndoPushWasCalled bool
 		}
 		Returns struct {
 			Error error
@@ -84,6 +85,7 @@ func (p *Pusher) FinishPush() error {
 
 // UndoPush mock method.
 func (p *Pusher) UndoPush() error {
+	p.UndoPushCall.Received.UndoPushWasCalled = true
 	return p.UndoPushCall.Returns.Error
 }
 

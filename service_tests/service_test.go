@@ -39,7 +39,7 @@ var _ = Describe("Service", func() {
 		deployadactylServer *httptest.Server
 		artifactServer      *httptest.Server
 		org                 = randomizer.StringRunes(10)
-		space               = os.Getenv("SILENT_DEPLOY_SPACE")
+		space               = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
 		appName             = randomizer.StringRunes(10)
 	)
 

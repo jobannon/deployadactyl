@@ -68,7 +68,7 @@ var _ = Describe("Controller", func() {
 			byteBody, _ = ioutil.ReadAll(req.Body)
 		}))
 
-		silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_SPACE") + "/%s/dev/%s"
+		silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT") + "/%s/%s/%s"
 		os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
 	})
 
@@ -206,7 +206,7 @@ var _ = Describe("Controller", func() {
 
 				req, _ = http.NewRequest("POST", fmt.Sprintf("/v1/apps/non-prod/%s/dev/%s", org, appName), jsonBuffer)
 
-				go controller.SilentDeploy(req, org, appName, reqChannel)
+				go controller.SilentDeploy(req, org, space, appName, reqChannel)
 				someVariable := <-reqChannel
 
 				Eventually(someVariable.StatusCode).Should(Equal(http.StatusOK))
@@ -222,7 +222,7 @@ var _ = Describe("Controller", func() {
 					res.WriteHeader(500)
 				}))
 
-				silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_SPACE") + "/%s/dev/%s"
+				silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT") + "/%s/%s/%s"
 				os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
 
 				jsonBuffer = bytes.NewBufferString(`{
@@ -235,7 +235,7 @@ var _ = Describe("Controller", func() {
 
 				req, _ = http.NewRequest("POST", fmt.Sprintf("/v1/apps/non-prod/%s/dev/%s", org, appName), jsonBuffer)
 
-				go controller.SilentDeploy(req, org, appName, reqChannel)
+				go controller.SilentDeploy(req, org, space, appName, reqChannel)
 				someVariable := <-reqChannel
 
 				Eventually(someVariable.StatusCode).Should(Equal(http.StatusInternalServerError))

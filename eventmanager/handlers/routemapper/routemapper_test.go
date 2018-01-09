@@ -106,7 +106,10 @@ applications:
   routes:
   - route: %s
   - route: %s
-  - route: %s`,
+  - route: %s
+
+  env:
+    CONVEYOR: 23432`,
 				routes[0],
 				routes[1],
 				routes[2],

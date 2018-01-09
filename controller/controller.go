@@ -73,7 +73,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 	go c.NotSilentDeploy(request1, g.Param("environment"), g.Param("org"), g.Param("space"), g.Param("appName"), g.Request.Header.Get("Content-Type"), reqChannel1, response)
 
 	if g.Param("environment") == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
-		go c.SilentDeploy(request2, g.Param("org"), g.Param("appName"), reqChannel2)
+		go c.SilentDeploy(request2, g.Param("org"), g.Param("space"), g.Param("appName"), reqChannel2)
 		<-reqChannel2
 	}
 
@@ -113,10 +113,10 @@ func (c *Controller) NotSilentDeploy(req *http.Request, environment, org, space,
 	reqChannel <- deployResponse
 }
 
-func (c *Controller) SilentDeploy(req *http.Request, org, appName string, reqChannel chan DeployResponse) {
+func (c *Controller) SilentDeploy(req *http.Request, org, space, appName string, reqChannel chan DeployResponse) {
 	url := os.Getenv("SILENT_DEPLOY_URL")
 
-	request, err := http.NewRequest("POST", fmt.Sprintf(url, org, appName), req.Body)
+	request, err := http.NewRequest("POST", fmt.Sprintf(url, org, space, appName), req.Body)
 	if err != nil {
 		log.Println(err)
 	}

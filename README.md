@@ -182,7 +182,7 @@ curl -X POST \
      -H "Accept: application/json" \
      -H "Content-Type: application/json" \
      -d '{ "artifact_url": "https://example.com/lib/release/my_artifact.jar", "health_check_endpoint": "/health" }' \
-     https://preproduction.example.com/v1/deploy/environment/org/space/t-rex
+     https://preproduction.example.com/v2/deploy/environment/org/space/t-rex
 ```
 
 ## Event Handling

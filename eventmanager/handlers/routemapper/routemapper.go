@@ -22,7 +22,7 @@ type manifest struct {
 }
 
 type application struct {
-	Routes []route
+	CustomRoutes []route `yaml:"custom-routes"`
 }
 
 type route struct {
@@ -59,12 +59,12 @@ func (r RouteMapper) OnEvent(event S.Event) error {
 		return err
 	}
 
-	if m.Applications == nil || len(m.Applications[0].Routes) == 0 {
+	if m.Applications == nil || len(m.Applications[0].CustomRoutes) == 0 {
 		r.Log.Info("finished mapping routes: no routes to map")
 		return nil
 	}
 
-	r.Log.Infof("found %d routes in the manifest", len(m.Applications[0].Routes))
+	r.Log.Infof("found %d routes in the manifest", len(m.Applications[0].CustomRoutes))
 
 	domains, _ := r.Courier.Domains()
 
@@ -108,7 +108,7 @@ func (r RouteMapper) readManifest(deploymentInfo *S.DeploymentInfo) ([]byte, err
 // if the route has an app name and a path it will remove the app name so it can map it with the given domain and the path as well
 func (r RouteMapper) routeMapper(manifest *manifest, tempAppWithUUID string, domains []string, deploymentInfo *S.DeploymentInfo) error {
 
-	for _, route := range manifest.Applications[0].Routes {
+	for _, route := range manifest.Applications[0].CustomRoutes {
 		var domainAndPath []string
 
 		appNameAndDomain := strings.SplitN(route.Route, ".", 2)

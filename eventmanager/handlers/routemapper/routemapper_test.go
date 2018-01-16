@@ -103,7 +103,7 @@ var _ = Describe("Routemapper", func() {
 ---
 applications:
 - name: example
-  routes:
+  custom-routes:
   - route: %s
   - route: %s
   - route: %s
@@ -188,7 +188,7 @@ applications:
 ---
 applications:
 - name: example
-  routes:
+  custom-routes:
   - route: %s
   - route: %s
   - route: %s`,
@@ -231,7 +231,7 @@ applications:
 ---
 applications:
 - name: example
-  routes:
+  custom-routes:
   - route: %s
   - route: %s
   - route: %s`,
@@ -309,7 +309,7 @@ applications:
 ---
 applications:
   - name: example
-    routes:
+    custom-routes:
     - route: %s
     route: %s
     - route %s`,
@@ -335,7 +335,7 @@ applications:
 ---
 applications:
   - name: example
-    routes:
+    custom-routes:
     - route: %s
     route: %s
     - route %s`,
@@ -368,7 +368,7 @@ applications:
 ---
 applications:
 - name: example
-  routes:
+  custom-routes:
   - route: test.example.com`,
 			)
 
@@ -387,7 +387,7 @@ applications:
 ---
 applications:
 - name: example
-  routes:
+  custom-routes:
   - route: example`,
 			)
 
@@ -406,7 +406,7 @@ applications:
 			manifest := []byte(fmt.Sprintf(`---
 applications:
 - name: example
-  routes:
+  custom-routes:
   - route: %s.%s`, randomAppName, randomDomain),
 			)
 

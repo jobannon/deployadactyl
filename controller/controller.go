@@ -115,10 +115,13 @@ func (c *Controller) NotSilentDeploy(req *http.Request, environment, org, space,
 
 func (c *Controller) SilentDeploy(req *http.Request, org, space, appName string, reqChannel chan DeployResponse) {
 	url := os.Getenv("SILENT_DEPLOY_URL")
+	deployResponse := DeployResponse{}
 
 	request, err := http.NewRequest("POST", fmt.Sprintf(url, org, space, appName), req.Body)
 	if err != nil {
-		log.Println(err)
+		log.Println(fmt.Sprintf("Silent deployer request err: %s", err))
+		deployResponse.Error = err
+		reqChannel <- deployResponse
 	}
 
 	request.Header.Set("Content-Type", "application/json")
@@ -132,12 +135,7 @@ func (c *Controller) SilentDeploy(req *http.Request, org, space, appName string,
 
 	resp, err := client.Do(request)
 	if err != nil {
-		log.Println(err)
-	}
-
-	deployResponse := DeployResponse{}
-
-	if err != nil {
+		log.Println(fmt.Sprintf("Silent deployer response err: %s", err))
 		deployResponse.StatusCode = resp.StatusCode
 		deployResponse.Error = err
 		reqChannel <- deployResponse

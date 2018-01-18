@@ -11,87 +11,125 @@ import (
 
 	"os"
 
-	"log"
-
-	"crypto/tls"
-
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/gin-gonic/gin"
+	"encoding/base64"
+	"github.com/compozed/deployadactyl/constants"
 )
 
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
-	Deployer I.Deployer
-	Log      I.Logger
+	Deployer        I.Deployer
+	SilentDeployer  I.Deployer
+	Log             I.Logger
 }
 
-type DeployResponse struct {
-	StatusCode int
-	Error      error
+type Deployment struct {
+	Body          *[]byte
+	Type          constants.DeploymentType
+	Authorization Authorization
+	CFContext     CFContext
 }
 
-// Deploy checks the request content type and passes it to the Deployer.
-func (c *Controller) Deploy(g *gin.Context) {
-	c.Log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
+type Authorization struct {
+	Username string
+	Password string
+}
 
-	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
-	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(bodyBuffer))
-	bodySilent := ioutil.NopCloser(bytes.NewBuffer(bodyBuffer))
-	reqChannel1 := make(chan DeployResponse)
-	reqChannel2 := make(chan DeployResponse)
+type CFContext struct {
+	Environment  string
+	Organization string
+	Space        string
+	Application  string
+}
 
+func (c *Controller) DoDeploy(deployment *Deployment, response *bytes.Buffer) (*bytes.Buffer, int, error) {
+
+	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
+	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
+
+	headers := http.Header{}
+	headers["Authorization"] = []string{base64.StdEncoding.EncodeToString([]byte(deployment.Authorization.Username + ":" + deployment.Authorization.Password))}
 	request1 := &http.Request{
-		Method:        g.Request.Method,
-		URL:           g.Request.URL,
-		Proto:         g.Request.Proto,
-		ProtoMajor:    g.Request.ProtoMajor,
-		ProtoMinor:    g.Request.ProtoMinor,
-		Header:        g.Request.Header,
-		Body:          bodyNotSilent,
-		Host:          g.Request.Host,
-		ContentLength: g.Request.ContentLength,
-		Close:         true,
+		Header: headers,
+		Body:   bodyNotSilent,
 	}
 
 	request2 := &http.Request{
-		Method:        g.Request.Method,
-		URL:           g.Request.URL,
-		Proto:         g.Request.Proto,
-		ProtoMajor:    g.Request.ProtoMajor,
-		ProtoMinor:    g.Request.ProtoMinor,
-		Header:        g.Request.Header,
-		Body:          bodySilent,
-		Host:          g.Request.Host,
-		ContentLength: g.Request.ContentLength,
-		Close:         true,
+		Header: headers,
+		Body:   bodySilent,
 	}
 
-	response := &bytes.Buffer{}
+	reqChannel1 := make(chan I.DeployResponse)
+	reqChannel2 := make(chan I.DeployResponse)
 
-	defer io.Copy(g.Writer, response)
+	cf := deployment.CFContext
+	go c.Deployer.Deploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, response, reqChannel1)
+	//go c.NotSilentDeploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, reqChannel1, response)
 
-	go c.NotSilentDeploy(request1, g.Param("environment"), g.Param("org"), g.Param("space"), g.Param("appName"), g.Request.Header.Get("Content-Type"), reqChannel1, response)
-
-	if g.Param("environment") == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
-		go c.SilentDeploy(request2, g.Param("org"), g.Param("space"), g.Param("appName"), reqChannel2)
+	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
+		go c.SilentDeployer.Deploy(request2, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, response, reqChannel2)
+		//go c.SilentDeploy(request2, cf.Organization, cf.Space, cf.Application, reqChannel2)
 		<-reqChannel2
 	}
 
 	deployResponse := <-reqChannel1
 
 	if deployResponse.Error != nil {
-		g.Writer.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(response, "cannot deploy application: %s\n", deployResponse.Error)
-		return
+		return response, http.StatusInternalServerError, deployResponse.Error
 	}
 
 	close(reqChannel1)
 	close(reqChannel2)
-	g.Writer.WriteHeader(deployResponse.StatusCode)
+
+	return response, deployResponse.StatusCode, nil
 }
 
-func (c *Controller) NotSilentDeploy(req *http.Request, environment, org, space, appName, contentType string, reqChannel chan DeployResponse, response *bytes.Buffer) {
-	deployResponse := DeployResponse{}
+// Deploy checks the request content type and passes it to the Deployer.
+func (c *Controller) Deploy(g *gin.Context) {
+	c.Log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
+
+	cfContext := CFContext{
+		Environment: g.Param("environment"),
+		Organization: g.Param("org"),
+		Space: g.Param("space"),
+		Application: g.Param("appName"),
+	}
+
+	user, pwd, _ := g.Request.BasicAuth()
+	authorization := Authorization{
+		Username: user,
+		Password: pwd,
+	}
+
+	deploymentType := constants.DeploymentType{
+		JSON: isJSON(g.Request.Header.Get("Content-Type")),
+		ZIP: isZip(g.Request.Header.Get("Content-Type")),
+	}
+	response := &bytes.Buffer{}
+
+	deployment := Deployment{
+		Authorization: authorization,
+		CFContext: cfContext,
+		Type: deploymentType,
+	}
+	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
+	deployment.Body = &bodyBuffer
+
+	response, statusCode, error := c.DoDeploy(&deployment, response)
+	defer io.Copy(g.Writer, response)
+	if error != nil {
+		g.Writer.WriteHeader(statusCode)
+		fmt.Fprintf(response, "cannot deploy application: %s\n", error)
+		return
+	}
+
+	g.Writer.WriteHeader(statusCode)
+}
+
+/*
+func (c *Controller) NotSilentDeploy(req *http.Request, environment, org, space, appName string, contentType constants.DeploymentType, reqChannel chan D.DeployResponse, response *bytes.Buffer) {
+	deployResponse := D.DeployResponse{}
 	statusCode, err := c.Deployer.Deploy(
 		req,
 		environment,
@@ -113,9 +151,9 @@ func (c *Controller) NotSilentDeploy(req *http.Request, environment, org, space,
 	reqChannel <- deployResponse
 }
 
-func (c *Controller) SilentDeploy(req *http.Request, org, space, appName string, reqChannel chan DeployResponse) {
+func (c *Controller) SilentDeploy(req *http.Request, org, space, appName string, reqChannel chan D.DeployResponse) {
 	url := os.Getenv("SILENT_DEPLOY_URL")
-	deployResponse := DeployResponse{}
+	deployResponse := D.DeployResponse{}
 
 	request, err := http.NewRequest("POST", fmt.Sprintf(url, org, space, appName), req.Body)
 	if err != nil {
@@ -144,4 +182,12 @@ func (c *Controller) SilentDeploy(req *http.Request, org, space, appName string,
 	deployResponse.StatusCode = resp.StatusCode
 	deployResponse.Error = err
 	reqChannel <- deployResponse
+}
+*/
+func isZip(contentType string) bool {
+	return contentType == "application/zip"
+}
+
+func isJSON(contentType string) bool {
+	return contentType == "application/json"
 }

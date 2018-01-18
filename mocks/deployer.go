@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"github.com/compozed/deployadactyl/constants"
+
+	I "github.com/compozed/deployadactyl/interfaces"
 )
 
 // Deployer handmade mock for tests.
@@ -15,7 +18,7 @@ type Deployer struct {
 			Org         string
 			Space       string
 			AppName     string
-			ContentType string
+			ContentType constants.DeploymentType
 			Response    io.ReadWriter
 		}
 		Write struct {
@@ -29,7 +32,7 @@ type Deployer struct {
 }
 
 // Deploy mock method.
-func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, out io.ReadWriter) (int, error) {
+func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName string, contentType constants.DeploymentType, out io.ReadWriter, reqChan chan I.DeployResponse) {
 	d.DeployCall.Received.Request = req
 	d.DeployCall.Received.Environment = environment
 	d.DeployCall.Received.Org = org
@@ -40,5 +43,10 @@ func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName, c
 
 	fmt.Fprint(out, d.DeployCall.Write.Output)
 
-	return d.DeployCall.Returns.StatusCode, d.DeployCall.Returns.Error
+	response := I.DeployResponse{
+		StatusCode: d.DeployCall.Returns.StatusCode,
+		Error: d.DeployCall.Returns.Error,
+	}
+
+	reqChan <- response
 }

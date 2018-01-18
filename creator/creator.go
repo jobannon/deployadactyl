@@ -161,6 +161,7 @@ func (c Creator) CreateHTTPClient() *http.Client {
 func (c Creator) createController() controller.Controller {
 	return controller.Controller{
 		Deployer: c.createDeployer(),
+		SilentDeployer: c.createSilentDeployer(),
 		Log:      c.CreateLogger(),
 	}
 }
@@ -177,6 +178,10 @@ func (c Creator) createDeployer() I.Deployer {
 		Log:          c.CreateLogger(),
 		FileSystem:   c.CreateFileSystem(),
 	}
+}
+
+func (c Creator) createSilentDeployer() I.Deployer {
+	return deployer.SilentDeployer{}
 }
 
 func (c Creator) createFetcher() I.Fetcher {

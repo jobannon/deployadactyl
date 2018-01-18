@@ -19,6 +19,9 @@ import (
 	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/spf13/afero"
+	"os"
+	"crypto/tls"
+	"log"
 )
 
 const (
@@ -38,7 +41,43 @@ Space:        %s,
 AppName:      %s`
 )
 
-// Deployer contains the bluegreener for deployments, environment variables, a fetcher for artifacts, a prechecker and event manager.
+type SilentDeployer struct {
+
+}
+
+func (d SilentDeployer) Deploy(req *http.Request, environment, org, space, appName string, contentType C.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
+	url := os.Getenv("SILENT_DEPLOY_URL")
+	deployResponse := I.DeployResponse{}
+
+	request, err := http.NewRequest("POST", fmt.Sprintf(url, org, space, appName), req.Body)
+	if err != nil {
+		log.Println(fmt.Sprintf("Silent deployer request err: %s", err))
+		deployResponse.Error = err
+		reqChannel <- deployResponse
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	client := &http.Client{Transport: tr}
+
+	resp, err := client.Do(request)
+	if err != nil {
+		log.Println(fmt.Sprintf("Silent deployer response err: %s", err))
+		deployResponse.StatusCode = resp.StatusCode
+		deployResponse.Error = err
+		reqChannel <- deployResponse
+	}
+
+	deployResponse.StatusCode = resp.StatusCode
+	deployResponse.Error = err
+	reqChannel <- deployResponse
+}
+
 type Deployer struct {
 	Config       config.Config
 	BlueGreener  I.BlueGreener
@@ -51,8 +90,30 @@ type Deployer struct {
 	FileSystem   *afero.Afero
 }
 
-// Deploy takes the deployment information, checks the foundations, fetches the artifact and deploys the application.
-func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, contentType string, response io.ReadWriter) (statusCode int, err error) {
+func (d Deployer) Deploy(req *http.Request, environment, org, space, appName string, contentType C.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
+	deployResponse := I.DeployResponse{}
+	statusCode, err := d.deployInternal(
+		req,
+		environment,
+		org,
+		space,
+		appName,
+		contentType,
+		response,
+	)
+
+	if err != nil {
+		deployResponse.StatusCode = statusCode
+		deployResponse.Error = err
+		reqChannel <- deployResponse
+	}
+
+	deployResponse.StatusCode = statusCode
+	deployResponse.Error = err
+	reqChannel <- deployResponse
+}
+
+func (d Deployer) deployInternal(req *http.Request, environment, org, space, appName string, contentType C.DeploymentType, response io.ReadWriter) (statusCode int, err error) {
 	var (
 		deploymentInfo         = S.DeploymentInfo{}
 		environments           = d.Config.Environments
@@ -89,7 +150,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 		password = d.Config.Password
 	}
 
-	if isJSON(contentType) {
+	if contentType.JSON {
 		deploymentLogger.Debug("deploying from json request")
 		deploymentLogger.Debug("building deploymentInfo")
 		deploymentInfo, err = getDeploymentInfo(req.Body)
@@ -112,7 +173,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, co
 			return http.StatusInternalServerError, err
 		}
 
-	} else if isZip(contentType) {
+	} else if contentType.ZIP {
 		deploymentLogger.Debug("deploying from zip request")
 		appPath, err = d.Fetcher.FetchZipFromRequest(req)
 		if err != nil {

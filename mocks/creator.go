@@ -79,6 +79,7 @@ func (c Creator) CreateControllerHandler() *gin.Engine {
 func (c Creator) CreateController() controller.Controller {
 	return controller.Controller{
 		Deployer: c.CreateDeployer(),
+		SilentDeployer: c.CreateSilentDeployer(),
 		Log:      c.CreateLogger(),
 	}
 }
@@ -106,6 +107,10 @@ func (c Creator) CreateDeployer() I.Deployer {
 		FileSystem:   c.CreateFileSystem(),
 		ErrorFinder:  c.createErrorFinder(),
 	}
+}
+
+func (c Creator) CreateSilentDeployer() I.Deployer {
+	return deployer.SilentDeployer{}
 }
 
 func (c Creator) createFetcher() I.Fetcher {

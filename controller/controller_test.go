@@ -68,7 +68,7 @@ var _ = Describe("Controller", func() {
 			byteBody, _ = ioutil.ReadAll(req.Body)
 		}))
 
-		silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT") + "/%s/%s/%s"
+		silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
 		os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
 	})
 
@@ -222,7 +222,7 @@ var _ = Describe("Controller", func() {
 					res.WriteHeader(500)
 				}))
 
-				silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT") + "/%s/%s/%s"
+				silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
 				os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
 
 				jsonBuffer = bytes.NewBufferString(`{

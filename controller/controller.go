@@ -117,7 +117,7 @@ func (c *Controller) SilentDeploy(req *http.Request, org, space, appName string,
 	url := os.Getenv("SILENT_DEPLOY_URL")
 	deployResponse := DeployResponse{}
 
-	request, err := http.NewRequest("POST", fmt.Sprintf(url, org, space, appName), req.Body)
+	request, err := http.NewRequest("POST", fmt.Sprintf(url+"/%s/%s/%s", org, space, appName), req.Body)
 	if err != nil {
 		log.Println(fmt.Sprintf("Silent deployer request err: %s", err))
 		deployResponse.Error = err

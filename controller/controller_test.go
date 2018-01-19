@@ -67,8 +67,9 @@ var _ = Describe("Controller", func() {
 		org = "org-" + randomizer.StringRunes(10)
 		space = "non-prod"
 		contentType = "application/json"
+		
+		router.POST("/v2/deploy/:environment/:org/:space/:appName", controller.RunDeploymentViaHttp)
 
-		router.POST("/v1/deploy/:environment/:org/:space/:appName", controller.RunDeploymentViaHttp)
 
 		server = httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 			byteBody, _ = ioutil.ReadAll(req.Body)
@@ -85,7 +86,7 @@ var _ = Describe("Controller", func() {
 	Describe("RunDeploymentViaHttp handler", func() {
 		Context("when deployer succeeds", func() {
 			It("deploys and returns http.StatusOK", func() {
-				foundationURL = fmt.Sprintf("/v1/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
@@ -106,7 +107,7 @@ var _ = Describe("Controller", func() {
 			})
 
 			It("does not run silent deploy when environment other than non-prop", func() {
-				foundationURL = fmt.Sprintf("/v1/deploy/%s/%s/%s/%s", environment, org, "not-non-prod", appName)
+				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, "not-non-prod", appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
@@ -126,7 +127,7 @@ var _ = Describe("Controller", func() {
 
 		Context("when deployer fails", func() {
 			It("doesn't deploy and gives http.StatusInternalServerError", func() {
-				foundationURL = fmt.Sprintf("/v1/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())
@@ -143,7 +144,7 @@ var _ = Describe("Controller", func() {
 
 		Context("when parameters are added to the url", func() {
 			It("does not return an error", func() {
-				foundationURL = fmt.Sprintf("/v1/deploy/%s/%s/%s/%s?broken=false", environment, org, space, appName)
+				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s?broken=false", environment, org, space, appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
 				Expect(err).ToNot(HaveOccurred())

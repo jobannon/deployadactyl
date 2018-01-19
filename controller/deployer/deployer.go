@@ -272,14 +272,6 @@ func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {
 	return deploymentInfo, nil
 }
 
-func isZip(contentType string) bool {
-	return contentType == "application/zip"
-}
-
-func isJSON(contentType string) bool {
-	return contentType == "application/json"
-}
-
 func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, response io.ReadWriter, err *error, statusCode *int, deploymentLogger logger.DeploymentLogger) {
 	deploymentLogger.Debugf("emitting a %s event", C.DeployFinishEvent)
 

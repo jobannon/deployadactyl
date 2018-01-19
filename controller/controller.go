@@ -43,7 +43,7 @@ type CFContext struct {
 	Application  string
 }
 
-func (c *Controller) DoDeploy(deployment *Deployment, response *bytes.Buffer) (*bytes.Buffer, int, error) {
+func (c *Controller) RunDeployment(deployment *Deployment, response *bytes.Buffer) (*bytes.Buffer, int, error) {
 
 	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
@@ -65,11 +65,9 @@ func (c *Controller) DoDeploy(deployment *Deployment, response *bytes.Buffer) (*
 
 	cf := deployment.CFContext
 	go c.Deployer.Deploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, response, reqChannel1)
-	//go c.NotSilentDeploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, reqChannel1, response)
 
 	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
 		go c.SilentDeployer.Deploy(request2, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, response, reqChannel2)
-		//go c.SilentDeploy(request2, cf.Organization, cf.Space, cf.Application, reqChannel2)
 		<-reqChannel2
 	}
 
@@ -85,8 +83,8 @@ func (c *Controller) DoDeploy(deployment *Deployment, response *bytes.Buffer) (*
 	return response, deployResponse.StatusCode, nil
 }
 
-// Deploy checks the request content type and passes it to the Deployer.
-func (c *Controller) Deploy(g *gin.Context) {
+// RunDeploymentViaHttp checks the request content type and passes it to the Deployer.
+func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	c.Log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
 
 	cfContext := CFContext{
@@ -116,7 +114,7 @@ func (c *Controller) Deploy(g *gin.Context) {
 	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
 	deployment.Body = &bodyBuffer
 
-	response, statusCode, error := c.DoDeploy(&deployment, response)
+	response, statusCode, error := c.RunDeployment(&deployment, response)
 	defer io.Copy(g.Writer, response)
 	if error != nil {
 		g.Writer.WriteHeader(statusCode)
@@ -127,63 +125,6 @@ func (c *Controller) Deploy(g *gin.Context) {
 	g.Writer.WriteHeader(statusCode)
 }
 
-/*
-func (c *Controller) NotSilentDeploy(req *http.Request, environment, org, space, appName string, contentType constants.DeploymentType, reqChannel chan D.DeployResponse, response *bytes.Buffer) {
-	deployResponse := D.DeployResponse{}
-	statusCode, err := c.Deployer.Deploy(
-		req,
-		environment,
-		org,
-		space,
-		appName,
-		contentType,
-		response,
-	)
-
-	if err != nil {
-		deployResponse.StatusCode = statusCode
-		deployResponse.Error = err
-		reqChannel <- deployResponse
-	}
-
-	deployResponse.StatusCode = statusCode
-	deployResponse.Error = err
-	reqChannel <- deployResponse
-}
-
-func (c *Controller) SilentDeploy(req *http.Request, org, space, appName string, reqChannel chan D.DeployResponse) {
-	url := os.Getenv("SILENT_DEPLOY_URL")
-	deployResponse := D.DeployResponse{}
-
-	request, err := http.NewRequest("POST", fmt.Sprintf(url, org, space, appName), req.Body)
-	if err != nil {
-		log.Println(fmt.Sprintf("Silent deployer request err: %s", err))
-		deployResponse.Error = err
-		reqChannel <- deployResponse
-	}
-
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Accept", "application/json")
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-
-	client := &http.Client{Transport: tr}
-
-	resp, err := client.Do(request)
-	if err != nil {
-		log.Println(fmt.Sprintf("Silent deployer response err: %s", err))
-		deployResponse.StatusCode = resp.StatusCode
-		deployResponse.Error = err
-		reqChannel <- deployResponse
-	}
-
-	deployResponse.StatusCode = resp.StatusCode
-	deployResponse.Error = err
-	reqChannel <- deployResponse
-}
-*/
 func isZip(contentType string) bool {
 	return contentType == "application/zip"
 }

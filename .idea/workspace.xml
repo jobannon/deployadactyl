@@ -2,13 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="555f5b3f-8573-4580-9b95-09120e6fb94f" name="Default" comment="">
-      <change beforePath="" afterPath="$PROJECT_DIR$/constants/DeploymentType.go" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change beforePath="$PROJECT_DIR$/controller/controller.go" afterPath="$PROJECT_DIR$/controller/controller.go" />
       <change beforePath="$PROJECT_DIR$/controller/controller_test.go" afterPath="$PROJECT_DIR$/controller/controller_test.go" />
       <change beforePath="$PROJECT_DIR$/controller/deployer/deployer.go" afterPath="$PROJECT_DIR$/controller/deployer/deployer.go" />
-      <change beforePath="$PROJECT_DIR$/controller/deployer/deployer_test.go" afterPath="$PROJECT_DIR$/controller/deployer/deployer_test.go" />
       <change beforePath="$PROJECT_DIR$/creator/creator.go" afterPath="$PROJECT_DIR$/creator/creator.go" />
-      <change beforePath="$PROJECT_DIR$/interfaces/deployer.go" afterPath="$PROJECT_DIR$/interfaces/deployer.go" />
       <change beforePath="$PROJECT_DIR$/mocks/creator.go" afterPath="$PROJECT_DIR$/mocks/creator.go" />
       <change beforePath="$PROJECT_DIR$/mocks/deployer.go" afterPath="$PROJECT_DIR$/mocks/deployer.go" />
     </list>
@@ -21,11 +19,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="controller.go" pinned="false" current-in-tab="false">
+      <file leaf-file-name="controller.go" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/controller/controller.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="427">
-              <caret line="66" column="7" lean-forward="false" selection-start-line="66" selection-start-column="4" selection-end-line="66" selection-end-column="7" />
+            <state relative-caret-position="990">
+              <caret line="86" column="41" lean-forward="false" selection-start-line="86" selection-start-column="41" selection-end-line="86" selection-end-column="41" />
               <folding>
                 <element signature="e#96#306#0" expanded="true" />
               </folding>
@@ -36,21 +34,11 @@
       <file leaf-file-name="deployer.go" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/controller/deployer/deployer.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="359">
-              <caret line="103" column="0" lean-forward="true" selection-start-line="103" selection-start-column="0" selection-end-line="103" selection-end-column="0" />
+            <state relative-caret-position="632">
+              <caret line="115" column="27" lean-forward="false" selection-start-line="115" selection-start-column="27" selection-end-line="115" selection-end-column="27" />
               <folding>
                 <element signature="e#68#562#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="logger.go" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/logger/logger.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="360">
-              <caret line="51" column="0" lean-forward="false" selection-start-line="51" selection-start-column="0" selection-end-line="51" selection-end-column="0" />
-              <folding />
             </state>
           </provider>
         </entry>
@@ -65,33 +53,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="manifestro.go" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/controller/deployer/manifestro/manifestro.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="361">
-              <caret line="19" column="0" lean-forward="false" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="deployer.go" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/interfaces/deployer.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="456">
-              <caret line="24" column="5" lean-forward="true" selection-start-line="24" selection-start-column="5" selection-end-line="24" selection-end-column="5" />
-              <folding>
-                <element signature="e#20#95#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="deployer.go" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/mocks/deployer.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="405">
-              <caret line="28" column="26" lean-forward="true" selection-start-line="28" selection-start-column="26" selection-end-line="28" selection-end-column="26" />
+            <state relative-caret-position="332">
+              <caret line="35" column="127" lean-forward="false" selection-start-line="35" selection-start-column="124" selection-end-line="35" selection-end-column="127" />
               <folding>
                 <element signature="e#15#148#0" expanded="true" />
               </folding>
@@ -99,25 +65,67 @@
           </provider>
         </entry>
       </file>
+      <file leaf-file-name="asm_amd64.s" pinned="false" current-in-tab="false">
+        <entry file="file:///usr/local/go/src/runtime/asm_amd64.s">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="215">
+              <caret line="2196" column="0" lean-forward="false" selection-start-line="2196" selection-start-column="0" selection-end-line="2196" selection-end-column="0" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
       <file leaf-file-name="controller_test.go" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/controller/controller_test.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="242">
-              <caret line="35" column="26" lean-forward="false" selection-start-line="35" selection-start-column="26" selection-end-line="35" selection-end-column="26" />
+            <state relative-caret-position="74">
+              <caret line="279" column="0" lean-forward="false" selection-start-line="279" selection-start-column="0" selection-end-line="279" selection-end-column="0" />
               <folding>
-                <element signature="e#25#512#0" expanded="true" />
+                <element signature="e#25#559#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="deployer_test.go" pinned="false" current-in-tab="true">
+      <file leaf-file-name="deployer.go" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/interfaces/deployer.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="209">
+              <caret line="15" column="8" lean-forward="false" selection-start-line="15" selection-start-column="8" selection-end-line="15" selection-end-column="8" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="deployer_test.go" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/controller/deployer/deployer_test.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="403">
-              <caret line="212" column="104" lean-forward="true" selection-start-line="212" selection-start-column="79" selection-end-line="212" selection-end-column="104" />
+            <state relative-caret-position="3933">
+              <caret line="207" column="30" lean-forward="false" selection-start-line="207" selection-start-column="30" selection-end-line="207" selection-end-column="30" />
               <folding>
                 <element signature="e#23#632#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="creator.go" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/mocks/creator.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1121">
+              <caret line="81" column="49" lean-forward="false" selection-start-line="81" selection-start-column="49" selection-end-line="81" selection-end-column="49" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="creator.go" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/creator/creator.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="3477">
+              <caret line="183" column="29" lean-forward="false" selection-start-line="183" selection-start-column="29" selection-end-line="183" selection-end-column="29" />
+              <folding>
+                <element signature="e#78#1189#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -139,6 +147,9 @@
       <find>doesn't deploy and gives http.StatusInternalServerError</find>
       <find>deployer.Deploy</find>
       <find>XI</find>
+      <find>fit</find>
+      <find>SILENT_DEPLOY_ENVIRONMENT</find>
+      <find>os.set</find>
     </findStrings>
     <replaceStrings>
       <replace>go deployer.Deploy</replace>
@@ -157,12 +168,12 @@
         <option value="$PROJECT_DIR$/controller/deployer/deployer_factory.go" />
         <option value="$PROJECT_DIR$/mocks/creator.go" />
         <option value="$PROJECT_DIR$/creator/creator.go" />
+        <option value="$PROJECT_DIR$/interfaces/deployer.go" />
+        <option value="$PROJECT_DIR$/controller/deployer/deployer_test.go" />
+        <option value="$PROJECT_DIR$/mocks/deployer.go" />
         <option value="$PROJECT_DIR$/controller/controller_test.go" />
         <option value="$PROJECT_DIR$/controller/deployer/deployer.go" />
         <option value="$PROJECT_DIR$/controller/controller.go" />
-        <option value="$PROJECT_DIR$/interfaces/deployer.go" />
-        <option value="$PROJECT_DIR$/mocks/deployer.go" />
-        <option value="$PROJECT_DIR$/controller/deployer/deployer_test.go" />
       </list>
     </option>
   </component>
@@ -192,7 +203,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
+      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -235,7 +246,7 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scratches" />
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -256,7 +267,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Go Test.Deployer">
+  <component name="RunManager" selected="Go Test.Controller">
     <configuration name="go build creator.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true">
       <module name="deployadactyl" />
       <working_directory value="$PROJECT_DIR$/" />
@@ -324,47 +335,47 @@
     <option name="remove_strategy" value="false" />
   </component>
   <component name="TestHistory">
-    <history-entry file="Deployer - 2018.01.18 at 14h 35m 45s.xml">
-      <configuration name="Deployer" configurationId="GoTestRunConfiguration" />
+    <history-entry file="Controller - 2018.01.19 at 07h 55m 00s.xml">
+      <configuration name="Controller" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="Deployer - 2018.01.18 at 14h 36m 24s.xml">
-      <configuration name="Deployer" configurationId="GoTestRunConfiguration" />
+    <history-entry file="Controller - 2018.01.19 at 08h 00m 15s.xml">
+      <configuration name="Controller" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="Deployer - 2018.01.18 at 14h 37m 11s.xml">
-      <configuration name="Deployer" configurationId="GoTestRunConfiguration" />
+    <history-entry file="Controller - 2018.01.19 at 08h 30m 25s.xml">
+      <configuration name="Controller" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="Deployer - 2018.01.18 at 14h 37m 57s.xml">
-      <configuration name="Deployer" configurationId="GoTestRunConfiguration" />
+    <history-entry file="Controller - 2018.01.19 at 08h 31m 11s.xml">
+      <configuration name="Controller" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="Deployer - 2018.01.18 at 14h 47m 02s.xml">
-      <configuration name="Deployer" configurationId="GoTestRunConfiguration" />
+    <history-entry file="Controller - 2018.01.19 at 08h 32m 49s.xml">
+      <configuration name="Controller" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="Deployer - 2018.01.18 at 15h 09m 57s.xml">
-      <configuration name="Deployer" configurationId="GoTestRunConfiguration" />
+    <history-entry file="Controller - 2018.01.19 at 08h 42m 27s.xml">
+      <configuration name="Controller" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="Deployer - 2018.01.18 at 15h 10m 56s.xml">
-      <configuration name="Deployer" configurationId="GoTestRunConfiguration" />
+    <history-entry file="Controller - 2018.01.19 at 08h 43m 11s.xml">
+      <configuration name="Controller" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="Deployer - 2018.01.18 at 15h 11m 20s.xml">
-      <configuration name="Deployer" configurationId="GoTestRunConfiguration" />
+    <history-entry file="Controller - 2018.01.19 at 08h 43m 44s.xml">
+      <configuration name="Controller" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="Deployer - 2018.01.18 at 15h 13m 01s.xml">
-      <configuration name="Deployer" configurationId="GoTestRunConfiguration" />
+    <history-entry file="Controller - 2018.01.19 at 08h 44m 30s.xml">
+      <configuration name="Controller" configurationId="GoTestRunConfiguration" />
     </history-entry>
-    <history-entry file="Deployer - 2018.01.18 at 15h 14m 44s.xml">
-      <configuration name="Deployer" configurationId="GoTestRunConfiguration" />
+    <history-entry file="Controller - 2018.01.19 at 08h 48m 17s.xml">
+      <configuration name="Controller" configurationId="GoTestRunConfiguration" />
     </history-entry>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="23" width="2560" height="1349" extended-state="6" />
+    <frame x="0" y="23" width="2560" height="1349" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.13185067" sideWeight="0.5" order="1" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.13264495" sideWeight="0.5" order="1" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="true" content_ui="tabs" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.3277512" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32852808" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3277512" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3277512" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.2494331" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
@@ -386,11 +397,169 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="40" />
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/controller/deployer/deployer.go</url>
+          <line>94</line>
+          <properties />
+          <option name="timeStamp" value="52" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/controller/deployer/deployer.go</url>
+          <line>129</line>
+          <properties />
+          <option name="timeStamp" value="53" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/controller/deployer/deployer.go</url>
+          <line>142</line>
+          <properties />
+          <option name="timeStamp" value="54" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/controller/deployer/deployer.go</url>
+          <line>135</line>
+          <properties />
+          <option name="timeStamp" value="55" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/controller/deployer/deployer.go</url>
+          <line>152</line>
+          <properties />
+          <option name="timeStamp" value="56" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/controller/deployer/deployer.go</url>
+          <line>203</line>
+          <properties />
+          <option name="timeStamp" value="57" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/controller/deployer/deployer.go</url>
+          <line>210</line>
+          <properties />
+          <option name="timeStamp" value="58" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/controller/deployer/deployer.go</url>
+          <line>222</line>
+          <properties />
+          <option name="timeStamp" value="59" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/controller/deployer/deployer.go</url>
+          <line>231</line>
+          <properties />
+          <option name="timeStamp" value="60" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/controller/deployer/deployer.go</url>
+          <line>246</line>
+          <properties />
+          <option name="timeStamp" value="61" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/mocks/deployer.go</url>
+          <line>48</line>
+          <properties />
+          <option name="timeStamp" value="65" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/mocks/deployer.go</url>
+          <line>46</line>
+          <properties />
+          <option name="timeStamp" value="66" />
+        </line-breakpoint>
+      </breakpoints>
+      <option name="time" value="68" />
     </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/controller/controller.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1254">
+          <caret line="66" column="23" lean-forward="false" selection-start-line="66" selection-start-column="23" selection-end-line="66" selection-end-column="23" />
+          <folding>
+            <element signature="e#96#306#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/controller/deployer/deployer.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="817">
+          <caret line="43" column="5" lean-forward="false" selection-start-line="43" selection-start-column="5" selection-end-line="43" selection-end-column="5" />
+          <folding>
+            <element signature="e#68#562#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/logger/logger.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="874">
+          <caret line="51" column="0" lean-forward="false" selection-start-line="51" selection-start-column="0" selection-end-line="51" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/controller/deployer/bluegreen/bluegreen.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="285">
+          <caret line="25" column="36" lean-forward="false" selection-start-line="25" selection-start-column="25" selection-end-line="25" selection-end-column="36" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mocks/deployer.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="532">
+          <caret line="28" column="26" lean-forward="true" selection-start-line="28" selection-start-column="26" selection-end-line="28" selection-end-column="26" />
+          <folding>
+            <element signature="e#15#148#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/controller/deployer/deployer_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3933">
+          <caret line="207" column="30" lean-forward="true" selection-start-line="207" selection-start-column="30" selection-end-line="207" selection-end-column="30" />
+          <folding>
+            <element signature="e#23#632#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mocks/creator.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1121">
+          <caret line="81" column="49" lean-forward="false" selection-start-line="81" selection-start-column="49" selection-end-line="81" selection-end-column="49" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/creator/creator.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3477">
+          <caret line="183" column="29" lean-forward="false" selection-start-line="183" selection-start-column="29" selection-end-line="183" selection-end-column="29" />
+          <folding>
+            <element signature="e#78#1189#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/controller/controller_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3363">
+          <caret line="177" column="0" lean-forward="false" selection-start-line="177" selection-start-column="0" selection-end-line="177" selection-end-column="0" />
+          <folding>
+            <element signature="e#25#559#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/controller/controller.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1425">
@@ -401,14 +570,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/controller/deployer/deployer_factory.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="475">
-          <caret line="25" column="20" lean-forward="false" selection-start-line="25" selection-start-column="20" selection-end-line="25" selection-end-column="20" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/controller/deployer/deployer_factory.go" />
     <entry file="file://$PROJECT_DIR$/controller/deployer/deployer.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1748">
@@ -439,7 +601,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -448,7 +609,7 @@
         <state relative-caret-position="152">
           <caret line="8" column="5" lean-forward="false" selection-start-line="8" selection-start-column="5" selection-end-line="8" selection-end-column="5" />
           <folding>
-            <element signature="e#20#95#0" expanded="true" />
+            <element signature="e#20#95#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -468,7 +629,7 @@
         <state relative-caret-position="532">
           <caret line="28" column="0" lean-forward="false" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
           <folding>
-            <element signature="e#25#512#0" expanded="true" />
+            <element signature="e#25#559#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -525,7 +686,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -548,6 +708,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="57">
           <caret line="3" column="7" lean-forward="true" selection-start-line="3" selection-start-column="7" selection-end-line="3" selection-end-column="7" />
+          <folding>
+            <element signature="e#86#151#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -557,25 +720,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/mocks/creator.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="81" column="49" lean-forward="false" selection-start-line="81" selection-start-column="49" selection-end-line="81" selection-end-column="49" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/creator/creator.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="199">
-          <caret line="171" column="44" lean-forward="false" selection-start-line="171" selection-start-column="44" selection-end-line="171" selection-end-column="44" />
-          <folding>
-            <element signature="e#78#1189#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -583,7 +727,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -602,6 +745,43 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/logger/logger.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="874">
+          <caret line="51" column="0" lean-forward="false" selection-start-line="51" selection-start-column="0" selection-end-line="51" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/controller/deployer/deployer_factory.go" />
+    <entry file="file://$PROJECT_DIR$/controller/deployer/deployer_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3933">
+          <caret line="207" column="30" lean-forward="false" selection-start-line="207" selection-start-column="30" selection-end-line="207" selection-end-column="30" />
+          <folding>
+            <element signature="e#23#632#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mocks/creator.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1121">
+          <caret line="81" column="49" lean-forward="false" selection-start-line="81" selection-start-column="49" selection-end-line="81" selection-end-column="49" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/creator/creator.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3477">
+          <caret line="183" column="29" lean-forward="false" selection-start-line="183" selection-start-column="29" selection-end-line="183" selection-end-column="29" />
+          <folding>
+            <element signature="e#78#1189#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/controller/deployer/bluegreen/bluegreen.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="285">
@@ -610,36 +790,54 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/logger/logger.go">
+    <entry file="file:///usr/local/go/src/runtime/asm_amd64.s">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="360">
-          <caret line="51" column="0" lean-forward="false" selection-start-line="51" selection-start-column="0" selection-end-line="51" selection-end-column="0" />
+        <state relative-caret-position="215">
+          <caret line="2196" column="0" lean-forward="false" selection-start-line="2196" selection-start-column="0" selection-end-line="2196" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/controller/deployer/deployer_factory.go">
+    <entry file="file://$PROJECT_DIR$/../../onsi/gomega/gomega_dsl.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="152">
-          <caret line="8" column="13" lean-forward="false" selection-start-line="8" selection-start-column="5" selection-end-line="8" selection-end-column="20" />
+        <state relative-caret-position="500">
+          <caret line="294" column="2" lean-forward="true" selection-start-line="294" selection-start-column="2" selection-end-line="294" selection-end-column="2" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/interfaces/deployer.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="209">
+          <caret line="15" column="8" lean-forward="false" selection-start-line="15" selection-start-column="8" selection-end-line="15" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mocks/deployer.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="332">
+          <caret line="35" column="127" lean-forward="false" selection-start-line="35" selection-start-column="124" selection-end-line="35" selection-end-column="127" />
+          <folding>
+            <element signature="e#15#148#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/controller/controller_test.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="242">
-          <caret line="35" column="26" lean-forward="false" selection-start-line="35" selection-start-column="26" selection-end-line="35" selection-end-column="26" />
+        <state relative-caret-position="74">
+          <caret line="279" column="0" lean-forward="false" selection-start-line="279" selection-start-column="0" selection-end-line="279" selection-end-column="0" />
           <folding>
-            <element signature="e#25#512#0" expanded="true" />
+            <element signature="e#25#559#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/controller/deployer/deployer.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="359">
-          <caret line="103" column="0" lean-forward="true" selection-start-line="103" selection-start-column="0" selection-end-line="103" selection-end-column="0" />
+        <state relative-caret-position="632">
+          <caret line="115" column="27" lean-forward="false" selection-start-line="115" selection-start-column="27" selection-end-line="115" selection-end-column="27" />
           <folding>
             <element signature="e#68#562#0" expanded="true" />
           </folding>
@@ -648,40 +846,10 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/controller/controller.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="427">
-          <caret line="66" column="7" lean-forward="false" selection-start-line="66" selection-start-column="4" selection-end-line="66" selection-end-column="7" />
+        <state relative-caret-position="990">
+          <caret line="86" column="41" lean-forward="false" selection-start-line="86" selection-start-column="41" selection-end-line="86" selection-end-column="41" />
           <folding>
             <element signature="e#96#306#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/interfaces/deployer.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="456">
-          <caret line="24" column="5" lean-forward="true" selection-start-line="24" selection-start-column="5" selection-end-line="24" selection-end-column="5" />
-          <folding>
-            <element signature="e#20#95#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/mocks/deployer.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="405">
-          <caret line="28" column="26" lean-forward="true" selection-start-line="28" selection-start-column="26" selection-end-line="28" selection-end-column="26" />
-          <folding>
-            <element signature="e#15#148#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/controller/deployer/deployer_test.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="403">
-          <caret line="212" column="104" lean-forward="true" selection-start-line="212" selection-start-column="79" selection-end-line="212" selection-end-column="104" />
-          <folding>
-            <element signature="e#23#632#0" expanded="true" />
           </folding>
         </state>
       </provider>

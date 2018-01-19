@@ -12,6 +12,7 @@ import (
 // Deployer handmade mock for tests.
 type Deployer struct {
 	DeployCall struct {
+		Called int
 		Received struct {
 			Request     *http.Request
 			Environment string
@@ -31,8 +32,10 @@ type Deployer struct {
 	}
 }
 
-// Deploy mock method.
+// RunDeploymentViaHttp mock method.
 func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName string, contentType constants.DeploymentType, out io.ReadWriter, reqChan chan I.DeployResponse) {
+	d.DeployCall.Called++
+
 	d.DeployCall.Received.Request = req
 	d.DeployCall.Received.Environment = environment
 	d.DeployCall.Received.Org = org

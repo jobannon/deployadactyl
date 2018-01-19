@@ -21,6 +21,7 @@ import (
 	"github.com/op/go-logging"
 	//"github.com/compozed/deployadactyl/constants"
 	//"github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/constants"
 )
 
 const (
@@ -67,7 +68,7 @@ var _ = Describe("Controller", func() {
 		space = "non-prod"
 		contentType = "application/json"
 
-		router.POST("/v1/deploy/:environment/:org/:space/:appName", controller.Deploy)
+		router.POST("/v1/deploy/:environment/:org/:space/:appName", controller.RunDeploymentViaHttp)
 
 		server = httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 			byteBody, _ = ioutil.ReadAll(req.Body)
@@ -81,7 +82,7 @@ var _ = Describe("Controller", func() {
 		server.Close()
 	})
 
-	Describe("Deploy handler", func() {
+	Describe("RunDeploymentViaHttp handler", func() {
 		Context("when deployer succeeds", func() {
 			It("deploys and returns http.StatusOK", func() {
 				foundationURL = fmt.Sprintf("/v1/deploy/%s/%s/%s/%s", environment, org, space, appName)
@@ -156,103 +157,155 @@ var _ = Describe("Controller", func() {
 				Eventually(resp.Body).Should(ContainSubstring("deploy success"))
 			})
 		})
+	})
 
-		/*
-		XContext("when NotSilentDeploy is called", func() {
-			It("channel resolves true when no errors occur", func() {
-				req := &http.Request{}
-				reqChannel := make(chan interfaces.DeployResponse)
-				response := &bytes.Buffer{}
+	Describe("RunDeployment", func() {
+		Context("when verbose deployer is called", func () {
+			It("channel resolves when no errors occur", func() {
 
 				deployer.DeployCall.Returns.Error = nil
 				deployer.DeployCall.Returns.StatusCode = http.StatusOK
-				deployer.DeployCall.Write.Output = "deploy success"
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
-				deployType := constants.DeploymentType{ JSON: true }
-				go controller.NotSilentDeploy(req, environment, org, space, appName, deployType, reqChannel, response)
-				someVariable := <-reqChannel
+				response := &bytes.Buffer{}
 
-				Eventually(someVariable.StatusCode).Should(Equal(http.StatusOK))
+				deployment:= &Deployment{
+					Body: &[]byte{},
+					Type: constants.DeploymentType{ JSON: true },
+					CFContext: CFContext{
+						Environment: environment,
+						Organization: org,
+						Space: space,
+						Application: appName,
+					},
+				}
+				response, statusCode, _ := controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Called).Should(Equal(1))
+				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
+
+				Eventually(statusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(constants.DeploymentType{ JSON: true }))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
 
+				ret, _ := ioutil.ReadAll(response)
+				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
 			})
-
-			It("channel resolves false when errors occur", func() {
-				req := &http.Request{}
-				reqChannel := make(chan DeployResponse)
-				response := &bytes.Buffer{}
+			It("channel resolves when errors occur", func() {
 
 				deployer.DeployCall.Returns.Error = errors.New("bork")
 				deployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
-				deployer.DeployCall.Write.Output = "deploy failed"
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
-				deployType := constants.DeploymentType{ JSON: true }
-				go controller.NotSilentDeploy(req, environment, org, space, appName, deployType, reqChannel, response)
-				someVariable := <-reqChannel
+				response := &bytes.Buffer{}
 
-				Eventually(someVariable.StatusCode).Should(Equal(http.StatusInternalServerError))
-				Eventually(someVariable.Error.Error()).Should(Equal("bork"))
+				deployment:= &Deployment{
+					Body: &[]byte{},
+					Type: constants.DeploymentType{ JSON: true },
+					CFContext: CFContext{
+						Environment: environment,
+						Organization: org,
+						Space: space,
+						Application: appName,
+					},
+				}
+				response, statusCode, err := controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Called).Should(Equal(1))
+				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
+
+				Eventually(statusCode).Should(Equal(http.StatusInternalServerError))
+				Eventually(err.Error()).Should(Equal("bork"))
+
+				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(constants.DeploymentType{ JSON: true }))
+				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+
+				ret, _ := ioutil.ReadAll(response)
+				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
 			})
-		})*/
+		})
+		Context("when SILENT_DEPLOY_ENVIRONMENT is true", func() {
+			It("channel resolves true when no errors occur", func() {
 
-	//	Context("when SilentDeploy is called", func() {
-	//		It("channel resolves true when no errors occur", func() {
-	//			req := &http.Request{}
-	//			reqChannel := make(chan DeployResponse)
-	//
-	//			jsonBuffer = bytes.NewBufferString(`{
-	//				"artifact_url": "https://artifactory.allstate.com/artifactory/libs-release-local/com/allstate/conveyor-test/little-timmy-env.zip",
-	//				"data": {
-	//				"user_id": "sys-cfdplyr",
-	//				"group": "ServiceNow_DEV"
-	//				}
-	//			}`)
-	//
-	//			req, _ = http.NewRequest("POST", fmt.Sprintf("/v1/apps/non-prod/%s/dev/%s", org, appName), jsonBuffer)
-	//
-	//			go controller.SilentDeploy(req, org, space, appName, reqChannel)
-	//			someVariable := <-reqChannel
-	//
-	//			Eventually(someVariable.StatusCode).Should(Equal(http.StatusOK))
-	//			Eventually(string(byteBody)).Should(ContainSubstring("little-timmy-env.zip"))
-	//
-	//		})
-	//
-	//		It("channel resolves false when errors occur", func() {
-	//			req := &http.Request{}
-	//			reqChannel := make(chan DeployResponse)
-	//
-	//			server = httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-	//				res.WriteHeader(500)
-	//			}))
-	//
-	//			silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT") + "/%s/%s/%s"
-	//			os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
-	//
-	//			jsonBuffer = bytes.NewBufferString(`{
-	//				"artifact_url": "https://artifactory.allstate.com/artifactory/libs-release-local/com/allstate/conveyor-test/little-timmy-env.zip",
-	//				"data": {
-	//				"user_id": "sys-cfdplyr",
-	//				"group": "ServiceNow_DEV"
-	//				}
-	//			}`)
-	//
-	//			req, _ = http.NewRequest("POST", fmt.Sprintf("/v1/apps/non-prod/%s/dev/%s", org, appName), jsonBuffer)
-	//
-	//			go controller.SilentDeploy(req, org, space, appName, reqChannel)
-	//			someVariable := <-reqChannel
-	//
-	//			Eventually(someVariable.StatusCode).Should(Equal(http.StatusInternalServerError))
-	//
-	//		})
-	//	})
-	})
+				os.Setenv("SILENT_DEPLOY_ENVIRONMENT", environment)
+				deployer.DeployCall.Returns.Error = nil
+				deployer.DeployCall.Returns.StatusCode = http.StatusOK
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
-	Describe("DoDeploy", func() {
+				response := &bytes.Buffer{}
 
+				deployment:= &Deployment{
+					Body: &[]byte{},
+					Type: constants.DeploymentType{ JSON: true },
+					CFContext: CFContext{
+						Environment: environment,
+						Organization: org,
+						Space: space,
+						Application: appName,
+					},
+				}
+				response, statusCode, _ := controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Called).Should(Equal(1))
+				Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
+
+				Eventually(statusCode).Should(Equal(http.StatusOK))
+
+				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(constants.DeploymentType{ JSON: true }))
+				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+
+
+				ret, _ := ioutil.ReadAll(response)
+				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+			})
+			It("channel resolves when no errors occur", func() {
+
+				os.Setenv("SILENT_DEPLOY_ENVIRONMENT", environment)
+				deployer.DeployCall.Returns.Error = nil
+				deployer.DeployCall.Returns.StatusCode = http.StatusOK
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+
+				silentDeployer.DeployCall.Returns.Error = errors.New("bork")
+				silentDeployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
+
+				response := &bytes.Buffer{}
+
+				deployment:= &Deployment{
+					Body: &[]byte{},
+					Type: constants.DeploymentType{ JSON: true },
+					CFContext: CFContext{
+						Environment: environment,
+						Organization: org,
+						Space: space,
+						Application: appName,
+					},
+				}
+				response, statusCode, _ := controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Called).Should(Equal(1))
+				Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
+
+				Eventually(statusCode).Should(Equal(http.StatusOK))
+
+				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(constants.DeploymentType{ JSON: true }))
+				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+
+				ret, _ := ioutil.ReadAll(response)
+				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+			})
+		})
 	})
 })

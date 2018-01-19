@@ -77,7 +77,7 @@ func (c Creator) CreateControllerHandler() *gin.Engine {
 	r.Use(gin.LoggerWithWriter(c.createWriter()))
 	r.Use(gin.ErrorLogger())
 
-	r.POST(ENDPOINT, controller.Deploy)
+	r.POST(ENDPOINT, controller.RunDeploymentViaHttp)
 
 	return r
 }

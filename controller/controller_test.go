@@ -75,7 +75,7 @@ var _ = Describe("Controller", func() {
 			byteBody, _ = ioutil.ReadAll(req.Body)
 		}))
 
-		silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT") + "/%s/%s/%s"
+		silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
 		os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
 	})
 
@@ -280,6 +280,9 @@ var _ = Describe("Controller", func() {
 				silentDeployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
 
 				response := &bytes.Buffer{}
+
+				silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
+				os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
 
 				deployment:= &Deployment{
 					Body: &[]byte{},

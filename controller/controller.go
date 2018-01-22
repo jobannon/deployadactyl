@@ -12,9 +12,10 @@ import (
 	"os"
 
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/gin-gonic/gin"
 	"encoding/base64"
 	"github.com/compozed/deployadactyl/constants"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Controller is used to determine the type of request and process it accordingly.

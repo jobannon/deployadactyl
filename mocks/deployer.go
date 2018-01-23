@@ -11,7 +11,7 @@ import (
 // Deployer handmade mock for tests.
 type Deployer struct {
 	DeployCall struct {
-		Called int
+		Called   int
 		Received struct {
 			Request     *http.Request
 			Environment string
@@ -47,7 +47,7 @@ func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName st
 
 	response := I.DeployResponse{
 		StatusCode: d.DeployCall.Returns.StatusCode,
-		Error: d.DeployCall.Returns.Error,
+		Error:      d.DeployCall.Returns.Error,
 	}
 
 	reqChan <- response

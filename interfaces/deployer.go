@@ -3,7 +3,6 @@ package interfaces
 import (
 	"io"
 	"net/http"
-
 )
 
 type DeployResponse struct {

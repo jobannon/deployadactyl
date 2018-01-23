@@ -11,17 +11,18 @@ import (
 
 	"os"
 
-	I "github.com/compozed/deployadactyl/interfaces"
 	"encoding/base64"
+
+	I "github.com/compozed/deployadactyl/interfaces"
 
 	"github.com/gin-gonic/gin"
 )
 
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
-	Deployer        I.Deployer
-	SilentDeployer  I.Deployer
-	Log             I.Logger
+	Deployer       I.Deployer
+	SilentDeployer I.Deployer
+	Log            I.Logger
 }
 
 func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) (int, error) {
@@ -70,10 +71,10 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	c.Log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
 
 	cfContext := I.CFContext{
-		Environment: g.Param("environment"),
+		Environment:  g.Param("environment"),
 		Organization: g.Param("org"),
-		Space: g.Param("space"),
-		Application: g.Param("appName"),
+		Space:        g.Param("space"),
+		Application:  g.Param("appName"),
 	}
 
 	user, pwd, _ := g.Request.BasicAuth()
@@ -84,14 +85,14 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 
 	deploymentType := I.DeploymentType{
 		JSON: isJSON(g.Request.Header.Get("Content-Type")),
-		ZIP: isZip(g.Request.Header.Get("Content-Type")),
+		ZIP:  isZip(g.Request.Header.Get("Content-Type")),
 	}
 	response := &bytes.Buffer{}
 
 	deployment := I.Deployment{
 		Authorization: authorization,
-		CFContext: cfContext,
-		Type: deploymentType,
+		CFContext:     cfContext,
+		Type:          deploymentType,
 	}
 	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
 	deployment.Body = &bodyBuffer

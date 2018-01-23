@@ -69,8 +69,7 @@ func Custom(level string, configFilename string) (Creator, error) {
 
 // CreateControllerHandler returns a gin.Engine that implements http.Handler.
 // Sets up the controller endpoint.
-func (c Creator) CreateControllerHandler() *gin.Engine {
-	controller := c.createController()
+func (c Creator) CreateControllerHandler(controller I.Controller) *gin.Engine {
 
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -158,12 +157,13 @@ func (c Creator) CreateHTTPClient() *http.Client {
 	return insecureClient
 }
 
-func (c Creator) createController() controller.Controller {
-	return controller.Controller{
+func (c Creator) CreateController() I.Controller {
+	con := &controller.Controller{
 		Deployer: c.createDeployer(),
 		SilentDeployer: c.createSilentDeployer(),
-		Log:      c.CreateLogger(),
+		Log: c.CreateLogger(),
 	}
+	return con
 }
 
 func (c Creator) createDeployer() I.Deployer {

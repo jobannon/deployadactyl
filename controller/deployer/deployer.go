@@ -45,7 +45,7 @@ type SilentDeployer struct {
 
 }
 
-func (d SilentDeployer) Deploy(req *http.Request, environment, org, space, appName string, contentType C.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
+func (d SilentDeployer) Deploy(req *http.Request, environment, org, space, appName string, contentType I.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
 	url := os.Getenv("SILENT_DEPLOY_URL")
 	deployResponse := I.DeployResponse{}
 
@@ -90,7 +90,7 @@ type Deployer struct {
 	FileSystem   *afero.Afero
 }
 
-func (d Deployer) Deploy(req *http.Request, environment, org, space, appName string, contentType C.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
+func (d Deployer) Deploy(req *http.Request, environment, org, space, appName string, contentType I.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
 	deployResponse := I.DeployResponse{}
 	statusCode, err := d.deployInternal(
 		req,
@@ -113,7 +113,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName str
 	reqChannel <- deployResponse
 }
 
-func (d Deployer) deployInternal(req *http.Request, environment, org, space, appName string, contentType C.DeploymentType, response io.ReadWriter) (statusCode int, err error) {
+func (d Deployer) deployInternal(req *http.Request, environment, org, space, appName string, contentType I.DeploymentType, response io.ReadWriter) (statusCode int, err error) {
 	var (
 		deploymentInfo         = S.DeploymentInfo{}
 		environments           = d.Config.Environments

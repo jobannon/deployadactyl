@@ -13,7 +13,6 @@ import (
 
 	I "github.com/compozed/deployadactyl/interfaces"
 	"encoding/base64"
-	"github.com/compozed/deployadactyl/constants"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,26 +24,7 @@ type Controller struct {
 	Log             I.Logger
 }
 
-type Deployment struct {
-	Body          *[]byte
-	Type          constants.DeploymentType
-	Authorization Authorization
-	CFContext     CFContext
-}
-
-type Authorization struct {
-	Username string
-	Password string
-}
-
-type CFContext struct {
-	Environment  string
-	Organization string
-	Space        string
-	Application  string
-}
-
-func (c *Controller) RunDeployment(deployment *Deployment, response *bytes.Buffer) (*bytes.Buffer, int, error) {
+func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) (int, error) {
 
 	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
@@ -67,28 +47,29 @@ func (c *Controller) RunDeployment(deployment *Deployment, response *bytes.Buffe
 	cf := deployment.CFContext
 	go c.Deployer.Deploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, response, reqChannel1)
 
+	silentResponse := &bytes.Buffer{}
 	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
-		go c.SilentDeployer.Deploy(request2, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, response, reqChannel2)
+		go c.SilentDeployer.Deploy(request2, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, silentResponse, reqChannel2)
 		<-reqChannel2
 	}
 
 	deployResponse := <-reqChannel1
 
 	if deployResponse.Error != nil {
-		return response, http.StatusInternalServerError, deployResponse.Error
+		return http.StatusInternalServerError, deployResponse.Error
 	}
 
 	close(reqChannel1)
 	close(reqChannel2)
 
-	return response, deployResponse.StatusCode, nil
+	return deployResponse.StatusCode, nil
 }
 
 // RunDeploymentViaHttp checks the request content type and passes it to the Deployer.
 func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	c.Log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
 
-	cfContext := CFContext{
+	cfContext := I.CFContext{
 		Environment: g.Param("environment"),
 		Organization: g.Param("org"),
 		Space: g.Param("space"),
@@ -96,18 +77,18 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	}
 
 	user, pwd, _ := g.Request.BasicAuth()
-	authorization := Authorization{
+	authorization := I.Authorization{
 		Username: user,
 		Password: pwd,
 	}
 
-	deploymentType := constants.DeploymentType{
+	deploymentType := I.DeploymentType{
 		JSON: isJSON(g.Request.Header.Get("Content-Type")),
 		ZIP: isZip(g.Request.Header.Get("Content-Type")),
 	}
 	response := &bytes.Buffer{}
 
-	deployment := Deployment{
+	deployment := I.Deployment{
 		Authorization: authorization,
 		CFContext: cfContext,
 		Type: deploymentType,
@@ -115,8 +96,10 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
 	deployment.Body = &bodyBuffer
 
-	response, statusCode, error := c.RunDeployment(&deployment, response)
+	statusCode, error := c.RunDeployment(&deployment, response)
+
 	defer io.Copy(g.Writer, response)
+
 	if error != nil {
 		g.Writer.WriteHeader(statusCode)
 		fmt.Fprintf(response, "cannot deploy application: %s\n", error)

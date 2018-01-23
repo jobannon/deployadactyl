@@ -3,7 +3,7 @@ package interfaces
 import (
 	"io"
 	"net/http"
-	"github.com/compozed/deployadactyl/constants"
+
 )
 
 type DeployResponse struct {
@@ -19,7 +19,7 @@ type Deployer interface {
 		org,
 		space,
 		appName string,
-		contentType constants.DeploymentType,
+		contentType DeploymentType,
 		response io.ReadWriter,
 		reqChan chan DeployResponse,
 	)

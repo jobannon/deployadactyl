@@ -19,9 +19,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/op/go-logging"
-	//"github.com/compozed/deployadactyl/constants"
-	//"github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/constants"
+	I "github.com/compozed/deployadactyl/interfaces"
 )
 
 const (
@@ -170,17 +168,17 @@ var _ = Describe("Controller", func() {
 
 				response := &bytes.Buffer{}
 
-				deployment:= &Deployment{
+				deployment:= &I.Deployment{
 					Body: &[]byte{},
-					Type: constants.DeploymentType{ JSON: true },
-					CFContext: CFContext{
+					Type: I.DeploymentType{ JSON: true },
+					CFContext: I.CFContext{
 						Environment: environment,
 						Organization: org,
 						Space: space,
 						Application: appName,
 					},
 				}
-				response, statusCode, _ := controller.RunDeployment(deployment, response)
+				statusCode, _ := controller.RunDeployment(deployment, response)
 
 				Eventually(deployer.DeployCall.Called).Should(Equal(1))
 				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
@@ -188,7 +186,7 @@ var _ = Describe("Controller", func() {
 				Eventually(statusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(constants.DeploymentType{ JSON: true }))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ JSON: true }))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
@@ -204,17 +202,17 @@ var _ = Describe("Controller", func() {
 
 				response := &bytes.Buffer{}
 
-				deployment:= &Deployment{
+				deployment:= &I.Deployment{
 					Body: &[]byte{},
-					Type: constants.DeploymentType{ JSON: true },
-					CFContext: CFContext{
+					Type: I.DeploymentType{ JSON: true },
+					CFContext: I.CFContext{
 						Environment: environment,
 						Organization: org,
 						Space: space,
 						Application: appName,
 					},
 				}
-				response, statusCode, err := controller.RunDeployment(deployment, response)
+				statusCode, err := controller.RunDeployment(deployment, response)
 
 				Eventually(deployer.DeployCall.Called).Should(Equal(1))
 				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
@@ -223,7 +221,7 @@ var _ = Describe("Controller", func() {
 				Eventually(err.Error()).Should(Equal("bork"))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(constants.DeploymentType{ JSON: true }))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ JSON: true }))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
@@ -242,17 +240,17 @@ var _ = Describe("Controller", func() {
 
 				response := &bytes.Buffer{}
 
-				deployment:= &Deployment{
+				deployment:= &I.Deployment{
 					Body: &[]byte{},
-					Type: constants.DeploymentType{ JSON: true },
-					CFContext: CFContext{
+					Type: I.DeploymentType{ JSON: true },
+					CFContext: I.CFContext{
 						Environment: environment,
 						Organization: org,
 						Space: space,
 						Application: appName,
 					},
 				}
-				response, statusCode, _ := controller.RunDeployment(deployment, response)
+				statusCode, _ := controller.RunDeployment(deployment, response)
 
 				Eventually(deployer.DeployCall.Called).Should(Equal(1))
 				Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
@@ -260,7 +258,7 @@ var _ = Describe("Controller", func() {
 				Eventually(statusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(constants.DeploymentType{ JSON: true }))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ JSON: true }))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
@@ -284,17 +282,17 @@ var _ = Describe("Controller", func() {
 				silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
 				os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
 
-				deployment:= &Deployment{
+				deployment:= &I.Deployment{
 					Body: &[]byte{},
-					Type: constants.DeploymentType{ JSON: true },
-					CFContext: CFContext{
+					Type: I.DeploymentType{ JSON: true },
+					CFContext: I.CFContext{
 						Environment: environment,
 						Organization: org,
 						Space: space,
 						Application: appName,
 					},
 				}
-				response, statusCode, _ := controller.RunDeployment(deployment, response)
+				statusCode, _ := controller.RunDeployment(deployment, response)
 
 				Eventually(deployer.DeployCall.Called).Should(Equal(1))
 				Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
@@ -302,7 +300,7 @@ var _ = Describe("Controller", func() {
 				Eventually(statusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(constants.DeploymentType{ JSON: true }))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ JSON: true }))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))

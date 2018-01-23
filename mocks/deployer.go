@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"github.com/compozed/deployadactyl/constants"
 
 	I "github.com/compozed/deployadactyl/interfaces"
 )
@@ -19,7 +18,7 @@ type Deployer struct {
 			Org         string
 			Space       string
 			AppName     string
-			ContentType constants.DeploymentType
+			ContentType I.DeploymentType
 			Response    io.ReadWriter
 		}
 		Write struct {
@@ -32,8 +31,8 @@ type Deployer struct {
 	}
 }
 
-// RunDeploymentViaHttp mock method.
-func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName string, contentType constants.DeploymentType, out io.ReadWriter, reqChan chan I.DeployResponse) {
+// Deploy mock method.
+func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName string, contentType I.DeploymentType, out io.ReadWriter, reqChan chan I.DeployResponse) {
 	d.DeployCall.Called++
 
 	d.DeployCall.Received.Request = req

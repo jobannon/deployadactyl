@@ -95,6 +95,7 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 		Type:          deploymentType,
 	}
 	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
+	g.Request.Body.Close()
 	deployment.Body = &bodyBuffer
 
 	statusCode, error := c.RunDeployment(&deployment, response)

@@ -12,7 +12,6 @@ import (
 	"os"
 
 	"encoding/base64"
-	I "github.com/compozed/deployadactyl/interfaces"
 
 	I "github.com/compozed/deployadactyl/interfaces"
 

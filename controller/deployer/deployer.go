@@ -11,6 +11,10 @@ import (
 
 	"bytes"
 
+	"crypto/tls"
+	"log"
+	"os"
+
 	"github.com/compozed/deployadactyl/config"
 	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
@@ -19,9 +23,6 @@ import (
 	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/spf13/afero"
-	"os"
-	"crypto/tls"
-	"log"
 )
 
 const (
@@ -42,14 +43,13 @@ AppName:      %s`
 )
 
 type SilentDeployer struct {
-
 }
 
 func (d SilentDeployer) Deploy(req *http.Request, environment, org, space, appName string, contentType I.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
 	url := os.Getenv("SILENT_DEPLOY_URL")
 	deployResponse := I.DeployResponse{}
 
-	request, err := http.NewRequest("POST", fmt.Sprintf(url, org, space, appName), req.Body)
+	request, err := http.NewRequest("POST", fmt.Sprintf(url+"/%s/%s/%s", org, space, appName), req.Body)
 	if err != nil {
 		log.Println(fmt.Sprintf("Silent deployer request err: %s", err))
 		deployResponse.Error = err

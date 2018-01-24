@@ -78,9 +78,9 @@ func (c Creator) CreateControllerHandler() *gin.Engine {
 
 func (c Creator) CreateController() controller.Controller {
 	return controller.Controller{
-		Deployer: c.CreateDeployer(),
+		Deployer:       c.CreateDeployer(),
 		SilentDeployer: c.CreateSilentDeployer(),
-		Log:      c.CreateLogger(),
+		Log:            c.CreateLogger(),
 	}
 }
 

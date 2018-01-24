@@ -14,6 +14,8 @@ import (
 	"encoding/base64"
 	I "github.com/compozed/deployadactyl/interfaces"
 
+	I "github.com/compozed/deployadactyl/interfaces"
+
 	"github.com/gin-gonic/gin"
 )
 

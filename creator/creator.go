@@ -159,9 +159,9 @@ func (c Creator) CreateHTTPClient() *http.Client {
 
 func (c Creator) CreateController() I.Controller {
 	con := &controller.Controller{
-		Deployer: c.createDeployer(),
+		Deployer:       c.createDeployer(),
 		SilentDeployer: c.createSilentDeployer(),
-		Log: c.CreateLogger(),
+		Log:            c.CreateLogger(),
 	}
 	return con
 }

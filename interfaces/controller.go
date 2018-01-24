@@ -7,8 +7,8 @@ import (
 )
 
 type DeploymentType struct {
-	JSON  bool
-	ZIP   bool
+	JSON bool
+	ZIP  bool
 }
 
 type Deployment struct {
@@ -30,7 +30,7 @@ type CFContext struct {
 	Application  string
 }
 
-type Controller interface  {
+type Controller interface {
 	RunDeployment(deployment *Deployment, response *bytes.Buffer) (int, error)
 
 	RunDeploymentViaHttp(g *gin.Context)

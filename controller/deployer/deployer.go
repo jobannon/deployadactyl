@@ -58,7 +58,7 @@ func (d SilentDeployer) Deploy(req *http.Request, environment, org, space, appNa
 
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Authorization", "Basic "+req.Header.Get("Authorization"))
+	request.Header.Set("Authorization", req.Header.Get("Authorization"))
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},

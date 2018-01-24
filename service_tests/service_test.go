@@ -89,6 +89,7 @@ var _ = Describe("Service", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				responseBody, err := ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(resp.StatusCode).To(Equal(http.StatusOK), string(responseBody))
@@ -113,6 +114,7 @@ var _ = Describe("Service", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				responseBody, err := ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(resp.StatusCode).To(Equal(http.StatusOK), string(responseBody))

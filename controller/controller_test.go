@@ -70,6 +70,7 @@ var _ = Describe("Controller", func() {
 
 		server = httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 			byteBody, _ = ioutil.ReadAll(req.Body)
+			req.Body.Close()
 		}))
 
 		silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")

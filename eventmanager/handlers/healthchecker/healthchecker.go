@@ -23,6 +23,10 @@ type HealthChecker struct {
 	// Eg: "cfapps"
 	NewURL string
 
+	//SilentDeployURL represents any other url that doesn't match cfapps
+	SilentDeployURL         string
+	SilentDeployEnvironment string
+
 	Client  I.Client
 	Courier I.Courier
 	Log     I.Logger
@@ -38,9 +42,11 @@ func (h HealthChecker) OnEvent(event S.Event) error {
 	}
 
 	var (
-		tempAppWithUUID = event.Data.(S.PushEventData).TempAppWithUUID
-		foundationURL   = event.Data.(S.PushEventData).FoundationURL
-		deploymentInfo  = event.Data.(S.PushEventData).DeploymentInfo
+		tempAppWithUUID  = event.Data.(S.PushEventData).TempAppWithUUID
+		foundationURL    = event.Data.(S.PushEventData).FoundationURL
+		deploymentInfo   = event.Data.(S.PushEventData).DeploymentInfo
+		newFoundationURL string
+		domain           string
 	)
 
 	if deploymentInfo.HealthCheckEndpoint == "" {
@@ -51,8 +57,13 @@ func (h HealthChecker) OnEvent(event S.Event) error {
 
 	h.Log.Debugf("starting health check")
 
-	newFoundationURL := strings.Replace(foundationURL, h.OldURL, h.NewURL, 1)
-	domain := regexp.MustCompile(fmt.Sprintf("%s.*", h.NewURL)).FindString(newFoundationURL)
+	if event.Data.(S.PushEventData).DeploymentInfo.Environment != h.SilentDeployEnvironment {
+		newFoundationURL = strings.Replace(foundationURL, h.OldURL, h.NewURL, 1)
+		domain = regexp.MustCompile(fmt.Sprintf("%s.*", h.NewURL)).FindString(newFoundationURL)
+	} else {
+		newFoundationURL = strings.Replace(foundationURL, h.OldURL, h.SilentDeployURL, 1)
+		domain = regexp.MustCompile(fmt.Sprintf("%s.*", h.SilentDeployURL)).FindString(newFoundationURL)
+	}
 
 	err := h.mapTemporaryRoute(tempAppWithUUID, domain)
 	if err != nil {

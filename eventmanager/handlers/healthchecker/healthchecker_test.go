@@ -29,7 +29,8 @@ var _ = Describe("Healthchecker", func() {
 		randomPassword      string
 		randomOrg           string
 		randomSpace         string
-		randomHostname		string
+		randomHostname      string
+		randomEnvironment   string
 
 		event         S.Event
 		healthchecker HealthChecker
@@ -53,6 +54,7 @@ var _ = Describe("Healthchecker", func() {
 		randomPassword = "randomPassword" + randomizer.StringRunes(10)
 		randomOrg = "randomOrg" + randomizer.StringRunes(10)
 		randomSpace = "randomSpace" + randomizer.StringRunes(10)
+		randomEnvironment = "randomEnvironment" + randomizer.StringRunes(10)
 
 		courier = &mocks.Courier{}
 		client = &mocks.Client{}
@@ -69,16 +71,19 @@ var _ = Describe("Healthchecker", func() {
 					Password:            randomPassword,
 					Org:                 randomOrg,
 					Space:               randomSpace,
+					Environment:         randomEnvironment,
 				},
 			},
 		}
 
 		logBuffer = NewBuffer()
 		healthchecker = HealthChecker{
-			OldURL: "api.cf",
-			NewURL: "apps",
-			Client: client,
-			Log:    logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
+			OldURL:                  "api.cf",
+			NewURL:                  "apps",
+			SilentDeployURL:         "silentapps",
+			SilentDeployEnvironment: "silentenvironment",
+			Client:                  client,
+			Log:                     logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
 		}
 
 		client.GetCall.Returns.Response = http.Response{
@@ -127,7 +132,7 @@ var _ = Describe("Healthchecker", func() {
 					Expect(courier.DeleteRouteCall.Received.Hostname).To(Equal(randomHostname))
 				})
 
-				It("unmaps the temporary route before deleting it", func(){
+				It("unmaps the temporary route before deleting it", func() {
 					healthchecker.OnEvent(event)
 
 					Expect(courier.UnmapRouteCall.OrderCalled < courier.DeleteRouteCall.OrderCalled).To(Equal(true))
@@ -145,6 +150,22 @@ var _ = Describe("Healthchecker", func() {
 					Eventually(logBuffer).Should(Say("health check successful for https://%s.%s%s", randomAppName, randomDomain, randomEndpoint))
 					Eventually(logBuffer).Should(Say("unmapping temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("unmapped temporary route %s.%s", randomAppName, randomDomain))
+					Eventually(logBuffer).Should(Say("finished health check"))
+				})
+
+				It("maps route for silent deploy environment", func() {
+					healthchecker = HealthChecker{
+						OldURL:                  "api.cf",
+						NewURL:                  "apps",
+						SilentDeployURL:         "silentapps",
+						SilentDeployEnvironment: randomEnvironment,
+						Client:                  client,
+						Log:                     logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
+					}
+
+					healthchecker.OnEvent(event)
+
+					Expect(courier.MapRouteCall.Received.Domain[0]).To(ContainSubstring("silentapps"))
 					Eventually(logBuffer).Should(Say("finished health check"))
 				})
 			})

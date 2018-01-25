@@ -31,7 +31,12 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 
 	headers := http.Header{}
-	headers["Authorization"] = []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(deployment.Authorization.Username+":"+deployment.Authorization.Password))}
+	if deployment.Authorization.Username != "" && deployment.Authorization.Password != "" {
+		headers["Authorization"] = []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(deployment.Authorization.Username+":"+deployment.Authorization.Password))}
+
+	} else {
+		headers["Authorization"] = []string{}
+	}
 
 	request1 := &http.Request{
 		Header: headers,

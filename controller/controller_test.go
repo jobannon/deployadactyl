@@ -194,6 +194,7 @@ var _ = Describe("Controller", func() {
 				ret, _ := ioutil.ReadAll(response)
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
 			})
+
 			It("channel resolves when errors occur", func() {
 
 				deployer.DeployCall.Returns.Error = errors.New("bork")
@@ -229,7 +230,56 @@ var _ = Describe("Controller", func() {
 				ret, _ := ioutil.ReadAll(response)
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
 			})
+
+			It("does not set the basic auth header if no credentials are passed", func() {
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+
+				response := &bytes.Buffer{}
+
+				deployment := &I.Deployment{
+					Body: &[]byte{},
+					Type: I.DeploymentType{JSON: true},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+					Authorization: I.Authorization{
+						Username: "",
+						Password: "",
+					},
+				}
+				controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Received.Request.Header.Get("Authorization")).Should(Equal(""))
+			})
+
+			It("sets the basic auth header if credentials are passed", func() {
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+
+				response := &bytes.Buffer{}
+
+				deployment := &I.Deployment{
+					Body: &[]byte{},
+					Type: I.DeploymentType{JSON: true},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+					Authorization: I.Authorization{
+						Username: "TestUsername",
+						Password: "TestPassword",
+					},
+				}
+				controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Received.Request.Header.Get("Authorization")).Should(Equal("Basic VGVzdFVzZXJuYW1lOlRlc3RQYXNzd29yZA=="))
+			})
 		})
+
 		Context("when SILENT_DEPLOY_ENVIRONMENT is true", func() {
 			It("channel resolves true when no errors occur", func() {
 

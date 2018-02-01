@@ -101,13 +101,6 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName str
 		contentType,
 		response,
 	)
-
-	if err != nil {
-		deployResponse.StatusCode = statusCode
-		deployResponse.Error = err
-		reqChannel <- deployResponse
-	}
-
 	deployResponse.StatusCode = statusCode
 	deployResponse.Error = err
 	reqChannel <- deployResponse
@@ -237,6 +230,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	}
 
 	err = d.BlueGreener.Push(e, appPath, deploymentInfo, response)
+
 	if err != nil {
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
 			return http.StatusBadRequest, err
@@ -246,6 +240,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 	deploymentLogger.Infof("successfully deployed application %s", deploymentInfo.AppName)
 	fmt.Fprintf(response, "\n%s", successfulDeploy)
+
 	return http.StatusOK, err
 }
 
@@ -294,6 +289,20 @@ func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response i
 		foundErr := d.ErrorFinder.FindError(tempBuffer.String())
 		if foundErr != nil {
 			*err = foundErr
+		}
+
+		errors := d.ErrorFinder.FindErrors(tempBuffer.String())
+		if len(errors) > 0 {
+			*err = CFResultError{}
+			for _, error := range errors {
+				fmt.Println()
+				fmt.Fprintln(response, error.Error())
+				fmt.Println()
+				for _, detail := range error.Details() {
+					fmt.Fprintln(response, detail)
+				}
+				fmt.Println()
+			}
 		}
 
 		deployEvent.Type = C.DeployFailureEvent

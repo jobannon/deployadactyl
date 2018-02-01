@@ -7,7 +7,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
@@ -23,7 +22,7 @@ type BlueGreen struct {
 
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
 // If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
-func (bg BlueGreen) Push(environment config.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) error {
+func (bg BlueGreen) Push(environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) error {
 	bg.actors = make([]actor, len(environment.Foundations))
 	bg.buffers = make([]*bytes.Buffer, len(environment.Foundations))
 

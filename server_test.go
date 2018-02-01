@@ -36,8 +36,14 @@ var _ = Describe("Server", func() {
 		session *gexec.Session
 		err     error
 	)
+	BeforeEach(func() {
+		os.Setenv("CF_USERNAME", "test user")
+		os.Setenv("CF_PASSWORD", "test pwd")
+	})
 
 	AfterEach(func() {
+		os.Unsetenv("CF_USERNAME")
+		os.Unsetenv("CF_PASSWORD")
 		session.Terminate()
 	})
 

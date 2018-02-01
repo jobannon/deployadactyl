@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer/prechecker"
 	"github.com/compozed/deployadactyl/mocks"
 	S "github.com/compozed/deployadactyl/structs"
@@ -22,7 +21,7 @@ var _ = Describe("Prechecker", func() {
 			prechecker     Prechecker
 			eventManager   *mocks.EventManager
 			testServer     *httptest.Server
-			environment    config.Environment
+			environment    S.Environment
 			event          S.Event
 		)
 
@@ -37,7 +36,7 @@ var _ = Describe("Prechecker", func() {
 				w.WriteHeader(httpStatus)
 			}))
 
-			environment = config.Environment{
+			environment = S.Environment{
 				Foundations: []string{testServer.URL},
 			}
 		})

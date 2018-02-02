@@ -306,6 +306,7 @@ func printErrors(d Deployer, response io.ReadWriter, err *error) {
 	if len(errors) > 0 {
 		*err = CFResultError{}
 		for _, error := range errors {
+			fmt.Fprintln(response, "*******************")
 			fmt.Fprintln(response)
 			fmt.Fprintln(response, error.Error())
 			fmt.Fprintln(response)
@@ -315,6 +316,7 @@ func printErrors(d Deployer, response io.ReadWriter, err *error) {
 			fmt.Fprintln(response)
 			fmt.Fprintln(response, error.Solution())
 			fmt.Fprintln(response)
+			fmt.Fprintln(response, "*******************")
 		}
 	}
 }

@@ -42,5 +42,5 @@ func (e EnvironmentNotFoundError) Error() string {
 type CFResultError struct{}
 
 func (e CFResultError) Error() string {
-	return "Error occurred during CF deployment process."
+	return "an error occurred during the CF deployment process"
 }

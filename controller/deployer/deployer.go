@@ -283,28 +283,7 @@ func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, response io
 func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response io.ReadWriter, err *error, statusCode *int, deploymentLogger logger.DeploymentLogger) {
 	deployEvent := S.Event{Type: C.DeploySuccessEvent, Data: deployEventData}
 	if *err != nil {
-		tempBuffer := bytes.Buffer{}
-		tempBuffer.ReadFrom(response)
-		fmt.Fprint(response, tempBuffer.String())
-
-		foundErr := d.ErrorFinder.FindError(tempBuffer.String())
-		if foundErr != nil {
-			*err = foundErr
-		}
-
-		errors := d.ErrorFinder.FindErrors(tempBuffer.String())
-		if len(errors) > 0 {
-			*err = CFResultError{}
-			for _, error := range errors {
-				fmt.Println()
-				fmt.Fprintln(response, error.Error())
-				fmt.Println()
-				for _, detail := range error.Details() {
-					fmt.Fprintln(response, detail)
-				}
-				fmt.Println()
-			}
-		}
+		printErrors(d, response, err)
 
 		deployEvent.Type = C.DeployFailureEvent
 		deployEvent.Error = *err
@@ -315,5 +294,27 @@ func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response i
 	if eventErr != nil {
 		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", deployEvent.Type, eventErr)
 		fmt.Fprintln(response, eventErr)
+	}
+}
+
+func printErrors(d Deployer, response io.ReadWriter, err *error) {
+	tempBuffer := bytes.Buffer{}
+	tempBuffer.ReadFrom(response)
+	fmt.Fprint(response, tempBuffer.String())
+
+	errors := d.ErrorFinder.FindErrors(tempBuffer.String())
+	if len(errors) > 0 {
+		*err = CFResultError{}
+		for _, error := range errors {
+			fmt.Fprintln(response)
+			fmt.Fprintln(response, error.Error())
+			fmt.Fprintln(response)
+			for _, detail := range error.Details() {
+				fmt.Fprintln(response, detail)
+			}
+			fmt.Fprintln(response)
+			fmt.Fprintln(response, error.Solution())
+			fmt.Fprintln(response)
+		}
 	}
 }

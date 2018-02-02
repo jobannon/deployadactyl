@@ -520,21 +520,6 @@ applications:
 				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(expectedError))
 			})
 
-			It("passes the response string to FindError and emits a deploy.failure event with the error returned from FindError", func() {
-				err := errors.New("blue greener failed")
-				blueGreener.PushCall.Returns.Error = err
-
-				expectedError := errors.New("Some error")
-				errorFinder.FindErrorCall.Returns.Error = expectedError
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				<-reqChannel1
-
-				Expect(errorFinder.FindErrorCall.Received.Response).To(ContainSubstring(response.String()))
-				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(expectedError))
-			})
-
 			It("passes the response string to FindErrors and writes the found errors to the output stream", func() {
 				err := errors.New("blue greener failed")
 				blueGreener.PushCall.Returns.Error = err
@@ -542,7 +527,7 @@ applications:
 				expectedError := CFResultError{}
 
 				errors := make([]interfaces.DeploymentError, 0, 0)
-				errors = append(errors, error_finder.CreateDeploymentError("an error description", []string{"error 1", "error 2", "error 3"}))
+				errors = append(errors, error_finder.CreateDeploymentError("an error description", []string{"error 1", "error 2", "error 3"}, "error solution"))
 				errorFinder.FindErrorsCall.Returns.Errors = errors
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
@@ -556,6 +541,7 @@ applications:
 				Expect(response.String()).To(ContainSubstring("error 1"))
 				Expect(response.String()).To(ContainSubstring("error 2"))
 				Expect(response.String()).To(ContainSubstring("error 3"))
+				Expect(response.String()).To(ContainSubstring("error solution"))
 			})
 		})
 

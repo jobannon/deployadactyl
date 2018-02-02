@@ -105,7 +105,7 @@ func getErrorMatchersFromConfig(foundationConfig configYaml) []interfaces.ErrorM
 	if foundationConfig.MatcherDescriptors != nil || len(foundationConfig.MatcherDescriptors) > 0 {
 		factory := error_finder.ErrorMatcherFactory{}
 		for _, descriptor := range foundationConfig.MatcherDescriptors {
-			matcher, err := factory.CreateErrorMatcher(descriptor.Description, descriptor.Pattern)
+			matcher, err := factory.CreateErrorMatcher(descriptor)
 			if err == nil {
 				matchers = append(matchers, matcher)
 			}

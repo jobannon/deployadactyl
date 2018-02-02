@@ -7,24 +7,9 @@ import (
 	"github.com/compozed/deployadactyl/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"reflect"
 )
 
 var _ = Describe("ErrorFinder", func() {
-	It("returns a TrustStoreError when the response to the user shows a trust store error", func() {
-		response := "Creating TrustStore with container certificates\nFAILED"
-		errorFinder := ErrorFinder{}
-		err := errorFinder.FindError(response)
-
-		Expect(reflect.TypeOf(err).String()).To(Equal("error_finder.TrustStoreError"))
-	})
-
-	It("returns a nil when it cannot detect the error", func() {
-		errorFinder := ErrorFinder{}
-		err := errorFinder.FindError("Good luck catching this error")
-
-		Expect(err).To(BeNil())
-	})
 
 	It("returns no errors when no matchers are configured", func() {
 		errorFinder := ErrorFinder{}
@@ -37,11 +22,11 @@ var _ = Describe("ErrorFinder", func() {
 		matchers := make([]interfaces.ErrorMatcher, 0, 0)
 
 		matcher := &mocks.ErrorMatcherMock{}
-		matcher.MatchCall.Returns = CreateDeploymentError("a test error", []string{"error 1", "error 2", "error 3"})
+		matcher.MatchCall.Returns = CreateDeploymentError("a test error", []string{"error 1", "error 2", "error 3"}, "error solution")
 		matchers = append(matchers, matcher)
 
 		matcher = &mocks.ErrorMatcherMock{}
-		matcher.MatchCall.Returns = CreateDeploymentError("another test error", []string{"error 4", "error 5", "error 6"})
+		matcher.MatchCall.Returns = CreateDeploymentError("another test error", []string{"error 4", "error 5", "error 6"}, "another error solution")
 		matchers = append(matchers, matcher)
 
 		errorFinder := ErrorFinder{Matchers: matchers}
@@ -50,17 +35,10 @@ var _ = Describe("ErrorFinder", func() {
 		Expect(len(errors)).To(Equal(2))
 		Expect(errors[0].Error()).To(Equal("a test error"))
 		Expect(errors[0].Details()[0]).To(Equal("error 1"))
+		Expect(errors[0].Solution()).To(Equal("error solution"))
 		Expect(errors[1].Error()).To(Equal("another test error"))
 		Expect(errors[1].Details()[2]).To(Equal("error 6"))
+		Expect(errors[1].Solution()).To(Equal("another error solution"))
 	})
 
-})
-
-var _ = Describe("WriteErrors", func() {
-	//It("writes multiple errors to writer", func() {
-	//	errors := []string{"test1", "test2", "test3"}
-	//
-	//	response := ErrorFinder{}.WriteErrors(errors)
-	//
-	//})
 })

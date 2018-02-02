@@ -286,16 +286,18 @@ environments:
 error_matchers:
 - description: a matcher
   pattern: ab
+  solution: 12
 - description: another matcher
   pattern: cd
+  solution: 34
 `
 			Expect(ioutil.WriteFile(customConfigPath, []byte(testConfig), 0644)).To(Succeed())
 
 			config, _ := Custom(env.Get, customConfigPath)
 
 			Expect(len(config.ErrorMatchers)).To(Equal(2))
-			Expect(config.ErrorMatchers[0].Descriptor()).To(Equal("a matcher: ab"))
-			Expect(config.ErrorMatchers[1].Descriptor()).To(Equal("another matcher: cd"))
+			Expect(config.ErrorMatchers[0].Descriptor()).To(Equal("a matcher: ab: 12"))
+			Expect(config.ErrorMatchers[1].Descriptor()).To(Equal("another matcher: cd: 34"))
 		})
 	})
 })

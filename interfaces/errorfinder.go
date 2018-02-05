@@ -1,5 +1,5 @@
 package interfaces
 
 type ErrorFinder interface {
-	FindError(responseString string) error
+	FindErrors(responseString string) []DeploymentError
 }

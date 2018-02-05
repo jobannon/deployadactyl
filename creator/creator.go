@@ -217,7 +217,9 @@ func (c Creator) createBlueGreener() I.BlueGreener {
 }
 
 func (c Creator) createErrorFinder() I.ErrorFinder {
-	return &error_finder.ErrorFinder{}
+	return &error_finder.ErrorFinder{
+		Matchers: c.config.ErrorMatchers,
+	}
 }
 
 func createCreator(l logging.Level, cfg config.Config) (Creator, error) {

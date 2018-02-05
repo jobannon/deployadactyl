@@ -38,3 +38,9 @@ type EnvironmentNotFoundError struct {
 func (e EnvironmentNotFoundError) Error() string {
 	return fmt.Sprintf("environment not found: %s", e.Environment)
 }
+
+type CFResultError struct{}
+
+func (e CFResultError) Error() string {
+	return "an error occurred during the CF deployment process"
+}

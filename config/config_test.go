@@ -8,6 +8,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "github.com/compozed/deployadactyl/config"
+	S "github.com/compozed/deployadactyl/structs"
+
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 )
@@ -40,7 +42,7 @@ environments:
       change_reason: reason
       implementation_plan: my_plan
 `
-	badConfigPath = "./test_bad_config.yml"
+	badConfigPath        = "./test_bad_config.yml"
 	noCustomParamsConfig = `---
 environments:
 - name: Test
@@ -61,10 +63,10 @@ environments:
 
 var _ = Describe("Config", func() {
 	var (
-		env        *mocks.Env
-		envMap     map[string]Environment
-		cfUsername string
-		cfPassword string
+		env         *mocks.Env
+		envMap      map[string]S.Environment
+		cfUsername  string
+		cfPassword  string
 		testColumns map[interface{}]interface{}
 		prodColumns map[interface{}]interface{}
 	)
@@ -91,21 +93,21 @@ var _ = Describe("Config", func() {
 		env = &mocks.Env{}
 		env.GetCall.Returns.Values = map[string]string{}
 
-		envMap = map[string]Environment{
+		envMap = map[string]S.Environment{
 			"test": {
-				Name:        "Test",
-				Foundations: []string{"api1.example.com", "api2.example.com"},
-				Domain:      "test.example.com",
-				SkipSSL:     true,
-				Instances:   3,
+				Name:         "Test",
+				Foundations:  []string{"api1.example.com", "api2.example.com"},
+				Domain:       "test.example.com",
+				SkipSSL:      true,
+				Instances:    3,
 				CustomParams: testCustomParams,
 			},
 			"prod": {
-				Name:        "Prod",
-				Foundations: []string{"api3.example.com", "api4.example.com"},
-				Domain:      "example.com",
-				SkipSSL:     false,
-				Instances:   1,
+				Name:         "Prod",
+				Foundations:  []string{"api3.example.com", "api4.example.com"},
+				Domain:       "example.com",
+				SkipSSL:      false,
+				Instances:    1,
 				CustomParams: prodCustomParams,
 			},
 		}
@@ -243,6 +245,59 @@ environments:
 				Expect(err).ToNot(HaveOccurred())
 
 			})
+		})
+	})
+
+	Context("when no error matchers are present", func() {
+		It("has zero error matchers", func() {
+			env.GetCall.Returns.Values["CF_USERNAME"] = cfUsername
+			env.GetCall.Returns.Values["CF_PASSWORD"] = cfPassword
+
+			testConfig := `---
+environments:
+- name: production
+  foundations:
+  - api1.example.com
+  - api2.example.com
+  domain: example.com
+  instances: 1
+`
+			Expect(ioutil.WriteFile(customConfigPath, []byte(testConfig), 0644)).To(Succeed())
+
+			config, _ := Custom(env.Get, customConfigPath)
+
+			Expect(len(config.ErrorMatchers)).To(BeZero())
+		})
+	})
+
+	Context("when error matcher descriptors are present", func() {
+		It("returns with the error matchers", func() {
+			env.GetCall.Returns.Values["CF_USERNAME"] = cfUsername
+			env.GetCall.Returns.Values["CF_PASSWORD"] = cfPassword
+
+			testConfig := `---
+environments:
+- name: production
+  foundations:
+  - api1.example.com
+  - api2.example.com
+  domain: example.com
+  instances: 1
+error_matchers:
+- description: a matcher
+  pattern: ab
+  solution: 12
+- description: another matcher
+  pattern: cd
+  solution: 34
+`
+			Expect(ioutil.WriteFile(customConfigPath, []byte(testConfig), 0644)).To(Succeed())
+
+			config, _ := Custom(env.Get, customConfigPath)
+
+			Expect(len(config.ErrorMatchers)).To(Equal(2))
+			Expect(config.ErrorMatchers[0].Descriptor()).To(Equal("a matcher: ab: 12"))
+			Expect(config.ErrorMatchers[1].Descriptor()).To(Equal("another matcher: cd: 34"))
 		})
 	})
 })

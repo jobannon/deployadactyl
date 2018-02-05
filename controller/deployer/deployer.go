@@ -102,13 +102,6 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName str
 		contentType,
 		response,
 	)
-
-	if err != nil {
-		deployResponse.StatusCode = statusCode
-		deployResponse.Error = err
-		reqChannel <- deployResponse
-	}
-
 	deployResponse.StatusCode = statusCode
 	deployResponse.Error = err
 	reqChannel <- deployResponse
@@ -238,6 +231,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	}
 
 	err = d.BlueGreener.Push(e, appPath, deploymentInfo, response)
+
 	if err != nil {
 		if !e.EnableRollback {
 			return http.StatusOK, err
@@ -252,6 +246,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 	deploymentLogger.Infof("successfully deployed application %s", deploymentInfo.AppName)
 	fmt.Fprintf(response, "\n%s", successfulDeploy)
+
 	return http.StatusOK, err
 }
 
@@ -293,14 +288,7 @@ func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, response io
 func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response io.ReadWriter, err *error, statusCode *int, deploymentLogger logger.DeploymentLogger) {
 	deployEvent := S.Event{Type: C.DeploySuccessEvent, Data: deployEventData}
 	if *err != nil {
-		tempBuffer := bytes.Buffer{}
-		tempBuffer.ReadFrom(response)
-		fmt.Fprint(response, tempBuffer.String())
-
-		foundErr := d.ErrorFinder.FindError(tempBuffer.String())
-		if foundErr != nil {
-			*err = foundErr
-		}
+		printErrors(d, response, err)
 
 		deployEvent.Type = C.DeployFailureEvent
 		deployEvent.Error = *err
@@ -312,4 +300,28 @@ func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response i
 		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", deployEvent.Type, eventErr)
 		fmt.Fprintln(response, eventErr)
 	}
+}
+
+func printErrors(d Deployer, response io.ReadWriter, err *error) {
+	tempBuffer := bytes.Buffer{}
+	tempBuffer.ReadFrom(response)
+	fmt.Fprint(response, tempBuffer.String())
+
+	errors := d.ErrorFinder.FindErrors(tempBuffer.String())
+	if len(errors) > 0 {
+		*err = CFResultError{}
+		for _, error := range errors {
+			fmt.Fprintln(response)
+			fmt.Fprintln(response, "*******************")
+			fmt.Fprintln(response)
+			fmt.Fprintln(response, "The following error was found in the above logs: "+error.Error())
+			fmt.Fprintln(response)
+			fmt.Fprintln(response, "Error: "+error.Details()[0])
+			fmt.Fprintln(response)
+			fmt.Fprintln(response, "Potential solution: "+error.Solution())
+			fmt.Fprintln(response)
+			fmt.Fprintln(response, "*******************")
+		}
+	}
+
 }

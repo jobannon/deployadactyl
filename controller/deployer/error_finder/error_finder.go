@@ -1,16 +1,23 @@
 package error_finder
 
-import "strings"
-
-const TRUST_STORE_ERROR_STRING = "Creating TrustStore with container certificates\nFAILED"
+import (
+	"github.com/compozed/deployadactyl/interfaces"
+)
 
 type ErrorFinder struct {
+	Matchers []interfaces.ErrorMatcher
 }
 
-func (e *ErrorFinder) FindError(responseString string) error {
-	if strings.Contains(responseString, TRUST_STORE_ERROR_STRING) {
-		return TrustStoreError{}
-	}
+func (e *ErrorFinder) FindErrors(responseString string) []interfaces.DeploymentError {
+	errors := make([]interfaces.DeploymentError, 0, 0)
 
-	return nil
+	if len(e.Matchers) > 0 {
+		for _, matcher := range e.Matchers {
+			match := matcher.Match([]byte(responseString))
+			if match != nil {
+				errors = append(errors, match)
+			}
+		}
+	}
+	return errors
 }

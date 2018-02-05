@@ -17,6 +17,7 @@ import (
 	"github.com/compozed/deployadactyl/config"
 	C "github.com/compozed/deployadactyl/constants"
 	. "github.com/compozed/deployadactyl/controller/deployer"
+	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
@@ -68,8 +69,8 @@ var _ = Describe("Deployer", func() {
 		deploymentInfoNoCustomParams S.DeploymentInfo
 		foundations                  []string
 		enableRollback               bool
-		environments                 = map[string]config.Environment{}
-		environmentsNoCustomParams   = map[string]config.Environment{}
+		environments                 = map[string]S.Environment{}
+		environmentsNoCustomParams   = map[string]S.Environment{}
 		af                           *afero.Afero
 	)
 
@@ -151,7 +152,7 @@ var _ = Describe("Deployer", func() {
 		foundations = []string{randomizer.StringRunes(10)}
 		response = &bytes.Buffer{}
 
-		environments[environment] = config.Environment{
+		environments[environment] = S.Environment{
 			Name:           environment,
 			Domain:         domain,
 			Foundations:    foundations,
@@ -208,7 +209,7 @@ var _ = Describe("Deployer", func() {
 			Context("when authenticate in the config is not true", func() {
 				It("uses the config username and password and accepts the request with a http.StatusOK", func() {
 					By("setting authenticate to false")
-					deployer.Config.Environments[environment] = config.Environment{Authenticate: false}
+					deployer.Config.Environments[environment] = S.Environment{Authenticate: false}
 
 					By("not setting basic auth")
 
@@ -227,7 +228,7 @@ var _ = Describe("Deployer", func() {
 
 			Context("when authenticate in the config is true", func() {
 				It("rejects the request with a http.StatusUnauthorized", func() {
-					deployer.Config.Environments[environment] = config.Environment{Authenticate: true}
+					deployer.Config.Environments[environment] = S.Environment{Authenticate: true}
 
 					By("not setting basic auth")
 
@@ -412,7 +413,7 @@ applications:
 
 		Context("when a manifest is not provided", func() {
 			It("uses the instances declared in the deployadactyl config", func() {
-				deployer.Config.Environments[environment] = config.Environment{Instances: 303}
+				deployer.Config.Environments[environment] = S.Environment{Instances: 303}
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
@@ -522,19 +523,26 @@ applications:
 				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(expectedError))
 			})
 
-			It("passes the response string to FindError and emits a deploy.failure event with the error returned from FindError", func() {
+			It("passes the response string to FindErrors and writes the found errors to the output stream", func() {
 				err := errors.New("blue greener failed")
 				blueGreener.PushCall.Returns.Error = err
 
-				expectedError := errors.New("Some error")
-				errorFinder.FindErrorCall.Returns.Error = expectedError
+				expectedError := CFResultError{}
+
+				errors := make([]interfaces.DeploymentError, 0, 0)
+				errors = append(errors, error_finder.CreateDeploymentError("an error description", []string{"error 1", "error 2", "error 3"}, "error solution"))
+				errorFinder.FindErrorsCall.Returns.Errors = errors
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				<-reqChannel1
 
-				Expect(errorFinder.FindErrorCall.Received.Response).To(ContainSubstring(response.String()))
+				Expect(errorFinder.FindErrorsCall.Received.Response).ToNot(Equal(""))
+				Expect(response.String()).To(ContainSubstring(errorFinder.FindErrorsCall.Received.Response))
 				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(expectedError))
+				Expect(response.String()).To(ContainSubstring("an error description"))
+				Expect(response.String()).To(ContainSubstring("error 1"))
+				Expect(response.String()).To(ContainSubstring("error solution"))
 			})
 		})
 
@@ -770,7 +778,7 @@ applications:
 
 		Context("when no custom params are provided", func() {
 			BeforeEach(func() {
-				environmentsNoCustomParams[environment] = config.Environment{
+				environmentsNoCustomParams[environment] = S.Environment{
 					Name:        environment,
 					Domain:      domain,
 					Foundations: foundations,

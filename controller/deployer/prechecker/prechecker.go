@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
 )
@@ -18,7 +17,7 @@ type Prechecker struct {
 }
 
 // AssertAllFoundationsUp will send a request to each Cloud Foundry instance and check that the response status code is 200 OK.
-func (p Prechecker) AssertAllFoundationsUp(environment config.Environment) error {
+func (p Prechecker) AssertAllFoundationsUp(environment S.Environment) error {
 	precheckerEventData := S.PrecheckerEventData{Environment: environment}
 
 	if len(environment.Foundations) == 0 {

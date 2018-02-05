@@ -177,7 +177,9 @@ func (c Creator) CreateFileSystem() *afero.Afero {
 }
 
 func (c Creator) createErrorFinder() I.ErrorFinder {
-	return &error_finder.ErrorFinder{}
+	return &error_finder.ErrorFinder{
+		Matchers: c.config.ErrorMatchers,
+	}
 }
 
 func getLevel(level string) (logging.Level, error) {

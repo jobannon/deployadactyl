@@ -288,8 +288,7 @@ var _ = Describe("Bluegreen", func() {
 
 			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
 
-			Expect(err).ToNot(HaveOccurred())
-
+			Expect(err).To(HaveOccurred())
 			Expect(pushers[0].UndoPushCall.Received.UndoPushWasCalled).To(Equal(false))
 		})
 	})

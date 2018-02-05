@@ -67,6 +67,7 @@ var _ = Describe("Deployer", func() {
 		deploymentInfo               S.DeploymentInfo
 		deploymentInfoNoCustomParams S.DeploymentInfo
 		foundations                  []string
+		enableRollback               bool
 		environments                 = map[string]config.Environment{}
 		environmentsNoCustomParams   = map[string]config.Environment{}
 		af                           *afero.Afero
@@ -92,6 +93,7 @@ var _ = Describe("Deployer", func() {
 		uuid = "uuid-" + randomizer.StringRunes(10)
 		manifest = "manifest-" + randomizer.StringRunes(10)
 		instances = uint16(rand.Uint32())
+		enableRollback = true
 
 		base64Manifest := base64.StdEncoding.EncodeToString([]byte(manifest))
 
@@ -150,11 +152,12 @@ var _ = Describe("Deployer", func() {
 		response = &bytes.Buffer{}
 
 		environments[environment] = config.Environment{
-			Name:         environment,
-			Domain:       domain,
-			Foundations:  foundations,
-			Instances:    instances,
-			CustomParams: customParams,
+			Name:           environment,
+			Domain:         domain,
+			Foundations:    foundations,
+			Instances:      instances,
+			CustomParams:   customParams,
+			EnableRollback: enableRollback,
 		}
 
 		c = config.Config{
@@ -608,6 +611,24 @@ applications:
 		})
 
 		Context("when BlueGreener fails during a deploy with JSON in the request body", func() {
+			It("returns an error and a http.StatusInternalServerError", func() {
+				fetcher.FetchCall.Returns.AppPath = appPath
+
+				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
+
+				reqChannel1 := make(chan interfaces.DeployResponse)
+				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				deployResponse := <-reqChannel1
+
+				Expect(deployResponse.Error).To(MatchError("blue green error"))
+
+				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
+				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
+				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+			})
+		})
+
+		Context("when BlueGreener fails during a deploy with EnableRollback set to false", func() {
 			It("returns an error and a http.StatusInternalServerError", func() {
 				fetcher.FetchCall.Returns.AppPath = appPath
 

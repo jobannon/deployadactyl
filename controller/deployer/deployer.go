@@ -239,9 +239,14 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 	err = d.BlueGreener.Push(e, appPath, deploymentInfo, response)
 	if err != nil {
+		if !e.EnableRollback {
+			return http.StatusOK, err
+		}
+
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
 			return http.StatusBadRequest, err
 		}
+
 		return http.StatusInternalServerError, err
 	}
 

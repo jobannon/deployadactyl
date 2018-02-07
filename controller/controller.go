@@ -50,6 +50,8 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 
 	reqChannel1 := make(chan I.DeployResponse)
 	reqChannel2 := make(chan I.DeployResponse)
+	defer close(reqChannel1)
+	defer close(reqChannel2)
 
 	cf := deployment.CFContext
 	go c.Deployer.Deploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, response, reqChannel1)
@@ -63,11 +65,8 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 	deployResponse := <-reqChannel1
 
 	if deployResponse.Error != nil {
-		return http.StatusInternalServerError, deployResponse.Error
+		return deployResponse.StatusCode, deployResponse.Error
 	}
-
-	close(reqChannel1)
-	close(reqChannel2)
 
 	return deployResponse.StatusCode, nil
 }

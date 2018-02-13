@@ -89,7 +89,7 @@ func (p Pusher) Push(appPath, foundationURL string) error {
 		Response:        p.Response,
 	}
 
-	err = p.EventManager.Emit(S.Event{Type: C.PushFinishedEvent, Data: pushData})
+	err = p.EventManager.Emit(I.Event{Type: C.PushFinishedEvent, Data: pushData})
 	if err != nil {
 		return err
 	}

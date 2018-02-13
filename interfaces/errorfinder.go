@@ -1,5 +1,5 @@
 package interfaces
 
 type ErrorFinder interface {
-	FindErrors(responseString string) []DeploymentError
+	FindErrors(responseString string) []LogMatchedError
 }

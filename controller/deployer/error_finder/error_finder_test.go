@@ -22,11 +22,11 @@ var _ = Describe("ErrorFinder", func() {
 		matchers := make([]interfaces.ErrorMatcher, 0, 0)
 
 		matcher := &mocks.ErrorMatcherMock{}
-		matcher.MatchCall.Returns = CreateDeploymentError("a test error", []string{"error 1", "error 2", "error 3"}, "error solution")
+		matcher.MatchCall.Returns = CreateLogMatchedError("a test error", []string{"error 1", "error 2", "error 3"}, "error solution", "test code")
 		matchers = append(matchers, matcher)
 
 		matcher = &mocks.ErrorMatcherMock{}
-		matcher.MatchCall.Returns = CreateDeploymentError("another test error", []string{"error 4", "error 5", "error 6"}, "another error solution")
+		matcher.MatchCall.Returns = CreateLogMatchedError("another test error", []string{"error 4", "error 5", "error 6"}, "another error solution", "another test code")
 		matchers = append(matchers, matcher)
 
 		errorFinder := ErrorFinder{Matchers: matchers}
@@ -36,9 +36,11 @@ var _ = Describe("ErrorFinder", func() {
 		Expect(errors[0].Error()).To(Equal("a test error"))
 		Expect(errors[0].Details()[0]).To(Equal("error 1"))
 		Expect(errors[0].Solution()).To(Equal("error solution"))
+		Expect(errors[0].Code()).To(Equal("test code"))
 		Expect(errors[1].Error()).To(Equal("another test error"))
 		Expect(errors[1].Details()[2]).To(Equal("error 6"))
 		Expect(errors[1].Solution()).To(Equal("another error solution"))
+		Expect(errors[1].Code()).To(Equal("another test code"))
 	})
 
 })

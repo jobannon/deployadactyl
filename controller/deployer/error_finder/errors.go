@@ -2,24 +2,29 @@ package error_finder
 
 import "github.com/compozed/deployadactyl/interfaces"
 
-func CreateDeploymentError(description string, details []string, solution string) interfaces.DeploymentError {
-	return &CFDeploymentError{description: description, details: details, solution: solution}
+func CreateLogMatchedError(description string, details []string, solution, code string) interfaces.LogMatchedError {
+	return &logMatchedError{description: description, details: details, solution: solution, code: code}
 }
 
-type CFDeploymentError struct {
+type logMatchedError struct {
 	description string
 	details     []string
 	solution    string
+	code        string
 }
 
-func (e *CFDeploymentError) Error() string {
+func (e *logMatchedError) Code() string {
+	return e.code
+}
+
+func (e *logMatchedError) Error() string {
 	return e.description
 }
 
-func (e *CFDeploymentError) Details() []string {
+func (e *logMatchedError) Details() []string {
 	return e.details
 }
 
-func (e *CFDeploymentError) Solution() string {
+func (e *logMatchedError) Solution() string {
 	return e.solution
 }

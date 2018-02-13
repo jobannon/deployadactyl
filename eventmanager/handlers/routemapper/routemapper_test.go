@@ -14,6 +14,7 @@ import (
 	logging "github.com/op/go-logging"
 	"github.com/spf13/afero"
 
+	I "github.com/compozed/deployadactyl/interfaces"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -34,7 +35,7 @@ var _ = Describe("Routemapper", func() {
 		randomHostName         string
 
 		deploymentInfo *S.DeploymentInfo
-		event          S.Event
+		event          I.Event
 
 		courier   *mocks.Courier
 		af        *afero.Afero
@@ -70,7 +71,7 @@ var _ = Describe("Routemapper", func() {
 		courier = &mocks.Courier{}
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
 
-		event = S.Event{
+		event = I.Event{
 			Type: C.PushFinishedEvent,
 			Data: S.PushEventData{
 				Courier:         courier,

@@ -13,5 +13,5 @@ type BlueGreener interface {
 		appPath string,
 		deploymentInfo S.DeploymentInfo,
 		response io.ReadWriter,
-	) error
+	) DeploymentError
 }

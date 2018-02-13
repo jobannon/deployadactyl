@@ -8,12 +8,12 @@ type ErrorFinder struct {
 			Response string
 		}
 		Returns struct {
-			Errors []interfaces.DeploymentError
+			Errors []interfaces.LogMatchedError
 		}
 	}
 }
 
-func (e *ErrorFinder) FindErrors(responseString string) []interfaces.DeploymentError {
+func (e *ErrorFinder) FindErrors(responseString string) []interfaces.LogMatchedError {
 	e.FindErrorsCall.Received.Response = responseString
 	return e.FindErrorsCall.Returns.Errors
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/compozed/deployadactyl/mocks"
 	S "github.com/compozed/deployadactyl/structs"
 
+	I "github.com/compozed/deployadactyl/interfaces"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +23,7 @@ var _ = Describe("Prechecker", func() {
 			eventManager   *mocks.EventManager
 			testServer     *httptest.Server
 			environment    S.Environment
-			event          S.Event
+			event          I.Event
 		)
 
 		BeforeEach(func() {
@@ -49,7 +50,7 @@ var _ = Describe("Prechecker", func() {
 			It("returns an error and emits an event", func() {
 				environment.Foundations = nil
 
-				event = S.Event{
+				event = I.Event{
 					Type: "validate.foundationsUnavailable",
 					Data: S.PrecheckerEventData{
 						Environment: environment,
@@ -69,7 +70,7 @@ var _ = Describe("Prechecker", func() {
 			It("returns an error and emits an event", func() {
 				environment.Foundations = []string{"bork"}
 
-				event = S.Event{
+				event = I.Event{
 					Type: "validate.foundationsUnavailable",
 					Data: S.PrecheckerEventData{
 						Environment: environment,
@@ -96,7 +97,7 @@ var _ = Describe("Prechecker", func() {
 
 		Context("when a foundation returns a 500 internal server error", func() {
 			It("returns an error and emits an event", func() {
-				event = S.Event{
+				event = I.Event{
 					Type: "validate.foundationsUnavailable",
 					Data: S.PrecheckerEventData{
 						Environment: environment,
@@ -116,7 +117,7 @@ var _ = Describe("Prechecker", func() {
 
 		Context("when a foundation returns a 404 not found", func() {
 			It("returns an error and emits an event", func() {
-				event = S.Event{
+				event = I.Event{
 					Type: "validate.foundationsUnavailable",
 					Data: S.PrecheckerEventData{
 						Environment: environment,

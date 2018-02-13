@@ -35,7 +35,7 @@ type HealthChecker struct {
 // OnEvent is used for the EventManager to do health checking during deployments.
 // It will create the new application URL by combining the tempAppWithUUID to the
 // domain URL.
-func (h HealthChecker) OnEvent(event S.Event) error {
+func (h HealthChecker) OnEvent(event I.Event) error {
 
 	if event.Type != C.PushFinishedEvent {
 		return WrongEventTypeError{event.Type}

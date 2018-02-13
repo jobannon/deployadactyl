@@ -8,8 +8,8 @@ type ErrorFinder struct {
 	Matchers []interfaces.ErrorMatcher
 }
 
-func (e *ErrorFinder) FindErrors(responseString string) []interfaces.DeploymentError {
-	errors := make([]interfaces.DeploymentError, 0, 0)
+func (e *ErrorFinder) FindErrors(responseString string) []interfaces.LogMatchedError {
+	errors := make([]interfaces.LogMatchedError, 0, 0)
 
 	if len(e.Matchers) > 0 {
 		for _, matcher := range e.Matchers {

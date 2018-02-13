@@ -2,7 +2,6 @@ package mocks
 
 import (
 	I "github.com/compozed/deployadactyl/interfaces"
-	S "github.com/compozed/deployadactyl/structs"
 )
 
 // EventManager handmade mock for tests.
@@ -19,7 +18,7 @@ type EventManager struct {
 	EmitCall struct {
 		TimesCalled int
 		Received    struct {
-			Events []S.Event
+			Events []I.Event
 		}
 		Returns struct {
 			Error []error
@@ -36,7 +35,7 @@ func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 }
 
 // Emit mock method.
-func (e *EventManager) Emit(event S.Event) error {
+func (e *EventManager) Emit(event I.Event) error {
 	defer func() { e.EmitCall.TimesCalled++ }()
 
 	e.EmitCall.Received.Events = append(e.EmitCall.Received.Events, event)

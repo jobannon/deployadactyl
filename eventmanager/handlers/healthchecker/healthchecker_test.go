@@ -16,6 +16,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
+
+	I "github.com/compozed/deployadactyl/interfaces"
 )
 
 var _ = Describe("Healthchecker", func() {
@@ -32,7 +34,7 @@ var _ = Describe("Healthchecker", func() {
 		randomHostname      string
 		randomEnvironment   string
 
-		event         S.Event
+		event         I.Event
 		healthchecker HealthChecker
 		client        *mocks.Client
 		courier       *mocks.Courier
@@ -59,7 +61,7 @@ var _ = Describe("Healthchecker", func() {
 		courier = &mocks.Courier{}
 		client = &mocks.Client{}
 
-		event = S.Event{
+		event = I.Event{
 			Type: C.PushFinishedEvent,
 			Data: S.PushEventData{
 				TempAppWithUUID: randomAppName,
@@ -253,7 +255,7 @@ var _ = Describe("Healthchecker", func() {
 
 		Context("when a health check endpoint is not provided", func() {
 			It("returns nil", func() {
-				event = S.Event{
+				event = I.Event{
 					Type: C.PushFinishedEvent,
 					Data: S.PushEventData{
 						Courier:         courier,
@@ -273,7 +275,7 @@ var _ = Describe("Healthchecker", func() {
 
 		Context("when the healthchecker receives the wrong event type", func() {
 			It("returns an error", func() {
-				event = S.Event{Type: "wrong.type"}
+				event = I.Event{Type: "wrong.type"}
 
 				err := healthchecker.OnEvent(event)
 

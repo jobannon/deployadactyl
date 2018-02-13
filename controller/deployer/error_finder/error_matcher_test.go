@@ -49,8 +49,9 @@ var _ = Describe("RegExErrorMatcher", func() {
 			Description: "the description",
 			Pattern:     "a regex pattern",
 			Solution:    "a solution",
+			Code:        "a code",
 		})
-		Expect(errorMatcher.Descriptor()).To(Equal("the description: a regex pattern: a solution"))
+		Expect(errorMatcher.Descriptor()).To(Equal("the description: a regex pattern: a solution: a code"))
 	})
 
 	It("should throw an error if pattern is missing", func() {
@@ -68,7 +69,7 @@ var _ = Describe("RegExErrorMatcher", func() {
 			Pattern:  "a regex pattern",
 			Solution: "a solution",
 		})
-		Expect(errorMatcher.Descriptor()).To(Equal("This error does not have a description.: a regex pattern: a solution"))
+		Expect(errorMatcher.Descriptor()).To(Equal("This error does not have a description.: a regex pattern: a solution: "))
 	})
 
 	It("should return a default solution if solution is missing", func() {
@@ -77,7 +78,6 @@ var _ = Describe("RegExErrorMatcher", func() {
 			Pattern:     "a regex pattern",
 			Description: "a description",
 		})
-		Expect(errorMatcher.Descriptor()).To(Equal("a description: a regex pattern: No recommended solution available."))
+		Expect(errorMatcher.Descriptor()).To(Equal("a description: a regex pattern: No recommended solution available.: "))
 	})
-
 })

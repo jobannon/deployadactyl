@@ -1,12 +1,12 @@
 package mocks
 
-import S "github.com/compozed/deployadactyl/structs"
+import I "github.com/compozed/deployadactyl/interfaces"
 
 // Handler handmade mock for tests.
 type Handler struct {
 	OnEventCall struct {
 		Received struct {
-			Event S.Event
+			Event I.Event
 		}
 		Returns struct {
 			Error error
@@ -15,7 +15,7 @@ type Handler struct {
 }
 
 // OnEvent mock method.
-func (h *Handler) OnEvent(event S.Event) error {
+func (h *Handler) OnEvent(event I.Event) error {
 	h.OnEventCall.Received.Event = event
 
 	return h.OnEventCall.Returns.Error

@@ -17,6 +17,7 @@ import (
 	"github.com/compozed/deployadactyl/config"
 	C "github.com/compozed/deployadactyl/constants"
 	. "github.com/compozed/deployadactyl/controller/deployer"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
@@ -479,7 +480,8 @@ applications:
 				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
-				Expect(deployResponse.Error).To(MatchError(EventError{C.DeployStartEvent, errors.New(C.DeployStartEvent + " error")}))
+				expected := EventError{C.DeployStartEvent, bluegreen.InitializationError{errors.New(C.DeployStartEvent + " error")}}
+				Expect(deployResponse.Error.Error()).To(Equal(expected.Error()))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
 				Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
@@ -495,7 +497,8 @@ applications:
 					go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 					deployResponse := <-reqChannel1
 
-					Expect(deployResponse.Error).To(MatchError("an error occurred in the " + C.DeployStartEvent + " event: " + C.DeployStartEvent + " error: an error occurred in the " + C.DeployFinishEvent + " event: " + C.DeployFinishEvent + " error"))
+					expectedErr := bluegreen.FinishDeployError{Err: errors.New("an error occurred in the " + C.DeployStartEvent + " event: " + C.DeployStartEvent + " error: an error occurred in the " + C.DeployFinishEvent + " event: " + C.DeployFinishEvent + " error")}
+					Expect(deployResponse.Error.Error()).To(Equal(expectedErr.Error()))
 
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
 					Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
@@ -509,14 +512,14 @@ applications:
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
-				expectedError := errors.New("blue greener failed")
+				expectedError := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
 				blueGreener.PushCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
-				Expect(deployResponse.Error).To(MatchError("blue greener failed"))
+				Expect(deployResponse.Error).To(Equal(expectedError))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
 				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeployFailureEvent))
@@ -524,13 +527,11 @@ applications:
 			})
 
 			It("passes the response string to FindErrors and writes the found errors to the output stream", func() {
-				err := errors.New("blue greener failed")
+				err := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
 				blueGreener.PushCall.Returns.Error = err
 
-				expectedError := CFResultError{}
-
-				errors := make([]interfaces.DeploymentError, 0, 0)
-				errors = append(errors, error_finder.CreateDeploymentError("an error description", []string{"error 1", "error 2", "error 3"}, "error solution"))
+				errors := make([]interfaces.LogMatchedError, 0, 0)
+				errors = append(errors, error_finder.CreateLogMatchedError("an error description", []string{"error 1", "error 2", "error 3"}, "error solution", "TestCode"))
 				errorFinder.FindErrorsCall.Returns.Errors = errors
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
@@ -539,10 +540,33 @@ applications:
 
 				Expect(errorFinder.FindErrorsCall.Received.Response).ToNot(Equal(""))
 				Expect(response.String()).To(ContainSubstring(errorFinder.FindErrorsCall.Received.Response))
-				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(expectedError))
+				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(errors[0]))
 				Expect(response.String()).To(ContainSubstring("an error description"))
 				Expect(response.String()).To(ContainSubstring("error 1"))
 				Expect(response.String()).To(ContainSubstring("error solution"))
+			})
+
+			It("returns a matched error with code", func() {
+				err := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
+				blueGreener.PushCall.Returns.Error = err
+
+				errors := make([]interfaces.LogMatchedError, 0, 0)
+				errors = append(errors, error_finder.CreateLogMatchedError("an error description", []string{"error 1", "error 2", "error 3"}, "error solution", "TestCode"))
+				errorFinder.FindErrorsCall.Returns.Errors = errors
+
+				reqChannel1 := make(chan interfaces.DeployResponse)
+				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				deployResponse := <-reqChannel1
+
+				Expect(errorFinder.FindErrorsCall.Received.Response).ToNot(Equal(""))
+				Expect(response.String()).To(ContainSubstring(errorFinder.FindErrorsCall.Received.Response))
+				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(errors[0]))
+				Expect(response.String()).To(ContainSubstring("an error description"))
+				Expect(response.String()).To(ContainSubstring("error 1"))
+				Expect(response.String()).To(ContainSubstring("error solution"))
+				Expect(deployResponse.Error.Error()).To(Equal("an error description"))
+				Expect(deployResponse.Error.(interfaces.DeploymentError).Code()).To(Equal("TestCode"))
+
 			})
 		})
 
@@ -585,13 +609,14 @@ applications:
 	Describe("BlueGreener.Push", func() {
 		Context("when BlueGreener fails with a login failed error", func() {
 			It("returns an error and a http.StatusUnauthorized", func() {
-				blueGreener.PushCall.Returns.Error = errors.New("login failed")
+				expectedError := bluegreen.LoginError{[]error{errors.New("login failed")}}
+				blueGreener.PushCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
-				Expect(deployResponse.Error).To(MatchError("login failed"))
+				Expect(deployResponse.Error).To(Equal(expectedError))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusBadRequest))
 			})
@@ -603,13 +628,15 @@ applications:
 
 				fetcher.FetchFromZipCall.Returns.AppPath = testManifestLocation
 
-				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
+				expectedError := bluegreen.InitializationError{errors.New("blue green error")}
+
+				blueGreener.PushCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
-				Expect(deployResponse.Error).To(MatchError("blue green error"))
+				Expect(deployResponse.Error).To(Equal(expectedError))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
 				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(testManifestLocation))
@@ -622,7 +649,7 @@ applications:
 			It("returns an error and a http.StatusInternalServerError", func() {
 				fetcher.FetchCall.Returns.AppPath = appPath
 
-				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
+				blueGreener.PushCall.Returns.Error = bluegreen.InitializationError{Err: errors.New("blue green error")}
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
@@ -639,14 +666,14 @@ applications:
 		Context("when BlueGreener fails during a deploy with EnableRollback set to false", func() {
 			It("returns an error and a http.StatusInternalServerError", func() {
 				fetcher.FetchCall.Returns.AppPath = appPath
-
-				blueGreener.PushCall.Returns.Error = errors.New("blue green error")
+				expectedError := bluegreen.PushError{[]error{errors.New("blue green error")}}
+				blueGreener.PushCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
-				Expect(deployResponse.Error).To(MatchError("blue green error"))
+				Expect(deployResponse.Error).To(Equal(expectedError))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
 				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))

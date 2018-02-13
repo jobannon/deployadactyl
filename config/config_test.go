@@ -287,6 +287,7 @@ error_matchers:
 - description: a matcher
   pattern: ab
   solution: 12
+  code: an error code
 - description: another matcher
   pattern: cd
   solution: 34
@@ -296,8 +297,8 @@ error_matchers:
 			config, _ := Custom(env.Get, customConfigPath)
 
 			Expect(len(config.ErrorMatchers)).To(Equal(2))
-			Expect(config.ErrorMatchers[0].Descriptor()).To(Equal("a matcher: ab: 12"))
-			Expect(config.ErrorMatchers[1].Descriptor()).To(Equal("another matcher: cd: 34"))
+			Expect(config.ErrorMatchers[0].Descriptor()).To(Equal("a matcher: ab: 12: an error code"))
+			Expect(config.ErrorMatchers[1].Descriptor()).To(Equal("another matcher: cd: 34: "))
 		})
 	})
 })

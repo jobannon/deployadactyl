@@ -23,7 +23,7 @@ func (p Prechecker) AssertAllFoundationsUp(environment S.Environment) error {
 	if len(environment.Foundations) == 0 {
 		precheckerEventData.Description = "no foundations configured"
 
-		p.EventManager.Emit(S.Event{Type: "validate.foundationsUnavailable", Data: precheckerEventData})
+		p.EventManager.Emit(I.Event{Type: "validate.foundationsUnavailable", Data: precheckerEventData})
 
 		return NoFoundationsConfiguredError{}
 	}
@@ -47,7 +47,7 @@ func (p Prechecker) AssertAllFoundationsUp(environment S.Environment) error {
 
 			precheckerEventData.Description = err.Error()
 
-			p.EventManager.Emit(S.Event{Type: "validate.foundationsUnavailable", Data: precheckerEventData})
+			p.EventManager.Emit(I.Event{Type: "validate.foundationsUnavailable", Data: precheckerEventData})
 
 			return err
 		}

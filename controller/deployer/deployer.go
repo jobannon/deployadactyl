@@ -17,6 +17,7 @@ import (
 
 	"github.com/compozed/deployadactyl/config"
 	C "github.com/compozed/deployadactyl/constants"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
 	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
@@ -204,7 +205,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 	e, found := environments[deploymentInfo.Environment]
 	if !found {
-		err = d.EventManager.Emit(S.Event{Type: C.DeployErrorEvent, Data: deployEventData})
+		err = d.EventManager.Emit(I.Event{Type: C.DeployErrorEvent, Data: deployEventData})
 		if err != nil {
 			deploymentLogger.Error(err)
 		}
@@ -224,10 +225,11 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	defer emitDeploySuccess(d, deployEventData, response, &err, &statusCode, deploymentLogger)
 
 	deploymentLogger.Debugf("emitting a %s event", C.DeployStartEvent)
-	err = d.EventManager.Emit(S.Event{Type: C.DeployStartEvent, Data: deployEventData})
+	err = d.EventManager.Emit(I.Event{Type: C.DeployStartEvent, Data: deployEventData})
 	if err != nil {
 		deploymentLogger.Error(err)
-		return http.StatusInternalServerError, EventError{C.DeployStartEvent, err}
+		err = &bluegreen.InitializationError{err}
+		return http.StatusInternalServerError, EventError{Type: C.DeployStartEvent, Err: err}
 	}
 
 	err = d.BlueGreener.Push(e, appPath, deploymentInfo, response)
@@ -276,17 +278,16 @@ func getDeploymentInfo(reader io.Reader) (S.DeploymentInfo, error) {
 func emitDeployFinish(d Deployer, deployEventData S.DeployEventData, response io.ReadWriter, err *error, statusCode *int, deploymentLogger logger.DeploymentLogger) {
 	deploymentLogger.Debugf("emitting a %s event", C.DeployFinishEvent)
 
-	finishErr := d.EventManager.Emit(S.Event{Type: C.DeployFinishEvent, Data: deployEventData})
+	finishErr := d.EventManager.Emit(I.Event{Type: C.DeployFinishEvent, Data: deployEventData})
 	if finishErr != nil {
 		fmt.Fprintln(response, finishErr)
-
-		*err = fmt.Errorf("%s: %s", *err, EventError{C.DeployFinishEvent, finishErr})
+		*err = bluegreen.FinishDeployError{Err: fmt.Errorf("%s: %s", *err, EventError{C.DeployFinishEvent, finishErr})}
 		*statusCode = http.StatusInternalServerError
 	}
 }
 
 func emitDeploySuccess(d Deployer, deployEventData S.DeployEventData, response io.ReadWriter, err *error, statusCode *int, deploymentLogger logger.DeploymentLogger) {
-	deployEvent := S.Event{Type: C.DeploySuccessEvent, Data: deployEventData}
+	deployEvent := I.Event{Type: C.DeploySuccessEvent, Data: deployEventData}
 	if *err != nil {
 		printErrors(d, response, err)
 
@@ -309,7 +310,7 @@ func printErrors(d Deployer, response io.ReadWriter, err *error) {
 
 	errors := d.ErrorFinder.FindErrors(tempBuffer.String())
 	if len(errors) > 0 {
-		*err = CFResultError{}
+		*err = errors[0]
 		for _, error := range errors {
 			fmt.Fprintln(response)
 			fmt.Fprintln(response, "*******************")
@@ -323,5 +324,4 @@ func printErrors(d Deployer, response io.ReadWriter, err *error) {
 			fmt.Fprintln(response, "*******************")
 		}
 	}
-
 }

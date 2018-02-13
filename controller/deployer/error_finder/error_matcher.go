@@ -35,7 +35,8 @@ func (f *ErrorMatcherFactory) CreateErrorMatcher(descriptor structs.ErrorMatcher
 		description: description,
 		regex:       regex,
 		pattern:     descriptor.Pattern,
-		solution:    solution}, nil
+		solution:    solution,
+		code:        descriptor.Code}, nil
 }
 
 type RegExErrorMatcher struct {
@@ -43,16 +44,17 @@ type RegExErrorMatcher struct {
 	description string
 	solution    string
 	regex       *regexp.Regexp
+	code        string
 }
 
 func (m *RegExErrorMatcher) Descriptor() string {
-	return m.description + ": " + m.pattern + ": " + m.solution
+	return m.description + ": " + m.pattern + ": " + m.solution + ": " + m.code
 }
 
-func (m *RegExErrorMatcher) Match(matchTo []byte) interfaces.DeploymentError {
+func (m *RegExErrorMatcher) Match(matchTo []byte) interfaces.LogMatchedError {
 	matches := m.regex.FindAllString(string(matchTo), -1)
 	if len(matches) > 0 {
-		return &CFDeploymentError{details: matches, description: m.description, solution: m.solution}
+		return CreateLogMatchedError(m.description, matches, m.solution, m.code)
 	}
 	return nil
 }

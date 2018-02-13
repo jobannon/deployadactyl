@@ -2,5 +2,5 @@ package interfaces
 
 type ErrorMatcher interface {
 	Descriptor() string
-	Match(matchTo []byte) DeploymentError
+	Match(matchTo []byte) LogMatchedError
 }

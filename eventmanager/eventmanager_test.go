@@ -13,7 +13,6 @@ import (
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
-	S "github.com/compozed/deployadactyl/structs"
 )
 
 var _ = Describe("Events", func() {
@@ -64,7 +63,7 @@ var _ = Describe("Events", func() {
 			eventHandlerOne.OnEventCall.Returns.Error = nil
 			eventHandlerTwo.OnEventCall.Returns.Error = nil
 
-			event := S.Event{Type: eventType, Data: eventData}
+			event := I.Event{Type: eventType, Data: eventData}
 
 			eventManager.AddHandler(eventHandlerOne, eventType)
 			eventManager.AddHandler(eventHandlerTwo, eventType)
@@ -78,7 +77,7 @@ var _ = Describe("Events", func() {
 		It("should return an error if the handler returns an error", func() {
 			eventHandler.OnEventCall.Returns.Error = errors.New("on event error")
 
-			event := S.Event{Type: eventType, Data: eventData}
+			event := I.Event{Type: eventType, Data: eventData}
 
 			eventManager.AddHandler(eventHandler, eventType)
 
@@ -89,7 +88,7 @@ var _ = Describe("Events", func() {
 		It("should log that the event is emitted", func() {
 			eventHandler.OnEventCall.Returns.Error = nil
 
-			event := S.Event{Type: eventType, Data: eventData}
+			event := I.Event{Type: eventType, Data: eventData}
 
 			eventManager.AddHandler(eventHandler, eventType)
 
@@ -105,7 +104,7 @@ var _ = Describe("Events", func() {
 			eventHandlerOne.OnEventCall.Returns.Error = nil
 			eventHandlerTwo.OnEventCall.Returns.Error = nil
 
-			event := S.Event{Type: eventType, Data: eventData}
+			event := I.Event{Type: eventType, Data: eventData}
 
 			eventManager.AddHandler(eventHandlerOne, eventType)
 			eventManager.AddHandler(eventHandlerTwo, "anotherEventType-"+randomizer.StringRunes(10))

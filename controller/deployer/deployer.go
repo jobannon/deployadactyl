@@ -232,10 +232,13 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 		return http.StatusInternalServerError, EventError{Type: C.DeployStartEvent, Err: err}
 	}
 
+	enableRollback := e.EnableRollback
+
 	err = d.BlueGreener.Push(e, appPath, deploymentInfo, response)
 
 	if err != nil {
-		if !e.EnableRollback {
+		if !enableRollback {
+			deploymentLogger.Errorf("EnableRollback %t, returning status %d and err %s", enableRollback, http.StatusOK, err)
 			return http.StatusOK, err
 		}
 

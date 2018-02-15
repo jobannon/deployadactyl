@@ -33,13 +33,13 @@ var _ = Describe("RegExErrorMatcher", func() {
 		factory := ErrorMatcherFactory{}
 		errorMatcher, _ := factory.CreateErrorMatcher(structs.ErrorMatcherDescriptor{
 			Description: "this should bring back multiple errors",
-			Pattern:     "ab[^ab]{1,5}",
+			Pattern:     "(?i)ab[^ab]{1,5}",
 		})
-		err := errorMatcher.Match([]byte("xxxxxabxxxabxxxxxxxxxxxxxxxxxxabx"))
+		err := errorMatcher.Match([]byte("xxxxxabxxxAbxxXxxxxxxxxxxxxxxxxabx"))
 		Expect(len(err.Details())).To(Equal(3))
 		Expect(err.Error()).To(Equal("this should bring back multiple errors"))
 		Expect(err.Details()[0]).To(Equal("abxxx"))
-		Expect(err.Details()[1]).To(Equal("abxxxxx"))
+		Expect(err.Details()[1]).To(Equal("AbxxXxx"))
 		Expect(err.Details()[2]).To(Equal("abx"))
 	})
 

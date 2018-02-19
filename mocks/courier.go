@@ -114,6 +114,9 @@ type Courier struct {
 		}
 	}
 
+	CreateServiceCall struct {
+	}
+
 	ExistsCall struct {
 		Received struct {
 			AppName string
@@ -248,6 +251,10 @@ func (c *Courier) UnmapRoute(appName, domain, hostname string) ([]byte, error) {
 	return c.UnmapRouteCall.Returns.Output, c.UnmapRouteCall.Returns.Error
 }
 
+func (c *Courier) UnmapRouteWithPath(appName, domain, hostname, path string) ([]byte, error) {
+	panic("Mock not implemented.")
+}
+
 // DeleteRoute mock method.
 func (c *Courier) DeleteRoute(domain, hostname string) ([]byte, error) {
 	defer func() { c.TimesCourierCalled++ }()
@@ -294,6 +301,26 @@ func (c *Courier) Domains() ([]string, error) {
 	defer func() { c.DomainsCall.TimesCalled++ }()
 
 	return c.DomainsCall.Returns.Domains, c.DomainsCall.Returns.Error
+}
+
+func (c *Courier) CreateService(service, plan, name string) ([]byte, error) {
+	panic("Mock not implemented.")
+}
+
+func (c *Courier) BindService(appName, serviceName string) ([]byte, error) {
+	panic("Mock not implemented.")
+}
+
+func (c *Courier) UnbindService(appName, serviceName string) ([]byte, error) {
+	panic("Mock not implemented.")
+}
+
+func (c *Courier) DeleteService(serviceName string) ([]byte, error) {
+	panic("Mock not implemented.")
+}
+
+func (c *Courier) Restage(appName string) ([]byte, error) {
+	panic("Mock not implemented.")
 }
 
 // CleanUp mock method.

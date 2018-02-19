@@ -38,7 +38,7 @@ func (c Courier) UnbindService(appName, dbName string) ([]byte, error) {
 }
 
 func (c Courier) DeleteService(serviceName string) ([]byte, error) {
-	return c.Executor.Execute("delete-service", serviceName)
+	return c.Executor.Execute("delete-service", serviceName, "-f")
 }
 
 func (c Courier) Restage(appName string) ([]byte, error) {

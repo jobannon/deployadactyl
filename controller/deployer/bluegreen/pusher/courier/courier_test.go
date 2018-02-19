@@ -323,7 +323,7 @@ var _ = Describe("Courier", func() {
 		It("should delete the service", func() {
 			var (
 				serviceName  = "serviceName-" + randomizer.StringRunes(10)
-				expectedArgs = []string{"delete-service", serviceName}
+				expectedArgs = []string{"delete-service", serviceName, "-f"}
 			)
 
 			executor.ExecuteCall.Returns.Output = []byte(output)

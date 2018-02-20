@@ -19,10 +19,7 @@ type Controller struct {
 		Write struct {
 			Output string
 		}
-		Returns struct {
-			StatusCode int
-			Error      error
-		}
+		Returns I.DeployResponse
 	}
 	RunDeploymentViaHttpCall struct {
 		Called   bool
@@ -32,7 +29,7 @@ type Controller struct {
 	}
 }
 
-func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) (int, error) {
+func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
 	c.RunDeploymentCall.Called = true
 
 	c.RunDeploymentCall.Received.Deployment = deployment
@@ -40,7 +37,7 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 
 	fmt.Fprint(response, c.RunDeploymentCall.Write.Output)
 
-	return c.RunDeploymentCall.Returns.StatusCode, c.RunDeploymentCall.Returns.Error
+	return c.RunDeploymentCall.Returns
 }
 
 func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {

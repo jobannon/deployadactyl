@@ -586,6 +586,19 @@ applications:
 				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
 			})
 
+			It("returns correct deployment info", func() {
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+
+				reqChannel1 := make(chan interfaces.DeployResponse)
+				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				deployResponse := <-reqChannel1
+
+				Expect(deployResponse.DeploymentInfo.UUID).ToNot(Equal(""))
+				Expect(deployResponse.DeploymentInfo.Manifest).To(ContainSubstring("manifest-"))
+			})
+
 			Context("when emitting a "+C.DeploySuccessEvent+" event fails", func() {
 				It("return an error and outputs a "+C.DeploySuccessEvent+" and http.StatusOK", func() {
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)

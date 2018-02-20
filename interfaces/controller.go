@@ -31,7 +31,7 @@ type CFContext struct {
 }
 
 type Controller interface {
-	RunDeployment(deployment *Deployment, response *bytes.Buffer) (int, error)
+	RunDeployment(deployment *Deployment, response *bytes.Buffer) DeployResponse
 
 	RunDeploymentViaHttp(g *gin.Context)
 }

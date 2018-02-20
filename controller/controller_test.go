@@ -178,12 +178,12 @@ var _ = Describe("Controller", func() {
 						Application:  appName,
 					},
 				}
-				statusCode, _ := controller.RunDeployment(deployment, response)
+				deployResponse := controller.RunDeployment(deployment, response)
 
 				Eventually(deployer.DeployCall.Called).Should(Equal(1))
 				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
 
-				Eventually(statusCode).Should(Equal(http.StatusOK))
+				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
 				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
@@ -213,13 +213,13 @@ var _ = Describe("Controller", func() {
 						Application:  appName,
 					},
 				}
-				statusCode, err := controller.RunDeployment(deployment, response)
+				deployResponse := controller.RunDeployment(deployment, response)
 
 				Eventually(deployer.DeployCall.Called).Should(Equal(1))
 				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
 
-				Eventually(statusCode).Should(Equal(http.StatusInternalServerError))
-				Eventually(err.Error()).Should(Equal("bork"))
+				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))
+				Eventually(deployResponse.Error.Error()).Should(Equal("bork"))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
 				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
@@ -300,12 +300,12 @@ var _ = Describe("Controller", func() {
 						Application:  appName,
 					},
 				}
-				statusCode, _ := controller.RunDeployment(deployment, response)
+				deployResponse := controller.RunDeployment(deployment, response)
 
 				Eventually(deployer.DeployCall.Called).Should(Equal(1))
 				Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
 
-				Eventually(statusCode).Should(Equal(http.StatusOK))
+				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
 				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
@@ -341,12 +341,12 @@ var _ = Describe("Controller", func() {
 						Application:  appName,
 					},
 				}
-				statusCode, _ := controller.RunDeployment(deployment, response)
+				deployResponse := controller.RunDeployment(deployment, response)
 
 				Eventually(deployer.DeployCall.Called).Should(Equal(1))
 				Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
 
-				Eventually(statusCode).Should(Equal(http.StatusOK))
+				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
 				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))

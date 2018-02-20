@@ -25,7 +25,7 @@ type Controller struct {
 	Log            I.Logger
 }
 
-func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) (int, error) {
+func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
 
 	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
@@ -64,11 +64,7 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 
 	deployResponse := <-reqChannel1
 
-	if deployResponse.Error != nil {
-		return deployResponse.StatusCode, deployResponse.Error
-	}
-
-	return deployResponse.StatusCode, nil
+	return deployResponse
 }
 
 // RunDeploymentViaHttp checks the request content type and passes it to the Deployer.
@@ -103,17 +99,17 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	g.Request.Body.Close()
 	deployment.Body = &bodyBuffer
 
-	statusCode, error := c.RunDeployment(&deployment, response)
+	deployResponse := c.RunDeployment(&deployment, response)
 
 	defer io.Copy(g.Writer, response)
 
-	if error != nil {
-		g.Writer.WriteHeader(statusCode)
-		fmt.Fprintf(response, "cannot deploy application: %s\n", error)
+	if deployResponse.Error != nil {
+		g.Writer.WriteHeader(deployResponse.StatusCode)
+		fmt.Fprintf(response, "cannot deploy application: %s\n", deployResponse.Error)
 		return
 	}
 
-	g.Writer.WriteHeader(statusCode)
+	g.Writer.WriteHeader(deployResponse.StatusCode)
 }
 
 func isZip(contentType string) bool {

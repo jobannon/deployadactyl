@@ -1,13 +1,15 @@
 package interfaces
 
 import (
+	"github.com/compozed/deployadactyl/structs"
 	"io"
 	"net/http"
 )
 
 type DeployResponse struct {
-	StatusCode int
-	Error      error
+	StatusCode     int
+	Error          error
+	DeploymentInfo *structs.DeploymentInfo
 }
 
 // Deployer interface.

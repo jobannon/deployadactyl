@@ -18,6 +18,7 @@ type Deployer struct {
 			Org         string
 			Space       string
 			AppName     string
+			UUID        string
 			ContentType I.DeploymentType
 			Response    io.ReadWriter
 		}
@@ -32,7 +33,7 @@ type Deployer struct {
 }
 
 // Deploy mock method.
-func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName string, contentType I.DeploymentType, out io.ReadWriter, reqChan chan I.DeployResponse) {
+func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName, uuid string, contentType I.DeploymentType, out io.ReadWriter, reqChan chan I.DeployResponse) {
 	d.DeployCall.Called++
 
 	d.DeployCall.Received.Request = req
@@ -40,6 +41,7 @@ func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName st
 	d.DeployCall.Received.Org = org
 	d.DeployCall.Received.Space = space
 	d.DeployCall.Received.AppName = appName
+	d.DeployCall.Received.UUID = uuid
 	d.DeployCall.Received.ContentType = contentType
 	d.DeployCall.Received.Response = out
 

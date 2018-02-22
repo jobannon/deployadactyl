@@ -46,7 +46,7 @@ AppName:      %s`
 type SilentDeployer struct {
 }
 
-func (d SilentDeployer) Deploy(req *http.Request, environment, org, space, appName string, contentType I.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
+func (d SilentDeployer) Deploy(req *http.Request, environment, org, space, appName, uuid string, contentType I.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
 	url := os.Getenv("SILENT_DEPLOY_URL")
 	deployResponse := I.DeployResponse{}
 
@@ -92,7 +92,7 @@ type Deployer struct {
 	FileSystem   *afero.Afero
 }
 
-func (d Deployer) Deploy(req *http.Request, environment, org, space, appName string, contentType I.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
+func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, uuid string, contentType I.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
 	deployResponse := I.DeployResponse{}
 	statusCode, deploymentInfo, err := d.deployInternal(
 		req,
@@ -100,6 +100,7 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName str
 		org,
 		space,
 		appName,
+		uuid,
 		contentType,
 		response,
 	)
@@ -109,16 +110,19 @@ func (d Deployer) Deploy(req *http.Request, environment, org, space, appName str
 	reqChannel <- deployResponse
 }
 
-func (d Deployer) deployInternal(req *http.Request, environment, org, space, appName string, contentType I.DeploymentType, response io.ReadWriter) (statusCode int, deploymentInfo *S.DeploymentInfo, err error) {
+func (d Deployer) deployInternal(req *http.Request, environment, org, space, appName, uuid string, contentType I.DeploymentType, response io.ReadWriter) (statusCode int, deploymentInfo *S.DeploymentInfo, err error) {
 	var (
 		environments           = d.Config.Environments
 		authenticationRequired = environments[environment].Authenticate
 		deployEventData        = S.DeployEventData{}
 		manifest               []byte
 		appPath                string
-		uuid                   = d.Randomizer.StringRunes(10)
 	)
 	deploymentInfo = &S.DeploymentInfo{}
+
+	if uuid == "" {
+		uuid = d.Randomizer.StringRunes(10)
+	}
 
 	defer func() { d.FileSystem.RemoveAll(appPath) }()
 	d.Log.Debugf("Starting deploy of %s with UUID %s", appName, uuid)

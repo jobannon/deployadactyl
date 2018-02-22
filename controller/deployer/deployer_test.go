@@ -194,7 +194,7 @@ var _ = Describe("Deployer", func() {
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = errors.New("prechecker failed")
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).To(MatchError("prechecker failed"))
@@ -215,7 +215,7 @@ var _ = Describe("Deployer", func() {
 					By("not setting basic auth")
 
 					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 					deployResponse := <-reqChannel1
 
 					Expect(deployResponse.Error).ToNot(HaveOccurred())
@@ -234,7 +234,7 @@ var _ = Describe("Deployer", func() {
 					By("not setting basic auth")
 
 					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 					deployResponse := <-reqChannel1
 
 					Expect(deployResponse.Error).To(MatchError("basic auth header not found"))
@@ -255,7 +255,7 @@ var _ = Describe("Deployer", func() {
 				req, _ = http.NewRequest("POST", "", requestBody)
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).To(MatchError("The following properties are missing: artifact_url"))
@@ -281,7 +281,7 @@ var _ = Describe("Deployer", func() {
 					req, _ = http.NewRequest("POST", "", requestBody)
 
 					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 					deployResponse := <-reqChannel1
 
 					Expect(deployResponse.Error).ToNot(HaveOccurred())
@@ -306,7 +306,7 @@ var _ = Describe("Deployer", func() {
 					req, _ = http.NewRequest("POST", "", requestBody)
 
 					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 					deployResponse := <-reqChannel1
 
 					Expect(deployResponse.Error.Error()).To(ContainSubstring("base64 encoded manifest could not be decoded"))
@@ -323,7 +323,7 @@ var _ = Describe("Deployer", func() {
 					fetcher.FetchCall.Returns.Error = errors.New("fetcher error")
 
 					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 					deployResponse := <-reqChannel1
 
 					Expect(deployResponse.Error).To(MatchError("fetcher error"))
@@ -334,6 +334,54 @@ var _ = Describe("Deployer", func() {
 				})
 			})
 		})
+
+		Context("when a UUID is provided", func() {
+			It("does not create a new UUID", func() {
+				deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+				requestBody = bytes.NewBufferString(fmt.Sprintf(`{"artifact_url": "%s", "manifest": "%s"}`,
+					artifactURL,
+					base64Manifest,
+				))
+
+				req, _ = http.NewRequest("POST", "", requestBody)
+
+				reqChannel1 := make(chan interfaces.DeployResponse)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				deployResponse := <-reqChannel1
+
+				Expect(deployResponse.Error).ToNot(HaveOccurred())
+
+				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
+				Expect(deployResponse.DeploymentInfo.UUID).To(Equal(uuid))
+
+			})
+		})
+
+		Context("when no UUID is provided", func() {
+			It("creates a new UUID", func() {
+				deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+				requestBody = bytes.NewBufferString(fmt.Sprintf(`{"artifact_url": "%s", "manifest": "%s"}`,
+					artifactURL,
+					base64Manifest,
+				))
+
+				req, _ = http.NewRequest("POST", "", requestBody)
+				uuid = ""
+				reqChannel1 := make(chan interfaces.DeployResponse)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				deployResponse := <-reqChannel1
+
+				Expect(deployResponse.Error).ToNot(HaveOccurred())
+
+				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
+				Expect(deployResponse.DeploymentInfo.UUID).ToNot(Equal(uuid))
+
+			})
+		})
 	})
 
 	Describe("deploying with a zip file in the request body", func() {
@@ -341,7 +389,7 @@ var _ = Describe("Deployer", func() {
 			It("deploys successfully and returns http.StatusOK because manifest is optional", func() {
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).To(BeNil())
@@ -358,7 +406,7 @@ var _ = Describe("Deployer", func() {
 					fetcher.FetchFromZipCall.Returns.Error = errors.New("fetcher error")
 
 					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
 					deployResponse := <-reqChannel1
 
 					Expect(deployResponse.Error).To(MatchError("fetcher error"))
@@ -373,7 +421,7 @@ var _ = Describe("Deployer", func() {
 		It("returns an http.StatusBadRequest and an error", func() {
 
 			reqChannel1 := make(chan interfaces.DeployResponse)
-			go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{}, response, reqChannel1)
+			go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{}, response, reqChannel1)
 			deployResponse := <-reqChannel1
 
 			Expect(deployResponse.Error).To(MatchError(InvalidContentTypeError{}))
@@ -403,7 +451,7 @@ applications:
 				req, _ = http.NewRequest("POST", "", requestBody)
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).ToNot(HaveOccurred())
@@ -417,7 +465,7 @@ applications:
 				deployer.Config.Environments[environment] = S.Environment{Instances: 303}
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				<-reqChannel1
 
 				Eventually(blueGreener.PushCall.Received.DeploymentInfo.Instances).Should(Equal(uint16(303)))
@@ -429,7 +477,7 @@ applications:
 		It("returns an error and an http.StatusInternalServerError", func() {
 
 			reqChannel1 := make(chan interfaces.DeployResponse)
-			go deployer.Deploy(req, "doesnt_exist", org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+			go deployer.Deploy(req, "doesnt_exist", org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 			deployResponse := <-reqChannel1
 
 			Eventually(deployResponse.Error).Should(MatchError(EnvironmentNotFoundError{"doesnt_exist"}))
@@ -443,7 +491,7 @@ applications:
 		It("shows the user deployment info properties", func() {
 
 			reqChannel1 := make(chan interfaces.DeployResponse)
-			go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+			go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 			deployResponse := <-reqChannel1
 
 			Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
@@ -458,7 +506,7 @@ applications:
 		It("shows the user their deploy was successful", func() {
 
 			reqChannel1 := make(chan interfaces.DeployResponse)
-			go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+			go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 			deployResponse := <-reqChannel1
 
 			Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
@@ -477,7 +525,7 @@ applications:
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				expected := EventError{C.DeployStartEvent, bluegreen.InitializationError{errors.New(C.DeployStartEvent + " error")}}
@@ -494,7 +542,7 @@ applications:
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(""+C.DeployFinishEvent+" error"))
 
 					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 					deployResponse := <-reqChannel1
 
 					expectedErr := bluegreen.FinishDeployError{Err: errors.New("an error occurred in the " + C.DeployStartEvent + " event: " + C.DeployStartEvent + " error: an error occurred in the " + C.DeployFinishEvent + " event: " + C.DeployFinishEvent + " error")}
@@ -516,7 +564,7 @@ applications:
 				blueGreener.PushCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).To(Equal(expectedError))
@@ -535,7 +583,7 @@ applications:
 				errorFinder.FindErrorsCall.Returns.Errors = errors
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				<-reqChannel1
 
 				Expect(errorFinder.FindErrorsCall.Received.Response).ToNot(Equal(""))
@@ -555,7 +603,7 @@ applications:
 				errorFinder.FindErrorsCall.Returns.Errors = errors
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(errorFinder.FindErrorsCall.Received.Response).ToNot(Equal(""))
@@ -577,7 +625,7 @@ applications:
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).To(BeNil())
@@ -592,7 +640,7 @@ applications:
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.DeploymentInfo.UUID).ToNot(Equal(""))
@@ -606,7 +654,7 @@ applications:
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 					deployResponse := <-reqChannel1
 
 					Expect(deployResponse.Error).To(BeNil())
@@ -626,7 +674,7 @@ applications:
 				blueGreener.PushCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).To(Equal(expectedError))
@@ -646,7 +694,7 @@ applications:
 				blueGreener.PushCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).To(Equal(expectedError))
@@ -665,7 +713,7 @@ applications:
 				blueGreener.PushCall.Returns.Error = bluegreen.InitializationError{Err: errors.New("blue green error")}
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).To(MatchError("blue green error"))
@@ -683,7 +731,7 @@ applications:
 				blueGreener.PushCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).To(Equal(expectedError))
@@ -716,7 +764,7 @@ applications:
 			fetcher.FetchCall.Returns.AppPath = directoryName
 
 			reqChannel1 := make(chan interfaces.DeployResponse)
-			go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+			go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 			<-reqChannel1
 
 			exists, err := af.DirExists(directoryName)
@@ -732,7 +780,7 @@ applications:
 				fetcher.FetchCall.Returns.AppPath = appPath
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).To(BeNil())
@@ -772,7 +820,7 @@ applications:
 				fetcher.FetchFromZipCall.Returns.AppPath = testManifestLocation
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).To(BeNil())
@@ -808,7 +856,7 @@ applications:
 			It("should marshal params to deploymentInfo", func() {
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				<-reqChannel1
 
 				Expect(blueGreener.PushCall.Received.DeploymentInfo.CustomParams["service_now_column_name"].(string)).To(Equal("u_change"))
@@ -847,7 +895,7 @@ applications:
 			It("doesn't return an error", func() {
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).ToNot(HaveOccurred())

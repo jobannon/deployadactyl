@@ -54,11 +54,11 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 	defer close(reqChannel2)
 
 	cf := deployment.CFContext
-	go c.Deployer.Deploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, response, reqChannel1)
+	go c.Deployer.Deploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, response, reqChannel1)
 
 	silentResponse := &bytes.Buffer{}
 	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
-		go c.SilentDeployer.Deploy(request2, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, silentResponse, reqChannel2)
+		go c.SilentDeployer.Deploy(request2, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, silentResponse, reqChannel2)
 		<-reqChannel2
 	}
 

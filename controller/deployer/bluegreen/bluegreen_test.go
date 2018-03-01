@@ -83,8 +83,29 @@ var _ = Describe("Bluegreen", func() {
 		})
 	})
 
-	Context("when a login command fails", func() {
-		It("not start a deployment", func() {
+	Context("when a login command is called", func() {
+		It("starts a deployment when successful", func() {
+			for i, pusher := range pushers {
+				pusher.LoginCall.Write.Output = loginOutput
+
+				if i == 0 {
+					pusher.LoginCall.Returns.Error = nil
+				}
+			}
+
+			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+			Expect(err).ToNot(HaveOccurred())
+
+			for i, pusher := range pushers {
+				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
+			}
+
+			for range environment.Foundations {
+				Eventually(response).Should(Say(loginOutput))
+			}
+		})
+
+		It("does not start a deployment when failed", func() {
 			for i, pusher := range pushers {
 				pusher.LoginCall.Write.Output = loginOutput
 
@@ -289,6 +310,30 @@ var _ = Describe("Bluegreen", func() {
 
 			Expect(err).To(HaveOccurred())
 			Expect(pushers[0].UndoPushCall.Received.UndoPushWasCalled).To(Equal(false))
+		})
+	})
+	Describe("Stop", func() {
+		Context("when called", func() {
+			It("creates a stopper for each foundations", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				for range environment.Foundations {
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, &mocks.StartStopper{})
+				}
+
+				for range environment.Foundations {
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+
+				blueGreen = BlueGreen{StopperCreator: stopperFactory, Log: log}
+
+				err := blueGreen.Stop(environment, deploymentInfo)
+				Expect(err).ToNot(HaveOccurred())
+
+				for i := range environment.Foundations {
+					Expect(stopperFactory.CreateStopperCall.Received[i].DeploymentInfo).To(Equal(deploymentInfo))
+				}
+			})
 		})
 	})
 })

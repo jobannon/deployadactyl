@@ -7,4 +7,5 @@ const (
 	DeployFailureEvent = "deploy.failure"
 	DeployErrorEvent   = "deploy.error"
 	PushFinishedEvent  = "push.finished"
+	StopFinishedEvent  = "stop.finished"
 )

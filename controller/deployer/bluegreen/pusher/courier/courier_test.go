@@ -75,6 +75,36 @@ var _ = Describe("Courier", func() {
 		})
 	})
 
+	Describe("starting an app", func() {
+		It("should send a valid Cloud Foundry start command", func() {
+			expectedArgs := []string{"start", appName}
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.Start(appName)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
+	Describe("stopping an app", func() {
+		It("should send a valid Cloud Foundry stop command", func() {
+			expectedArgs := []string{"stop", appName}
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.Stop(appName)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
 	Describe("deleting an app", func() {
 		It("should get a valid Cloud Foundry delete command", func() {
 			expectedArgs := []string{"delete", appName, "-f"}

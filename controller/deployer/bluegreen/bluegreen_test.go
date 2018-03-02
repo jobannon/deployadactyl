@@ -11,6 +11,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/op/go-logging"
 
+	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -314,18 +315,15 @@ var _ = Describe("Bluegreen", func() {
 	})
 	Describe("Stop", func() {
 		Context("when called", func() {
-			It("creates a stopper for each foundations", func() {
+			It("creates a stopper for each foundation", func() {
 				stopperFactory := &mocks.StopperCreator{}
 
 				for range environment.Foundations {
 					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, &mocks.StartStopper{})
-				}
-
-				for range environment.Foundations {
 					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
 				}
 
-				blueGreen = BlueGreen{StopperCreator: stopperFactory, Log: log}
+				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
 				err := blueGreen.Stop(environment, deploymentInfo)
 				Expect(err).ToNot(HaveOccurred())
@@ -334,6 +332,123 @@ var _ = Describe("Bluegreen", func() {
 					Expect(stopperFactory.CreateStopperCall.Received[i].DeploymentInfo).To(Equal(deploymentInfo))
 				}
 			})
+
+			It("returns an error when we fail to create a stopper", func() {
+				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, &mocks.StartStopper{})
+				stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, errors.New("stop creator failed"))
+
+				blueGreen = BlueGreen{StopperCreator: stopperFactory, Log: log}
+				err := blueGreen.Stop(environment, deploymentInfo)
+
+				Expect(err).To(MatchError("stop creator failed"))
+			})
+
+			//It("associates log with each buffer output", func() {
+			//	stopperFactory := &mocks.StopperCreator{}
+			//	stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, &mocks.StartStopper{})
+			//	stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+			//
+			//	blueGreen = BlueGreen{StopperCreator: stopperFactory, Log: log}
+			//
+			//
+			//})
+
+			It("logs in to all foundations", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+
+				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+
+				err := blueGreen.Stop(environment, deploymentInfo)
+				Expect(err).ToNot(HaveOccurred())
+
+				for i, foundationUrl := range environment.Foundations {
+					Expect(stoppers[i].LoginCall.Received.FoundationURL).To(Equal(foundationUrl))
+				}
+			})
+
+			It("does not execute Stop when any login fails", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+				stoppers[0].LoginCall.Returns.Error = errors.New("login to stop failed")
+				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				err := blueGreen.Stop(environment, deploymentInfo)
+
+				Expect(err.Error()).To(Equal("login failed: login to stop failed"))
+			})
+
+			It("does not execute Stop when multiple logins fail", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+					stoppers[i].LoginCall.Returns.Error = errors.New(fmt.Sprintf("login %d to stop failed", i))
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+
+				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				err := blueGreen.Stop(environment, deploymentInfo)
+
+				Expect(err.Error()).To(Equal("login failed: login 0 to stop failed: login 1 to stop failed"))
+			})
+
+			It("calls Stop for each foundation", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+
+				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+
+				err := blueGreen.Stop(environment, deploymentInfo)
+				Expect(err).ToNot(HaveOccurred())
+
+				for i, foundationUrl := range environment.Foundations {
+					Expect(stoppers[i].StopCall.Received.AppName).To(Equal(appName))
+					Expect(stoppers[i].StopCall.Received.FoundationURL).To(Equal(foundationUrl))
+				}
+			})
+
+			//It("rolls back each Stop if any fails", func() {
+			//	stopperFactory := &mocks.StopperCreator{}
+			//
+			//	var stoppers []*mocks.StartStopper
+			//	for i := range environment.Foundations {
+			//		stoppers = append(stoppers, &mocks.StartStopper{})
+			//		stoppers[0].StopCall.Returns.Error = errors.New("stop failed")
+			//
+			//		stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+			//		stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+			//	}
+			//
+			//	blueGreen = BlueGreen{StopperCreator: stopperFactory}
+			//
+			//	err := blueGreen.Stop(environment, deploymentInfo)
+			//	Expect(err).ToNot(HaveOccurred())
+			//})
 		})
 	})
 })

@@ -2,6 +2,15 @@ package startstopper
 
 import "fmt"
 
+type StartError struct {
+	ApplicationName string
+	Out             []byte
+}
+
+func (e StartError) Error() string {
+	return fmt.Sprintf("cannot start %s: %s", e.ApplicationName, string(e.Out))
+}
+
 type StopError struct {
 	ApplicationName string
 	Out             []byte

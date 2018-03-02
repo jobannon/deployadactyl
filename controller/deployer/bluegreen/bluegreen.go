@@ -18,6 +18,7 @@ type BlueGreen struct {
 	StopperCreator I.StopperCreator
 	Log            I.Logger
 	actors         []actor
+	stopActors     []stopActor
 	buffers        []*bytes.Buffer
 	stopBuffers    []*bytes.Buffer
 }
@@ -25,16 +26,26 @@ type BlueGreen struct {
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
 // If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
 func (bg BlueGreen) Stop(environment S.Environment, deploymentInfo S.DeploymentInfo) error {
+	bg.stopActors = make([]stopActor, len(environment.Foundations))
 	bg.stopBuffers = make([]*bytes.Buffer, len(environment.Foundations))
 
-	for i, _ := range environment.Foundations {
+	for i, foundationURL := range environment.Foundations {
 		bg.stopBuffers[i] = &bytes.Buffer{}
 
-		bg.StopperCreator.CreateStopper(deploymentInfo, bg.stopBuffers[i])
-
+		stopper, err := bg.StopperCreator.CreateStopper(deploymentInfo, bg.stopBuffers[i])
+		if err != nil {
+			return InitializationError{err}
+		}
+		bg.stopActors[i] = newStopActor(stopper, foundationURL)
+		defer close(bg.stopActors[i].commands)
 	}
 
-	//defer pusher.CleanUp()
+	loginErrors := bg.loginAllStoppers()
+	if len(loginErrors) != 0 {
+		return LoginError{loginErrors}
+	}
+
+	bg.stopAll(deploymentInfo.AppName)
 	return nil
 }
 
@@ -116,6 +127,21 @@ func (bg BlueGreen) loginAll() (manyErrors []error) {
 	return
 }
 
+func (bg BlueGreen) loginAllStoppers() (manyErrors []error) {
+	for _, a := range bg.stopActors {
+		a.commands <- func(stopper I.StartStopper, foundationURL string) error {
+			return stopper.Login(foundationURL)
+		}
+	}
+	for _, a := range bg.stopActors {
+		if err := <-a.errs; err != nil {
+			manyErrors = append(manyErrors, err)
+		}
+	}
+
+	return
+}
+
 func (bg BlueGreen) pushAll(appPath string) (manyErrors []error) {
 	for _, a := range bg.actors {
 		a.commands <- func(pusher I.Pusher, foundationURL string) error {
@@ -123,6 +149,21 @@ func (bg BlueGreen) pushAll(appPath string) (manyErrors []error) {
 		}
 	}
 	for _, a := range bg.actors {
+		if err := <-a.errs; err != nil {
+			manyErrors = append(manyErrors, err)
+		}
+	}
+
+	return
+}
+
+func (bg BlueGreen) stopAll(appName string) (manyErrors []error) {
+	for _, a := range bg.stopActors {
+		a.commands <- func(stopper I.StartStopper, foundationURL string) error {
+			return stopper.Stop(appName, foundationURL)
+		}
+	}
+	for _, a := range bg.stopActors {
 		if err := <-a.errs; err != nil {
 			manyErrors = append(manyErrors, err)
 		}

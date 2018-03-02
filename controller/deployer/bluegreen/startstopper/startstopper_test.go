@@ -204,6 +204,53 @@ var _ = Describe("StartStopper", func() {
 		})
 	})
 
+	Describe("starting an app", func() {
+		Context("when the start succeeds", func() {
+			It("returns with success", func() {
+				courier.ExistsCall.Returns.Bool = true
+				courier.StartCall.Returns.Output = []byte("start succeeded")
+
+				Expect(startStopper.Start(randomAppName, randomFoundationURL)).To(Succeed())
+
+				Expect(courier.StartCall.Received.AppName).To(Equal(randomAppName))
+
+				Eventually(response).Should(Say("start succeeded"))
+
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("starting app %s", randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully started app %s", randomAppName)))
+			})
+
+			It("emits a StartFinished event", func() {
+				courier.ExistsCall.Returns.Bool = true
+				courier.StartCall.Returns.Output = []byte("start succeeded")
+
+				Expect(startStopper.Start(randomAppName, randomFoundationURL)).To(Succeed())
+				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.StartFinishedEvent))
+			})
+		})
+
+		Context("when the start fails", func() {
+			It("returns an error", func() {
+				courier.ExistsCall.Returns.Bool = true
+				courier.StartCall.Returns.Error = errors.New("start error")
+
+				err := startStopper.Start(randomAppName, randomFoundationURL)
+
+				Expect(err).To(MatchError(startstopper.StartError{ApplicationName: randomAppName, Out: nil}))
+			})
+		})
+
+		Context("when the app does not exist", func() {
+			It("returns an error", func() {
+				courier.ExistsCall.Returns.Bool = false
+
+				err := startStopper.Start(randomAppName, randomFoundationURL)
+
+				Expect(err).To(MatchError(startstopper.ExistsError{ApplicationName: randomAppName}))
+			})
+		})
+	})
+
 	//
 	//	Context("when the application does not exist", func() {
 	//		It("does not delete the non-existant original application", func() {

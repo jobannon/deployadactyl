@@ -29,6 +29,7 @@ type CFContext struct {
 	Space        string
 	Application  string
 	UUID         string
+	SkipSSL      bool
 }
 
 type Controller interface {

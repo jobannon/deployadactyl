@@ -5,7 +5,7 @@ import (
 )
 
 // PushEventData has a RequestBody and DeploymentInfo.
-type StopEventData struct {
+type StartStopEventData struct {
 	FoundationURL string
 	Context       CFContext
 	Courier       interface{}

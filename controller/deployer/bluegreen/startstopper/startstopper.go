@@ -46,6 +46,35 @@ func (s StartStopper) Login(foundationURL string) error {
 	return nil
 }
 
+func (s StartStopper) Start(appName, foundationURL string) error {
+
+	if s.Courier.Exists(appName) != true {
+		return ExistsError{ApplicationName: appName}
+	}
+
+	s.Log.Infof("starting app %s", appName)
+
+	output, err := s.Courier.Start(appName)
+	if err != nil {
+		return StartError{ApplicationName: appName, Out: output}
+	}
+	s.Response.Write(output)
+
+	s.Log.Debugf("emitting a %s event", C.StartFinishedEvent)
+	startData := I.StartStopEventData{
+		FoundationURL: foundationURL,
+		Context:       s.CFContext,
+		Courier:       s.Courier,
+		Response:      s.Response,
+	}
+
+	err = s.EventManager.Emit(I.Event{Type: C.StartFinishedEvent, Data: startData})
+
+	s.Log.Infof("successfully started app %s", appName)
+
+	return nil
+}
+
 func (s StartStopper) Stop(appName, foundationURL string) error {
 
 	if s.Courier.Exists(appName) != true {
@@ -61,7 +90,7 @@ func (s StartStopper) Stop(appName, foundationURL string) error {
 	s.Response.Write(output)
 
 	s.Log.Debugf("emitting a %s event", C.StopFinishedEvent)
-	stopData := I.StopEventData{
+	stopData := I.StartStopEventData{
 		FoundationURL: foundationURL,
 		Context:       s.CFContext,
 		Courier:       s.Courier,

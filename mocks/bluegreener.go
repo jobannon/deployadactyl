@@ -23,6 +23,16 @@ type BlueGreener struct {
 			Error I.DeploymentError
 		}
 	}
+	StopCall struct {
+		Received struct {
+			Environment    S.Environment
+			DeploymentInfo S.DeploymentInfo
+			Out            io.Writer
+		}
+		Returns struct {
+			Error error
+		}
+	}
 }
 
 // Push mock method.
@@ -36,4 +46,12 @@ func (b *BlueGreener) Push(environment S.Environment, appPath string, deployment
 		bytes.NewBufferString(b.PushCall.Write).WriteTo(out)
 	}
 	return b.PushCall.Returns.Error
+}
+
+func (b *BlueGreener) Stop(environment S.Environment, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+	b.StopCall.Received.Environment = environment
+	b.StopCall.Received.DeploymentInfo = deploymentInfo
+	b.StopCall.Received.Out = out
+
+	return b.StopCall.Returns.Error
 }

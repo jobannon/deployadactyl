@@ -14,4 +14,9 @@ type BlueGreener interface {
 		deploymentInfo S.DeploymentInfo,
 		response io.ReadWriter,
 	) DeploymentError
+	Stop(
+		environment S.Environment,
+		deploymentInfo S.DeploymentInfo,
+		response io.ReadWriter,
+	) error
 }

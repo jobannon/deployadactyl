@@ -325,7 +325,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
-				err := blueGreen.Stop(environment, deploymentInfo)
+				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
 
 				for i := range environment.Foundations {
@@ -339,20 +339,10 @@ var _ = Describe("Bluegreen", func() {
 				stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, errors.New("stop creator failed"))
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory, Log: log}
-				err := blueGreen.Stop(environment, deploymentInfo)
+				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
 
 				Expect(err).To(MatchError("stop creator failed"))
 			})
-
-			//It("associates log with each buffer output", func() {
-			//	stopperFactory := &mocks.StopperCreator{}
-			//	stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, &mocks.StartStopper{})
-			//	stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
-			//
-			//	blueGreen = BlueGreen{StopperCreator: stopperFactory, Log: log}
-			//
-			//
-			//})
 
 			It("logs in to all foundations", func() {
 				stopperFactory := &mocks.StopperCreator{}
@@ -367,7 +357,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
-				err := blueGreen.Stop(environment, deploymentInfo)
+				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
 
 				for i, foundationUrl := range environment.Foundations {
@@ -387,7 +377,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 				stoppers[0].LoginCall.Returns.Error = errors.New("login to stop failed")
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
-				err := blueGreen.Stop(environment, deploymentInfo)
+				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
 
 				Expect(err.Error()).To(Equal("login failed: login to stop failed"))
 			})
@@ -405,7 +395,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
-				err := blueGreen.Stop(environment, deploymentInfo)
+				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
 
 				Expect(err.Error()).To(Equal("login failed: login 0 to stop failed: login 1 to stop failed"))
 			})
@@ -423,7 +413,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
-				err := blueGreen.Stop(environment, deploymentInfo)
+				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
 
 				for i, foundationUrl := range environment.Foundations {
@@ -432,23 +422,86 @@ var _ = Describe("Bluegreen", func() {
 				}
 			})
 
-			//It("rolls back each Stop if any fails", func() {
-			//	stopperFactory := &mocks.StopperCreator{}
-			//
-			//	var stoppers []*mocks.StartStopper
-			//	for i := range environment.Foundations {
-			//		stoppers = append(stoppers, &mocks.StartStopper{})
-			//		stoppers[0].StopCall.Returns.Error = errors.New("stop failed")
-			//
-			//		stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
-			//		stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
-			//	}
-			//
-			//	blueGreen = BlueGreen{StopperCreator: stopperFactory}
-			//
-			//	err := blueGreen.Stop(environment, deploymentInfo)
-			//	Expect(err).ToNot(HaveOccurred())
-			//})
+			It("returns an error if any Stop fails", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+				stoppers[0].StopCall.Returns.Error = errors.New("stop failed")
+
+				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+
+				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				Expect(err).To(MatchError(StopError{[]error{errors.New("stop failed")}}))
+			})
+
+			It("returns all errors when multiple Stops fail", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+					stoppers[i].StopCall.Returns.Error = errors.New("stop failed")
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+
+				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+
+				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				Expect(err.Error()).To(Equal("stop failed: stop failed: stop failed"))
+			})
+
+			It("rolls back all Stops if any Stop fails", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+				stoppers[0].StopCall.Returns.Error = errors.New("stop failed")
+
+				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+
+				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				Expect(err).To(HaveOccurred())
+
+				for i, foundationUrl := range environment.Foundations {
+					Expect(stoppers[i].StartCall.Received.AppName).To(Equal(appName))
+					Expect(stoppers[i].StartCall.Received.FoundationURL).To(Equal(foundationUrl))
+				}
+			})
+
+			It("writes responses to output", func() {
+				out := NewBuffer()
+
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+
+				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+
+				err := blueGreen.Stop(environment, deploymentInfo, out)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(out).Should(Say("- Cloud Foundry Output -"))
+				Expect(out).Should(Say("- End Cloud Foundry Output -"))
+			})
 		})
 	})
 })

@@ -23,9 +23,7 @@ type BlueGreen struct {
 	stopBuffers    []*bytes.Buffer
 }
 
-// Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
-// If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
-func (bg BlueGreen) Stop(environment S.Environment, deploymentInfo S.DeploymentInfo) error {
+func (bg BlueGreen) Stop(environment S.Environment, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
 	bg.stopActors = make([]stopActor, len(environment.Foundations))
 	bg.stopBuffers = make([]*bytes.Buffer, len(environment.Foundations))
 
@@ -40,15 +38,35 @@ func (bg BlueGreen) Stop(environment S.Environment, deploymentInfo S.DeploymentI
 		defer close(bg.stopActors[i].commands)
 	}
 
+	defer func() {
+		for _, buffer := range bg.stopBuffers {
+			fmt.Fprintf(out, "\n%s Cloud Foundry Output %s\n", strings.Repeat("-", 19), strings.Repeat("-", 19))
+
+			buffer.WriteTo(out)
+		}
+
+		fmt.Fprintf(out, "\n%s End Cloud Foundry Output %s\n", strings.Repeat("-", 17), strings.Repeat("-", 17))
+	}()
+
 	loginErrors := bg.loginAllStoppers()
 	if len(loginErrors) != 0 {
 		return LoginError{loginErrors}
 	}
 
-	bg.stopAll(deploymentInfo.AppName)
+	stopErrors := bg.stopAll(deploymentInfo.AppName)
+	if len(stopErrors) > 0 {
+		rollbackErrors := bg.startAll(deploymentInfo.AppName)
+		if len(rollbackErrors) != 0 {
+			return RollbackStopError{stopErrors, rollbackErrors}
+		}
+
+		return StopError{stopErrors}
+	}
 	return nil
 }
 
+// Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
+// If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
 func (bg BlueGreen) Push(environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) I.DeploymentError {
 	bg.actors = make([]actor, len(environment.Foundations))
 	bg.buffers = make([]*bytes.Buffer, len(environment.Foundations))
@@ -200,6 +218,26 @@ func (bg BlueGreen) undoPushAll(log I.Logger) (manyErrors []error) {
 	}
 
 	for _, a := range bg.actors {
+		if err := <-a.errs; err != nil {
+			manyErrors = append(manyErrors, err)
+		}
+	}
+
+	return
+}
+
+func (bg BlueGreen) startAll(appName string) (manyErrors []error) {
+	for _, a := range bg.stopActors {
+		a.commands <- func(stopper I.StartStopper, foundationURL string) error {
+			err := stopper.Start(appName, foundationURL)
+			//if err != nil {
+			//	log.Errorf("Could not rollback app on foundation %s with error: %s", foundationURL, err.Error())
+			//}
+			return err
+		}
+	}
+
+	for _, a := range bg.stopActors {
 		if err := <-a.errs; err != nil {
 			manyErrors = append(manyErrors, err)
 		}

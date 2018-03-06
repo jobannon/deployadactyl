@@ -9,4 +9,8 @@ const (
 	PushFinishedEvent  = "push.finished"
 	StartFinishedEvent = "start.finished"
 	StopFinishedEvent  = "stop.finished"
+	StopSuccessEvent   = "stop.success"
+	StopFinishEvent    = "stop.finish"
+	StopFailureEvent   = "stop.failure"
+	StopStartEvent     = "stop.start"
 )

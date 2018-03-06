@@ -209,6 +209,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 		deploymentInfo.Instances = environments[environment].Instances
 	}
 
+	// TODO This next block looks like dead code as the check already occurred at the beginning of the function
 	e, found := environments[deploymentInfo.Environment]
 	if !found {
 		err = d.EventManager.Emit(I.Event{Type: C.DeployErrorEvent, Data: deployEventData})

@@ -359,4 +359,205 @@ var _ = Describe("Controller", func() {
 			})
 		})
 	})
+	XDescribe("StopDeployment", func() {
+		Context("when verbose deployer is called", func() {
+			It("channel resolves when no errors occur", func() {
+
+				deployer.DeployCall.Returns.Error = nil
+				deployer.DeployCall.Returns.StatusCode = http.StatusOK
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+
+				response := &bytes.Buffer{}
+
+				deployment := &I.Deployment{
+					Body: &[]byte{},
+					Type: I.DeploymentType{JSON: true},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+				}
+				deployResponse := controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Called).Should(Equal(1))
+				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
+
+				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
+
+				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
+				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+
+				ret, _ := ioutil.ReadAll(response)
+				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+			})
+
+			XIt("channel resolves when errors occur", func() {
+
+				deployer.DeployCall.Returns.Error = errors.New("bork")
+				deployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+
+				response := &bytes.Buffer{}
+
+				deployment := &I.Deployment{
+					Body: &[]byte{},
+					Type: I.DeploymentType{JSON: true},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+				}
+				deployResponse := controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Called).Should(Equal(1))
+				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
+
+				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))
+				Eventually(deployResponse.Error.Error()).Should(Equal("bork"))
+
+				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
+				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+
+				ret, _ := ioutil.ReadAll(response)
+				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+			})
+
+			XIt("does not set the basic auth header if no credentials are passed", func() {
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+
+				response := &bytes.Buffer{}
+
+				deployment := &I.Deployment{
+					Body: &[]byte{},
+					Type: I.DeploymentType{JSON: true},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+					Authorization: I.Authorization{
+						Username: "",
+						Password: "",
+					},
+				}
+				controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Received.Request.Header.Get("Authorization")).Should(Equal(""))
+			})
+
+			XIt("sets the basic auth header if credentials are passed", func() {
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+
+				response := &bytes.Buffer{}
+
+				deployment := &I.Deployment{
+					Body: &[]byte{},
+					Type: I.DeploymentType{JSON: true},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+					Authorization: I.Authorization{
+						Username: "TestUsername",
+						Password: "TestPassword",
+					},
+				}
+				controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Received.Request.Header.Get("Authorization")).Should(Equal("Basic VGVzdFVzZXJuYW1lOlRlc3RQYXNzd29yZA=="))
+			})
+		})
+
+		XContext("when SILENT_DEPLOY_ENVIRONMENT is true", func() {
+			It("channel resolves true when no errors occur", func() {
+
+				os.Setenv("SILENT_DEPLOY_ENVIRONMENT", environment)
+				deployer.DeployCall.Returns.Error = nil
+				deployer.DeployCall.Returns.StatusCode = http.StatusOK
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+
+				response := &bytes.Buffer{}
+
+				deployment := &I.Deployment{
+					Body: &[]byte{},
+					Type: I.DeploymentType{JSON: true},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+				}
+				deployResponse := controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Called).Should(Equal(1))
+				Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
+
+				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
+
+				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
+				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+
+				ret, _ := ioutil.ReadAll(response)
+				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+			})
+			It("channel resolves when no errors occur", func() {
+
+				os.Setenv("SILENT_DEPLOY_ENVIRONMENT", environment)
+				deployer.DeployCall.Returns.Error = nil
+				deployer.DeployCall.Returns.StatusCode = http.StatusOK
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+
+				silentDeployer.DeployCall.Returns.Error = errors.New("bork")
+				silentDeployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
+
+				response := &bytes.Buffer{}
+
+				silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
+				os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
+
+				deployment := &I.Deployment{
+					Body: &[]byte{},
+					Type: I.DeploymentType{JSON: true},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+				}
+				deployResponse := controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Called).Should(Equal(1))
+				Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
+
+				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
+
+				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
+				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+
+				ret, _ := ioutil.ReadAll(response)
+				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+			})
+		})
+	})
 })

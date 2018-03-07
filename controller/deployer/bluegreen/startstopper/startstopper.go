@@ -16,6 +16,36 @@ type StartStopper struct {
 	Log           I.Logger
 }
 
+type StopperAction struct {
+	Stopper       I.StartStopper
+	FoundationURL string
+	AppName       string
+}
+
+func (s StopperAction) Initially() error {
+	return s.Stopper.Login(s.FoundationURL)
+}
+
+func (s StopperAction) Execute() error {
+	return s.Stopper.Stop(s.AppName, s.FoundationURL)
+}
+
+func (s StopperAction) Verify() error {
+	return nil
+}
+
+func (s StopperAction) Success() error {
+	return nil
+}
+
+func (s StopperAction) Undo() error {
+	return s.Stopper.Start(s.AppName, s.FoundationURL)
+}
+
+func (s StopperAction) Finally() error {
+	return nil
+}
+
 // Login will login to a Cloud Foundry instance.
 func (s StartStopper) Login(foundationURL string) error {
 	s.Log.Debugf(

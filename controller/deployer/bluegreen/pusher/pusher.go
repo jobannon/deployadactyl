@@ -24,6 +24,36 @@ type Pusher struct {
 	Log            I.Logger
 }
 
+type PusherAction struct {
+	Pusher        I.Pusher
+	FoundationURL string
+	AppPath       string
+}
+
+func (p PusherAction) Initially() error {
+	return p.Pusher.Login(p.FoundationURL)
+}
+
+func (p PusherAction) Execute() error {
+	return p.Pusher.Push(p.AppPath, p.FoundationURL)
+}
+
+func (p PusherAction) Verify() error {
+	return nil
+}
+
+func (p PusherAction) Success() error {
+	return p.Pusher.FinishPush()
+}
+
+func (p PusherAction) Undo() error {
+	return p.Pusher.UndoPush()
+}
+
+func (p PusherAction) Finally() error {
+	return p.Pusher.CleanUp()
+}
+
 // Login will login to a Cloud Foundry instance.
 func (p Pusher) Login(foundationURL string) error {
 	p.Log.Debugf(

@@ -391,6 +391,9 @@ var _ = Describe("StateManager", func() {
 		})
 	})
 	FDescribe("BlueGreener.Stop", func() {
+		var (
+			blueGreener *mocks.BlueGreener
+		)
 		Context("when BlueGreener fails with a stop failed error", func() {
 			It("returns an error", func() {
 				environment := "environment-" + randomizer.StringRunes(10)
@@ -420,9 +423,7 @@ var _ = Describe("StateManager", func() {
 				}
 
 				eventManager := &mocks.EventManager{}
-				var (
-					blueGreener *mocks.BlueGreener
-				)
+
 				blueGreener = &mocks.BlueGreener{}
 				manager := StateManager{
 					Prechecker:   prechecker,

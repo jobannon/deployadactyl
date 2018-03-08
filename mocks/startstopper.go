@@ -1,28 +1,35 @@
 package mocks
 
 type StartStopper struct {
-	LoginCall struct {
-		Received struct {
-			FoundationURL string
-		}
+	InitiallyCall struct {
 		Returns struct {
 			Error error
 		}
 	}
-	StartCall struct {
-		Received struct {
-			AppName       string
-			FoundationURL string
-		}
+	ExecuteCall struct {
 		Returns struct {
 			Error error
 		}
 	}
-	StopCall struct {
-		Received struct {
-			AppName       string
-			FoundationURL string
+	UndoCall struct {
+		Write   string
+		Returns struct {
+			Error error
 		}
+	}
+	VerifyCall struct {
+		Write   string
+		Returns struct {
+			Error error
+		}
+	}
+	SuccessCall struct {
+		Write   string
+		Returns struct {
+			Error error
+		}
+	}
+	FinallyCall struct {
 		Write   string
 		Returns struct {
 			Error error
@@ -30,22 +37,32 @@ type StartStopper struct {
 	}
 }
 
-func (s *StartStopper) Login(foundationURL string) error {
-	s.LoginCall.Received.FoundationURL = foundationURL
+func (s *StartStopper) Initially() error {
 
-	return s.LoginCall.Returns.Error
+	return s.InitiallyCall.Returns.Error
 }
 
-func (s *StartStopper) Start(appName, foundationURL string) error {
-	s.StartCall.Received.AppName = appName
-	s.StartCall.Received.FoundationURL = foundationURL
+func (s *StartStopper) Verify() error {
 
-	return s.StartCall.Returns.Error
+	return s.VerifyCall.Returns.Error
 }
 
-func (s *StartStopper) Stop(appName, foundationURL string) error {
-	s.StopCall.Received.AppName = appName
-	s.StopCall.Received.FoundationURL = foundationURL
+func (s *StartStopper) Finally() error {
 
-	return s.StopCall.Returns.Error
+	return s.FinallyCall.Returns.Error
+}
+
+func (s *StartStopper) Success() error {
+
+	return s.SuccessCall.Returns.Error
+}
+
+func (s *StartStopper) Execute() error {
+
+	return s.ExecuteCall.Returns.Error
+}
+
+func (s *StartStopper) Undo() error {
+
+	return s.UndoCall.Returns.Error
 }

@@ -8,5 +8,5 @@ import (
 
 // PusherCreator interface.
 type PusherCreator interface {
-	CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (Pusher, error)
+	CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter, foundationURL, appPath string) (Action, error)
 }

@@ -7,5 +7,5 @@ import (
 )
 
 type StopperCreator interface {
-	CreateStopper(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (StartStopper, error)
+	CreateStopper(cfContext CFContext, authorization Authorization, deploymentInfo S.DeploymentInfo, response io.ReadWriter, foundationURL string) (Action, error)
 }

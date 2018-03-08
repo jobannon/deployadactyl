@@ -12,14 +12,14 @@ type PusherCreator struct {
 	CreatePusherCall struct {
 		TimesCalled int
 		Returns     struct {
-			Pushers []interfaces.Pusher
+			Pushers []interfaces.Action
 			Error   []error
 		}
 	}
 }
 
 // CreatePusher mock method.
-func (p *PusherCreator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (interfaces.Pusher, error) {
+func (p *PusherCreator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter, foundationURL, appPath string) (interfaces.Action, error) {
 	defer func() { p.CreatePusherCall.TimesCalled++ }()
 
 	return p.CreatePusherCall.Returns.Pushers[p.CreatePusherCall.TimesCalled], p.CreatePusherCall.Returns.Error[p.CreatePusherCall.TimesCalled]

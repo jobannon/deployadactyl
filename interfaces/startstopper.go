@@ -1,7 +1,10 @@
 package interfaces
 
-type StartStopper interface {
-	Login(foundationUrl string) error
-	Start(appName, foundationUrl string) error
-	Stop(appName, foundationUrl string) error
+type Stopper interface {
+	Initially() error
+	Execute() error
+	Verify() error
+	Success() error
+	Undo() error
+	Finally() error
 }

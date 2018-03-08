@@ -20,6 +20,7 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier/executor"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/startstopper"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	"github.com/compozed/deployadactyl/controller/deployer/prechecker"
 	"github.com/compozed/deployadactyl/eventmanager"
@@ -97,7 +98,7 @@ func (c Creator) CreateListener() net.Listener {
 // CreatePusher is used by the BlueGreener.
 //
 // Returns a pusher and error.
-func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (I.Pusher, error) {
+func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 	newCourier, err := c.CreateCourier()
 	if err != nil {
 		return nil, err
@@ -109,6 +110,28 @@ func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadW
 		EventManager:   c.CreateEventManager(),
 		Response:       response,
 		Log:            logger.DeploymentLogger{c.CreateLogger(), deploymentInfo.UUID},
+		FoundationURL:  foundationURL,
+		AppPath:        appPath,
+	}
+
+	return p, nil
+}
+
+func (c Creator) CreateStopper(cfContext I.CFContext, authorization I.Authorization, deploymentInfo S.DeploymentInfo, response io.ReadWriter, foundationURL string) (I.Action, error) {
+	newCourier, err := c.CreateCourier()
+	if err != nil {
+		return nil, err
+	}
+
+	p := &startstopper.Stopper{
+		Courier:       newCourier,
+		CFContext:     cfContext,
+		Authorization: authorization,
+		EventManager:  c.CreateEventManager(),
+		Response:      response,
+		Log:           logger.DeploymentLogger{c.CreateLogger(), deploymentInfo.UUID},
+		FoundationURL: foundationURL,
+		AppName:       deploymentInfo.AppName,
 	}
 
 	return p, nil

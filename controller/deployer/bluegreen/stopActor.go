@@ -4,7 +4,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 )
 
-func newStopActor(stopper I.StartStopper, foundationURL string) stopActor {
+func newStopActor(stopper I.Stopper, foundationURL string) stopActor {
 	commands := make(chan stopActorCommand)
 	errs := make(chan error)
 
@@ -26,4 +26,4 @@ type stopActor struct {
 	errs     <-chan error
 }
 
-type stopActorCommand func(stopper I.StartStopper, foundationURL string) error
+type stopActorCommand func(stopper I.Stopper, foundationURL string) error

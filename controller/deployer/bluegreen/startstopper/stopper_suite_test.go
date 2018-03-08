@@ -9,5 +9,5 @@ import (
 
 func TestPusher(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "StartStopper Suite")
+	RunSpecs(t, "Start Stop Suite")
 }

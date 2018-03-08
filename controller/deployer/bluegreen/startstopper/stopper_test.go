@@ -21,9 +21,9 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 )
 
-var _ = Describe("StartStopper", func() {
+var _ = Describe("Stopper", func() {
 	var (
-		startStopper startstopper.StartStopper
+		stopper      startstopper.Stopper
 		courier      *mocks.Courier
 		eventManager *mocks.EventManager
 
@@ -94,21 +94,23 @@ var _ = Describe("StartStopper", func() {
 			Password: randomPassword,
 		}
 
-		startStopper = startstopper.StartStopper{
+		stopper = startstopper.Stopper{
 			Courier:       courier,
 			CFContext:     cfContext,
 			Authorization: auth,
 			EventManager:  eventManager,
 			Response:      response,
 			Log:           logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
+			FoundationURL: randomFoundationURL,
+			AppName:       randomAppName,
 		}
 	})
 
-	Describe("logging in", func() {
+	Describe("Initially", func() {
 		Context("when login succeeds", func() {
 			It("gives the correct info to the courier", func() {
 
-				Expect(startStopper.Login(randomFoundationURL)).To(Succeed())
+				Expect(stopper.Initially()).To(Succeed())
 
 				Expect(courier.LoginCall.Received.FoundationURL).To(Equal(randomFoundationURL))
 				Expect(courier.LoginCall.Received.Username).To(Equal(randomUsername))
@@ -121,7 +123,7 @@ var _ = Describe("StartStopper", func() {
 			It("writes the output of the courier to the response", func() {
 				courier.LoginCall.Returns.Output = []byte("login succeeded")
 
-				Expect(startStopper.Login(randomFoundationURL)).To(Succeed())
+				Expect(stopper.Initially()).To(Succeed())
 
 				Eventually(response).Should(Say("login succeeded"))
 			})
@@ -132,7 +134,7 @@ var _ = Describe("StartStopper", func() {
 				courier.LoginCall.Returns.Output = []byte("login output")
 				courier.LoginCall.Returns.Error = errors.New("login error")
 
-				err := startStopper.Login(randomFoundationURL)
+				err := stopper.Initially()
 				Expect(err).To(MatchError(LoginError{randomFoundationURL, []byte("login output")}))
 			})
 
@@ -140,7 +142,7 @@ var _ = Describe("StartStopper", func() {
 				courier.LoginCall.Returns.Output = []byte("login output")
 				courier.LoginCall.Returns.Error = errors.New("login error")
 
-				err := startStopper.Login(randomFoundationURL)
+				err := stopper.Initially()
 				Expect(err).To(HaveOccurred())
 
 				Eventually(response).Should(Say("login output"))
@@ -149,7 +151,7 @@ var _ = Describe("StartStopper", func() {
 			It("logs an error", func() {
 				courier.LoginCall.Returns.Error = errors.New("login error")
 
-				err := startStopper.Login(randomFoundationURL)
+				err := stopper.Initially()
 				Expect(err).To(HaveOccurred())
 
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("could not login to %s", randomFoundationURL)))
@@ -163,7 +165,7 @@ var _ = Describe("StartStopper", func() {
 				courier.ExistsCall.Returns.Bool = true
 				courier.StopCall.Returns.Output = []byte("stop succeeded")
 
-				Expect(startStopper.Stop(randomAppName, randomFoundationURL)).To(Succeed())
+				Expect(stopper.Execute()).To(Succeed())
 
 				Expect(courier.StopCall.Received.AppName).To(Equal(randomAppName))
 
@@ -177,7 +179,7 @@ var _ = Describe("StartStopper", func() {
 				courier.ExistsCall.Returns.Bool = true
 				courier.StopCall.Returns.Output = []byte("stop succeeded")
 
-				Expect(startStopper.Stop(randomAppName, randomFoundationURL)).To(Succeed())
+				Expect(stopper.Execute()).To(Succeed())
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.StopFinishedEvent))
 			})
 		})
@@ -187,7 +189,7 @@ var _ = Describe("StartStopper", func() {
 				courier.ExistsCall.Returns.Bool = true
 				courier.StopCall.Returns.Error = errors.New("stop error")
 
-				err := startStopper.Stop(randomAppName, randomFoundationURL)
+				err := stopper.Execute()
 
 				Expect(err).To(MatchError(startstopper.StopError{ApplicationName: randomAppName, Out: nil}))
 			})
@@ -197,54 +199,7 @@ var _ = Describe("StartStopper", func() {
 			It("returns an error", func() {
 				courier.ExistsCall.Returns.Bool = false
 
-				err := startStopper.Stop(randomAppName, randomFoundationURL)
-
-				Expect(err).To(MatchError(startstopper.ExistsError{ApplicationName: randomAppName}))
-			})
-		})
-	})
-
-	Describe("starting an app", func() {
-		Context("when the start succeeds", func() {
-			It("returns with success", func() {
-				courier.ExistsCall.Returns.Bool = true
-				courier.StartCall.Returns.Output = []byte("start succeeded")
-
-				Expect(startStopper.Start(randomAppName, randomFoundationURL)).To(Succeed())
-
-				Expect(courier.StartCall.Received.AppName).To(Equal(randomAppName))
-
-				Eventually(response).Should(Say("start succeeded"))
-
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("starting app %s", randomAppName)))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully started app %s", randomAppName)))
-			})
-
-			It("emits a StartFinished event", func() {
-				courier.ExistsCall.Returns.Bool = true
-				courier.StartCall.Returns.Output = []byte("start succeeded")
-
-				Expect(startStopper.Start(randomAppName, randomFoundationURL)).To(Succeed())
-				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.StartFinishedEvent))
-			})
-		})
-
-		Context("when the start fails", func() {
-			It("returns an error", func() {
-				courier.ExistsCall.Returns.Bool = true
-				courier.StartCall.Returns.Error = errors.New("start error")
-
-				err := startStopper.Start(randomAppName, randomFoundationURL)
-
-				Expect(err).To(MatchError(startstopper.StartError{ApplicationName: randomAppName, Out: nil}))
-			})
-		})
-
-		Context("when the app does not exist", func() {
-			It("returns an error", func() {
-				courier.ExistsCall.Returns.Bool = false
-
-				err := startStopper.Start(randomAppName, randomFoundationURL)
+				err := stopper.Execute()
 
 				Expect(err).To(MatchError(startstopper.ExistsError{ApplicationName: randomAppName}))
 			})

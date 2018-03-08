@@ -1,10 +1,12 @@
 package interfaces
 
-// Pusher interface.
-type Pusher interface {
-	Login(foundationURL string) error
-	Push(appPath, foundationURL string) error
-	FinishPush() error
-	UndoPush() error
-	CleanUp() error
-}
+//
+//// Pusher interface.
+//type Pusher interface {
+//	Initially() error
+//	Execute() error
+//	Verify() error
+//	Success() error
+//	Undo() error
+//	Finally() error
+//}

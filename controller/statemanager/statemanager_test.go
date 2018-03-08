@@ -88,6 +88,7 @@ var _ = Describe("StateManager", func() {
 				Config:       c,
 				Log:          logger.DefaultLogger(NewBuffer(), logging.DEBUG, "state manager tests"),
 				EventManager: &mocks.EventManager{},
+				BlueGreener:  &mocks.BlueGreener{},
 			}
 
 			auth := interfaces.Authorization{
@@ -178,6 +179,7 @@ var _ = Describe("StateManager", func() {
 				Config:       c,
 				Log:          logger.DefaultLogger(NewBuffer(), logging.DEBUG, "state manager tests"),
 				EventManager: &mocks.EventManager{},
+				BlueGreener:  &mocks.BlueGreener{},
 			}
 
 			auth := interfaces.Authorization{
@@ -232,6 +234,7 @@ var _ = Describe("StateManager", func() {
 				Config:       c,
 				Log:          logger.DefaultLogger(NewBuffer(), logging.DEBUG, "state manager tests"),
 				EventManager: eventManager,
+				BlueGreener:  &mocks.BlueGreener{},
 			}
 
 			auth := interfaces.Authorization{
@@ -282,6 +285,7 @@ var _ = Describe("StateManager", func() {
 				Config:       c,
 				Log:          logger.DefaultLogger(NewBuffer(), logging.DEBUG, "state manager tests"),
 				EventManager: eventManager,
+				BlueGreener:  &mocks.BlueGreener{},
 			}
 
 			auth := interfaces.Authorization{
@@ -291,8 +295,10 @@ var _ = Describe("StateManager", func() {
 
 			manager.Stop(context, uuid, auth, response)
 
-			Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(constants.StopSuccessEvent))
+			Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(constants.StopStartEvent))
 			Expect(eventManager.EmitCall.Received.Events[0].Data).ToNot(BeNil())
+			Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(constants.StopSuccessEvent))
+			Expect(eventManager.EmitCall.Received.Events[1].Data).ToNot(BeNil())
 		})
 
 		It("emits stop start event", func() {
@@ -329,6 +335,7 @@ var _ = Describe("StateManager", func() {
 				Config:       c,
 				Log:          logger.DefaultLogger(NewBuffer(), logging.DEBUG, "state manager tests"),
 				EventManager: eventManager,
+				BlueGreener:  &mocks.BlueGreener{},
 			}
 
 			auth := interfaces.Authorization{
@@ -390,7 +397,7 @@ var _ = Describe("StateManager", func() {
 			Expect(err.Error()).To(Equal("an error occurred in the stop.start event: stop.start error"))
 		})
 	})
-	FDescribe("BlueGreener.Stop", func() {
+	Describe("BlueGreener.Stop", func() {
 		var (
 			blueGreener *mocks.BlueGreener
 		)

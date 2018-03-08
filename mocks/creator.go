@@ -124,7 +124,7 @@ func (c Creator) createFetcher() I.Fetcher {
 	}
 }
 
-func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (I.Pusher, error) {
+func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 	courier := &Courier{}
 
 	courier.LoginCall.Returns.Output = []byte("logged in\t")
@@ -140,6 +140,8 @@ func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadW
 		EventManager:   c.CreateEventManager(),
 		Response:       response,
 		Log:            c.CreateLogger(),
+		FoundationURL:  foundationURL,
+		AppPath:        appPath,
 	}
 
 	return p, nil

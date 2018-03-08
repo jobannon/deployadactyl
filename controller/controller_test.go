@@ -359,7 +359,7 @@ var _ = Describe("Controller", func() {
 			})
 		})
 	})
-	XDescribe("StopDeployment", func() {
+	Describe("StopDeployment", func() {
 		Context("when verbose deployer is called", func() {
 			It("channel resolves when no errors occur", func() {
 
@@ -396,7 +396,7 @@ var _ = Describe("Controller", func() {
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
 			})
 
-			XIt("channel resolves when errors occur", func() {
+			It("channel resolves when errors occur", func() {
 
 				deployer.DeployCall.Returns.Error = errors.New("bork")
 				deployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
@@ -432,7 +432,7 @@ var _ = Describe("Controller", func() {
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
 			})
 
-			XIt("does not set the basic auth header if no credentials are passed", func() {
+			It("does not set the basic auth header if no credentials are passed", func() {
 				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
 				response := &bytes.Buffer{}
@@ -456,7 +456,7 @@ var _ = Describe("Controller", func() {
 				Eventually(deployer.DeployCall.Received.Request.Header.Get("Authorization")).Should(Equal(""))
 			})
 
-			XIt("sets the basic auth header if credentials are passed", func() {
+			It("sets the basic auth header if credentials are passed", func() {
 				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
 				response := &bytes.Buffer{}
@@ -481,7 +481,7 @@ var _ = Describe("Controller", func() {
 			})
 		})
 
-		XContext("when SILENT_DEPLOY_ENVIRONMENT is true", func() {
+		Context("when SILENT_DEPLOY_ENVIRONMENT is true", func() {
 			It("channel resolves true when no errors occur", func() {
 
 				os.Setenv("SILENT_DEPLOY_ENVIRONMENT", environment)

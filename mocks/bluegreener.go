@@ -14,6 +14,7 @@ type BlueGreener struct {
 	PushCall struct {
 		Write    string
 		Received struct {
+			PusherCreator  I.PusherCreator
 			Environment    S.Environment
 			AppPath        string
 			DeploymentInfo S.DeploymentInfo
@@ -36,7 +37,8 @@ type BlueGreener struct {
 }
 
 // Push mock method.
-func (b *BlueGreener) Push(environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) I.DeploymentError {
+func (b *BlueGreener) Push(pusherCreator I.PusherCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) I.DeploymentError {
+	b.PushCall.Received.PusherCreator = pusherCreator
 	b.PushCall.Received.Environment = environment
 	b.PushCall.Received.AppPath = appPath
 	b.PushCall.Received.DeploymentInfo = deploymentInfo

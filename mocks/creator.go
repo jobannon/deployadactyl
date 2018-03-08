@@ -90,8 +90,10 @@ func (c Creator) CreateRandomizer() I.Randomizer {
 
 func (c Creator) CreateDeployer() I.Deployer {
 	return deployer.Deployer{
-		Config:      c.CreateConfig(),
-		BlueGreener: c.CreateBlueGreener(),
+		Config:         c.CreateConfig(),
+		BlueGreener:    c.CreateBlueGreener(),
+		PusherCreator:  c.CreatePusherCreator(),
+		StopperCreator: c.CreateStopperCreator(),
 		Fetcher: &artifetcher.Artifetcher{
 			FileSystem: c.CreateFileSystem(),
 			Extractor: &extractor.Extractor{
@@ -107,6 +109,17 @@ func (c Creator) CreateDeployer() I.Deployer {
 		FileSystem:   c.CreateFileSystem(),
 		ErrorFinder:  c.createErrorFinder(),
 	}
+}
+
+func (c Creator) CreatePusherCreator() I.PusherCreator {
+	return &creatorPusherMock{
+		EventManager: c.CreateEventManager(),
+		Log:          c.CreateLogger(),
+	}
+}
+
+func (c Creator) CreateStopperCreator() I.StopperCreator {
+	return &StopperCreator{}
 }
 
 func (c Creator) CreateSilentDeployer() I.Deployer {
@@ -169,8 +182,7 @@ func (c Creator) CreateWriter() io.Writer {
 
 func (c Creator) CreateBlueGreener() I.BlueGreener {
 	return bluegreen.BlueGreen{
-		PusherCreator: c,
-		Log:           c.CreateLogger(),
+		Log: c.CreateLogger(),
 	}
 }
 
@@ -194,4 +206,32 @@ func getLevel(level string) (logging.Level, error) {
 	}
 
 	return logging.INFO, nil
+}
+
+type creatorPusherMock struct {
+	EventManager I.EventManager
+	Log          I.Logger
+}
+
+func (c creatorPusherMock) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
+	courier := &Courier{}
+
+	courier.LoginCall.Returns.Output = []byte("logged in\t")
+	courier.DeleteCall.Returns.Output = []byte("deleted app\t")
+	courier.PushCall.Returns.Output = []byte("pushed app\t")
+	courier.RenameCall.Returns.Output = []byte("renamed app\t")
+	courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route\t"))
+	courier.ExistsCall.Returns.Bool = true
+
+	p := &pusher.Pusher{
+		Courier:        courier,
+		DeploymentInfo: deploymentInfo,
+		EventManager:   c.EventManager,
+		Response:       response,
+		Log:            c.Log,
+		FoundationURL:  foundationURL,
+		AppPath:        appPath,
+	}
+
+	return p, nil
 }

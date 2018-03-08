@@ -81,15 +81,17 @@ func (d SilentDeployer) Deploy(req *http.Request, environment, org, space, appNa
 }
 
 type Deployer struct {
-	Config       config.Config
-	BlueGreener  I.BlueGreener
-	Fetcher      I.Fetcher
-	Prechecker   I.Prechecker
-	EventManager I.EventManager
-	Randomizer   I.Randomizer
-	ErrorFinder  I.ErrorFinder
-	Log          I.Logger
-	FileSystem   *afero.Afero
+	Config         config.Config
+	BlueGreener    I.BlueGreener
+	PusherCreator  I.PusherCreator
+	StopperCreator I.StopperCreator
+	Fetcher        I.Fetcher
+	Prechecker     I.Prechecker
+	EventManager   I.EventManager
+	Randomizer     I.Randomizer
+	ErrorFinder    I.ErrorFinder
+	Log            I.Logger
+	FileSystem     *afero.Afero
 }
 
 func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, uuid string, contentType I.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
@@ -241,7 +243,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 	enableRollback := e.EnableRollback
 
-	err = d.BlueGreener.Push(e, appPath, *deploymentInfo, response)
+	err = d.BlueGreener.Push(d.PusherCreator, e, appPath, *deploymentInfo, response)
 
 	if err != nil {
 		if !enableRollback {

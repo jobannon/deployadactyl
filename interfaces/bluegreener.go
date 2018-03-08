@@ -9,6 +9,7 @@ import (
 // BlueGreener interface.
 type BlueGreener interface {
 	Push(
+		pusherCreator PusherCreator,
 		environment S.Environment,
 		appPath string,
 		deploymentInfo S.DeploymentInfo,

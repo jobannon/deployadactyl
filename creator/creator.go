@@ -17,17 +17,15 @@ import (
 	"github.com/compozed/deployadactyl/controller"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/actioncreator"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier/executor"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/startstopper"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	"github.com/compozed/deployadactyl/controller/deployer/prechecker"
 	"github.com/compozed/deployadactyl/eventmanager"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
-	S "github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
@@ -95,48 +93,6 @@ func (c Creator) CreateListener() net.Listener {
 	return ls
 }
 
-// CreatePusher is used by the BlueGreener.
-//
-// Returns a pusher and error.
-func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
-	newCourier, err := c.CreateCourier()
-	if err != nil {
-		return nil, err
-	}
-
-	p := &pusher.Pusher{
-		Courier:        newCourier,
-		DeploymentInfo: deploymentInfo,
-		EventManager:   c.CreateEventManager(),
-		Response:       response,
-		Log:            logger.DeploymentLogger{c.CreateLogger(), deploymentInfo.UUID},
-		FoundationURL:  foundationURL,
-		AppPath:        appPath,
-	}
-
-	return p, nil
-}
-
-func (c Creator) CreateStopper(cfContext I.CFContext, authorization I.Authorization, deploymentInfo S.DeploymentInfo, response io.ReadWriter, foundationURL string) (I.Action, error) {
-	newCourier, err := c.CreateCourier()
-	if err != nil {
-		return nil, err
-	}
-
-	p := &startstopper.Stopper{
-		Courier:       newCourier,
-		CFContext:     cfContext,
-		Authorization: authorization,
-		EventManager:  c.CreateEventManager(),
-		Response:      response,
-		Log:           logger.DeploymentLogger{c.CreateLogger(), deploymentInfo.UUID},
-		FoundationURL: foundationURL,
-		AppName:       deploymentInfo.AppName,
-	}
-
-	return p, nil
-}
-
 // CreateCourier returns a courier with an executor.
 func (c Creator) CreateCourier() (I.Courier, error) {
 	ex, err := executor.New(c.CreateFileSystem())
@@ -180,27 +136,74 @@ func (c Creator) CreateHTTPClient() *http.Client {
 	return insecureClient
 }
 
-func (c Creator) CreateController() I.Controller {
-	con := &controller.Controller{
-		Deployer:       c.createDeployer(),
+func (c Creator) CreateController() (I.Controller, error) {
+	deployer, err := c.createDeployer()
+	if err != nil {
+		return &controller.Controller{}, err
+	}
+
+	return &controller.Controller{
+		Deployer:       deployer,
 		SilentDeployer: c.createSilentDeployer(),
 		Log:            c.CreateLogger(),
-	}
-	return con
+	}, nil
 }
 
-func (c Creator) createDeployer() I.Deployer {
-	return deployer.Deployer{
-		Config:       c.CreateConfig(),
-		BlueGreener:  c.createBlueGreener(),
-		Fetcher:      c.createFetcher(),
-		Prechecker:   c.createPrechecker(),
-		EventManager: c.CreateEventManager(),
-		Randomizer:   c.createRandomizer(),
-		ErrorFinder:  c.createErrorFinder(),
-		Log:          c.CreateLogger(),
-		FileSystem:   c.CreateFileSystem(),
+func (c Creator) createDeployer() (I.Deployer, error) {
+	blueGreener, err := c.createBlueGreener()
+	if err != nil {
+		return deployer.Deployer{}, err
 	}
+
+	pusherCreator, err := c.PusherCreator()
+	if err != nil {
+		return deployer.Deployer{}, err
+	}
+
+	stopperCreator, err := c.StopperCreator()
+	if err != nil {
+		return deployer.Deployer{}, err
+	}
+
+	return deployer.Deployer{
+		Config:         c.CreateConfig(),
+		BlueGreener:    blueGreener,
+		PusherCreator:  pusherCreator,
+		StopperCreator: stopperCreator,
+		Fetcher:        c.createFetcher(),
+		Prechecker:     c.createPrechecker(),
+		EventManager:   c.CreateEventManager(),
+		Randomizer:     c.createRandomizer(),
+		ErrorFinder:    c.createErrorFinder(),
+		Log:            c.CreateLogger(),
+		FileSystem:     c.CreateFileSystem(),
+	}, nil
+}
+
+func (c Creator) PusherCreator() (I.PusherCreator, error) {
+	courier, err := c.CreateCourier()
+	if err != nil {
+		return actioncreator.PusherCreator{}, err
+	}
+
+	return actioncreator.PusherCreator{
+		Courier:      courier,
+		EventManager: c.CreateEventManager(),
+		Logger:       c.CreateLogger(),
+	}, nil
+}
+
+func (c Creator) StopperCreator() (I.StopperCreator, error) {
+	courier, err := c.CreateCourier()
+	if err != nil {
+		return actioncreator.StopperCreator{}, err
+	}
+
+	return actioncreator.StopperCreator{
+		Courier:      courier,
+		EventManager: c.CreateEventManager(),
+		Logger:       c.CreateLogger(),
+	}, nil
 }
 
 func (c Creator) createSilentDeployer() I.Deployer {
@@ -232,11 +235,20 @@ func (c Creator) createWriter() io.Writer {
 	return c.writer
 }
 
-func (c Creator) createBlueGreener() I.BlueGreener {
-	return bluegreen.BlueGreen{
-		PusherCreator: c,
-		Log:           c.CreateLogger(),
+func (c Creator) createBlueGreener() (I.BlueGreener, error) {
+	courier, err := c.CreateCourier()
+	if err != nil {
+		return bluegreen.BlueGreen{}, err
 	}
+
+	return bluegreen.BlueGreen{
+		StopperCreator: actioncreator.StopperCreator{
+			Courier:      courier,
+			EventManager: c.CreateEventManager(),
+			Logger:       c.CreateLogger(),
+		},
+		Log: c.CreateLogger(),
+	}, nil
 }
 
 func (c Creator) createErrorFinder() I.ErrorFinder {

@@ -17,6 +17,10 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 )
 
+//var _ = Describe("Bluegreen", func() {
+//	Context("")
+//})
+
 var _ = Describe("Bluegreen", func() {
 
 	var (
@@ -24,7 +28,7 @@ var _ = Describe("Bluegreen", func() {
 		appPath        string
 		pushOutput     string
 		loginOutput    string
-		pusherFactory  *mocks.PusherCreator
+		pusherCreator  *mocks.PusherCreator
 		pushers        []*mocks.Pusher
 		log            I.Logger
 		blueGreen      BlueGreen
@@ -52,33 +56,33 @@ var _ = Describe("Bluegreen", func() {
 
 		deploymentInfo = S.DeploymentInfo{AppName: appName}
 
-		pusherFactory = &mocks.PusherCreator{}
+		pusherCreator = &mocks.PusherCreator{}
 
 		pushers = nil
 		for range environment.Foundations {
 			pusher := &mocks.Pusher{Response: response}
 			pushers = append(pushers, pusher)
-			pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
-			pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+			pusherCreator.CreatePusherCall.Returns.Pushers = append(pusherCreator.CreatePusherCall.Returns.Pushers, pusher)
+			pusherCreator.CreatePusherCall.Returns.Error = append(pusherCreator.CreatePusherCall.Returns.Error, nil)
 		}
 
-		blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
+		blueGreen = BlueGreen{Log: log}
 	})
 
 	Context("when pusher factory fails", func() {
 		It("returns an error", func() {
-			pusherFactory = &mocks.PusherCreator{}
-			blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
+			pusherCreator = &mocks.PusherCreator{}
+			blueGreen = BlueGreen{Log: log}
 
 			for i := range environment.Foundations {
-				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, &mocks.Pusher{})
+				pusherCreator.CreatePusherCall.Returns.Pushers = append(pusherCreator.CreatePusherCall.Returns.Pushers, &mocks.Pusher{})
 
 				if i != 0 {
-					pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, errors.New("push creator failed"))
+					pusherCreator.CreatePusherCall.Returns.Error = append(pusherCreator.CreatePusherCall.Returns.Error, errors.New("push creator failed"))
 				}
 			}
 
-			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+			err := blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)
 
 			Expect(err).To(MatchError("push creator failed"))
 		})
@@ -94,7 +98,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 			}
 
-			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+			err := blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)
 			Expect(err).ToNot(HaveOccurred())
 
 			for range environment.Foundations {
@@ -111,7 +115,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 			}
 
-			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+			err := blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)
 			Expect(err).To(MatchError(LoginError{[]error{errors.New(loginOutput)}}))
 
 			for range environment.Foundations {
@@ -126,7 +130,7 @@ var _ = Describe("Bluegreen", func() {
 			var (
 				foundationURL = "foundationURL-" + randomizer.StringRunes(10)
 				pusher        = &mocks.Pusher{Response: response}
-				pusherFactory = &mocks.PusherCreator{}
+				pusherCreator = &mocks.PusherCreator{}
 			)
 
 			environment.Foundations = []string{foundationURL}
@@ -134,15 +138,15 @@ var _ = Describe("Bluegreen", func() {
 			pushers = nil
 			pushers = append(pushers, pusher)
 
-			pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
-			pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+			pusherCreator.CreatePusherCall.Returns.Pushers = append(pusherCreator.CreatePusherCall.Returns.Pushers, pusher)
+			pusherCreator.CreatePusherCall.Returns.Error = append(pusherCreator.CreatePusherCall.Returns.Error, nil)
 
 			pusher.InitiallyCall.Write.Output = loginOutput
 			pusher.ExecuteCall.Write.Output = pushOutput
 
-			blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
+			blueGreen = BlueGreen{Log: log}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
+			Expect(blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)).To(Succeed())
 
 			Eventually(response).Should(Say(loginOutput))
 			Eventually(response).Should(Say(pushOutput))
@@ -157,7 +161,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.ExecuteCall.Write.Output = pushOutput
 			}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
+			Expect(blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)).To(Succeed())
 
 			Eventually(response).Should(Say(loginOutput))
 			Eventually(response).Should(Say(loginOutput))
@@ -171,7 +175,7 @@ var _ = Describe("Bluegreen", func() {
 				var (
 					foundationURL = "foundationURL-" + randomizer.StringRunes(10)
 					pusher        = &mocks.Pusher{Response: response}
-					pusherFactory = &mocks.PusherCreator{}
+					pusherCreator = &mocks.PusherCreator{}
 				)
 
 				environment.Foundations = []string{foundationURL}
@@ -179,15 +183,15 @@ var _ = Describe("Bluegreen", func() {
 				pushers = nil
 				pushers = append(pushers, pusher)
 
-				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
-				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+				pusherCreator.CreatePusherCall.Returns.Pushers = append(pusherCreator.CreatePusherCall.Returns.Pushers, pusher)
+				pusherCreator.CreatePusherCall.Returns.Error = append(pusherCreator.CreatePusherCall.Returns.Error, nil)
 
 				pusher.InitiallyCall.Write.Output = loginOutput
 				pusher.ExecuteCall.Write.Output = pushOutput
 
-				blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
+				blueGreen = BlueGreen{Log: log}
 
-				Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
+				Expect(blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)).To(Succeed())
 
 				Eventually(response).Should(Say(loginOutput))
 				Eventually(response).Should(Say(pushOutput))
@@ -200,21 +204,21 @@ var _ = Describe("Bluegreen", func() {
 				var (
 					foundationURL = "foundationURL-" + randomizer.StringRunes(10)
 					pusher        = &mocks.Pusher{Response: response}
-					pusherFactory = &mocks.PusherCreator{}
+					pusherCreator = &mocks.PusherCreator{}
 				)
 
 				environment.Foundations = []string{foundationURL}
 				pushers = nil
 				pushers = append(pushers, pusher)
 
-				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
-				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+				pusherCreator.CreatePusherCall.Returns.Pushers = append(pusherCreator.CreatePusherCall.Returns.Pushers, pusher)
+				pusherCreator.CreatePusherCall.Returns.Error = append(pusherCreator.CreatePusherCall.Returns.Error, nil)
 
 				pusher.SuccessCall.Returns.Error = errors.New("finish push error")
 
-				blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
+				blueGreen = BlueGreen{Log: log}
 
-				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+				err := blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)
 
 				Expect(err).To(MatchError(FinishPushError{[]error{errors.New("finish push error")}}))
 			})
@@ -235,7 +239,7 @@ var _ = Describe("Bluegreen", func() {
 					}
 				}
 
-				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+				err := blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)
 				Expect(err).To(MatchError(PushError{[]error{pushError}}))
 
 				Eventually(response).Should(Say(loginOutput))
@@ -249,7 +253,7 @@ var _ = Describe("Bluegreen", func() {
 					pushers[0].ExecuteCall.Returns.Error = pushError
 					pushers[0].UndoCall.Returns.Error = rollbackError
 
-					err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+					err := blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)
 
 					Expect(err).To(MatchError(RollbackError{[]error{pushError}, []error{rollbackError}}))
 				})
@@ -262,7 +266,7 @@ var _ = Describe("Bluegreen", func() {
 					pusher.ExecuteCall.Returns.Error = pushError
 				}
 
-				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+				err := blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)
 				Expect(err).To(MatchError(PushError{[]error{pushError, pushError}}))
 
 				Eventually(response).Should(Say(loginOutput))
@@ -280,7 +284,7 @@ var _ = Describe("Bluegreen", func() {
 					pusher.ExecuteCall.Returns.Error = pushError
 				}
 
-				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+				err := blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("push failed: push error: push error"))
@@ -293,7 +297,7 @@ var _ = Describe("Bluegreen", func() {
 					pusher.ExecuteCall.Returns.Error = pushError
 				}
 				pushers[0].SuccessCall.Returns.Error = errors.New("an error occurred")
-				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+				err := blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)
 
 				Expect(err.Error()).To(Equal("finish push failed: an error occurred"))
 			})

@@ -14,7 +14,6 @@ import (
 
 // BlueGreen has a PusherCreator to creater pushers for blue green deployments.
 type BlueGreen struct {
-	PusherCreator  I.PusherCreator
 	StopperCreator I.StopperCreator
 	Log            I.Logger
 	actors         []actor
@@ -84,7 +83,7 @@ func (bg BlueGreen) Stop(environment S.Environment, deploymentInfo S.DeploymentI
 
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
 // If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
-func (bg BlueGreen) Push(environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) I.DeploymentError {
+func (bg BlueGreen) Push(pusherCreator I.PusherCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) I.DeploymentError {
 	bg.actors = make([]actor, len(environment.Foundations))
 	bg.buffers = make([]*bytes.Buffer, len(environment.Foundations))
 
@@ -93,7 +92,7 @@ func (bg BlueGreen) Push(environment S.Environment, appPath string, deploymentIn
 	for i, foundationURL := range environment.Foundations {
 		bg.buffers[i] = &bytes.Buffer{}
 
-		pusher, err := bg.PusherCreator.CreatePusher(deploymentInfo, bg.buffers[i], foundationURL, appPath)
+		pusher, err := pusherCreator.CreatePusher(deploymentInfo, bg.buffers[i], foundationURL, appPath)
 		if err != nil {
 			return InitializationError{err}
 		}

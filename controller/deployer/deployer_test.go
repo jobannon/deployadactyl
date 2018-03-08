@@ -18,6 +18,7 @@ import (
 	C "github.com/compozed/deployadactyl/constants"
 	. "github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/actioncreator"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
@@ -73,6 +74,8 @@ var _ = Describe("Deployer", func() {
 		environments                 = map[string]S.Environment{}
 		environmentsNoCustomParams   = map[string]S.Environment{}
 		af                           *afero.Afero
+		pusherCreator                interfaces.PusherCreator
+		stopperCreator               interfaces.StopperCreator
 	)
 
 	BeforeEach(func() {
@@ -168,6 +171,9 @@ var _ = Describe("Deployer", func() {
 			Environments: environments,
 		}
 
+		pusherCreator = actioncreator.PusherCreator{}
+		stopperCreator = actioncreator.StopperCreator{}
+
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
 
 		testManifestLocation, _ = af.TempDir("", "")
@@ -178,6 +184,8 @@ var _ = Describe("Deployer", func() {
 		deployer = Deployer{
 			c,
 			blueGreener,
+			pusherCreator,
+			stopperCreator,
 			fetcher,
 			prechecker,
 			eventManager,
@@ -749,6 +757,8 @@ applications:
 			deployer = Deployer{
 				c,
 				blueGreener,
+				pusherCreator,
+				stopperCreator,
 				fetcher,
 				prechecker,
 				eventManager,
@@ -882,6 +892,8 @@ applications:
 				deployer = Deployer{
 					c,
 					blueGreener,
+					pusherCreator,
+					stopperCreator,
 					fetcher,
 					prechecker,
 					eventManager,

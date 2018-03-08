@@ -89,7 +89,7 @@ var _ = Describe("Pusher", func() {
 		}
 	})
 
-	Describe("logging in", func() {
+	Describe("Initially", func() {
 		Context("when login succeeds", func() {
 			It("gives the correct info to the courier", func() {
 
@@ -142,7 +142,7 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("pushing an app", func() {
+	Describe("Execute", func() {
 		Context("when the push succeeds", func() {
 			It("pushes the new app", func() {
 				courier.PushCall.Returns.Output = []byte("push succeeded")
@@ -255,7 +255,7 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("finishing a push", func() {
+	Describe("Success", func() {
 		It("renames the newly pushed app to the original name", func() {
 			Expect(pusher.Success()).To(Succeed())
 
@@ -369,7 +369,7 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("undoing a push", func() {
+	Describe("Undo", func() {
 		Context("when the app exists", func() {
 			BeforeEach(func() {
 				courier.ExistsCall.Returns.Bool = true
@@ -426,11 +426,17 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("cleaning up temporary directories", func() {
+	Describe("Finally", func() {
 		It("is successful", func() {
 			courier.CleanUpCall.Returns.Error = nil
 
 			Expect(pusher.Finally()).To(Succeed())
+		})
+	})
+
+	Describe("Verify", func() {
+		It("returns nil", func() {
+			Expect(pusher.Verify()).To(BeNil())
 		})
 	})
 

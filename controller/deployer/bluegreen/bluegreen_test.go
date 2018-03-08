@@ -221,68 +221,85 @@ var _ = Describe("Bluegreen", func() {
 		})
 	})
 
-	Context("when at least one push command is unsuccessful and EnableRollback is true", func() {
-		It("should rollback all recent pushes and print Cloud Foundry logs", func() {
+	Context("when at least one push command is unsuccessful", func() {
 
-			for i, pusher := range pushers {
-				pusher.InitiallyCall.Write.Output = loginOutput
-				pusher.ExecuteCall.Write.Output = pushOutput
+		Context("EnableRollback is true", func() {
+			It("should rollback all recent pushes and print Cloud Foundry logs", func() {
 
-				if i != 0 {
-					pusher.ExecuteCall.Returns.Error = pushError
+				for i, pusher := range pushers {
+					pusher.InitiallyCall.Write.Output = loginOutput
+					pusher.ExecuteCall.Write.Output = pushOutput
+
+					if i != 0 {
+						pusher.ExecuteCall.Returns.Error = pushError
+					}
 				}
-			}
-
-			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
-			Expect(err).To(MatchError(PushError{[]error{pushError}}))
-
-			Eventually(response).Should(Say(loginOutput))
-			Eventually(response).Should(Say(loginOutput))
-			Eventually(response).Should(Say(pushOutput))
-			Eventually(response).Should(Say(pushOutput))
-		})
-
-		Context("when rollback fails", func() {
-			It("return an error", func() {
-				pushers[0].ExecuteCall.Returns.Error = pushError
-				pushers[0].UndoCall.Returns.Error = rollbackError
 
 				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+				Expect(err).To(MatchError(PushError{[]error{pushError}}))
 
-				Expect(err).To(MatchError(RollbackError{[]error{pushError}, []error{rollbackError}}))
+				Eventually(response).Should(Say(loginOutput))
+				Eventually(response).Should(Say(loginOutput))
+				Eventually(response).Should(Say(pushOutput))
+				Eventually(response).Should(Say(pushOutput))
+			})
+
+			Context("when rollback fails", func() {
+				It("return an error", func() {
+					pushers[0].ExecuteCall.Returns.Error = pushError
+					pushers[0].UndoCall.Returns.Error = rollbackError
+
+					err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+
+					Expect(err).To(MatchError(RollbackError{[]error{pushError}, []error{rollbackError}}))
+				})
+			})
+
+			It("should not rollback any pushes on the first deploy", func() {
+				for _, pusher := range pushers {
+					pusher.InitiallyCall.Write.Output = loginOutput
+					pusher.ExecuteCall.Write.Output = pushOutput
+					pusher.ExecuteCall.Returns.Error = pushError
+				}
+
+				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+				Expect(err).To(MatchError(PushError{[]error{pushError, pushError}}))
+
+				Eventually(response).Should(Say(loginOutput))
+				Eventually(response).Should(Say(loginOutput))
+				Eventually(response).Should(Say(pushOutput))
+				Eventually(response).Should(Say(pushOutput))
 			})
 		})
 
-		It("should not rollback any pushes on the first deploy", func() {
-			for _, pusher := range pushers {
-				pusher.InitiallyCall.Write.Output = loginOutput
-				pusher.ExecuteCall.Write.Output = pushOutput
-				pusher.ExecuteCall.Returns.Error = pushError
-			}
+		Context("EnableRollback is false", func() {
+			It("app is not rolled back to previous version", func() {
+				environment.EnableRollback = false
 
-			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
-			Expect(err).To(MatchError(PushError{[]error{pushError, pushError}}))
+				for _, pusher := range pushers {
+					pusher.ExecuteCall.Returns.Error = pushError
+				}
 
-			Eventually(response).Should(Say(loginOutput))
-			Eventually(response).Should(Say(loginOutput))
-			Eventually(response).Should(Say(pushOutput))
-			Eventually(response).Should(Say(pushOutput))
+				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("push failed: push error: push error"))
+			})
+
+			It("returns a FinishPushError if Success fails", func() {
+				environment.EnableRollback = false
+
+				for _, pusher := range pushers {
+					pusher.ExecuteCall.Returns.Error = pushError
+				}
+				pushers[0].SuccessCall.Returns.Error = errors.New("an error occurred")
+				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+
+				Expect(err.Error()).To(Equal("finish push failed: an error occurred"))
+			})
 		})
 	})
 
-	Context("when at least one push command is unsuccessful and EnableRollback is false", func() {
-		It("app is not rolled back to previous version", func() {
-			environment.EnableRollback = false
-
-			for _, pusher := range pushers {
-				pusher.ExecuteCall.Returns.Error = pushError
-			}
-
-			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
-
-			Expect(err).To(HaveOccurred())
-		})
-	})
 	Describe("Stop", func() {
 		Context("when called", func() {
 			It("creates a stopper for each foundation", func() {
@@ -431,13 +448,32 @@ var _ = Describe("Bluegreen", func() {
 					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
 					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
 				}
-				stoppers[0].ExecuteCall.Returns.Error = errors.New("stop failed")
+				stoppers[0].ExecuteCall.Returns.Error = errors.New("an error occurred")
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
 				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
 				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("stop failed: an error occurred"))
+			})
 
+			It("returns an error if attemped roll back fails", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+				stoppers[0].ExecuteCall.Returns.Error = errors.New("an error occurred")
+				stoppers[0].UndoCall.Returns.Error = errors.New("an error occurred while attempting undo")
+				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+
+				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("stop failed: an error occurred: rollback failed: an error occurred while attempting undo"))
 			})
 
 			It("writes responses to output", func() {

@@ -159,7 +159,7 @@ var _ = Describe("Stopper", func() {
 		})
 	})
 
-	Describe("stopping an app", func() {
+	Describe("Execute", func() {
 		Context("when the stop succeeds", func() {
 			It("returns with success", func() {
 				courier.ExistsCall.Returns.Bool = true
@@ -177,7 +177,6 @@ var _ = Describe("Stopper", func() {
 
 			It("emits a StopFinished event", func() {
 				courier.ExistsCall.Returns.Bool = true
-				courier.StopCall.Returns.Output = []byte("stop succeeded")
 
 				Expect(stopper.Execute()).To(Succeed())
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.StopFinishedEvent))
@@ -187,11 +186,12 @@ var _ = Describe("Stopper", func() {
 		Context("when the stop fails", func() {
 			It("returns an error", func() {
 				courier.ExistsCall.Returns.Bool = true
-				courier.StopCall.Returns.Error = errors.New("stop error")
+				courier.StopCall.Returns.Output = []byte("this is some output")
+				courier.StopCall.Returns.Error = errors.New("")
 
 				err := stopper.Execute()
 
-				Expect(err).To(MatchError(startstopper.StopError{ApplicationName: randomAppName, Out: nil}))
+				Expect(err).To(MatchError(startstopper.StopError{ApplicationName: randomAppName, Out: []byte("this is some output")}))
 			})
 		})
 
@@ -206,110 +206,65 @@ var _ = Describe("Stopper", func() {
 		})
 	})
 
-	//
-	//	Context("when the application does not exist", func() {
-	//		It("does not delete the non-existant original application", func() {
-	//			courier.ExistsCall.Returns.Bool = false
-	//
-	//			err := pusher.FinishPush()
-	//			Expect(err).ToNot(HaveOccurred())
-	//
-	//			Expect(courier.DeleteCall.Received.AppName).To(BeEmpty())
-	//
-	//			Eventually(logBuffer).ShouldNot(Say("delete"))
-	//		})
-	//	})
-	//})
-	//
-	//Describe("undoing a push", func() {
-	//	Context("when the app exists", func() {
-	//		BeforeEach(func() {
-	//			courier.ExistsCall.Returns.Bool = true
-	//		})
-	//
-	//		It("check that the app exists", func() {
-	//			Expect(pusher.UndoPush()).To(Succeed())
-	//			Expect(courier.ExistsCall.Received.AppName).To(Equal(randomAppName))
-	//		})
-	//
-	//		It("deletes the app that was pushed", func() {
-	//			Expect(pusher.UndoPush()).To(Succeed())
-	//
-	//			Expect(courier.DeleteCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-	//
-	//			Eventually(logBuffer).Should(Say(fmt.Sprintf("rolling back deploy of %s", randomAppName)))
-	//			Eventually(logBuffer).Should(Say(fmt.Sprintf("deleted %s", randomAppName)))
-	//		})
-	//
-	//		Context("when deleting fails", func() {
-	//			It("returns an error and writes a message to the info log", func() {
-	//				courier.DeleteCall.Returns.Output = []byte("delete call output")
-	//				courier.DeleteCall.Returns.Error = errors.New("delete error")
-	//
-	//				err := pusher.UndoPush()
-	//				Expect(err).To(MatchError(DeleteApplicationError{tempAppWithUUID, []byte("delete call output")}))
-	//
-	//				Eventually(logBuffer).Should(Say(fmt.Sprintf("could not delete %s", tempAppWithUUID)))
-	//			})
-	//		})
-	//	})
-	//
-	//	Context("when the app does not exist", func() {
-	//		It("renames the newly built app to the intended application name", func() {
-	//			Expect(pusher.UndoPush()).To(Succeed())
-	//
-	//			Expect(courier.RenameCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-	//			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(randomAppName))
-	//
-	//			Eventually(logBuffer).Should(Say("renamed %s to %s", tempAppWithUUID, randomAppName))
-	//		})
-	//
-	//		Context("when renaming fails", func() {
-	//			It("returns an error and writes a message to the info log", func() {
-	//				courier.RenameCall.Returns.Error = errors.New("rename error")
-	//				courier.RenameCall.Returns.Output = []byte("rename error")
-	//
-	//				err := pusher.UndoPush()
-	//				Expect(err).To(MatchError(RenameError{tempAppWithUUID, []byte("rename error")}))
-	//
-	//				Eventually(logBuffer).Should(Say(fmt.Sprintf("could not rename %s to %s", tempAppWithUUID, randomAppName)))
-	//			})
-	//		})
-	//	})
-	//})
-	//
-	//Describe("cleaning up temporary directories", func() {
-	//	It("is successful", func() {
-	//		courier.CleanUpCall.Returns.Error = nil
-	//
-	//		Expect(pusher.CleanUp()).To(Succeed())
-	//	})
-	//})
-	//
-	//Describe("event handling", func() {
-	//	Context("when a PushFinishedEvent is emitted", func() {
-	//		It("does not return an error", func() {
-	//			Expect(pusher.Push(randomAppPath, randomFoundationURL)).To(Succeed())
-	//
-	//			Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.PushFinishedEvent))
-	//		})
-	//
-	//		It("has the temporary app name on the event", func() {
-	//			Expect(pusher.Push(randomAppPath, randomFoundationURL)).To(Succeed())
-	//
-	//			Expect(eventManager.EmitCall.Received.Events[0].Data.(S.PushEventData).TempAppWithUUID).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-	//		})
-	//	})
-	//
-	//	Context("when an event fails", func() {
-	//		It("returns an error", func() {
-	//			eventManager.EmitCall.Returns.Error[0] = errors.New("event manager error")
-	//
-	//			err := pusher.Push(randomAppPath, randomFoundationURL)
-	//			Expect(err).To(MatchError("event manager error"))
-	//
-	//			Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.PushFinishedEvent))
-	//		})
-	//	})
-	//})
+	Describe("Undo", func() {
+		Context("when the app does not exist", func() {
+			It("returns an error", func() {
+				courier.ExistsCall.Returns.Bool = false
+				err := stopper.Undo()
+
+				Expect(err).To(MatchError(startstopper.ExistsError{ApplicationName: randomAppName}))
+			})
+		})
+
+		Context("when the start fails", func() {
+			It("returns an error", func() {
+				courier.ExistsCall.Returns.Bool = true
+				courier.StartCall.Returns.Output = []byte("this is some output")
+				courier.StartCall.Returns.Error = errors.New("app could not be started")
+
+				err := stopper.Undo()
+
+				Expect(err).To(MatchError(startstopper.StartError{ApplicationName: randomAppName, Out: []byte("this is some output")}))
+			})
+		})
+
+		Context("when successful", func() {
+			It("returns with success", func() {
+				courier.ExistsCall.Returns.Bool = true
+				courier.StartCall.Returns.Output = []byte("start succeeded")
+
+				Expect(stopper.Undo()).To(Succeed())
+				Expect(courier.StartCall.Received.AppName).To(Equal(randomAppName))
+
+				Eventually(response).Should(Say("start succeeded"))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("starting app %s", randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully started app %s", randomAppName)))
+			})
+
+			It("emits a StartFinished event", func() {
+				courier.ExistsCall.Returns.Bool = true
+
+				Expect(stopper.Undo()).To(Succeed())
+				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.StartFinishedEvent))
+			})
+		})
+	})
+
+	Describe("Verify", func() {
+		It("returns nil", func() {
+			Expect(stopper.Verify()).To(BeNil())
+		})
+	})
+
+	Describe("Success", func() {
+		It("returns nil", func() {
+			Expect(stopper.Success()).To(BeNil())
+		})
+	})
+
+	Describe("Finally", func() {
+		It("returns nil", func() {
+			Expect(stopper.Finally()).To(BeNil())
+		})
+	})
 })

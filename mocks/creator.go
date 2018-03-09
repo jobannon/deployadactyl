@@ -213,7 +213,7 @@ type creatorPusherMock struct {
 	Log          I.Logger
 }
 
-func (c creatorPusherMock) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
+func (c creatorPusherMock) CreatePusher(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 	courier := &Courier{}
 
 	courier.LoginCall.Returns.Output = []byte("logged in\t")

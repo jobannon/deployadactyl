@@ -18,6 +18,7 @@ type BlueGreener interface {
 	Stop(
 		stopperCreator StopperCreator,
 		environment S.Environment,
+		appPath string,
 		deploymentInfo S.DeploymentInfo,
 		response io.ReadWriter,
 	) error

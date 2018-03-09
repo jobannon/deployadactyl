@@ -21,7 +21,7 @@ type BlueGreen struct {
 	stopBuffers    []*bytes.Buffer
 }
 
-func (bg BlueGreen) Stop(stopperCreator I.StopperCreator, environment S.Environment, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+func (bg BlueGreen) Stop(stopperCreator I.StopperCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
 	bg.actors = make([]actor, len(environment.Foundations))
 	bg.stopBuffers = make([]*bytes.Buffer, len(environment.Foundations))
 	cfContext := I.CFContext{Environment: environment.Name,
@@ -38,7 +38,7 @@ func (bg BlueGreen) Stop(stopperCreator I.StopperCreator, environment S.Environm
 	for i, foundationURL := range environment.Foundations {
 		bg.stopBuffers[i] = &bytes.Buffer{}
 
-		stopper, err := stopperCreator.CreateStopper(cfContext, authorization, deploymentInfo, bg.stopBuffers[i], foundationURL)
+		stopper, err := stopperCreator.CreateStopper(deploymentInfo, cfContext, authorization, bg.stopBuffers[i], foundationURL, appPath)
 		if err != nil {
 			return InitializationError{err}
 		}
@@ -88,11 +88,21 @@ func (bg BlueGreen) Push(pusherCreator I.PusherCreator, environment S.Environmen
 	bg.buffers = make([]*bytes.Buffer, len(environment.Foundations))
 
 	deploymentLogger := logger.DeploymentLogger{Log: bg.Log, UUID: deploymentInfo.UUID}
-
+	cfContext := I.CFContext{Environment: environment.Name,
+		Organization: deploymentInfo.Org,
+		Space:        deploymentInfo.Space,
+		Application:  deploymentInfo.AppName,
+		UUID:         deploymentInfo.UUID,
+		SkipSSL:      deploymentInfo.SkipSSL,
+	}
+	authorization := I.Authorization{
+		Username: deploymentInfo.Username,
+		Password: deploymentInfo.Password,
+	}
 	for i, foundationURL := range environment.Foundations {
 		bg.buffers[i] = &bytes.Buffer{}
 
-		pusher, err := pusherCreator.CreatePusher(deploymentInfo, bg.buffers[i], foundationURL, appPath)
+		pusher, err := pusherCreator.CreatePusher(deploymentInfo, cfContext, authorization, bg.buffers[i], foundationURL, appPath)
 		if err != nil {
 			return InitializationError{err}
 		}

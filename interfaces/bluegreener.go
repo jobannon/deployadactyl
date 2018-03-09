@@ -9,14 +9,14 @@ import (
 // BlueGreener interface.
 type BlueGreener interface {
 	Push(
-		pusherCreator PusherCreator,
+		actionCreator ActionCreator,
 		environment S.Environment,
 		appPath string,
 		deploymentInfo S.DeploymentInfo,
 		response io.ReadWriter,
 	) DeploymentError
 	Stop(
-		stopperCreator StopperCreator,
+		actionCreator ActionCreator,
 		environment S.Environment,
 		appPath string,
 		deploymentInfo S.DeploymentInfo,

@@ -21,7 +21,7 @@ type StopperCreator struct {
 	Logger       I.Logger
 }
 
-func (a PusherCreator) CreatePusher(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
+func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 
 	p := &pusher.Pusher{
 		Courier:        a.Courier,
@@ -36,7 +36,7 @@ func (a PusherCreator) CreatePusher(deploymentInfo S.DeploymentInfo, cfContext I
 	return p, nil
 }
 
-func (a StopperCreator) CreateStopper(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
+func (a StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 
 	p := &startstopper.Stopper{
 		Courier:       a.Courier,

@@ -14,17 +14,17 @@ import (
 
 // BlueGreen has a PusherCreator to creater pushers for blue green deployments.
 type BlueGreen struct {
-	StopperCreator I.StopperCreator
-	Log            I.Logger
-	actors         []actor
-	buffers        []*bytes.Buffer
-	stopBuffers    []*bytes.Buffer
+	Log         I.Logger
+	actors      []actor
+	buffers     []*bytes.Buffer
+	stopBuffers []*bytes.Buffer
 }
 
-func (bg BlueGreen) Stop(stopperCreator I.StopperCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+func (bg BlueGreen) Stop(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
 	bg.actors = make([]actor, len(environment.Foundations))
 	bg.stopBuffers = make([]*bytes.Buffer, len(environment.Foundations))
-	cfContext := I.CFContext{Environment: environment.Name,
+	cfContext := I.CFContext{
+		Environment:  environment.Name,
 		Organization: deploymentInfo.Org,
 		Space:        deploymentInfo.Space,
 		Application:  deploymentInfo.AppName,
@@ -38,7 +38,7 @@ func (bg BlueGreen) Stop(stopperCreator I.StopperCreator, environment S.Environm
 	for i, foundationURL := range environment.Foundations {
 		bg.stopBuffers[i] = &bytes.Buffer{}
 
-		stopper, err := stopperCreator.CreateStopper(deploymentInfo, cfContext, authorization, bg.stopBuffers[i], foundationURL, appPath)
+		stopper, err := actionCreator.Create(deploymentInfo, cfContext, authorization, bg.stopBuffers[i], foundationURL, appPath)
 		if err != nil {
 			return InitializationError{err}
 		}
@@ -83,12 +83,13 @@ func (bg BlueGreen) Stop(stopperCreator I.StopperCreator, environment S.Environm
 
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
 // If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
-func (bg BlueGreen) Push(pusherCreator I.PusherCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) I.DeploymentError {
+func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) I.DeploymentError {
 	bg.actors = make([]actor, len(environment.Foundations))
 	bg.buffers = make([]*bytes.Buffer, len(environment.Foundations))
 
 	deploymentLogger := logger.DeploymentLogger{Log: bg.Log, UUID: deploymentInfo.UUID}
-	cfContext := I.CFContext{Environment: environment.Name,
+	cfContext := I.CFContext{
+		Environment:  environment.Name,
 		Organization: deploymentInfo.Org,
 		Space:        deploymentInfo.Space,
 		Application:  deploymentInfo.AppName,
@@ -102,7 +103,7 @@ func (bg BlueGreen) Push(pusherCreator I.PusherCreator, environment S.Environmen
 	for i, foundationURL := range environment.Foundations {
 		bg.buffers[i] = &bytes.Buffer{}
 
-		pusher, err := pusherCreator.CreatePusher(deploymentInfo, cfContext, authorization, bg.buffers[i], foundationURL, appPath)
+		pusher, err := actionCreator.Create(deploymentInfo, cfContext, authorization, bg.buffers[i], foundationURL, appPath)
 		if err != nil {
 			return InitializationError{err}
 		}

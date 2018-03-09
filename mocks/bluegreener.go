@@ -14,7 +14,7 @@ type BlueGreener struct {
 	PushCall struct {
 		Write    string
 		Received struct {
-			PusherCreator  I.PusherCreator
+			ActionCreator  I.ActionCreator
 			Environment    S.Environment
 			AppPath        string
 			DeploymentInfo S.DeploymentInfo
@@ -26,7 +26,7 @@ type BlueGreener struct {
 	}
 	StopCall struct {
 		Received struct {
-			StopperCreator I.StopperCreator
+			ActionCreator  I.ActionCreator
 			Environment    S.Environment
 			AppPath        string
 			DeploymentInfo S.DeploymentInfo
@@ -39,8 +39,8 @@ type BlueGreener struct {
 }
 
 // Push mock method.
-func (b *BlueGreener) Push(pusherCreator I.PusherCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) I.DeploymentError {
-	b.PushCall.Received.PusherCreator = pusherCreator
+func (b *BlueGreener) Push(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) I.DeploymentError {
+	b.PushCall.Received.ActionCreator = actionCreator
 	b.PushCall.Received.Environment = environment
 	b.PushCall.Received.AppPath = appPath
 	b.PushCall.Received.DeploymentInfo = deploymentInfo
@@ -52,8 +52,8 @@ func (b *BlueGreener) Push(pusherCreator I.PusherCreator, environment S.Environm
 	return b.PushCall.Returns.Error
 }
 
-func (b *BlueGreener) Stop(stopperCreator I.StopperCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
-	b.StopCall.Received.StopperCreator = stopperCreator
+func (b *BlueGreener) Stop(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+	b.StopCall.Received.ActionCreator = actionCreator
 	b.StopCall.Received.Environment = environment
 	b.StopCall.Received.AppPath = appPath
 	b.StopCall.Received.DeploymentInfo = deploymentInfo

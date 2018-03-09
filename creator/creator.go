@@ -175,7 +175,7 @@ func (c Creator) createDeployer() (I.Deployer, error) {
 	}, nil
 }
 
-func (c Creator) PusherCreator() (I.PusherCreator, error) {
+func (c Creator) PusherCreator() (I.ActionCreator, error) {
 	courier, err := c.CreateCourier()
 	if err != nil {
 		return actioncreator.PusherCreator{}, err
@@ -188,7 +188,7 @@ func (c Creator) PusherCreator() (I.PusherCreator, error) {
 	}, nil
 }
 
-func (c Creator) StopperCreator() (I.StopperCreator, error) {
+func (c Creator) StopperCreator() (I.ActionCreator, error) {
 	courier, err := c.CreateCourier()
 	if err != nil {
 		return actioncreator.StopperCreator{}, err

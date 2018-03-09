@@ -111,14 +111,14 @@ func (c Creator) CreateDeployer() I.Deployer {
 	}
 }
 
-func (c Creator) CreatePusherCreator() I.PusherCreator {
+func (c Creator) CreatePusherCreator() I.ActionCreator {
 	return &creatorPusherMock{
 		EventManager: c.CreateEventManager(),
 		Log:          c.CreateLogger(),
 	}
 }
 
-func (c Creator) CreateStopperCreator() I.StopperCreator {
+func (c Creator) CreateStopperCreator() I.ActionCreator {
 	return &StopperCreator{}
 }
 
@@ -213,7 +213,7 @@ type creatorPusherMock struct {
 	Log          I.Logger
 }
 
-func (c creatorPusherMock) CreatePusher(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
+func (c creatorPusherMock) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 	courier := &Courier{}
 
 	courier.LoginCall.Returns.Output = []byte("logged in\t")

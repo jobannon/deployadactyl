@@ -83,8 +83,8 @@ func (d SilentDeployer) Deploy(req *http.Request, environment, org, space, appNa
 type Deployer struct {
 	Config         config.Config
 	BlueGreener    I.BlueGreener
-	PusherCreator  I.PusherCreator
-	StopperCreator I.StopperCreator
+	PusherCreator  I.ActionCreator
+	StopperCreator I.ActionCreator
 	Fetcher        I.Fetcher
 	Prechecker     I.Prechecker
 	EventManager   I.EventManager

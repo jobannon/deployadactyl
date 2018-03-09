@@ -314,7 +314,7 @@ var _ = Describe("Bluegreen", func() {
 					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
 				}
 
-				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				blueGreen = BlueGreen{}
 
 				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
@@ -346,7 +346,7 @@ var _ = Describe("Bluegreen", func() {
 					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
 				}
 
-				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				blueGreen = BlueGreen{}
 
 				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
@@ -364,7 +364,7 @@ var _ = Describe("Bluegreen", func() {
 					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
 				}
 				stoppers[0].InitiallyCall.Returns.Error = errors.New("login to stop failed")
-				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				blueGreen = BlueGreen{}
 				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
 
 				Expect(err.Error()).To(Equal("login failed: login to stop failed"))
@@ -382,7 +382,7 @@ var _ = Describe("Bluegreen", func() {
 					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
 				}
 
-				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				blueGreen = BlueGreen{}
 				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
 
 				Expect(err.Error()).To(Equal("login failed: login 0 to stop failed: login 1 to stop failed"))
@@ -399,7 +399,7 @@ var _ = Describe("Bluegreen", func() {
 					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
 				}
 
-				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				blueGreen = BlueGreen{}
 
 				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
@@ -418,7 +418,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 				stoppers[0].ExecuteCall.Returns.Error = errors.New("stop failed")
 
-				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				blueGreen = BlueGreen{}
 
 				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
 				Expect(err).To(MatchError(StopError{[]error{errors.New("stop failed")}}))
@@ -436,7 +436,7 @@ var _ = Describe("Bluegreen", func() {
 					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
 				}
 
-				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				blueGreen = BlueGreen{}
 
 				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
 				Expect(err.Error()).To(Equal("stop failed: stop failed: stop failed"))
@@ -454,7 +454,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 				stoppers[0].ExecuteCall.Returns.Error = errors.New("an error occurred")
 
-				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				blueGreen = BlueGreen{}
 
 				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
 				Expect(err).To(HaveOccurred())
@@ -473,7 +473,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 				stoppers[0].ExecuteCall.Returns.Error = errors.New("an error occurred")
 				stoppers[0].UndoCall.Returns.Error = errors.New("an error occurred while attempting undo")
-				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				blueGreen = BlueGreen{}
 
 				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
 				Expect(err).To(HaveOccurred())
@@ -493,7 +493,7 @@ var _ = Describe("Bluegreen", func() {
 					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
 				}
 
-				blueGreen = BlueGreen{StopperCreator: stopperFactory}
+				blueGreen = BlueGreen{}
 
 				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, out)
 				Expect(err).ToNot(HaveOccurred())

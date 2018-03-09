@@ -74,8 +74,8 @@ var _ = Describe("Deployer", func() {
 		environments                 = map[string]S.Environment{}
 		environmentsNoCustomParams   = map[string]S.Environment{}
 		af                           *afero.Afero
-		pusherCreator                interfaces.PusherCreator
-		stopperCreator               interfaces.StopperCreator
+		pusherCreator                interfaces.ActionCreator
+		stopperCreator               interfaces.ActionCreator
 	)
 
 	BeforeEach(func() {

@@ -30,7 +30,7 @@ type StateManager struct {
 	Log            interfaces.Logger
 	EventManager   interfaces.EventManager
 	BlueGreener    interfaces.BlueGreener
-	StopperCreator interfaces.StopperCreator
+	StopperCreator interfaces.ActionCreator
 }
 
 //func (s *StateManager) Start(environment environment.Environment) {

@@ -464,7 +464,7 @@ applications:
 
 				Expect(deployResponse.Error).ToNot(HaveOccurred())
 
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.Instances).To(Equal(uint16(1337)))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.Instances).To(Equal(uint16(1337)))
 			})
 		})
 
@@ -476,7 +476,7 @@ applications:
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				<-reqChannel1
 
-				Eventually(blueGreener.PushCall.Received.DeploymentInfo.Instances).Should(Equal(uint16(303)))
+				Eventually(blueGreener.ExecuteCall.Received.DeploymentInfo.Instances).Should(Equal(uint16(303)))
 			})
 		})
 	})
@@ -569,7 +569,7 @@ applications:
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				expectedError := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
-				blueGreener.PushCall.Returns.Error = expectedError
+				blueGreener.ExecuteCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
@@ -584,7 +584,7 @@ applications:
 
 			It("passes the response string to FindErrors and writes the found errors to the output stream", func() {
 				err := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
-				blueGreener.PushCall.Returns.Error = err
+				blueGreener.ExecuteCall.Returns.Error = err
 
 				errors := make([]interfaces.LogMatchedError, 0, 0)
 				errors = append(errors, error_finder.CreateLogMatchedError("an error description", []string{"error 1", "error 2", "error 3"}, "error solution", "TestCode"))
@@ -604,7 +604,7 @@ applications:
 
 			It("returns a matched error with code", func() {
 				err := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
-				blueGreener.PushCall.Returns.Error = err
+				blueGreener.ExecuteCall.Returns.Error = err
 
 				errors := make([]interfaces.LogMatchedError, 0, 0)
 				errors = append(errors, error_finder.CreateLogMatchedError("an error description", []string{"error 1", "error 2", "error 3"}, "error solution", "TestCode"))
@@ -679,7 +679,7 @@ applications:
 		Context("when BlueGreener fails with a login failed error", func() {
 			It("returns an error and a http.StatusUnauthorized", func() {
 				expectedError := bluegreen.LoginError{[]error{errors.New("login failed")}}
-				blueGreener.PushCall.Returns.Error = expectedError
+				blueGreener.ExecuteCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
@@ -699,7 +699,7 @@ applications:
 
 				expectedError := bluegreen.InitializationError{errors.New("blue green error")}
 
-				blueGreener.PushCall.Returns.Error = expectedError
+				blueGreener.ExecuteCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
@@ -708,9 +708,9 @@ applications:
 				Expect(deployResponse.Error).To(Equal(expectedError))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(testManifestLocation))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.ArtifactURL).To(ContainSubstring(testManifestLocation))
+				Expect(blueGreener.ExecuteCall.Received.AppPath).To(Equal(testManifestLocation))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.ArtifactURL).To(ContainSubstring(testManifestLocation))
 			})
 		})
 
@@ -718,7 +718,7 @@ applications:
 			It("returns an error and a http.StatusInternalServerError", func() {
 				fetcher.FetchCall.Returns.AppPath = appPath
 
-				blueGreener.PushCall.Returns.Error = bluegreen.InitializationError{Err: errors.New("blue green error")}
+				blueGreener.ExecuteCall.Returns.Error = bluegreen.InitializationError{Err: errors.New("blue green error")}
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
@@ -727,8 +727,8 @@ applications:
 				Expect(deployResponse.Error).To(MatchError("blue green error"))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(blueGreener.ExecuteCall.Received.AppPath).To(Equal(appPath))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			})
 		})
 
@@ -736,7 +736,7 @@ applications:
 			It("returns an error and a http.StatusInternalServerError", func() {
 				fetcher.FetchCall.Returns.AppPath = appPath
 				expectedError := bluegreen.PushError{[]error{errors.New("blue green error")}}
-				blueGreener.PushCall.Returns.Error = expectedError
+				blueGreener.ExecuteCall.Returns.Error = expectedError
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
@@ -745,8 +745,8 @@ applications:
 				Expect(deployResponse.Error).To(Equal(expectedError))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(blueGreener.ExecuteCall.Received.AppPath).To(Equal(appPath))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			})
 		})
 	})
@@ -815,9 +815,9 @@ applications:
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
 				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
 				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.DeployFinishEvent))
-				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environment]))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(blueGreener.ExecuteCall.Received.Environment).To(Equal(environments[environment]))
+				Expect(blueGreener.ExecuteCall.Received.AppPath).To(Equal(appPath))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
 			})
 		})
 	})
@@ -853,10 +853,10 @@ applications:
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
 				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
 				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.DeployFinishEvent))
-				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environment]))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(testManifestLocation))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.ArtifactURL).To(ContainSubstring(testManifestLocation))
+				Expect(blueGreener.ExecuteCall.Received.Environment).To(Equal(environments[environment]))
+				Expect(blueGreener.ExecuteCall.Received.AppPath).To(Equal(testManifestLocation))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.ArtifactURL).To(ContainSubstring(testManifestLocation))
 			})
 		})
 	})
@@ -869,8 +869,8 @@ applications:
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				<-reqChannel1
 
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.CustomParams["service_now_column_name"].(string)).To(Equal("u_change"))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.CustomParams["service_now_table_name"].(string)).To(Equal("u_table"))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.CustomParams["service_now_column_name"].(string)).To(Equal("u_change"))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.CustomParams["service_now_table_name"].(string)).To(Equal("u_table"))
 			})
 		})
 
@@ -911,7 +911,7 @@ applications:
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.Error).ToNot(HaveOccurred())
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.CustomParams).To(BeNil())
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.CustomParams).To(BeNil())
 			})
 		})
 	})

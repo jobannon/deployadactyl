@@ -243,7 +243,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 	enableRollback := e.EnableRollback
 
-	err = d.BlueGreener.Push(d.PusherCreator, e, appPath, *deploymentInfo, response)
+	err = d.BlueGreener.Execute(d.PusherCreator, e, appPath, *deploymentInfo, response)
 
 	if err != nil {
 		if !enableRollback {

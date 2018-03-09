@@ -11,7 +11,7 @@ import (
 
 // BlueGreener handmade mock for tests.
 type BlueGreener struct {
-	PushCall struct {
+	ExecuteCall struct {
 		Write    string
 		Received struct {
 			ActionCreator  I.ActionCreator
@@ -39,17 +39,17 @@ type BlueGreener struct {
 }
 
 // Push mock method.
-func (b *BlueGreener) Push(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
-	b.PushCall.Received.ActionCreator = actionCreator
-	b.PushCall.Received.Environment = environment
-	b.PushCall.Received.AppPath = appPath
-	b.PushCall.Received.DeploymentInfo = deploymentInfo
-	b.PushCall.Received.Out = out
+func (b *BlueGreener) Execute(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+	b.ExecuteCall.Received.ActionCreator = actionCreator
+	b.ExecuteCall.Received.Environment = environment
+	b.ExecuteCall.Received.AppPath = appPath
+	b.ExecuteCall.Received.DeploymentInfo = deploymentInfo
+	b.ExecuteCall.Received.Out = out
 
-	if b.PushCall.Write != "" {
-		bytes.NewBufferString(b.PushCall.Write).WriteTo(out)
+	if b.ExecuteCall.Write != "" {
+		bytes.NewBufferString(b.ExecuteCall.Write).WriteTo(out)
 	}
-	return b.PushCall.Returns.Error
+	return b.ExecuteCall.Returns.Error
 }
 
 func (b *BlueGreener) Stop(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {

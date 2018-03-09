@@ -17,69 +17,13 @@ type BlueGreen struct {
 }
 
 func (bg BlueGreen) Stop(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
-	actors := make([]actor, len(environment.Foundations))
-	stopBuffers := make([]*bytes.Buffer, len(environment.Foundations))
-	cfContext := I.CFContext{
-		Environment:  environment.Name,
-		Organization: deploymentInfo.Org,
-		Space:        deploymentInfo.Space,
-		Application:  deploymentInfo.AppName,
-		UUID:         deploymentInfo.UUID,
-		SkipSSL:      deploymentInfo.SkipSSL,
-	}
-	authorization := I.Authorization{
-		Username: deploymentInfo.Username,
-		Password: deploymentInfo.Password,
-	}
-	for i, foundationURL := range environment.Foundations {
-		stopBuffers[i] = &bytes.Buffer{}
 
-		stopper, err := actionCreator.Create(deploymentInfo, cfContext, authorization, environment, stopBuffers[i], foundationURL, appPath)
-		if err != nil {
-			return InitializationError{err}
-		}
-
-		actors[i] = NewActor(stopper)
-		defer close(actors[i].Commands)
-	}
-
-	defer func() {
-		for _, buffer := range stopBuffers {
-			fmt.Fprintf(out, "\n%s Cloud Foundry Output %s\n", strings.Repeat("-", 19), strings.Repeat("-", 19))
-			buffer.WriteTo(out)
-		}
-
-		fmt.Fprintf(out, "\n%s End Cloud Foundry Output %s\n", strings.Repeat("-", 17), strings.Repeat("-", 17))
-	}()
-
-	loginErrors := bg.commands(actors, func(action I.Action) error {
-		return action.Initially()
-	})
-
-	if len(loginErrors) != 0 {
-		return actionCreator.InitiallyError(loginErrors)
-	}
-
-	stopErrors := bg.commands(actors, func(action I.Action) error {
-		return action.Execute()
-	})
-	if len(stopErrors) > 0 {
-		rollbackErrors := bg.commands(actors, func(action I.Action) error {
-			return action.Undo()
-		})
-
-		if len(rollbackErrors) != 0 {
-			return actionCreator.UndoError(stopErrors, rollbackErrors)
-		}
-
-		return actionCreator.ExecuteError(stopErrors)
-	}
-	return nil
+	return bg.Execute(actionCreator, environment, appPath, deploymentInfo, out)
 }
 
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
 // If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
-func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) error {
+func (bg BlueGreen) Execute(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) error {
 	actors := make([]actor, len(environment.Foundations))
 	buffers := make([]*bytes.Buffer, len(environment.Foundations))
 
@@ -98,20 +42,19 @@ func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environmen
 	for i, foundationURL := range environment.Foundations {
 		buffers[i] = &bytes.Buffer{}
 
-		pusher, err := actionCreator.Create(deploymentInfo, cfContext, authorization, environment, buffers[i], foundationURL, appPath)
+		action, err := actionCreator.Create(deploymentInfo, cfContext, authorization, environment, buffers[i], foundationURL, appPath)
 		if err != nil {
 			return InitializationError{err}
 		}
-		defer pusher.Finally()
+		defer action.Finally()
 
-		actors[i] = NewActor(pusher)
+		actors[i] = NewActor(action)
 		defer close(actors[i].Commands)
 	}
 
 	defer func() {
 		for _, buffer := range buffers {
 			fmt.Fprintf(response, "\n%s Cloud Foundry Output %s\n", strings.Repeat("-", 19), strings.Repeat("-", 19))
-
 			buffer.WriteTo(response)
 		}
 
@@ -126,27 +69,27 @@ func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environmen
 		return actionCreator.InitiallyError(loginErrors)
 	}
 
-	pushErrors := bg.commands(actors, func(action I.Action) error {
+	actionErrors := bg.commands(actors, func(action I.Action) error {
 		return action.Execute()
 	})
 
-	if len(pushErrors) != 0 {
+	if len(actionErrors) != 0 {
 		rollbackErrors := bg.commands(actors, func(action I.Action) error {
 			return action.Undo()
 		})
 
 		if len(rollbackErrors) != 0 {
-			return actionCreator.UndoError(pushErrors, rollbackErrors)
+			return actionCreator.UndoError(actionErrors, rollbackErrors)
 		}
 
-		return actionCreator.ExecuteError(pushErrors)
+		return actionCreator.ExecuteError(actionErrors)
 	}
 
-	finishPushErrors := bg.commands(actors, func(action I.Action) error {
+	finishActionErrors := bg.commands(actors, func(action I.Action) error {
 		return action.Success()
 	})
-	if len(finishPushErrors) != 0 {
-		return actionCreator.SuccessError(finishPushErrors)
+	if len(finishActionErrors) != 0 {
+		return actionCreator.SuccessError(finishActionErrors)
 	}
 
 	return nil

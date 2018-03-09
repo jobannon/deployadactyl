@@ -86,6 +86,7 @@ var _ = Describe("Pusher", func() {
 			Log:            logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
 			FoundationURL:  randomFoundationURL,
 			AppPath:        randomAppPath,
+			Environment:    S.Environment{EnableRollback: true},
 		}
 	})
 
@@ -381,6 +382,7 @@ var _ = Describe("Pusher", func() {
 			})
 
 			It("deletes the app that was pushed", func() {
+
 				Expect(pusher.Undo()).To(Succeed())
 
 				Expect(courier.DeleteCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))

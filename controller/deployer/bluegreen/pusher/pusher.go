@@ -24,6 +24,7 @@ type Pusher struct {
 	Log            I.Logger
 	FoundationURL  string
 	AppPath        string
+	Environment    S.Environment
 }
 
 // Login will login to a Cloud Foundry instance.
@@ -134,24 +135,29 @@ func (p Pusher) Success() error {
 func (p Pusher) Undo() error {
 
 	tempAppWithUUID := p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID
+	if !p.Environment.EnableRollback {
+		p.Log.Errorf("Failed to deploy, deployment not rolled back due to EnableRollback=false")
 
-	if p.Courier.Exists(p.DeploymentInfo.AppName) {
-		p.Log.Errorf("rolling back deploy of %s", tempAppWithUUID)
-
-		err := p.deleteApplication(tempAppWithUUID)
-		if err != nil {
-			return err
-		}
-
+		return p.Success()
 	} else {
-		p.Log.Errorf("app %s did not previously exist: not rolling back", p.DeploymentInfo.AppName)
 
-		err := p.renameNewBuildToOriginalAppName()
-		if err != nil {
-			return err
+		if p.Courier.Exists(p.DeploymentInfo.AppName) {
+			p.Log.Errorf("rolling back deploy of %s", tempAppWithUUID)
+
+			err := p.deleteApplication(tempAppWithUUID)
+			if err != nil {
+				return err
+			}
+
+		} else {
+			p.Log.Errorf("app %s did not previously exist: not rolling back", p.DeploymentInfo.AppName)
+
+			err := p.renameNewBuildToOriginalAppName()
+			if err != nil {
+				return err
+			}
 		}
 	}
-
 	return nil
 }
 

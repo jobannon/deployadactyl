@@ -15,7 +15,7 @@ type Action interface {
 }
 
 type ActionCreator interface {
-	Create(deploymentInfo S.DeploymentInfo, cfContext CFContext, authorization Authorization, response io.ReadWriter, foundationURL, appPath string) (Action, error)
+	Create(deploymentInfo S.DeploymentInfo, cfContext CFContext, authorization Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (Action, error)
 	InitiallyError(initiallyErrors []error) error
 	ExecuteError(executeErrors []error) error
 	UndoError(executeErrors, undoErrors []error) error

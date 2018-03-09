@@ -22,7 +22,7 @@ type StopperCreator struct {
 	Logger       I.Logger
 }
 
-func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
+func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 
 	p := &pusher.Pusher{
 		Courier:        a.Courier,
@@ -32,6 +32,7 @@ func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFCon
 		Log:            logger.DeploymentLogger{a.Logger, deploymentInfo.UUID},
 		FoundationURL:  foundationURL,
 		AppPath:        appPath,
+		Environment:    environment,
 	}
 
 	return p, nil
@@ -53,9 +54,7 @@ func (a PusherCreator) SuccessError(successErrors []error) error {
 	return bluegreen.FinishPushError{FinishPushError: successErrors}
 }
 
-//func (a PusherCreator) InitiallyError(loginErrors []errors)
-
-func (a StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
+func (a StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 
 	p := &startstopper.Stopper{
 		Courier:       a.Courier,

@@ -33,18 +33,6 @@ type StateManager struct {
 	StopperCreator interfaces.ActionCreator
 }
 
-//func (s *StateManager) Start(environment environment.Environment) {
-// errors = []error
-// foreach environment.Foundations as foundation
-//     foundation.Login(user)
-//     state = foundation.State(app)
-//     if (state == stopped)
-//         append(errors, foundation.Start(app))
-// if errors.length > 0
-//     rollback
-// return success
-//}
-
 func (s *StateManager) Stop(context interfaces.CFContext, uuid string, auth interfaces.Authorization, response io.ReadWriter) (statusCode int, deploymentInfo *S.DeploymentInfo, err error) {
 
 	environments := s.Config.Environments

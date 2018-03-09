@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
 )
 
@@ -35,7 +34,7 @@ func (bg BlueGreen) Stop(actionCreator I.ActionCreator, environment S.Environmen
 	for i, foundationURL := range environment.Foundations {
 		stopBuffers[i] = &bytes.Buffer{}
 
-		stopper, err := actionCreator.Create(deploymentInfo, cfContext, authorization, stopBuffers[i], foundationURL, appPath)
+		stopper, err := actionCreator.Create(deploymentInfo, cfContext, authorization, environment, stopBuffers[i], foundationURL, appPath)
 		if err != nil {
 			return InitializationError{err}
 		}
@@ -84,7 +83,6 @@ func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environmen
 	actors := make([]actor, len(environment.Foundations))
 	buffers := make([]*bytes.Buffer, len(environment.Foundations))
 
-	deploymentLogger := logger.DeploymentLogger{Log: bg.Log, UUID: deploymentInfo.UUID}
 	cfContext := I.CFContext{
 		Environment:  environment.Name,
 		Organization: deploymentInfo.Org,
@@ -100,7 +98,7 @@ func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environmen
 	for i, foundationURL := range environment.Foundations {
 		buffers[i] = &bytes.Buffer{}
 
-		pusher, err := actionCreator.Create(deploymentInfo, cfContext, authorization, buffers[i], foundationURL, appPath)
+		pusher, err := actionCreator.Create(deploymentInfo, cfContext, authorization, environment, buffers[i], foundationURL, appPath)
 		if err != nil {
 			return InitializationError{err}
 		}
@@ -133,30 +131,15 @@ func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environmen
 	})
 
 	if len(pushErrors) != 0 {
-		if !environment.EnableRollback {
-			deploymentLogger.Errorf("Failed to deploy, deployment not rolled back due to EnableRollback=false")
+		rollbackErrors := bg.commands(actors, func(action I.Action) error {
+			return action.Undo()
+		})
 
-			finishPushErrors := bg.commands(actors, func(action I.Action) error {
-				return action.Success()
-			})
-
-			if len(finishPushErrors) != 0 {
-				return actionCreator.SuccessError(finishPushErrors)
-			}
-
-			return actionCreator.ExecuteError(pushErrors)
-
-		} else {
-			rollbackErrors := bg.commands(actors, func(action I.Action) error {
-				return action.Undo()
-			})
-
-			if len(rollbackErrors) != 0 {
-				return actionCreator.UndoError(pushErrors, rollbackErrors)
-			}
-
-			return actionCreator.ExecuteError(pushErrors)
+		if len(rollbackErrors) != 0 {
+			return actionCreator.UndoError(pushErrors, rollbackErrors)
 		}
+
+		return actionCreator.ExecuteError(pushErrors)
 	}
 
 	finishPushErrors := bg.commands(actors, func(action I.Action) error {

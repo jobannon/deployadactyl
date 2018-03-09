@@ -294,12 +294,12 @@ var _ = Describe("Bluegreen", func() {
 				environment.EnableRollback = false
 
 				for _, pusher := range pushers {
-					pusher.ExecuteCall.Returns.Error = pushError
+					pusher.ExecuteCall.Returns.Error = errors.New("a push execute error")
 				}
-				pushers[0].SuccessCall.Returns.Error = errors.New("an error occurred")
+				pushers[0].UndoCall.Returns.Error = errors.New("a push success error")
 				err := blueGreen.Push(pusherCreator, environment, appPath, deploymentInfo, response)
 
-				Expect(err.Error()).To(Equal("finish push failed: an error occurred"))
+				Expect(err.Error()).To(Equal("push failed: a push execute error: a push execute error: rollback failed: a push success error"))
 			})
 		})
 	})

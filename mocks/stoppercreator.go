@@ -18,13 +18,13 @@ type StopperCreator struct {
 		TimesCalled int
 		Received    []receivedCall
 		Returns     struct {
-			Stoppers []interfaces.Stopper
+			Stoppers []interfaces.Action
 			Error    []error
 		}
 	}
 }
 
-func (s *StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext interfaces.CFContext, authorization interfaces.Authorization, response io.ReadWriter, foundationURL, appPath string) (interfaces.Action, error) {
+func (s *StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext interfaces.CFContext, authorization interfaces.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (interfaces.Action, error) {
 	defer func() { s.CreateStopperCall.TimesCalled++ }()
 
 	received := receivedCall{

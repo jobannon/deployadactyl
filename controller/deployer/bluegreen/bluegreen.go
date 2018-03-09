@@ -58,7 +58,7 @@ func (bg BlueGreen) Stop(actionCreator I.ActionCreator, environment S.Environmen
 	})
 
 	if len(loginErrors) != 0 {
-		return LoginError{loginErrors}
+		return actionCreator.InitiallyError(loginErrors)
 	}
 
 	stopErrors := bg.commands(actors, func(action I.Action) error {
@@ -70,17 +70,17 @@ func (bg BlueGreen) Stop(actionCreator I.ActionCreator, environment S.Environmen
 		})
 
 		if len(rollbackErrors) != 0 {
-			return RollbackStopError{stopErrors, rollbackErrors}
+			return actionCreator.UndoError(stopErrors, rollbackErrors)
 		}
 
-		return StopError{stopErrors}
+		return actionCreator.ExecuteError(stopErrors)
 	}
 	return nil
 }
 
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
 // If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
-func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) I.DeploymentError {
+func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) error {
 	actors := make([]actor, len(environment.Foundations))
 	buffers := make([]*bytes.Buffer, len(environment.Foundations))
 
@@ -125,7 +125,7 @@ func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environmen
 	})
 
 	if len(loginErrors) != 0 {
-		return LoginError{loginErrors}
+		return actionCreator.InitiallyError(loginErrors)
 	}
 
 	pushErrors := bg.commands(actors, func(action I.Action) error {
@@ -141,20 +141,21 @@ func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environmen
 			})
 
 			if len(finishPushErrors) != 0 {
-				return FinishPushError{finishPushErrors}
+				return actionCreator.SuccessError(finishPushErrors)
 			}
 
-			return PushError{pushErrors}
+			return actionCreator.ExecuteError(pushErrors)
+
 		} else {
 			rollbackErrors := bg.commands(actors, func(action I.Action) error {
 				return action.Undo()
 			})
 
 			if len(rollbackErrors) != 0 {
-				return RollbackError{pushErrors, rollbackErrors}
+				return actionCreator.UndoError(pushErrors, rollbackErrors)
 			}
 
-			return PushError{pushErrors}
+			return actionCreator.ExecuteError(pushErrors)
 		}
 	}
 
@@ -162,7 +163,7 @@ func (bg BlueGreen) Push(actionCreator I.ActionCreator, environment S.Environmen
 		return action.Success()
 	})
 	if len(finishPushErrors) != 0 {
-		return FinishPushError{finishPushErrors}
+		return actionCreator.SuccessError(finishPushErrors)
 	}
 
 	return nil

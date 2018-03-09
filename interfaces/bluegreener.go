@@ -14,7 +14,7 @@ type BlueGreener interface {
 		appPath string,
 		deploymentInfo S.DeploymentInfo,
 		response io.ReadWriter,
-	) DeploymentError
+	) error
 	Stop(
 		actionCreator ActionCreator,
 		environment S.Environment,

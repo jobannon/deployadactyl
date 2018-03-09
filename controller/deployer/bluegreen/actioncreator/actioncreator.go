@@ -1,6 +1,7 @@
 package actioncreator
 
 import (
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/startstopper"
 	I "github.com/compozed/deployadactyl/interfaces"
@@ -36,6 +37,24 @@ func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFCon
 	return p, nil
 }
 
+func (a PusherCreator) InitiallyError(initiallyErrors []error) error {
+	return bluegreen.LoginError{LoginErrors: initiallyErrors}
+}
+
+func (a PusherCreator) ExecuteError(executeErrors []error) error {
+	return bluegreen.PushError{PushErrors: executeErrors}
+}
+
+func (a PusherCreator) UndoError(executeErrors, undoErrors []error) error {
+	return bluegreen.RollbackError{PushErrors: executeErrors, RollbackErrors: undoErrors}
+}
+
+func (a PusherCreator) SuccessError(successErrors []error) error {
+	return bluegreen.FinishPushError{FinishPushError: successErrors}
+}
+
+//func (a PusherCreator) InitiallyError(loginErrors []errors)
+
 func (a StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 
 	p := &startstopper.Stopper{
@@ -50,4 +69,20 @@ func (a StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFCo
 	}
 
 	return p, nil
+}
+
+func (a StopperCreator) InitiallyError(initiallyErrors []error) error {
+	return bluegreen.LoginError{LoginErrors: initiallyErrors}
+}
+
+func (a StopperCreator) ExecuteError(executeErrors []error) error {
+	return bluegreen.StopError{Errors: executeErrors}
+}
+
+func (a StopperCreator) UndoError(executeErrors, undoErrors []error) error {
+	return bluegreen.RollbackStopError{StopErrors: executeErrors, RollbackErrors: undoErrors}
+}
+
+func (a StopperCreator) SuccessError(successErrors []error) error {
+	return bluegreen.FinishStopError{FinishStopErrors: successErrors}
 }

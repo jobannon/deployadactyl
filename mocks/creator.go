@@ -235,3 +235,19 @@ func (c creatorPusherMock) Create(deploymentInfo S.DeploymentInfo, cfContext I.C
 
 	return p, nil
 }
+
+func (c creatorPusherMock) InitiallyError(initiallyErrors []error) error {
+	return bluegreen.LoginError{LoginErrors: initiallyErrors}
+}
+
+func (c creatorPusherMock) ExecuteError(executeErrors []error) error {
+	return bluegreen.PushError{PushErrors: executeErrors}
+}
+
+func (c creatorPusherMock) UndoError(executeErrors, undoErrors []error) error {
+	return bluegreen.RollbackError{PushErrors: executeErrors, RollbackErrors: undoErrors}
+}
+
+func (c creatorPusherMock) SuccessError(successErrors []error) error {
+	return bluegreen.FinishPushError{FinishPushError: successErrors}
+}

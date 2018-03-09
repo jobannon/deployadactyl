@@ -39,7 +39,7 @@ type BlueGreener struct {
 }
 
 // Push mock method.
-func (b *BlueGreener) Push(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) I.DeploymentError {
+func (b *BlueGreener) Push(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
 	b.PushCall.Received.ActionCreator = actionCreator
 	b.PushCall.Received.Environment = environment
 	b.PushCall.Received.AppPath = appPath

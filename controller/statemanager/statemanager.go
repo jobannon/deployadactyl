@@ -107,7 +107,7 @@ func emitStopFinish(s *StateManager, stopEventData S.StopEventData, response io.
 	finishErr := s.EventManager.Emit(interfaces.Event{Type: C.StopFinishEvent, Data: stopEventData})
 	if finishErr != nil {
 		fmt.Fprintln(response, finishErr)
-		*err = bluegreen.FinishStopError{Err: fmt.Errorf("%s: %s", *err, E.EventError{C.StopFinishEvent, finishErr})}
+		*err = bluegreen.FinishStopError{FinishStopErrors: []error{fmt.Errorf("%s: %s", *err, E.EventError{C.StopFinishEvent, finishErr})}}
 		*statusCode = http.StatusInternalServerError
 	}
 }

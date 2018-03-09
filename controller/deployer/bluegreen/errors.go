@@ -100,11 +100,13 @@ func (e InitializationError) Code() string {
 }
 
 type FinishStopError struct {
-	Err error
+	FinishStopErrors []error
 }
 
 func (e FinishStopError) Error() string {
-	return e.Err.Error()
+	finishStopErrors := makeErrorString(e.FinishStopErrors)
+
+	return fmt.Sprintf("finish stop failed: %s", finishStopErrors)
 }
 
 type StopError struct {

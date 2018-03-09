@@ -316,7 +316,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
-				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				err := blueGreen.Stop(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
 
 				for i := range environment.Foundations {
@@ -329,8 +329,8 @@ var _ = Describe("Bluegreen", func() {
 				stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, &mocks.StartStopper{})
 				stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, errors.New("stop creator failed"))
 
-				blueGreen = BlueGreen{StopperCreator: stopperFactory, Log: log}
-				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				blueGreen = BlueGreen{Log: log}
+				err := blueGreen.Stop(stopperFactory, environment, deploymentInfo, NewBuffer())
 
 				Expect(err).To(MatchError("stop creator failed"))
 			})
@@ -348,7 +348,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
-				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				err := blueGreen.Stop(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
 
 			})
@@ -365,7 +365,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 				stoppers[0].InitiallyCall.Returns.Error = errors.New("login to stop failed")
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
-				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				err := blueGreen.Stop(stopperFactory, environment, deploymentInfo, NewBuffer())
 
 				Expect(err.Error()).To(Equal("login failed: login to stop failed"))
 			})
@@ -383,7 +383,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
-				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				err := blueGreen.Stop(stopperFactory, environment, deploymentInfo, NewBuffer())
 
 				Expect(err.Error()).To(Equal("login failed: login 0 to stop failed: login 1 to stop failed"))
 			})
@@ -401,7 +401,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
-				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				err := blueGreen.Stop(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
 
 			})
@@ -420,7 +420,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
-				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				err := blueGreen.Stop(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).To(MatchError(StopError{[]error{errors.New("stop failed")}}))
 			})
 
@@ -438,7 +438,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
-				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				err := blueGreen.Stop(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err.Error()).To(Equal("stop failed: stop failed: stop failed"))
 			})
 
@@ -456,7 +456,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
-				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				err := blueGreen.Stop(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("stop failed: an error occurred"))
 			})
@@ -475,7 +475,7 @@ var _ = Describe("Bluegreen", func() {
 				stoppers[0].UndoCall.Returns.Error = errors.New("an error occurred while attempting undo")
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
-				err := blueGreen.Stop(environment, deploymentInfo, NewBuffer())
+				err := blueGreen.Stop(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("stop failed: an error occurred: rollback failed: an error occurred while attempting undo"))
 			})
@@ -495,7 +495,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{StopperCreator: stopperFactory}
 
-				err := blueGreen.Stop(environment, deploymentInfo, out)
+				err := blueGreen.Stop(stopperFactory, environment, deploymentInfo, out)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(out).Should(Say("- Cloud Foundry Output -"))

@@ -21,7 +21,7 @@ type BlueGreen struct {
 	stopBuffers    []*bytes.Buffer
 }
 
-func (bg BlueGreen) Stop(environment S.Environment, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+func (bg BlueGreen) Stop(stopperCreator I.StopperCreator, environment S.Environment, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
 	bg.actors = make([]actor, len(environment.Foundations))
 	bg.stopBuffers = make([]*bytes.Buffer, len(environment.Foundations))
 	cfContext := I.CFContext{Environment: environment.Name,
@@ -38,7 +38,7 @@ func (bg BlueGreen) Stop(environment S.Environment, deploymentInfo S.DeploymentI
 	for i, foundationURL := range environment.Foundations {
 		bg.stopBuffers[i] = &bytes.Buffer{}
 
-		stopper, err := bg.StopperCreator.CreateStopper(cfContext, authorization, deploymentInfo, bg.stopBuffers[i], foundationURL)
+		stopper, err := stopperCreator.CreateStopper(cfContext, authorization, deploymentInfo, bg.stopBuffers[i], foundationURL)
 		if err != nil {
 			return InitializationError{err}
 		}

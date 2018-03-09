@@ -150,11 +150,6 @@ func (c Creator) CreateController() (I.Controller, error) {
 }
 
 func (c Creator) createDeployer() (I.Deployer, error) {
-	blueGreener, err := c.createBlueGreener()
-	if err != nil {
-		return deployer.Deployer{}, err
-	}
-
 	pusherCreator, err := c.PusherCreator()
 	if err != nil {
 		return deployer.Deployer{}, err
@@ -167,7 +162,7 @@ func (c Creator) createDeployer() (I.Deployer, error) {
 
 	return deployer.Deployer{
 		Config:         c.CreateConfig(),
-		BlueGreener:    blueGreener,
+		BlueGreener:    c.createBlueGreener(),
 		PusherCreator:  pusherCreator,
 		StopperCreator: stopperCreator,
 		Fetcher:        c.createFetcher(),
@@ -235,20 +230,10 @@ func (c Creator) createWriter() io.Writer {
 	return c.writer
 }
 
-func (c Creator) createBlueGreener() (I.BlueGreener, error) {
-	courier, err := c.CreateCourier()
-	if err != nil {
-		return bluegreen.BlueGreen{}, err
-	}
-
+func (c Creator) createBlueGreener() I.BlueGreener {
 	return bluegreen.BlueGreen{
-		StopperCreator: actioncreator.StopperCreator{
-			Courier:      courier,
-			EventManager: c.CreateEventManager(),
-			Logger:       c.CreateLogger(),
-		},
 		Log: c.CreateLogger(),
-	}, nil
+	}
 }
 
 func (c Creator) createErrorFinder() I.ErrorFinder {

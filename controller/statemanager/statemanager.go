@@ -25,11 +25,12 @@ AppName:      %s`
 )
 
 type StateManager struct {
-	Prechecker   interfaces.Prechecker
-	Config       config.Config
-	Log          interfaces.Logger
-	EventManager interfaces.EventManager
-	BlueGreener  interfaces.BlueGreener
+	Prechecker     interfaces.Prechecker
+	Config         config.Config
+	Log            interfaces.Logger
+	EventManager   interfaces.EventManager
+	BlueGreener    interfaces.BlueGreener
+	StopperCreator interfaces.StopperCreator
 }
 
 //func (s *StateManager) Start(environment environment.Environment) {
@@ -88,7 +89,7 @@ func (s *StateManager) Stop(context interfaces.CFContext, uuid string, auth inte
 		return http.StatusInternalServerError, deploymentInfo, E.EventError{Type: C.StopStartEvent, Err: err}
 	}
 
-	err = s.BlueGreener.Stop(e, *deploymentInfo, response)
+	err = s.BlueGreener.Stop(s.StopperCreator, e, *deploymentInfo, response)
 
 	if err != nil {
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {

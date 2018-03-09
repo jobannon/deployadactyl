@@ -26,6 +26,7 @@ type BlueGreener struct {
 	}
 	StopCall struct {
 		Received struct {
+			StopperCreator I.StopperCreator
 			Environment    S.Environment
 			DeploymentInfo S.DeploymentInfo
 			Out            io.Writer
@@ -50,7 +51,8 @@ func (b *BlueGreener) Push(pusherCreator I.PusherCreator, environment S.Environm
 	return b.PushCall.Returns.Error
 }
 
-func (b *BlueGreener) Stop(environment S.Environment, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+func (b *BlueGreener) Stop(stopperCreator I.StopperCreator, environment S.Environment, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+	b.StopCall.Received.StopperCreator = stopperCreator
 	b.StopCall.Received.Environment = environment
 	b.StopCall.Received.DeploymentInfo = deploymentInfo
 	b.StopCall.Received.Out = out

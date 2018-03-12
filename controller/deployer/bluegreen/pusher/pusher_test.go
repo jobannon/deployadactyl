@@ -13,6 +13,8 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/op/go-logging"
 
+	"encoding/base64"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -23,6 +25,7 @@ var _ = Describe("Pusher", func() {
 		pusher       Pusher
 		courier      *mocks.Courier
 		eventManager *mocks.EventManager
+		fetcher      *mocks.Fetcher
 
 		randomUsername      string
 		randomPassword      string
@@ -35,6 +38,8 @@ var _ = Describe("Pusher", func() {
 		randomUUID          string
 		randomEndpoint      string
 		randomFoundationURL string
+		randomArtifactUrl   string
+		randomManifest      string
 		tempAppWithUUID     string
 		skipSSL             bool
 		deploymentInfo      S.DeploymentInfo
@@ -45,6 +50,7 @@ var _ = Describe("Pusher", func() {
 	BeforeEach(func() {
 		courier = &mocks.Courier{}
 		eventManager = &mocks.EventManager{}
+		fetcher = &mocks.Fetcher{}
 
 		randomFoundationURL = "randomFoundationURL-" + randomizer.StringRunes(10)
 		randomUsername = "randomUsername-" + randomizer.StringRunes(10)
@@ -55,6 +61,8 @@ var _ = Describe("Pusher", func() {
 		randomAppPath = "randomAppPath-" + randomizer.StringRunes(10)
 		randomAppName = "randomAppName-" + randomizer.StringRunes(10)
 		randomEndpoint = "randomEndpoint-" + randomizer.StringRunes(10)
+		randomArtifactUrl = "randomArtifactUrl-" + randomizer.StringRunes(10)
+		randomManifest = base64.StdEncoding.EncodeToString([]byte("randomManifest-" + randomizer.StringRunes(10)))
 		randomUUID = randomizer.StringRunes(10)
 		randomInstances = uint16(rand.Uint32())
 
@@ -76,6 +84,8 @@ var _ = Describe("Pusher", func() {
 			Domain:              randomDomain,
 			UUID:                randomUUID,
 			HealthCheckEndpoint: randomEndpoint,
+			ArtifactURL:         randomArtifactUrl,
+			Manifest:            randomManifest,
 		}
 
 		pusher = Pusher{
@@ -87,6 +97,7 @@ var _ = Describe("Pusher", func() {
 			FoundationURL:  randomFoundationURL,
 			AppPath:        randomAppPath,
 			Environment:    S.Environment{EnableRollback: true},
+			Fetcher:        fetcher,
 		}
 	})
 
@@ -147,6 +158,7 @@ var _ = Describe("Pusher", func() {
 		Context("when the push succeeds", func() {
 			It("pushes the new app", func() {
 				courier.PushCall.Returns.Output = []byte("push succeeded")
+				fetcher.FetchCall.Returns.AppPath = randomAppPath
 
 				Expect(pusher.Execute()).To(Succeed())
 
@@ -154,6 +166,30 @@ var _ = Describe("Pusher", func() {
 				Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
 				Expect(courier.PushCall.Received.Hostname).To(Equal(randomAppName))
 				Expect(courier.PushCall.Received.Instances).To(Equal(randomInstances))
+
+				Eventually(response).Should(Say("push succeeded"))
+
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("pushing app %s to %s", tempAppWithUUID, randomDomain)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", tempAppWithUUID, randomAppPath)))
+				Eventually(logBuffer).Should(Say("output from Cloud Foundry"))
+				Eventually(logBuffer).Should(Say("successfully deployed new build"))
+			})
+
+			It("pushes the new app with instances specified in the manifest", func() {
+				courier.PushCall.Returns.Output = []byte("push succeeded")
+				fetcher.FetchCall.Returns.AppPath = randomAppPath
+				pusher.DeploymentInfo.Manifest = base64.StdEncoding.EncodeToString([]byte(`---
+applications:
+- name: deployadactyl
+  instances: 121
+`))
+
+				Expect(pusher.Execute()).To(Succeed())
+
+				Expect(courier.PushCall.Received.AppName).To(Equal(tempAppWithUUID))
+				Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
+				Expect(courier.PushCall.Received.Hostname).To(Equal(randomAppName))
+				Expect(courier.PushCall.Received.Instances).To(Equal(uint16(121)))
 
 				Eventually(response).Should(Say("push succeeded"))
 
@@ -219,6 +255,7 @@ var _ = Describe("Pusher", func() {
 				It("does not map the randomDomain", func() {
 					courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route"))
 					deploymentInfo.Domain = ""
+					fetcher.FetchCall.Returns.AppPath = randomAppPath
 
 					pusher = Pusher{
 						Courier:        courier,
@@ -226,6 +263,7 @@ var _ = Describe("Pusher", func() {
 						EventManager:   eventManager,
 						Response:       response,
 						Log:            logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
+						Fetcher:        fetcher,
 					}
 
 					Expect(pusher.Execute()).To(Succeed())

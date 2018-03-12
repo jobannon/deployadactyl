@@ -33,7 +33,7 @@ environments:
 `
 )
 
-var _ = Describe("Service", func() {
+var _ = XDescribe("Service", func() {
 
 	var (
 		deployadactylServer *httptest.Server
@@ -69,7 +69,7 @@ var _ = Describe("Service", func() {
 
 	Context("mocking the courier and the prechecker", func() {
 		Context("receiving an artifact url", func() {
-			It("can deploy an application without the internet", func() {
+			FIt("can deploy an application without the internet", func() {
 				j, err := json.Marshal(gin.H{
 					"artifact_url":          artifactServer.URL,
 					"health_check_endpoint": "/health",

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 
+	"encoding/base64"
+
+	"github.com/compozed/controller/deployer/manifestro"
 	C "github.com/compozed/deployadactyl/constants"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
@@ -25,6 +28,7 @@ type Pusher struct {
 	FoundationURL  string
 	AppPath        string
 	Environment    S.Environment
+	Fetcher        I.Fetcher
 }
 
 // Login will login to a Cloud Foundry instance.
@@ -74,6 +78,25 @@ func (p Pusher) Execute() error {
 		tempAppWithUUID = p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID
 		err             error
 	)
+
+	if p.DeploymentInfo.Manifest != "" {
+		manifest, err := base64.StdEncoding.DecodeString(p.DeploymentInfo.Manifest)
+		if err != nil {
+			return err
+		}
+
+		p.DeploymentInfo.Manifest = string(manifest)
+	}
+
+	p.AppPath, err = p.Fetcher.Fetch(p.DeploymentInfo.ArtifactURL, p.DeploymentInfo.Manifest)
+	if err != nil {
+		return err
+	}
+
+	instances := manifestro.GetInstances(p.DeploymentInfo.Manifest)
+	if instances != nil {
+		p.DeploymentInfo.Instances = *instances
+	}
 
 	err = p.pushApplication(tempAppWithUUID, p.AppPath)
 	if err != nil {

@@ -15,6 +15,7 @@ type PusherCreator struct {
 	Courier      I.Courier
 	EventManager I.EventManager
 	Logger       I.Logger
+	Fetcher      I.Fetcher
 }
 
 type StopperCreator struct {
@@ -34,6 +35,7 @@ func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFCon
 		FoundationURL:  foundationURL,
 		AppPath:        appPath,
 		Environment:    environment,
+		Fetcher:        a.Fetcher,
 	}
 
 	return p, nil

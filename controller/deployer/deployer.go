@@ -2,7 +2,6 @@
 package deployer
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,7 +17,6 @@ import (
 	"github.com/compozed/deployadactyl/config"
 	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
-	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
 	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
@@ -117,7 +115,6 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 		environments           = d.Config.Environments
 		authenticationRequired = environments[environment].Authenticate
 		deployEventData        = S.DeployEventData{}
-		manifest               []byte
 		appPath                string
 	)
 	deploymentInfo = &S.DeploymentInfo{}
@@ -153,28 +150,15 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 		password = d.Config.Password
 	}
 
+	deploymentLogger.Debug("deploying from json request")
+	deploymentLogger.Debug("building deploymentInfo")
+	deploymentInfo, err = getDeploymentInfo(req.Body)
+	if err != nil {
+		deploymentLogger.Error(err)
+		return http.StatusInternalServerError, deploymentInfo, err
+	}
+
 	if contentType.JSON {
-		deploymentLogger.Debug("deploying from json request")
-		deploymentLogger.Debug("building deploymentInfo")
-		deploymentInfo, err = getDeploymentInfo(req.Body)
-		if err != nil {
-			deploymentLogger.Error(err)
-			return http.StatusInternalServerError, deploymentInfo, err
-		}
-
-		if deploymentInfo.Manifest != "" {
-			manifest, err = base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
-			if err != nil {
-				deploymentLogger.Error(err)
-				return http.StatusBadRequest, deploymentInfo, ManifestError{err}
-			}
-		}
-
-		appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, string(manifest))
-		if err != nil {
-			deploymentLogger.Error(err)
-			return http.StatusInternalServerError, deploymentInfo, err
-		}
 
 	} else if contentType.ZIP {
 		deploymentLogger.Debug("deploying from zip request")
@@ -183,7 +167,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 			return http.StatusInternalServerError, deploymentInfo, err
 		}
 
-		manifest, _ = d.FileSystem.ReadFile(appPath + "/manifest.yml")
+		//manifest, _ := d.FileSystem.ReadFile(appPath + "/manifest.yml")
 
 		deploymentInfo.ArtifactURL = appPath
 	} else {
@@ -198,18 +182,11 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	deploymentInfo.AppName = appName
 	deploymentInfo.UUID = uuid
 	deploymentInfo.SkipSSL = environments[environment].SkipSSL
-	deploymentInfo.Manifest = string(manifest)
 	deploymentInfo.Domain = environments[environment].Domain
 	deploymentInfo.AppPath = appPath
 	deploymentInfo.CustomParams = make(map[string]interface{})
 	deploymentInfo.CustomParams = environments[environment].CustomParams
-
-	instances := manifestro.GetInstances(deploymentInfo.Manifest)
-	if instances != nil {
-		deploymentInfo.Instances = *instances
-	} else {
-		deploymentInfo.Instances = environments[environment].Instances
-	}
+	deploymentInfo.Instances = environments[environment].Instances
 
 	// TODO This next block looks like dead code as the check already occurred at the beginning of the function
 	e, found := environments[deploymentInfo.Environment]

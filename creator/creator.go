@@ -185,6 +185,7 @@ func (c Creator) PusherCreator() (I.ActionCreator, error) {
 		Courier:      courier,
 		EventManager: c.CreateEventManager(),
 		Logger:       c.CreateLogger(),
+		Fetcher:      c.createFetcher(),
 	}, nil
 }
 

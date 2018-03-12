@@ -1,8 +1,9 @@
 package interfaces
 
 import (
-	S "github.com/compozed/deployadactyl/structs"
 	"io"
+
+	S "github.com/compozed/deployadactyl/structs"
 )
 
 type Action interface {

@@ -25,8 +25,35 @@ func (c Courier) Login(foundationURL, username, password, org, space string, ski
 	return c.Executor.Execute("login", "-a", foundationURL, "-u", username, "-p", password, "-o", org, "-s", space, s)
 }
 
+func (c Courier) CreateService(service, plan, name string) ([]byte, error) {
+	return c.Executor.Execute("create-service", service, plan, name)
+}
+
+func (c Courier) BindService(appName, dbName string) ([]byte, error) {
+	return c.Executor.Execute("bind-service", appName, dbName)
+}
+
+func (c Courier) UnbindService(appName, dbName string) ([]byte, error) {
+	return c.Executor.Execute("unbind-service", appName, dbName)
+}
+
+func (c Courier) DeleteService(serviceName string) ([]byte, error) {
+	return c.Executor.Execute("delete-service", serviceName, "-f")
+}
+
+func (c Courier) Restage(appName string) ([]byte, error) {
+	return c.Executor.Execute("restage", appName)
+}
+
+func (c Courier) Start(appName string) ([]byte, error) {
+	return c.Executor.Execute("start", appName)
+}
+
+func (c Courier) Stop(appName string) ([]byte, error) {
+	return c.Executor.Execute("stop", appName)
+}
+
 // Delete runs the Cloud Foundry delete command.
-//
 // Returns the combined standard output and standard error.
 func (c Courier) Delete(appName string) ([]byte, error) {
 	return c.Executor.Execute("delete", appName, "-f")

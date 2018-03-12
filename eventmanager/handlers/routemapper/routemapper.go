@@ -32,7 +32,7 @@ type route struct {
 // OnEvent is triggered by the EventManager and maps additional
 // routes from the manifest. It will check if the route is a domain
 // in the foundation.
-func (r RouteMapper) OnEvent(event S.Event) error {
+func (r RouteMapper) OnEvent(event I.Event) error {
 	r.Log.Debugf("starting route mapper")
 
 	var (

@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer/prechecker"
 	"github.com/compozed/deployadactyl/mocks"
 	S "github.com/compozed/deployadactyl/structs"
 
+	I "github.com/compozed/deployadactyl/interfaces"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -22,8 +22,8 @@ var _ = Describe("Prechecker", func() {
 			prechecker     Prechecker
 			eventManager   *mocks.EventManager
 			testServer     *httptest.Server
-			environment    config.Environment
-			event          S.Event
+			environment    S.Environment
+			event          I.Event
 		)
 
 		BeforeEach(func() {
@@ -37,7 +37,7 @@ var _ = Describe("Prechecker", func() {
 				w.WriteHeader(httpStatus)
 			}))
 
-			environment = config.Environment{
+			environment = S.Environment{
 				Foundations: []string{testServer.URL},
 			}
 		})
@@ -50,7 +50,7 @@ var _ = Describe("Prechecker", func() {
 			It("returns an error and emits an event", func() {
 				environment.Foundations = nil
 
-				event = S.Event{
+				event = I.Event{
 					Type: "validate.foundationsUnavailable",
 					Data: S.PrecheckerEventData{
 						Environment: environment,
@@ -70,7 +70,7 @@ var _ = Describe("Prechecker", func() {
 			It("returns an error and emits an event", func() {
 				environment.Foundations = []string{"bork"}
 
-				event = S.Event{
+				event = I.Event{
 					Type: "validate.foundationsUnavailable",
 					Data: S.PrecheckerEventData{
 						Environment: environment,
@@ -97,7 +97,7 @@ var _ = Describe("Prechecker", func() {
 
 		Context("when a foundation returns a 500 internal server error", func() {
 			It("returns an error and emits an event", func() {
-				event = S.Event{
+				event = I.Event{
 					Type: "validate.foundationsUnavailable",
 					Data: S.PrecheckerEventData{
 						Environment: environment,
@@ -117,7 +117,7 @@ var _ = Describe("Prechecker", func() {
 
 		Context("when a foundation returns a 404 not found", func() {
 			It("returns an error and emits an event", func() {
-				event = S.Event{
+				event = I.Event{
 					Type: "validate.foundationsUnavailable",
 					Data: S.PrecheckerEventData{
 						Environment: environment,

@@ -2,26 +2,26 @@ package bluegreen
 
 import I "github.com/compozed/deployadactyl/interfaces"
 
-func newActor(pusher I.Pusher, foundationURL string) actor {
-	commands := make(chan actorCommand)
+func NewActor(action I.Action) actor {
+	commands := make(chan ActorCommand)
 	errs := make(chan error)
 
 	go func() {
 		for command := range commands {
-			errs <- command(pusher, foundationURL)
+			errs <- command(action)
 		}
 		close(errs)
 	}()
 
 	return actor{
-		commands: commands,
-		errs:     errs,
+		Commands: commands,
+		Errs:     errs,
 	}
 }
 
 type actor struct {
-	commands chan<- actorCommand
-	errs     <-chan error
+	Commands chan<- ActorCommand
+	Errs     <-chan error
 }
 
-type actorCommand func(pusher I.Pusher, foundationURL string) error
+type ActorCommand func(action I.Action) error

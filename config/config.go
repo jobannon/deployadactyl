@@ -8,33 +8,26 @@ import (
 	"strings"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	"github.com/compozed/deployadactyl/geterrors"
+	"github.com/compozed/deployadactyl/interfaces"
+	s "github.com/compozed/deployadactyl/structs"
 )
 
 const defaultConfigPath = "./config.yml"
 
 // Config is a representation of a config yaml. It can contain multiple Environments.
 type Config struct {
-	Username     string
-	Password     string
-	Environments map[string]Environment
-	Port         int
-}
-
-// Environment is representation of a single environment configuration.
-type Environment struct {
-	Name           string
-	Domain         string
-	Foundations    []string `yaml:",flow"`
-	Authenticate   bool
-	SkipSSL        bool `yaml:"skip_ssl"`
-	Instances      uint16
-	EnableRollback bool                   `yaml:"rollback_enabled"`
-	CustomParams   map[string]interface{} `yaml:"custom_params"`
+	Username      string
+	Password      string
+	Environments  map[string]s.Environment
+	Port          int
+	ErrorMatchers []interfaces.ErrorMatcher
 }
 
 type configYaml struct {
-	Environments []Environment `yaml:",flow"`
+	Environments       []s.Environment            `yaml:",flow"`
+	MatcherDescriptors []s.ErrorMatcherDescriptor `yaml:"error_matchers,flow"`
 }
 
 type foundationYaml struct {
@@ -43,23 +36,30 @@ type foundationYaml struct {
 
 // Default returns a new Config struct with information from environment variables and the default config file (./config.yml).
 func Default(getenv func(string) string) (Config, error) {
-	environments, err := getEnvironmentsFromFile(defaultConfigPath)
-	if err != nil {
-		return Config{}, err
-	}
-	return createConfig(getenv, environments)
+	return Custom(getenv, defaultConfigPath)
 }
 
 // Custom returns a new Config struct with information from environment variables and a custom config file.
 func Custom(getenv func(string) string, configPath string) (Config, error) {
-	environments, err := getEnvironmentsFromFile(configPath)
+	foundationConfig, err := parseConfig(configPath)
 	if err != nil {
 		return Config{}, err
 	}
-	return createConfig(getenv, environments)
+
+	environments, err := getEnvironmentsFromConfig(foundationConfig)
+	if err != nil {
+		return Config{}, err
+	}
+
+	errormatchers := getErrorMatchersFromConfig(foundationConfig)
+	if err != nil {
+		return Config{}, err
+	}
+
+	return createConfig(getenv, environments, errormatchers)
 }
 
-func createConfig(getenv func(string) string, environments map[string]Environment) (Config, error) {
+func createConfig(getenv func(string) string, environments map[string]s.Environment, errormatchers []interfaces.ErrorMatcher) (Config, error) {
 	getter := geterrors.WrapFunc(getenv)
 
 	username := getter.Get("CF_USERNAME")
@@ -75,10 +75,11 @@ func createConfig(getenv func(string) string, environments map[string]Environmen
 	}
 
 	config := Config{
-		Username:     username,
-		Password:     password,
-		Port:         port,
-		Environments: environments,
+		Username:      username,
+		Password:      password,
+		Port:          port,
+		Environments:  environments,
+		ErrorMatchers: errormatchers,
 	}
 	return config, nil
 }
@@ -97,22 +98,29 @@ func getPortFromEnv(getenv func(string) string) (int, error) {
 	return cfgPort, nil
 }
 
-func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
-	file, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
+func getErrorMatchersFromConfig(foundationConfig configYaml) []interfaces.ErrorMatcher {
 
-	foundationConfig, err := parseYamlFromBody(file)
-	if err != nil {
-		return nil, err
+	matchers := make([]interfaces.ErrorMatcher, 0, 0)
+
+	if foundationConfig.MatcherDescriptors != nil || len(foundationConfig.MatcherDescriptors) > 0 {
+		factory := error_finder.ErrorMatcherFactory{}
+		for _, descriptor := range foundationConfig.MatcherDescriptors {
+			matcher, err := factory.CreateErrorMatcher(descriptor)
+			if err == nil {
+				matchers = append(matchers, matcher)
+			}
+		}
 	}
+	return matchers
+}
+
+func getEnvironmentsFromConfig(foundationConfig configYaml) (map[string]s.Environment, error) {
 
 	if foundationConfig.Environments == nil || len(foundationConfig.Environments) == 0 {
 		return nil, EnvironmentsNotSpecifiedError{}
 	}
 
-	environments := map[string]Environment{}
+	environments := map[string]s.Environment{}
 	for _, environment := range foundationConfig.Environments {
 		if environment.Name == "" || environment.Foundations == nil || len(environment.Foundations) == 0 {
 			return nil, MissingParameterError{}
@@ -126,6 +134,19 @@ func getEnvironmentsFromFile(filename string) (map[string]Environment, error) {
 	}
 
 	return environments, nil
+}
+
+func parseConfig(configPath string) (configYaml, error) {
+	file, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		return configYaml{}, err
+	}
+
+	foundationConfig, err := parseYamlFromBody(file)
+	if err != nil {
+		return configYaml{}, err
+	}
+	return foundationConfig, nil
 }
 
 func parseYamlFromBody(data []byte) (configYaml, error) {

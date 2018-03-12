@@ -34,7 +34,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	defer a.FileSystem.Remove(artifactFile.Name())
 
 	var client = &http.Client{
-		Timeout: 4 * time.Minute,
+		Timeout: 15 * time.Minute,
 		Transport: &http.Transport{
 			Dial: (&net.Dialer{
 				Timeout:   60 * time.Second,

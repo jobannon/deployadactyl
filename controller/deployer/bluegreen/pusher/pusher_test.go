@@ -84,14 +84,17 @@ var _ = Describe("Pusher", func() {
 			EventManager:   eventManager,
 			Response:       response,
 			Log:            logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
+			FoundationURL:  randomFoundationURL,
+			AppPath:        randomAppPath,
+			Environment:    S.Environment{EnableRollback: true},
 		}
 	})
 
-	Describe("logging in", func() {
+	Describe("Initially", func() {
 		Context("when login succeeds", func() {
 			It("gives the correct info to the courier", func() {
 
-				Expect(pusher.Login(randomFoundationURL)).To(Succeed())
+				Expect(pusher.Initially()).To(Succeed())
 
 				Expect(courier.LoginCall.Received.FoundationURL).To(Equal(randomFoundationURL))
 				Expect(courier.LoginCall.Received.Username).To(Equal(randomUsername))
@@ -104,7 +107,7 @@ var _ = Describe("Pusher", func() {
 			It("writes the output of the courier to the response", func() {
 				courier.LoginCall.Returns.Output = []byte("login succeeded")
 
-				Expect(pusher.Login(randomFoundationURL)).To(Succeed())
+				Expect(pusher.Initially()).To(Succeed())
 
 				Eventually(response).Should(Say("login succeeded"))
 			})
@@ -115,7 +118,7 @@ var _ = Describe("Pusher", func() {
 				courier.LoginCall.Returns.Output = []byte("login output")
 				courier.LoginCall.Returns.Error = errors.New("login error")
 
-				err := pusher.Login(randomFoundationURL)
+				err := pusher.Initially()
 				Expect(err).To(MatchError(LoginError{randomFoundationURL, []byte("login output")}))
 			})
 
@@ -123,7 +126,7 @@ var _ = Describe("Pusher", func() {
 				courier.LoginCall.Returns.Output = []byte("login output")
 				courier.LoginCall.Returns.Error = errors.New("login error")
 
-				err := pusher.Login(randomFoundationURL)
+				err := pusher.Initially()
 				Expect(err).To(HaveOccurred())
 
 				Eventually(response).Should(Say("login output"))
@@ -132,7 +135,7 @@ var _ = Describe("Pusher", func() {
 			It("logs an error", func() {
 				courier.LoginCall.Returns.Error = errors.New("login error")
 
-				err := pusher.Login(randomFoundationURL)
+				err := pusher.Initially()
 				Expect(err).To(HaveOccurred())
 
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("could not login to %s", randomFoundationURL)))
@@ -140,12 +143,12 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("pushing an app", func() {
+	Describe("Execute", func() {
 		Context("when the push succeeds", func() {
 			It("pushes the new app", func() {
 				courier.PushCall.Returns.Output = []byte("push succeeded")
 
-				Expect(pusher.Push(randomAppPath, randomFoundationURL)).To(Succeed())
+				Expect(pusher.Execute()).To(Succeed())
 
 				Expect(courier.PushCall.Received.AppName).To(Equal(tempAppWithUUID))
 				Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
@@ -165,7 +168,7 @@ var _ = Describe("Pusher", func() {
 			It("returns an error", func() {
 				courier.PushCall.Returns.Error = errors.New("push error")
 
-				err := pusher.Push(randomAppPath, randomFoundationURL)
+				err := pusher.Execute()
 
 				Expect(err).To(MatchError(PushError{}))
 			})
@@ -175,7 +178,7 @@ var _ = Describe("Pusher", func() {
 				courier.PushCall.Returns.Error = errors.New("push error")
 				courier.LogsCall.Returns.Output = []byte("cf logs")
 
-				Expect(pusher.Push(randomAppPath, randomFoundationURL)).ToNot(Succeed())
+				Expect(pusher.Execute()).ToNot(Succeed())
 
 				Eventually(response).Should(Say("push output"))
 				Eventually(response).Should(Say("cf logs"))
@@ -191,7 +194,7 @@ var _ = Describe("Pusher", func() {
 					courier.PushCall.Returns.Error = pushErr
 					courier.LogsCall.Returns.Error = logsErr
 
-					err := pusher.Push(randomAppPath, randomFoundationURL)
+					err := pusher.Execute()
 
 					Expect(err).To(MatchError(CloudFoundryGetLogsError{pushErr, logsErr}))
 				})
@@ -201,7 +204,7 @@ var _ = Describe("Pusher", func() {
 		Describe("mapping the load balanced route to the temporary application", func() {
 			Context("when a domain is provided", func() {
 				It("maps the route to the app", func() {
-					Expect(pusher.Push(randomAppPath, randomFoundationURL)).To(Succeed())
+					Expect(pusher.Execute()).To(Succeed())
 
 					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
 					Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
@@ -225,7 +228,7 @@ var _ = Describe("Pusher", func() {
 						Log:            logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
 					}
 
-					Expect(pusher.Push(randomAppPath, randomFoundationURL)).To(Succeed())
+					Expect(pusher.Execute()).To(Succeed())
 
 					Expect(courier.MapRouteCall.Received.AppName).To(BeEmpty())
 					Expect(courier.MapRouteCall.Received.Domain).To(BeEmpty())
@@ -241,7 +244,7 @@ var _ = Describe("Pusher", func() {
 					courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("unable to map route"))
 					courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
-					err := pusher.Push(randomAppPath, randomFoundationURL)
+					err := pusher.Execute()
 					Expect(err).To(MatchError(MapRouteError{[]byte("unable to map route")}))
 
 					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
@@ -253,9 +256,9 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("finishing a push", func() {
+	Describe("Success", func() {
 		It("renames the newly pushed app to the original name", func() {
-			Expect(pusher.FinishPush()).To(Succeed())
+			Expect(pusher.Success()).To(Succeed())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
 			Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(randomAppName))
@@ -268,7 +271,7 @@ var _ = Describe("Pusher", func() {
 				courier.RenameCall.Returns.Output = []byte("rename output")
 				courier.RenameCall.Returns.Error = errors.New("rename error")
 
-				err := pusher.FinishPush()
+				err := pusher.Success()
 				Expect(err).To(MatchError(RenameError{randomAppName + TemporaryNameSuffix + randomUUID, []byte("rename output")}))
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
@@ -284,13 +287,13 @@ var _ = Describe("Pusher", func() {
 			})
 
 			It("checks the application exists", func() {
-				Expect(pusher.FinishPush()).To(Succeed())
+				Expect(pusher.Success()).To(Succeed())
 
 				Expect(courier.ExistsCall.Received.AppName).To(Equal(randomAppName))
 			})
 
 			It("unmaps the load balanced route", func() {
-				Expect(pusher.FinishPush()).To(Succeed())
+				Expect(pusher.Success()).To(Succeed())
 
 				Expect(courier.UnmapRouteCall.Received.AppName).To(Equal(randomAppName))
 				Expect(courier.UnmapRouteCall.Received.Domain).To(Equal(randomDomain))
@@ -300,7 +303,7 @@ var _ = Describe("Pusher", func() {
 			})
 
 			It("deletes the original application ", func() {
-				Expect(pusher.FinishPush()).To(Succeed())
+				Expect(pusher.Success()).To(Succeed())
 
 				Expect(courier.DeleteCall.Received.AppName).To(Equal(randomAppName))
 
@@ -319,7 +322,7 @@ var _ = Describe("Pusher", func() {
 						Log:            logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
 					}
 
-					pusher.FinishPush()
+					pusher.Success()
 
 					Expect(courier.UnmapRouteCall.Received.AppName).To(BeEmpty())
 					Expect(courier.UnmapRouteCall.Received.Domain).To(BeEmpty())
@@ -332,7 +335,7 @@ var _ = Describe("Pusher", func() {
 					courier.UnmapRouteCall.Returns.Output = []byte("unmap output")
 					courier.UnmapRouteCall.Returns.Error = errors.New("Unmap Error")
 
-					err := pusher.FinishPush()
+					err := pusher.Success()
 					Expect(err).To(MatchError(UnmapRouteError{randomAppName, []byte("unmap output")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not unmap %s", randomAppName)))
@@ -345,7 +348,7 @@ var _ = Describe("Pusher", func() {
 					courier.DeleteCall.Returns.Output = []byte("delete output")
 					courier.DeleteCall.Returns.Error = errors.New("delete error")
 
-					err := pusher.FinishPush()
+					err := pusher.Success()
 					Expect(err).To(MatchError(DeleteApplicationError{randomAppName, []byte("delete output")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not delete %s", randomAppName)))
@@ -357,7 +360,7 @@ var _ = Describe("Pusher", func() {
 			It("does not delete the non-existant original application", func() {
 				courier.ExistsCall.Returns.Bool = false
 
-				err := pusher.FinishPush()
+				err := pusher.Success()
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(courier.DeleteCall.Received.AppName).To(BeEmpty())
@@ -367,19 +370,20 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("undoing a push", func() {
+	Describe("Undo", func() {
 		Context("when the app exists", func() {
 			BeforeEach(func() {
 				courier.ExistsCall.Returns.Bool = true
 			})
 
 			It("check that the app exists", func() {
-				Expect(pusher.UndoPush()).To(Succeed())
+				Expect(pusher.Undo()).To(Succeed())
 				Expect(courier.ExistsCall.Received.AppName).To(Equal(randomAppName))
 			})
 
 			It("deletes the app that was pushed", func() {
-				Expect(pusher.UndoPush()).To(Succeed())
+
+				Expect(pusher.Undo()).To(Succeed())
 
 				Expect(courier.DeleteCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
 
@@ -392,7 +396,7 @@ var _ = Describe("Pusher", func() {
 					courier.DeleteCall.Returns.Output = []byte("delete call output")
 					courier.DeleteCall.Returns.Error = errors.New("delete error")
 
-					err := pusher.UndoPush()
+					err := pusher.Undo()
 					Expect(err).To(MatchError(DeleteApplicationError{tempAppWithUUID, []byte("delete call output")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not delete %s", tempAppWithUUID)))
@@ -402,7 +406,7 @@ var _ = Describe("Pusher", func() {
 
 		Context("when the app does not exist", func() {
 			It("renames the newly built app to the intended application name", func() {
-				Expect(pusher.UndoPush()).To(Succeed())
+				Expect(pusher.Undo()).To(Succeed())
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
 				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(randomAppName))
@@ -415,7 +419,7 @@ var _ = Describe("Pusher", func() {
 					courier.RenameCall.Returns.Error = errors.New("rename error")
 					courier.RenameCall.Returns.Output = []byte("rename error")
 
-					err := pusher.UndoPush()
+					err := pusher.Undo()
 					Expect(err).To(MatchError(RenameError{tempAppWithUUID, []byte("rename error")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not rename %s to %s", tempAppWithUUID, randomAppName)))
@@ -424,24 +428,30 @@ var _ = Describe("Pusher", func() {
 		})
 	})
 
-	Describe("cleaning up temporary directories", func() {
+	Describe("Finally", func() {
 		It("is successful", func() {
 			courier.CleanUpCall.Returns.Error = nil
 
-			Expect(pusher.CleanUp()).To(Succeed())
+			Expect(pusher.Finally()).To(Succeed())
+		})
+	})
+
+	Describe("Verify", func() {
+		It("returns nil", func() {
+			Expect(pusher.Verify()).To(BeNil())
 		})
 	})
 
 	Describe("event handling", func() {
 		Context("when a PushFinishedEvent is emitted", func() {
 			It("does not return an error", func() {
-				Expect(pusher.Push(randomAppPath, randomFoundationURL)).To(Succeed())
+				Expect(pusher.Execute()).To(Succeed())
 
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.PushFinishedEvent))
 			})
 
 			It("has the temporary app name on the event", func() {
-				Expect(pusher.Push(randomAppPath, randomFoundationURL)).To(Succeed())
+				Expect(pusher.Execute()).To(Succeed())
 
 				Expect(eventManager.EmitCall.Received.Events[0].Data.(S.PushEventData).TempAppWithUUID).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
 			})
@@ -451,7 +461,7 @@ var _ = Describe("Pusher", func() {
 			It("returns an error", func() {
 				eventManager.EmitCall.Returns.Error[0] = errors.New("event manager error")
 
-				err := pusher.Push(randomAppPath, randomFoundationURL)
+				err := pusher.Execute()
 				Expect(err).To(MatchError("event manager error"))
 
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.PushFinishedEvent))

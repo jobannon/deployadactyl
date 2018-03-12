@@ -6,3 +6,4 @@ coverage.txt
 config.yml
 .config
 *.coverprofile
+.idea

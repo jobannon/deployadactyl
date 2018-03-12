@@ -22,21 +22,24 @@ type Pusher struct {
 	EventManager   I.EventManager
 	Response       io.ReadWriter
 	Log            I.Logger
+	FoundationURL  string
+	AppPath        string
+	Environment    S.Environment
 }
 
 // Login will login to a Cloud Foundry instance.
-func (p Pusher) Login(foundationURL string) error {
+func (p Pusher) Initially() error {
 	p.Log.Debugf(
 		`logging into cloud foundry with parameters:
 		foundation URL: %+v
 		username: %+v
 		org: %+v
 		space: %+v`,
-		foundationURL, p.DeploymentInfo.Username, p.DeploymentInfo.Org, p.DeploymentInfo.Space,
+		p.FoundationURL, p.DeploymentInfo.Username, p.DeploymentInfo.Org, p.DeploymentInfo.Space,
 	)
 
 	output, err := p.Courier.Login(
-		foundationURL,
+		p.FoundationURL,
 		p.DeploymentInfo.Username,
 		p.DeploymentInfo.Password,
 		p.DeploymentInfo.Org,
@@ -45,11 +48,11 @@ func (p Pusher) Login(foundationURL string) error {
 	)
 	p.Response.Write(output)
 	if err != nil {
-		p.Log.Errorf("could not login to %s", foundationURL)
-		return LoginError{foundationURL, output}
+		p.Log.Errorf("could not login to %s", p.FoundationURL)
+		return LoginError{p.FoundationURL, output}
 	}
 
-	p.Log.Infof("logged into cloud foundry %s", foundationURL)
+	p.Log.Infof("logged into cloud foundry %s", p.FoundationURL)
 
 	return nil
 }
@@ -60,14 +63,19 @@ func (p Pusher) Login(foundationURL string) error {
 // It will map a load balanced domain if provided in the config.yml.
 //
 // Returns Cloud Foundry logs if there is an error.
-func (p Pusher) Push(appPath, foundationURL string) error {
+
+func (p Pusher) Verify() error {
+	return nil
+}
+
+func (p Pusher) Execute() error {
 
 	var (
 		tempAppWithUUID = p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID
 		err             error
 	)
 
-	err = p.pushApplication(tempAppWithUUID, appPath)
+	err = p.pushApplication(tempAppWithUUID, p.AppPath)
 	if err != nil {
 		return err
 	}
@@ -81,15 +89,15 @@ func (p Pusher) Push(appPath, foundationURL string) error {
 
 	p.Log.Debugf("emitting a %s event", C.PushFinishedEvent)
 	pushData := S.PushEventData{
-		AppPath:         appPath,
-		FoundationURL:   foundationURL,
+		AppPath:         p.AppPath,
+		FoundationURL:   p.FoundationURL,
 		TempAppWithUUID: tempAppWithUUID,
 		DeploymentInfo:  &p.DeploymentInfo,
 		Courier:         p.Courier,
 		Response:        p.Response,
 	}
 
-	err = p.EventManager.Emit(S.Event{Type: C.PushFinishedEvent, Data: pushData})
+	err = p.EventManager.Emit(I.Event{Type: C.PushFinishedEvent, Data: pushData})
 	if err != nil {
 		return err
 	}
@@ -100,7 +108,7 @@ func (p Pusher) Push(appPath, foundationURL string) error {
 
 // FinishPush will delete the original application if it existed. It will always
 // rename the the newly pushed application to the appName.
-func (p Pusher) FinishPush() error {
+func (p Pusher) Success() error {
 	if p.Courier.Exists(p.DeploymentInfo.AppName) {
 		err := p.unMapLoadBalancedRoute()
 		if err != nil {
@@ -124,32 +132,37 @@ func (p Pusher) FinishPush() error {
 // UndoPush is only called when a Push fails. If it is not the first deployment, UndoPush will
 // delete the temporary application that was pushed.
 // If is the first deployment, UndoPush will rename the failed push to have the appName.
-func (p Pusher) UndoPush() error {
+func (p Pusher) Undo() error {
 
 	tempAppWithUUID := p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID
+	if !p.Environment.EnableRollback {
+		p.Log.Errorf("Failed to deploy, deployment not rolled back due to EnableRollback=false")
 
-	if p.Courier.Exists(p.DeploymentInfo.AppName) {
-		p.Log.Errorf("rolling back deploy of %s", tempAppWithUUID)
-
-		err := p.deleteApplication(tempAppWithUUID)
-		if err != nil {
-			return err
-		}
-
+		return p.Success()
 	} else {
-		p.Log.Errorf("app %s did not previously exist: not rolling back", p.DeploymentInfo.AppName)
 
-		err := p.renameNewBuildToOriginalAppName()
-		if err != nil {
-			return err
+		if p.Courier.Exists(p.DeploymentInfo.AppName) {
+			p.Log.Errorf("rolling back deploy of %s", tempAppWithUUID)
+
+			err := p.deleteApplication(tempAppWithUUID)
+			if err != nil {
+				return err
+			}
+
+		} else {
+			p.Log.Errorf("app %s did not previously exist: not rolling back", p.DeploymentInfo.AppName)
+
+			err := p.renameNewBuildToOriginalAppName()
+			if err != nil {
+				return err
+			}
 		}
 	}
-
 	return nil
 }
 
 // CleanUp removes the temporary directory created by the Executor.
-func (p Pusher) CleanUp() error {
+func (p Pusher) Finally() error {
 	return p.Courier.CleanUp()
 }
 

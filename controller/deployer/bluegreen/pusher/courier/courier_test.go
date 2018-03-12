@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier"
+	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	. "github.com/onsi/ginkgo"
@@ -16,7 +17,7 @@ var _ = Describe("Courier", func() {
 		appName  string
 		hostname string
 		output   string
-		courier  Courier
+		courier  interfaces.Courier
 		executor *mocks.Executor
 	)
 
@@ -67,6 +68,36 @@ var _ = Describe("Courier", func() {
 			executor.ExecuteCall.Returns.Error = nil
 
 			out, err := courier.Login(foundationURL, user, password, org, space, skipSSL)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
+	Describe("starting an app", func() {
+		It("should send a valid Cloud Foundry start command", func() {
+			expectedArgs := []string{"start", appName}
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.Start(appName)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
+	Describe("stopping an app", func() {
+		It("should send a valid Cloud Foundry stop command", func() {
+			expectedArgs := []string{"stop", appName}
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.Stop(appName)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
@@ -253,6 +284,100 @@ var _ = Describe("Courier", func() {
 			executor.ExecuteCall.Returns.Error = nil
 
 			out, err := courier.Cups(appName, body)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
+	Describe("creating a service", func() {
+		It("should create the database", func() {
+			var (
+				service      = "service-" + randomizer.StringRunes(10)
+				plan         = "plan-" + randomizer.StringRunes(10)
+				name         = "name-" + randomizer.StringRunes(10)
+				expectedArgs = []string{"create-service", service, plan, name}
+			)
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.CreateService(service, plan, name)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
+	Describe("binding a service", func() {
+		It("should bind the service to the app", func() {
+			var (
+				appName      = "appName-" + randomizer.StringRunes(10)
+				serviceName  = "serviceName-" + randomizer.StringRunes(10)
+				expectedArgs = []string{"bind-service", appName, serviceName}
+			)
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.BindService(appName, serviceName)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
+	Describe("unbinding a service", func() {
+		It("should unbind the service from the app", func() {
+			var (
+				appName      = "appName-" + randomizer.StringRunes(10)
+				serviceName  = "dbName-" + randomizer.StringRunes(10)
+				expectedArgs = []string{"unbind-service", appName, serviceName}
+			)
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.UnbindService(appName, serviceName)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
+	Describe("deleting a service", func() {
+		It("should delete the service", func() {
+			var (
+				serviceName  = "serviceName-" + randomizer.StringRunes(10)
+				expectedArgs = []string{"delete-service", serviceName, "-f"}
+			)
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.DeleteService(serviceName)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))
+			Expect(string(out)).To(Equal(output))
+		})
+	})
+
+	Describe("restage an app", func() {
+		It("should restage the app with the bound service", func() {
+			var (
+				appName      = "appName-" + randomizer.StringRunes(10)
+				expectedArgs = []string{"restage", appName}
+			)
+
+			executor.ExecuteCall.Returns.Output = []byte(output)
+			executor.ExecuteCall.Returns.Error = nil
+
+			out, err := courier.Restage(appName)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(executor.ExecuteCall.Received.Args).To(Equal(expectedArgs))

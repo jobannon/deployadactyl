@@ -18,14 +18,14 @@ var _ = Describe("Env_Var_Handler", func() {
 		eventHandler Envvarhandler
 		logBuffer    *gbytes.Buffer
 		log          I.Logger
-		event        S.Event
+		event        I.Event
 		filesystem   = &afero.Afero{Fs: afero.NewMemMapFs()}
 	)
 
 	BeforeEach(func() {
 		logBuffer = gbytes.NewBuffer()
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")
-		event = S.Event{Type: "test-event", Data: S.DeployEventData{}}
+		event = I.Event{Type: "test-event", Data: S.DeployEventData{}}
 		eventHandler = Envvarhandler{Logger: log, FileSystem: filesystem}
 	})
 

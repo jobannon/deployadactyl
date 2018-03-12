@@ -25,7 +25,7 @@ import (
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
-const ENDPOINT = "/v1/deploy/:environment/:org/:space/:appName"
+const ENDPOINT = "/v2/deploy/:environment/:org/:space/:appName"
 
 // Handmade Creator mock.
 // Uses a mock prechecker to skip verifying the foundations are up and running.
@@ -71,15 +71,16 @@ func (c Creator) CreateControllerHandler() *gin.Engine {
 	r.Use(gin.LoggerWithWriter(c.CreateWriter()))
 	r.Use(gin.ErrorLogger())
 
-	r.POST(ENDPOINT, d.Deploy)
+	r.POST(ENDPOINT, d.RunDeploymentViaHttp)
 
 	return r
 }
 
 func (c Creator) CreateController() controller.Controller {
 	return controller.Controller{
-		Deployer: c.CreateDeployer(),
-		Log:      c.CreateLogger(),
+		Deployer:       c.CreateDeployer(),
+		SilentDeployer: c.CreateSilentDeployer(),
+		Log:            c.CreateLogger(),
 	}
 }
 
@@ -89,8 +90,10 @@ func (c Creator) CreateRandomizer() I.Randomizer {
 
 func (c Creator) CreateDeployer() I.Deployer {
 	return deployer.Deployer{
-		Config:      c.CreateConfig(),
-		BlueGreener: c.CreateBlueGreener(),
+		Config:         c.CreateConfig(),
+		BlueGreener:    c.CreateBlueGreener(),
+		PusherCreator:  c.CreatePusherCreator(),
+		StopperCreator: c.CreateStopperCreator(),
 		Fetcher: &artifetcher.Artifetcher{
 			FileSystem: c.CreateFileSystem(),
 			Extractor: &extractor.Extractor{
@@ -108,6 +111,21 @@ func (c Creator) CreateDeployer() I.Deployer {
 	}
 }
 
+func (c Creator) CreatePusherCreator() I.ActionCreator {
+	return &creatorPusherMock{
+		EventManager: c.CreateEventManager(),
+		Log:          c.CreateLogger(),
+	}
+}
+
+func (c Creator) CreateStopperCreator() I.ActionCreator {
+	return &StopperCreator{}
+}
+
+func (c Creator) CreateSilentDeployer() I.Deployer {
+	return deployer.SilentDeployer{}
+}
+
 func (c Creator) createFetcher() I.Fetcher {
 	return &artifetcher.Artifetcher{
 		FileSystem: c.CreateFileSystem(),
@@ -119,7 +137,7 @@ func (c Creator) createFetcher() I.Fetcher {
 	}
 }
 
-func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (I.Pusher, error) {
+func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 	courier := &Courier{}
 
 	courier.LoginCall.Returns.Output = []byte("logged in\t")
@@ -135,6 +153,8 @@ func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadW
 		EventManager:   c.CreateEventManager(),
 		Response:       response,
 		Log:            c.CreateLogger(),
+		FoundationURL:  foundationURL,
+		AppPath:        appPath,
 	}
 
 	return p, nil
@@ -162,8 +182,7 @@ func (c Creator) CreateWriter() io.Writer {
 
 func (c Creator) CreateBlueGreener() I.BlueGreener {
 	return bluegreen.BlueGreen{
-		PusherCreator: c,
-		Log:           c.CreateLogger(),
+		Log: c.CreateLogger(),
 	}
 }
 
@@ -172,7 +191,9 @@ func (c Creator) CreateFileSystem() *afero.Afero {
 }
 
 func (c Creator) createErrorFinder() I.ErrorFinder {
-	return &error_finder.ErrorFinder{}
+	return &error_finder.ErrorFinder{
+		Matchers: c.config.ErrorMatchers,
+	}
 }
 
 func getLevel(level string) (logging.Level, error) {
@@ -185,4 +206,48 @@ func getLevel(level string) (logging.Level, error) {
 	}
 
 	return logging.INFO, nil
+}
+
+type creatorPusherMock struct {
+	EventManager I.EventManager
+	Log          I.Logger
+}
+
+func (c creatorPusherMock) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
+	courier := &Courier{}
+
+	courier.LoginCall.Returns.Output = []byte("logged in\t")
+	courier.DeleteCall.Returns.Output = []byte("deleted app\t")
+	courier.PushCall.Returns.Output = []byte("pushed app\t")
+	courier.RenameCall.Returns.Output = []byte("renamed app\t")
+	courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route\t"))
+	courier.ExistsCall.Returns.Bool = true
+
+	p := &pusher.Pusher{
+		Courier:        courier,
+		DeploymentInfo: deploymentInfo,
+		EventManager:   c.EventManager,
+		Response:       response,
+		Log:            c.Log,
+		FoundationURL:  foundationURL,
+		AppPath:        appPath,
+	}
+
+	return p, nil
+}
+
+func (c creatorPusherMock) InitiallyError(initiallyErrors []error) error {
+	return bluegreen.LoginError{LoginErrors: initiallyErrors}
+}
+
+func (c creatorPusherMock) ExecuteError(executeErrors []error) error {
+	return bluegreen.PushError{PushErrors: executeErrors}
+}
+
+func (c creatorPusherMock) UndoError(executeErrors, undoErrors []error) error {
+	return bluegreen.RollbackError{PushErrors: executeErrors, RollbackErrors: undoErrors}
+}
+
+func (c creatorPusherMock) SuccessError(successErrors []error) error {
+	return bluegreen.FinishPushError{FinishPushError: successErrors}
 }

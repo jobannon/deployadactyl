@@ -11,137 +11,153 @@ import (
 
 	"os"
 
-	"log"
-
-	"crypto/tls"
+	"encoding/base64"
 
 	I "github.com/compozed/deployadactyl/interfaces"
+
 	"github.com/gin-gonic/gin"
 )
 
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
-	Deployer I.Deployer
-	Log      I.Logger
+	Deployer       I.Deployer
+	SilentDeployer I.Deployer
+	Log            I.Logger
 }
 
-type DeployResponse struct {
-	StatusCode int
-	Error      error
-}
+func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
 
-// Deploy checks the request content type and passes it to the Deployer.
-func (c *Controller) Deploy(g *gin.Context) {
-	c.Log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
+	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
+	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 
-	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
-	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(bodyBuffer))
-	bodySilent := ioutil.NopCloser(bytes.NewBuffer(bodyBuffer))
-	reqChannel1 := make(chan DeployResponse)
-	reqChannel2 := make(chan DeployResponse)
+	headers := http.Header{}
+	if deployment.Authorization.Username != "" && deployment.Authorization.Password != "" {
+		headers["Authorization"] = []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(deployment.Authorization.Username+":"+deployment.Authorization.Password))}
+
+	} else {
+		headers["Authorization"] = []string{}
+	}
 
 	request1 := &http.Request{
-		Method:        g.Request.Method,
-		URL:           g.Request.URL,
-		Proto:         g.Request.Proto,
-		ProtoMajor:    g.Request.ProtoMajor,
-		ProtoMinor:    g.Request.ProtoMinor,
-		Header:        g.Request.Header,
-		Body:          bodyNotSilent,
-		Host:          g.Request.Host,
-		ContentLength: g.Request.ContentLength,
-		Close:         true,
+		Header: headers,
+		Body:   bodyNotSilent,
 	}
 
 	request2 := &http.Request{
-		Method:        g.Request.Method,
-		URL:           g.Request.URL,
-		Proto:         g.Request.Proto,
-		ProtoMajor:    g.Request.ProtoMajor,
-		ProtoMinor:    g.Request.ProtoMinor,
-		Header:        g.Request.Header,
-		Body:          bodySilent,
-		Host:          g.Request.Host,
-		ContentLength: g.Request.ContentLength,
-		Close:         true,
+		Header: headers,
+		Body:   bodySilent,
 	}
 
-	response := &bytes.Buffer{}
+	reqChannel1 := make(chan I.DeployResponse)
+	reqChannel2 := make(chan I.DeployResponse)
+	defer close(reqChannel1)
+	defer close(reqChannel2)
 
-	defer io.Copy(g.Writer, response)
+	cf := deployment.CFContext
+	go c.Deployer.Deploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, response, reqChannel1)
 
-	go c.NotSilentDeploy(request1, g.Param("environment"), g.Param("org"), g.Param("space"), g.Param("appName"), g.Request.Header.Get("Content-Type"), reqChannel1, response)
-
-	if g.Param("environment") == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
-		go c.SilentDeploy(request2, g.Param("org"), g.Param("space"), g.Param("appName"), reqChannel2)
+	silentResponse := &bytes.Buffer{}
+	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
+		go c.SilentDeployer.Deploy(request2, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, silentResponse, reqChannel2)
 		<-reqChannel2
 	}
 
 	deployResponse := <-reqChannel1
 
+	return deployResponse
+}
+
+func (c *Controller) StopDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
+
+	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
+	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
+
+	headers := http.Header{}
+	if deployment.Authorization.Username != "" && deployment.Authorization.Password != "" {
+		headers["Authorization"] = []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(deployment.Authorization.Username+":"+deployment.Authorization.Password))}
+
+	} else {
+		headers["Authorization"] = []string{}
+	}
+
+	request1 := &http.Request{
+		Header: headers,
+		Body:   bodyNotSilent,
+	}
+
+	request2 := &http.Request{
+		Header: headers,
+		Body:   bodySilent,
+	}
+
+	reqChannel1 := make(chan I.DeployResponse)
+	reqChannel2 := make(chan I.DeployResponse)
+	defer close(reqChannel1)
+	defer close(reqChannel2)
+
+	cf := deployment.CFContext
+	go c.Deployer.Deploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, response, reqChannel1)
+
+	silentResponse := &bytes.Buffer{}
+	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
+		go c.SilentDeployer.Deploy(request2, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, silentResponse, reqChannel2)
+		<-reqChannel2
+	}
+
+	deployResponse := <-reqChannel1
+
+	return deployResponse
+}
+
+// RunDeploymentViaHttp checks the request content type and passes it to the Deployer.
+func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
+	c.Log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
+
+	cfContext := I.CFContext{
+		Environment:  g.Param("environment"),
+		Organization: g.Param("org"),
+		Space:        g.Param("space"),
+		Application:  g.Param("appName"),
+	}
+
+	user, pwd, _ := g.Request.BasicAuth()
+	authorization := I.Authorization{
+		Username: user,
+		Password: pwd,
+	}
+
+	deploymentType := I.DeploymentType{
+		JSON: isJSON(g.Request.Header.Get("Content-Type")),
+		ZIP:  isZip(g.Request.Header.Get("Content-Type")),
+	}
+	response := &bytes.Buffer{}
+
+	deployment := I.Deployment{
+		Authorization: authorization,
+		CFContext:     cfContext,
+		Type:          deploymentType,
+	}
+	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
+	g.Request.Body.Close()
+	deployment.Body = &bodyBuffer
+
+	deployResponse := c.RunDeployment(&deployment, response)
+
+	defer io.Copy(g.Writer, response)
+
 	if deployResponse.Error != nil {
-		g.Writer.WriteHeader(http.StatusInternalServerError)
+		g.Writer.WriteHeader(deployResponse.StatusCode)
 		fmt.Fprintf(response, "cannot deploy application: %s\n", deployResponse.Error)
 		return
 	}
 
-	close(reqChannel1)
-	close(reqChannel2)
 	g.Writer.WriteHeader(deployResponse.StatusCode)
 }
 
-func (c *Controller) NotSilentDeploy(req *http.Request, environment, org, space, appName, contentType string, reqChannel chan DeployResponse, response *bytes.Buffer) {
-	deployResponse := DeployResponse{}
-	statusCode, err := c.Deployer.Deploy(
-		req,
-		environment,
-		org,
-		space,
-		appName,
-		contentType,
-		response,
-	)
-
-	if err != nil {
-		deployResponse.StatusCode = statusCode
-		deployResponse.Error = err
-		reqChannel <- deployResponse
-	}
-
-	deployResponse.StatusCode = statusCode
-	deployResponse.Error = err
-	reqChannel <- deployResponse
+func isZip(contentType string) bool {
+	return contentType == "application/zip"
 }
 
-func (c *Controller) SilentDeploy(req *http.Request, org, space, appName string, reqChannel chan DeployResponse) {
-	url := os.Getenv("SILENT_DEPLOY_URL")
-	deployResponse := DeployResponse{}
-
-	request, err := http.NewRequest("POST", fmt.Sprintf(url, org, space, appName), req.Body)
-	if err != nil {
-		log.Println(fmt.Sprintf("Silent deployer request err: %s", err))
-		deployResponse.Error = err
-		reqChannel <- deployResponse
-	}
-
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Accept", "application/json")
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-
-	client := &http.Client{Transport: tr}
-
-	resp, err := client.Do(request)
-	if err != nil {
-		log.Println(fmt.Sprintf("Silent deployer response err: %s", err))
-		deployResponse.StatusCode = resp.StatusCode
-		deployResponse.Error = err
-		reqChannel <- deployResponse
-	}
-
-	deployResponse.StatusCode = resp.StatusCode
-	deployResponse.Error = err
-	reqChannel <- deployResponse
+func isJSON(contentType string) bool {
+	return contentType == "application/json"
 }

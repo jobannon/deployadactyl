@@ -1,9 +1,13 @@
 package interfaces
 
-import S "github.com/compozed/deployadactyl/structs"
+type Event struct {
+	Type  string
+	Data  interface{}
+	Error error
+}
 
 // EventManager interface.
 type EventManager interface {
 	AddHandler(handler Handler, eventType string) error
-	Emit(event S.Event) error
+	Emit(event Event) error
 }

@@ -14,6 +14,10 @@ func (e LoginError) Error() string {
 	return fmt.Sprintf("login failed: %s", errs)
 }
 
+func (e LoginError) Code() string {
+	return "LoginError"
+}
+
 type PushError struct {
 	PushErrors []error
 }
@@ -23,8 +27,17 @@ func (e PushError) Error() string {
 	return fmt.Sprintf("push failed: %s", errs)
 }
 
+func (e PushError) Code() string {
+	return "PushError"
+}
+
 type RollbackError struct {
 	PushErrors     []error
+	RollbackErrors []error
+}
+
+type RollbackStopError struct {
+	StopErrors     []error
 	RollbackErrors []error
 }
 
@@ -37,6 +50,19 @@ func (e RollbackError) Error() string {
 	return fmt.Sprintf("push failed: %s: rollback failed: %s", pushErrs, rollbackErrors)
 }
 
+func (e RollbackStopError) Error() string {
+	var (
+		stopErrs           = makeErrorString(e.StopErrors)
+		rollbackStopErrors = makeErrorString(e.RollbackErrors)
+	)
+
+	return fmt.Sprintf("stop failed: %s: rollback failed: %s", stopErrs, rollbackStopErrors)
+}
+
+func (e RollbackError) Code() string {
+	return "RollbackError"
+}
+
 type FinishPushError struct {
 	FinishPushError []error
 }
@@ -47,6 +73,65 @@ func (e FinishPushError) Error() string {
 	)
 
 	return fmt.Sprintf("finish push failed: %s", finishPushErrors)
+}
+
+func (e FinishPushError) Code() string {
+	return "FinishPushError"
+}
+
+type StartStopError struct {
+	Err error
+}
+
+func (e StartStopError) Error() string {
+	return e.Err.Error()
+}
+
+type InitializationError struct {
+	Err error
+}
+
+func (e InitializationError) Error() string {
+	return e.Err.Error()
+}
+
+func (e InitializationError) Code() string {
+	return "InitError"
+}
+
+type FinishStopError struct {
+	FinishStopErrors []error
+}
+
+func (e FinishStopError) Error() string {
+	finishStopErrors := makeErrorString(e.FinishStopErrors)
+
+	return fmt.Sprintf("finish stop failed: %s", finishStopErrors)
+}
+
+type StopError struct {
+	Errors []error
+}
+
+func (e StopError) Error() string {
+	errs := makeErrorString(e.Errors)
+	return fmt.Sprintf("stop failed: %s", errs)
+}
+
+func (e StopError) Code() string {
+	return "StopError"
+}
+
+type FinishDeployError struct {
+	Err error
+}
+
+func (e FinishDeployError) Error() string {
+	return e.Err.Error()
+}
+
+func (e FinishDeployError) Code() string {
+	return "FinishDeployError"
 }
 
 func makeErrorString(manyErrors []error) error {

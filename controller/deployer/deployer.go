@@ -121,6 +121,13 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	if uuid == "" {
 		uuid = d.Randomizer.StringRunes(10)
 	}
+
+	e, ok := environments[environment]
+	if !ok {
+		fmt.Fprintln(response, EnvironmentNotFoundError{environment}.Error())
+		return http.StatusInternalServerError, deploymentInfo, EnvironmentNotFoundError{environment}
+	}
+
 	deploymentLogger := logger.DeploymentLogger{d.Log, uuid}
 
 	deploymentInfo = &S.DeploymentInfo{}
@@ -129,7 +136,20 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	deploymentInfo.AppName = appName
 	deploymentInfo.UUID = uuid
 	deploymentInfo.Environment = environment
+	deploymentInfo.SkipSSL = environments[environment].SkipSSL
+	deploymentInfo.Domain = environments[environment].Domain
+	deploymentInfo.CustomParams = make(map[string]interface{})
+	deploymentInfo.CustomParams = environments[environment].CustomParams
 
+	deploymentLogger.Debug("building deploymentInfo")
+
+	if contentType.JSON {
+		deploymentInfo, err = getDeploymentInfo(req.Body, deploymentInfo)
+		if err != nil {
+			deploymentLogger.Error(err)
+			return http.StatusInternalServerError, deploymentInfo, err
+		}
+	}
 	deployEventData = S.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: req.Body}
 
 	defer emitDeployFinish(d, &deployEventData, response, &err, &statusCode, deploymentLogger)
@@ -145,17 +165,6 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 	defer func() { d.FileSystem.RemoveAll(appPath) }()
 	d.Log.Debugf("Starting deploy of %s with UUID %s", appName, uuid)
-
-	e, ok := environments[environment]
-	if !ok {
-		fmt.Fprintln(response, EnvironmentNotFoundError{environment}.Error())
-		return http.StatusInternalServerError, deploymentInfo, EnvironmentNotFoundError{environment}
-	}
-
-	deploymentInfo.SkipSSL = environments[environment].SkipSSL
-	deploymentInfo.Domain = environments[environment].Domain
-	deploymentInfo.CustomParams = make(map[string]interface{})
-	deploymentInfo.CustomParams = environments[environment].CustomParams
 
 	deploymentLogger.Debug("prechecking the foundations")
 	err = d.Prechecker.AssertAllFoundationsUp(environments[environment])
@@ -176,8 +185,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 	if contentType.JSON {
 		deploymentLogger.Debug("deploying from json request")
-		deploymentLogger.Debug("building deploymentInfo")
-		deploymentInfo, err = getDeploymentInfo(req.Body, deploymentInfo)
+
 		if err != nil {
 			deploymentLogger.Error(err)
 			return http.StatusInternalServerError, deploymentInfo, err

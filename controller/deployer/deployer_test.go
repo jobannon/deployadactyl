@@ -878,12 +878,13 @@ applications:
 				Expect(response.String()).To(ContainSubstring("Deployment Parameters"))
 				Expect(response.String()).To(ContainSubstring("deploy was successful"))
 
+				Eventually(logBuffer).Should(Say("building deploymentInfo"))
+
 				Eventually(logBuffer).Should(Say("emitting a " + C.DeployStartEvent + " event"))
 
 				Eventually(logBuffer).Should(Say("prechecking the foundations"))
 				Eventually(logBuffer).Should(Say("checking for basic auth"))
 				Eventually(logBuffer).Should(Say("deploying from json request"))
-				Eventually(logBuffer).Should(Say("building deploymentInfo"))
 				Eventually(logBuffer).Should(Say("Deployment Parameters"))
 				Eventually(logBuffer).Should(Say("emitting a " + C.DeploySuccessEvent + " event"))
 				Eventually(logBuffer).Should(Say("emitting a " + C.DeployFinishEvent + " event"))

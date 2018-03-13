@@ -308,7 +308,7 @@ var _ = Describe("Deployer", func() {
 					reqChannel1 := make(chan interfaces.DeployResponse)
 					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 					deployResponse := <-reqChannel1
-					deploymentInfo := eventManager.EmitCall.Received.Events[2].Data.(S.DeployEventData).DeploymentInfo
+					deploymentInfo := eventManager.EmitCall.Received.Events[2].Data.(*S.DeployEventData).DeploymentInfo
 
 					Expect(deployResponse.Error).ToNot(HaveOccurred())
 
@@ -440,7 +440,7 @@ var _ = Describe("Deployer", func() {
 					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
 					_ = <-reqChannel1
 
-					deploymentInfo := eventManager.EmitCall.Received.Events[2].Data.(S.DeployEventData).DeploymentInfo
+					deploymentInfo := eventManager.EmitCall.Received.Events[2].Data.(*S.DeployEventData).DeploymentInfo
 
 					Eventually(logBuffer).Should(Say("emitting a " + C.ArtifactRetrievalStart + " event"))
 					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.ArtifactRetrievalStart))

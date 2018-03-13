@@ -114,7 +114,6 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	var (
 		environments           = d.Config.Environments
 		authenticationRequired = environments[environment].Authenticate
-		deployEventData        = S.DeployEventData{}
 		manifest               []byte
 		appPath                string
 	)
@@ -150,10 +149,10 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 			return http.StatusInternalServerError, deploymentInfo, err
 		}
 	}
-	deployEventData = S.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: req.Body}
+	deployEventData := &S.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: req.Body}
 
-	defer emitDeployFinish(d, &deployEventData, response, &err, &statusCode, deploymentLogger)
-	defer emitDeploySuccess(d, &deployEventData, response, &err, &statusCode, deploymentLogger)
+	defer emitDeployFinish(d, deployEventData, response, &err, &statusCode, deploymentLogger)
+	defer emitDeploySuccess(d, deployEventData, response, &err, &statusCode, deploymentLogger)
 
 	deploymentLogger.Debugf("emitting a %s event", C.DeployStartEvent)
 	err = d.EventManager.Emit(I.Event{Type: C.DeployStartEvent, Data: deployEventData})

@@ -86,6 +86,7 @@ var _ = Describe("Pusher", func() {
 			HealthCheckEndpoint: randomEndpoint,
 			ArtifactURL:         randomArtifactUrl,
 			Manifest:            randomManifest,
+			ContentType:         "JSON",
 		}
 
 		pusher = Pusher{
@@ -95,7 +96,7 @@ var _ = Describe("Pusher", func() {
 			Response:       response,
 			Log:            logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
 			FoundationURL:  randomFoundationURL,
-			AppPath:        randomAppPath,
+			AppPath:        "",
 			Environment:    S.Environment{EnableRollback: true},
 			Fetcher:        fetcher,
 		}
@@ -155,84 +156,177 @@ var _ = Describe("Pusher", func() {
 	})
 
 	Describe("Execute", func() {
-		Context("when the push succeeds", func() {
-			It("pushes the new app", func() {
-				courier.PushCall.Returns.Output = []byte("push succeeded")
-				fetcher.FetchCall.Returns.AppPath = randomAppPath
+		Context("with JSON request body", func() {
+			Context("when the push succeeds", func() {
+				It("pushes the new app", func() {
+					courier.PushCall.Returns.Output = []byte("push succeeded")
+					fetcher.FetchCall.Returns.AppPath = randomAppPath
 
-				Expect(pusher.Execute()).To(Succeed())
+					Expect(pusher.Execute()).To(Succeed())
 
-				Expect(courier.PushCall.Received.AppName).To(Equal(tempAppWithUUID))
-				Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
-				Expect(courier.PushCall.Received.Hostname).To(Equal(randomAppName))
-				Expect(courier.PushCall.Received.Instances).To(Equal(randomInstances))
+					Expect(courier.PushCall.Received.AppName).To(Equal(tempAppWithUUID))
+					Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
+					Expect(courier.PushCall.Received.Hostname).To(Equal(randomAppName))
+					Expect(courier.PushCall.Received.Instances).To(Equal(randomInstances))
 
-				Eventually(response).Should(Say("push succeeded"))
+					Eventually(response).Should(Say("push succeeded"))
 
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("pushing app %s to %s", tempAppWithUUID, randomDomain)))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", tempAppWithUUID, randomAppPath)))
-				Eventually(logBuffer).Should(Say("output from Cloud Foundry"))
-				Eventually(logBuffer).Should(Say("successfully deployed new build"))
-			})
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("pushing app %s to %s", tempAppWithUUID, randomDomain)))
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", tempAppWithUUID, randomAppPath)))
+					Eventually(logBuffer).Should(Say("output from Cloud Foundry"))
+					Eventually(logBuffer).Should(Say("successfully deployed new build"))
+				})
 
-			It("pushes the new app with instances specified in the manifest", func() {
-				courier.PushCall.Returns.Output = []byte("push succeeded")
-				fetcher.FetchCall.Returns.AppPath = randomAppPath
-				pusher.DeploymentInfo.Manifest = base64.StdEncoding.EncodeToString([]byte(`---
+				It("pushes the new app with instances specified in the manifest", func() {
+					courier.PushCall.Returns.Output = []byte("push succeeded")
+					fetcher.FetchCall.Returns.AppPath = randomAppPath
+					pusher.DeploymentInfo.Manifest = base64.StdEncoding.EncodeToString([]byte(`---
 applications:
 - name: deployadactyl
   instances: 121
 `))
 
-				Expect(pusher.Execute()).To(Succeed())
+					Expect(pusher.Execute()).To(Succeed())
 
-				Expect(courier.PushCall.Received.AppName).To(Equal(tempAppWithUUID))
-				Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
-				Expect(courier.PushCall.Received.Hostname).To(Equal(randomAppName))
-				Expect(courier.PushCall.Received.Instances).To(Equal(uint16(121)))
+					Expect(courier.PushCall.Received.AppName).To(Equal(tempAppWithUUID))
+					Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
+					Expect(courier.PushCall.Received.Hostname).To(Equal(randomAppName))
+					Expect(courier.PushCall.Received.Instances).To(Equal(uint16(121)))
 
-				Eventually(response).Should(Say("push succeeded"))
+					Eventually(response).Should(Say("push succeeded"))
 
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("pushing app %s to %s", tempAppWithUUID, randomDomain)))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", tempAppWithUUID, randomAppPath)))
-				Eventually(logBuffer).Should(Say("output from Cloud Foundry"))
-				Eventually(logBuffer).Should(Say("successfully deployed new build"))
-			})
-		})
-
-		Context("when the push fails", func() {
-			It("returns an error", func() {
-				courier.PushCall.Returns.Error = errors.New("push error")
-
-				err := pusher.Execute()
-
-				Expect(err).To(MatchError(PushError{}))
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("pushing app %s to %s", tempAppWithUUID, randomDomain)))
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", tempAppWithUUID, randomAppPath)))
+					Eventually(logBuffer).Should(Say("output from Cloud Foundry"))
+					Eventually(logBuffer).Should(Say("successfully deployed new build"))
+				})
 			})
 
-			It("gets logs from the courier", func() {
-				courier.PushCall.Returns.Output = []byte("push output")
-				courier.PushCall.Returns.Error = errors.New("push error")
-				courier.LogsCall.Returns.Output = []byte("cf logs")
-
-				Expect(pusher.Execute()).ToNot(Succeed())
-
-				Eventually(response).Should(Say("push output"))
-				Eventually(response).Should(Say("cf logs"))
-
-				Eventually(logBuffer).Should(Say("logs from"))
-			})
-
-			Context("when the courier log call fails", func() {
+			Context("when the push fails", func() {
 				It("returns an error", func() {
-					pushErr := errors.New("push error")
-					logsErr := errors.New("logs error")
-
-					courier.PushCall.Returns.Error = pushErr
-					courier.LogsCall.Returns.Error = logsErr
+					fetcher.FetchCall.Returns.AppPath = randomAppPath
+					courier.PushCall.Returns.Error = errors.New("push error")
 
 					err := pusher.Execute()
 
-					Expect(err).To(MatchError(CloudFoundryGetLogsError{pushErr, logsErr}))
+					Expect(err).To(MatchError(PushError{}))
+				})
+
+				It("returns an error when app path is empty", func() {
+					fetcher.FetchCall.Returns.AppPath = ""
+
+					err := pusher.Execute()
+
+					Expect(err).To(MatchError(AppPathError{Err: fetcher.FetchCall.Returns.Error}))
+				})
+
+				It("returns an error when manifest is empty", func() {
+					pusher.DeploymentInfo.Manifest = "I refuse to type I am a sexy monkey"
+					fetcher.FetchCall.Returns.AppPath = randomAppPath
+
+					err := pusher.Execute()
+
+					Expect(err).To(MatchError(ManifestError{}))
+				})
+
+				It("gets logs from the courier", func() {
+					fetcher.FetchCall.Returns.AppPath = randomAppPath
+					courier.PushCall.Returns.Output = []byte("push output")
+					courier.PushCall.Returns.Error = errors.New("push error")
+					courier.LogsCall.Returns.Output = []byte("cf logs")
+
+					Expect(pusher.Execute()).ToNot(Succeed())
+
+					Eventually(response).Should(Say("push output"))
+					Eventually(response).Should(Say("cf logs"))
+
+					Eventually(logBuffer).Should(Say("logs from"))
+				})
+
+				Context("when the courier log call fails", func() {
+					It("returns an error", func() {
+						fetcher.FetchCall.Returns.AppPath = randomAppPath
+						pushErr := errors.New("push error")
+						logsErr := errors.New("logs error")
+
+						courier.PushCall.Returns.Error = pushErr
+						courier.LogsCall.Returns.Error = logsErr
+
+						err := pusher.Execute()
+
+						Expect(err).To(MatchError(CloudFoundryGetLogsError{pushErr, logsErr}))
+					})
+				})
+			})
+		})
+
+		Context("with Zip request body", func() {
+			Context("when the push succeeds", func() {
+				It("pushes the new app", func() {
+					pusher.DeploymentInfo.ContentType = "ZIP"
+					courier.PushCall.Returns.Output = []byte("push succeeded")
+					fetcher.FetchFromZipCall.Returns.AppPath = randomAppPath
+
+					Expect(pusher.Execute()).To(Succeed())
+
+					Expect(courier.PushCall.Received.AppName).To(Equal(tempAppWithUUID))
+					Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
+					Expect(courier.PushCall.Received.Hostname).To(Equal(randomAppName))
+					Expect(courier.PushCall.Received.Instances).To(Equal(randomInstances))
+
+					Eventually(response).Should(Say("push succeeded"))
+
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("pushing app %s to %s", tempAppWithUUID, randomDomain)))
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", tempAppWithUUID, randomAppPath)))
+					Eventually(logBuffer).Should(Say("output from Cloud Foundry"))
+					Eventually(logBuffer).Should(Say("successfully deployed new build"))
+				})
+			})
+
+			Context("when the push fails from unzipping zip body", func() {
+				It("returns the mooseBattle error", func() {
+					pusher.DeploymentInfo.ContentType = "ZIP"
+					courier.PushCall.Returns.Output = []byte("push succeeded")
+					fetcher.FetchFromZipCall.Returns.AppPath = ""
+					fetcher.FetchFromZipCall.Returns.Error = errors.New("unzippe error")
+
+					err := pusher.Execute()
+
+					Expect(err).To(MatchError(UnzippingError{Err: fetcher.FetchFromZipCall.Returns.Error}))
+				})
+			})
+		})
+
+		Context("with other besides zip and json request body type", func() {
+			Context("when the push succeeds", func() {
+				It("pushes the new app", func() {
+					pusher.DeploymentInfo.ContentType = "ZIP"
+					courier.PushCall.Returns.Output = []byte("push succeeded")
+					fetcher.FetchFromZipCall.Returns.AppPath = randomAppPath
+
+					Expect(pusher.Execute()).To(Succeed())
+
+					Expect(courier.PushCall.Received.AppName).To(Equal(tempAppWithUUID))
+					Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
+					Expect(courier.PushCall.Received.Hostname).To(Equal(randomAppName))
+					Expect(courier.PushCall.Received.Instances).To(Equal(randomInstances))
+
+					Eventually(response).Should(Say("push succeeded"))
+
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("pushing app %s to %s", tempAppWithUUID, randomDomain)))
+					Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", tempAppWithUUID, randomAppPath)))
+					Eventually(logBuffer).Should(Say("output from Cloud Foundry"))
+					Eventually(logBuffer).Should(Say("successfully deployed new build"))
+				})
+			})
+
+			Context("when the push fails from unzipping zip body", func() {
+				It("returns the mooseBattle error", func() {
+					pusher.DeploymentInfo.ContentType = "other"
+
+					err := pusher.Execute()
+
+					Expect(err).To(MatchError(InvalidContentTypeError{}))
 				})
 			})
 		})
@@ -240,6 +334,7 @@ applications:
 		Describe("mapping the load balanced route to the temporary application", func() {
 			Context("when a domain is provided", func() {
 				It("maps the route to the app", func() {
+					fetcher.FetchCall.Returns.AppPath = randomAppPath
 					Expect(pusher.Execute()).To(Succeed())
 
 					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
@@ -279,6 +374,7 @@ applications:
 
 			Context("when MapRoute fails", func() {
 				It("returns an error", func() {
+					fetcher.FetchCall.Returns.AppPath = randomAppPath
 					courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("unable to map route"))
 					courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
@@ -483,12 +579,14 @@ applications:
 	Describe("event handling", func() {
 		Context("when a PushFinishedEvent is emitted", func() {
 			It("does not return an error", func() {
+				fetcher.FetchCall.Returns.AppPath = randomAppPath
 				Expect(pusher.Execute()).To(Succeed())
 
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.PushFinishedEvent))
 			})
 
 			It("has the temporary app name on the event", func() {
+				fetcher.FetchCall.Returns.AppPath = randomAppPath
 				Expect(pusher.Execute()).To(Succeed())
 
 				Expect(eventManager.EmitCall.Received.Events[0].Data.(S.PushEventData).TempAppWithUUID).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
@@ -497,6 +595,7 @@ applications:
 
 		Context("when an event fails", func() {
 			It("returns an error", func() {
+				fetcher.FetchCall.Returns.AppPath = randomAppPath
 				eventManager.EmitCall.Returns.Error[0] = errors.New("event manager error")
 
 				err := pusher.Execute()

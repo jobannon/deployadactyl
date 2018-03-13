@@ -94,20 +94,12 @@ func (c Creator) CreateDeployer() I.Deployer {
 		BlueGreener:    c.CreateBlueGreener(),
 		PusherCreator:  c.CreatePusherCreator(),
 		StopperCreator: c.CreateStopperCreator(),
-		Fetcher: &artifetcher.Artifetcher{
-			FileSystem: c.CreateFileSystem(),
-			Extractor: &extractor.Extractor{
-				Log:        c.CreateLogger(),
-				FileSystem: c.CreateFileSystem(),
-			},
-			Log: c.CreateLogger(),
-		},
-		Prechecker:   c.CreatePrechecker(),
-		EventManager: c.CreateEventManager(),
-		Randomizer:   c.CreateRandomizer(),
-		Log:          c.CreateLogger(),
-		FileSystem:   c.CreateFileSystem(),
-		ErrorFinder:  c.createErrorFinder(),
+		Prechecker:     c.CreatePrechecker(),
+		EventManager:   c.CreateEventManager(),
+		Randomizer:     c.CreateRandomizer(),
+		Log:            c.CreateLogger(),
+		FileSystem:     c.CreateFileSystem(),
+		ErrorFinder:    c.createErrorFinder(),
 	}
 }
 
@@ -115,6 +107,7 @@ func (c Creator) CreatePusherCreator() I.ActionCreator {
 	return &creatorPusherMock{
 		EventManager: c.CreateEventManager(),
 		Log:          c.CreateLogger(),
+		Fetcher:      c.CreateFetcher(),
 	}
 }
 
@@ -126,7 +119,7 @@ func (c Creator) CreateSilentDeployer() I.Deployer {
 	return deployer.SilentDeployer{}
 }
 
-func (c Creator) createFetcher() I.Fetcher {
+func (c Creator) CreateFetcher() I.Fetcher {
 	return &artifetcher.Artifetcher{
 		FileSystem: c.CreateFileSystem(),
 		Extractor: &extractor.Extractor{
@@ -155,6 +148,7 @@ func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadW
 		Log:            c.CreateLogger(),
 		FoundationURL:  foundationURL,
 		AppPath:        appPath,
+		Fetcher:        c.CreateFetcher(),
 	}
 
 	return p, nil
@@ -211,6 +205,9 @@ func getLevel(level string) (logging.Level, error) {
 type creatorPusherMock struct {
 	EventManager I.EventManager
 	Log          I.Logger
+	Fetcher      I.Fetcher
+	logger       I.Logger
+	fileSystem   *afero.Afero
 }
 
 func (c creatorPusherMock) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
@@ -231,6 +228,7 @@ func (c creatorPusherMock) Create(deploymentInfo S.DeploymentInfo, cfContext I.C
 		Log:            c.Log,
 		FoundationURL:  foundationURL,
 		AppPath:        appPath,
+		Fetcher:        c.createFetcher(),
 	}
 
 	return p, nil
@@ -250,4 +248,23 @@ func (c creatorPusherMock) UndoError(executeErrors, undoErrors []error) error {
 
 func (c creatorPusherMock) SuccessError(successErrors []error) error {
 	return bluegreen.FinishPushError{FinishPushError: successErrors}
+}
+
+func (c creatorPusherMock) createFetcher() I.Fetcher {
+	return &artifetcher.Artifetcher{
+		FileSystem: c.CreateFileSystem(),
+		Extractor: &extractor.Extractor{
+			Log:        c.CreateLogger(),
+			FileSystem: c.CreateFileSystem(),
+		},
+		Log: c.CreateLogger(),
+	}
+}
+
+func (c creatorPusherMock) CreateFileSystem() *afero.Afero {
+	return &afero.Afero{Fs: afero.NewMemMapFs()}
+}
+
+func (c creatorPusherMock) CreateLogger() I.Logger {
+	return logger.DefaultLogger(GinkgoWriter, logging.INFO, "creatorPusherMock")
 }

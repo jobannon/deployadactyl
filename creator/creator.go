@@ -165,7 +165,6 @@ func (c Creator) createDeployer() (I.Deployer, error) {
 		BlueGreener:    c.createBlueGreener(),
 		PusherCreator:  pusherCreator,
 		StopperCreator: stopperCreator,
-		Fetcher:        c.createFetcher(),
 		Prechecker:     c.createPrechecker(),
 		EventManager:   c.CreateEventManager(),
 		Randomizer:     c.createRandomizer(),

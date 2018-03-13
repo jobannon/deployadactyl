@@ -77,25 +77,29 @@ func (p Pusher) Execute() error {
 	var (
 		tempAppWithUUID = p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID
 		err             error
+		instances       *uint16
 	)
 
-	if p.DeploymentInfo.Manifest != "" {
-		manifest, err := base64.StdEncoding.DecodeString(p.DeploymentInfo.Manifest)
+	if p.DeploymentInfo.ContentType == "JSON" {
+		p.AppPath, p.DeploymentInfo.Manifest, instances, err = p.setupJsonAppInfo()
+		p.DeploymentInfo.AppPath = p.AppPath
 		if err != nil {
 			return err
 		}
 
-		p.DeploymentInfo.Manifest = string(manifest)
-	}
+		if instances != nil {
+			p.DeploymentInfo.Instances = *instances
+		}
 
-	p.AppPath, err = p.Fetcher.Fetch(p.DeploymentInfo.ArtifactURL, p.DeploymentInfo.Manifest)
-	if err != nil {
-		return err
-	}
+	} else if p.DeploymentInfo.ContentType == "ZIP" {
+		p.AppPath, err = p.setupZipAppInfo()
+		p.DeploymentInfo.AppPath = p.AppPath
+		if err != nil {
+			return err
+		}
 
-	instances := manifestro.GetInstances(p.DeploymentInfo.Manifest)
-	if instances != nil {
-		p.DeploymentInfo.Instances = *instances
+	} else {
+		return InvalidContentTypeError{}
 	}
 
 	err = p.pushApplication(tempAppWithUUID, p.AppPath)
@@ -281,4 +285,39 @@ func (p Pusher) renameNewBuildToOriginalAppName() error {
 	p.Log.Infof("renamed %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
 
 	return nil
+}
+
+func (p Pusher) setupJsonAppInfo() (string, string, *uint16, error) {
+	var (
+		err            error
+		manifestString string
+		instances      *uint16
+	)
+
+	if p.DeploymentInfo.Manifest != "" {
+		manifest, err := base64.StdEncoding.DecodeString(p.DeploymentInfo.Manifest)
+		if err != nil {
+			return "", "", instances, ManifestError{}
+		}
+		manifestString = string(manifest)
+	}
+
+	appPath, err := p.Fetcher.Fetch(p.DeploymentInfo.ArtifactURL, manifestString)
+	if err != nil || appPath == "" {
+		return "", "", instances, AppPathError{Err: err}
+	}
+
+	instances = manifestro.GetInstances(manifestString)
+
+	return appPath, manifestString, instances, err
+}
+
+func (p Pusher) setupZipAppInfo() (string, error) {
+
+	appPath, err := p.Fetcher.FetchZipFromRequest(p.DeploymentInfo.DeployRequest)
+	if err != nil {
+		return "", UnzippingError{Err: err}
+	}
+
+	return appPath, nil
 }

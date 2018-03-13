@@ -1,6 +1,10 @@
 // Package structs contains structs that are reused in multiple locations.
 package structs
 
+import (
+	"net/http"
+)
+
 // DeploymentInfo is a collection of properties necessary for a deployment.
 type DeploymentInfo struct {
 	ArtifactURL          string `json:"artifact_url"`
@@ -16,6 +20,8 @@ type DeploymentInfo struct {
 	Instances            uint16
 	Domain               string
 	AppPath              string
+	ContentType          string
+	DeployRequest        *http.Request
 	EnvironmentVariables map[string]string `json:"environment_variables"`
 	HealthCheckEndpoint  string            `json:"health_check_endpoint"`
 	CustomParams         map[string]interface{}

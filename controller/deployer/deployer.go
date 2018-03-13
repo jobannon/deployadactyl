@@ -83,7 +83,6 @@ type Deployer struct {
 	BlueGreener    I.BlueGreener
 	PusherCreator  I.ActionCreator
 	StopperCreator I.ActionCreator
-	Fetcher        I.Fetcher
 	Prechecker     I.Prechecker
 	EventManager   I.EventManager
 	Randomizer     I.Randomizer
@@ -123,7 +122,6 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 		uuid = d.Randomizer.StringRunes(10)
 	}
 
-	defer func() { d.FileSystem.RemoveAll(appPath) }()
 	d.Log.Debugf("Starting deploy of %s with UUID %s", appName, uuid)
 	deploymentLogger := logger.DeploymentLogger{d.Log, uuid}
 
@@ -150,26 +148,22 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 		password = d.Config.Password
 	}
 
-	deploymentLogger.Debug("deploying from json request")
-	deploymentLogger.Debug("building deploymentInfo")
-	deploymentInfo, err = getDeploymentInfo(req.Body)
-	if err != nil {
-		deploymentLogger.Error(err)
-		return http.StatusInternalServerError, deploymentInfo, err
-	}
-
 	if contentType.JSON {
+		deploymentLogger.Debug("deploying from json request")
+		deploymentLogger.Debug("building deploymentInfo")
+		deploymentInfo, err = getDeploymentInfo(req.Body)
+
+		if err != nil {
+			deploymentLogger.Error(err)
+			return http.StatusInternalServerError, deploymentInfo, err
+		}
+		deploymentInfo.ContentType = "JSON"
 
 	} else if contentType.ZIP {
 		deploymentLogger.Debug("deploying from zip request")
-		appPath, err = d.Fetcher.FetchZipFromRequest(req)
-		if err != nil {
-			return http.StatusInternalServerError, deploymentInfo, err
-		}
+		deploymentInfo.DeployRequest = req
+		deploymentInfo.ContentType = "ZIP"
 
-		//manifest, _ := d.FileSystem.ReadFile(appPath + "/manifest.yml")
-
-		deploymentInfo.ArtifactURL = appPath
 	} else {
 		return http.StatusBadRequest, deploymentInfo, InvalidContentTypeError{}
 	}
@@ -188,18 +182,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	deploymentInfo.CustomParams = environments[environment].CustomParams
 	deploymentInfo.Instances = environments[environment].Instances
 
-	// TODO This next block looks like dead code as the check already occurred at the beginning of the function
-	e, found := environments[deploymentInfo.Environment]
-	if !found {
-		err = d.EventManager.Emit(I.Event{Type: C.DeployErrorEvent, Data: deployEventData})
-		if err != nil {
-			deploymentLogger.Error(err)
-		}
-
-		err = fmt.Errorf("environment not found: %s", deploymentInfo.Environment)
-		deploymentLogger.Error(err)
-		return http.StatusInternalServerError, deploymentInfo, err
-	}
+	defer func() { d.FileSystem.RemoveAll(deploymentInfo.AppPath) }()
 
 	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
 	deploymentLogger.Info(deploymentMessage)

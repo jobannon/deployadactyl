@@ -187,7 +187,6 @@ var _ = Describe("Deployer", func() {
 			blueGreener,
 			pusherCreator,
 			stopperCreator,
-			fetcher,
 			prechecker,
 			eventManager,
 			randomizerMock,
@@ -346,39 +345,6 @@ var _ = Describe("Deployer", func() {
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
 				Expect(deployResponse.DeploymentInfo.UUID).ToNot(Equal(uuid))
 
-			})
-		})
-	})
-
-	Describe("deploying with a zip file in the request body", func() {
-		Context("when manifest file cannot be found in the extracted zip", func() {
-			It("deploys successfully and returns http.StatusOK because manifest is optional", func() {
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				Expect(deployResponse.Error).To(BeNil())
-
-				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
-				Expect(response.String()).To(ContainSubstring("deploy was successful"))
-			})
-		})
-
-		Describe("fetching an artifact from the request body", func() {
-			Context("when Fetcher fails", func() {
-				It("returns an error and http.StatusInternalServerError", func() {
-					fetcher.FetchFromZipCall.Returns.AppPath = ""
-					fetcher.FetchFromZipCall.Returns.Error = errors.New("fetcher error")
-
-					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
-					deployResponse := <-reqChannel1
-
-					Expect(deployResponse.Error).To(MatchError("fetcher error"))
-
-					Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				})
 			})
 		})
 	})
@@ -607,7 +573,7 @@ var _ = Describe("Deployer", func() {
 			})
 		})
 
-		XContext("when BlueGreener fails during a deploy with a zip file in the request body", func() {
+		Context("when BlueGreener fails during a deploy with a zip file in the request body", func() {
 			It("returns an error and a http.StatusInternalServerError", func() {
 				Expect(af.WriteFile(testManifestLocation+"/manifest.yml", []byte(testManifest), 0644)).To(Succeed())
 
@@ -624,9 +590,8 @@ var _ = Describe("Deployer", func() {
 				Expect(deployResponse.Error).To(Equal(expectedError))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				Expect(blueGreener.ExecuteCall.Received.AppPath).To(Equal(testManifestLocation))
-				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
-				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.ArtifactURL).To(ContainSubstring(testManifestLocation))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.DeployRequest).To(Equal(req))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.ContentType).To(Equal("ZIP"))
 			})
 		})
 
@@ -637,6 +602,7 @@ var _ = Describe("Deployer", func() {
 				blueGreener.ExecuteCall.Returns.Error = bluegreen.InitializationError{Err: errors.New("blue green error")}
 
 				deploymentInfo.Manifest = base64Manifest
+				deploymentInfo.ContentType = "JSON"
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
@@ -655,6 +621,7 @@ var _ = Describe("Deployer", func() {
 				expectedError := bluegreen.PushError{[]error{errors.New("blue green error")}}
 				blueGreener.ExecuteCall.Returns.Error = expectedError
 				deploymentInfo.Manifest = base64Manifest
+				deploymentInfo.ContentType = "JSON"
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
@@ -676,7 +643,6 @@ var _ = Describe("Deployer", func() {
 				blueGreener,
 				pusherCreator,
 				stopperCreator,
-				fetcher,
 				prechecker,
 				eventManager,
 				randomizerMock,
@@ -707,6 +673,7 @@ var _ = Describe("Deployer", func() {
 				fetcher.FetchCall.Returns.AppPath = appPath
 
 				deploymentInfo.Manifest = base64Manifest
+				deploymentInfo.ContentType = "JSON"
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
@@ -738,7 +705,7 @@ var _ = Describe("Deployer", func() {
 		})
 	})
 
-	XDescribe("happy path deploying with a zip file in the request body", func() {
+	Describe("happy path deploying with a zip file in the request body", func() {
 		Context("when no errors occur", func() {
 			It("accepts the request and returns http.StatusOK", func() {
 				Expect(af.WriteFile(testManifestLocation+"/manifest.yml", []byte(testManifest), 0644)).To(Succeed())
@@ -765,14 +732,12 @@ var _ = Describe("Deployer", func() {
 				Eventually(logBuffer).Should(Say("emitting a " + C.DeployFinishEvent + " event"))
 
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environment]))
-				Expect(fetcher.FetchFromZipCall.Received.Request).To(Equal(req))
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
 				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
 				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.DeployFinishEvent))
 				Expect(blueGreener.ExecuteCall.Received.Environment).To(Equal(environments[environment]))
-				Expect(blueGreener.ExecuteCall.Received.AppPath).To(Equal(testManifestLocation))
-				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
-				//Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.ArtifactURL).To(ContainSubstring(testManifestLocation))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.Org).To(Equal(org))
+				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.ContentType).To(Equal("ZIP"))
 			})
 		})
 	})
@@ -810,7 +775,6 @@ var _ = Describe("Deployer", func() {
 					blueGreener,
 					pusherCreator,
 					stopperCreator,
-					fetcher,
 					prechecker,
 					eventManager,
 					randomizerMock,

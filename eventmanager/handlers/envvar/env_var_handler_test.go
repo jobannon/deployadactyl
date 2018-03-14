@@ -25,7 +25,7 @@ var _ = Describe("Env_Var_Handler", func() {
 	BeforeEach(func() {
 		logBuffer = gbytes.NewBuffer()
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")
-		event = I.Event{Type: "test-event", Data: S.DeployEventData{}}
+		event = I.Event{Type: "test-event", Data: &S.DeployEventData{}}
 		eventHandler = Envvarhandler{Logger: log, FileSystem: filesystem}
 	})
 

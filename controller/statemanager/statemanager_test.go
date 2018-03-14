@@ -10,8 +10,6 @@ import (
 
 	"bytes"
 	"errors"
-	"net/http"
-
 	"github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
@@ -21,6 +19,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
+	"net/http"
 )
 
 var _ = Describe("StateManager", func() {
@@ -447,7 +446,7 @@ var _ = Describe("StateManager", func() {
 				}
 
 				expectedError := errors.New("stop failed")
-				blueGreener.ExecuteCall.Returns.Error = expectedError
+				blueGreener.StopCall.Returns.Error = expectedError
 
 				statusCode, _, err := manager.Stop(context, uuid, auth, response)
 

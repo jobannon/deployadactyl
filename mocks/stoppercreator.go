@@ -4,9 +4,8 @@ import (
 	"github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
 
-	"io"
-
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
+	"io"
 )
 
 type receivedCall struct {

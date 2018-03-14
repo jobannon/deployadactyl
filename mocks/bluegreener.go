@@ -21,11 +21,24 @@ type BlueGreener struct {
 			Out            io.Writer
 		}
 		Returns struct {
+			Error I.DeploymentError
+		}
+	}
+	StopCall struct {
+		Received struct {
+			ActionCreator  I.ActionCreator
+			Environment    S.Environment
+			AppPath        string
+			DeploymentInfo S.DeploymentInfo
+			Out            io.Writer
+		}
+		Returns struct {
 			Error error
 		}
 	}
 }
 
+// Push mock method.
 func (b *BlueGreener) Execute(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
 	b.ExecuteCall.Received.ActionCreator = actionCreator
 	b.ExecuteCall.Received.Environment = environment
@@ -37,4 +50,14 @@ func (b *BlueGreener) Execute(actionCreator I.ActionCreator, environment S.Envir
 		bytes.NewBufferString(b.ExecuteCall.Write).WriteTo(out)
 	}
 	return b.ExecuteCall.Returns.Error
+}
+
+func (b *BlueGreener) Stop(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+	b.StopCall.Received.ActionCreator = actionCreator
+	b.StopCall.Received.Environment = environment
+	b.StopCall.Received.AppPath = appPath
+	b.StopCall.Received.DeploymentInfo = deploymentInfo
+	b.StopCall.Received.Out = out
+
+	return b.StopCall.Returns.Error
 }

@@ -1,11 +1,10 @@
 package startstopper
 
 import (
-	"io"
-
 	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	I "github.com/compozed/deployadactyl/interfaces"
+	"io"
 )
 
 type Stopper struct {

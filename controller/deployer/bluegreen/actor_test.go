@@ -2,7 +2,6 @@ package bluegreen_test
 
 import (
 	"errors"
-
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"

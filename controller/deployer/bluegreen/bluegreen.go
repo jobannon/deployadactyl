@@ -16,6 +16,11 @@ type BlueGreen struct {
 	Log I.Logger
 }
 
+func (bg BlueGreen) Stop(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+
+	return bg.Execute(actionCreator, environment, appPath, deploymentInfo, out)
+}
+
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
 // If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
 func (bg BlueGreen) Execute(actionCreator I.ActionCreator, environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) error {

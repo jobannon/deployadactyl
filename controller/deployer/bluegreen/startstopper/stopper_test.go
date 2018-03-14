@@ -14,7 +14,6 @@ import (
 	"github.com/op/go-logging"
 
 	"fmt"
-
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/startstopper"
 	"github.com/compozed/deployadactyl/interfaces"
 	. "github.com/onsi/ginkgo"

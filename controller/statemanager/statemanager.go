@@ -5,8 +5,6 @@ import (
 	"io"
 	"net/http"
 
-	"regexp"
-
 	"github.com/compozed/deployadactyl/config"
 	C "github.com/compozed/deployadactyl/constants"
 	E "github.com/compozed/deployadactyl/controller/deployer"
@@ -14,6 +12,7 @@ import (
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
+	"regexp"
 )
 
 const (
@@ -78,7 +77,7 @@ func (s *StateManager) Stop(context interfaces.CFContext, uuid string, auth inte
 		return http.StatusInternalServerError, deploymentInfo, E.EventError{Type: C.StopStartEvent, Err: err}
 	}
 
-	err = s.BlueGreener.Execute(s.StopperCreator, e, "", *deploymentInfo, response)
+	err = s.BlueGreener.Stop(s.StopperCreator, e, "", *deploymentInfo, response)
 
 	if err != nil {
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {

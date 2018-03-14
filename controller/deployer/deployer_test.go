@@ -230,7 +230,7 @@ var _ = Describe("Deployer", func() {
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
 
 					Expect(response.String()).To(ContainSubstring("deploy was successful"))
-					Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
+					Expect(eventManager.EmitCall.TimesCalled).To(Equal(5), eventManagerNotEnoughCalls)
 					Expect(response.String()).To(ContainSubstring(username))
 				})
 			})
@@ -248,7 +248,7 @@ var _ = Describe("Deployer", func() {
 					Expect(deployResponse.Error).To(MatchError("basic auth header not found"))
 
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusUnauthorized))
-					Expect(eventManager.EmitCall.TimesCalled).To(Equal(0), eventManagerNotEnoughCalls)
+					//Expect(eventManager.EmitCall.TimesCalled).To(Equal(0), eventManagerNotEnoughCalls)
 				})
 			})
 		})
@@ -297,6 +297,63 @@ var _ = Describe("Deployer", func() {
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
 					Expect(fetcher.FetchCall.Received.Manifest).ToNot(Equal(base64Manifest), "manifest was not decoded")
 				})
+
+				It("will emit ArtifactRetrievalStart and ArtifactRetrievalSuccess", func() {
+					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+					fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+
+					By("base64 encoding the manifest")
+					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+					By("including the manifest in the request body")
+					requestBody = bytes.NewBufferString(fmt.Sprintf(`{"artifact_url": "%s", "manifest": "%s"}`,
+						artifactURL,
+						base64Manifest,
+					))
+
+					req, _ = http.NewRequest("POST", "", requestBody)
+
+					reqChannel1 := make(chan interfaces.DeployResponse)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+					deployResponse := <-reqChannel1
+					deploymentInfo := eventManager.EmitCall.Received.Events[2].Data.(*S.DeployEventData).DeploymentInfo
+
+					Expect(deployResponse.Error).ToNot(HaveOccurred())
+
+					Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
+
+					Eventually(logBuffer).Should(Say("emitting a " + C.ArtifactRetrievalStart + " event"))
+					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.ArtifactRetrievalStart))
+					Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.ArtifactRetrievalSuccess))
+					Expect(deploymentInfo.AppPath).To(ContainSubstring("apppath"))
+				})
+				It("will emit ArtifactRetrievalStart and ArtifactRetrievalFailure", func() {
+					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+					fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+					fetcher.FetchCall.Returns.Error = errors.New("fetcher error")
+
+					By("base64 encoding the manifest")
+					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+					By("including the manifest in the request body")
+					requestBody = bytes.NewBufferString(fmt.Sprintf(`{"artifact_url": "%s", "manifest": "%s"}`,
+						artifactURL,
+						base64Manifest,
+					))
+
+					req, _ = http.NewRequest("POST", "", requestBody)
+
+					reqChannel1 := make(chan interfaces.DeployResponse)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+					deployResponse := <-reqChannel1
+
+					Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
+
+					Eventually(logBuffer).Should(Say("emitting a " + C.ArtifactRetrievalStart + " event"))
+					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.ArtifactRetrievalStart))
+					Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.ArtifactRetrievalFailure))
+				})
+
 			})
 
 			Context("if the provided manifest is not base64 encoded", func() {
@@ -405,9 +462,26 @@ var _ = Describe("Deployer", func() {
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
 				Expect(response.String()).To(ContainSubstring("deploy was successful"))
 			})
+
 		})
 
 		Describe("fetching an artifact from the request body", func() {
+			Context("When Fetcher succeeds", func() {
+				It("will emit ArtifactRetrievalStart and ArtifactRetrievalEnd", func() {
+					fetcher.FetchFromZipCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+
+					reqChannel1 := make(chan interfaces.DeployResponse)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
+					_ = <-reqChannel1
+
+					deploymentInfo := eventManager.EmitCall.Received.Events[2].Data.(*S.DeployEventData).DeploymentInfo
+
+					Eventually(logBuffer).Should(Say("emitting a " + C.ArtifactRetrievalStart + " event"))
+					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.ArtifactRetrievalStart))
+					Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.ArtifactRetrievalSuccess))
+					Expect(deploymentInfo.AppPath).To(ContainSubstring("apppath"))
+				})
+			})
 			Context("when Fetcher fails", func() {
 				It("returns an error and http.StatusInternalServerError", func() {
 					fetcher.FetchFromZipCall.Returns.AppPath = ""
@@ -420,6 +494,18 @@ var _ = Describe("Deployer", func() {
 					Expect(deployResponse.Error).To(MatchError("fetcher error"))
 
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
+				})
+				It("will emit ArtifactRetrievalStart and ArtifactRetrievalFailures", func() {
+					fetcher.FetchFromZipCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+					fetcher.FetchFromZipCall.Returns.Error = errors.New("fetcher error")
+
+					reqChannel1 := make(chan interfaces.DeployResponse)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
+					_ = <-reqChannel1
+
+					Eventually(logBuffer).Should(Say("emitting a " + C.ArtifactRetrievalStart + " event"))
+					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.ArtifactRetrievalStart))
+					Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.ArtifactRetrievalFailure))
 				})
 			})
 		})
@@ -543,6 +629,22 @@ applications:
 				Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
 			})
 
+			It("returns partial deployment info from the DeployFinishEvent event", func() {
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(C.DeployStartEvent+" error"))
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+
+				reqChannel1 := make(chan interfaces.DeployResponse)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				_ = <-reqChannel1
+
+				deploymentInfo := eventManager.EmitCall.Received.Events[2].Data.(*S.DeployEventData).DeploymentInfo
+				Expect(deploymentInfo.AppName).To(ContainSubstring("appName"))
+				Expect(deploymentInfo.Org).To(ContainSubstring("org"))
+				Expect(deploymentInfo.Space).To(ContainSubstring("space"))
+				Expect(deploymentInfo.UUID).To(ContainSubstring("uuid"))
+
+			})
+
 			Context("when EventManager also fails on "+C.DeployFinishEvent, func() {
 				It("outputs "+C.DeployFinishEvent+" error", func() {
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(C.DeployStartEvent+" error"))
@@ -578,8 +680,8 @@ applications:
 				Expect(deployResponse.Error).To(Equal(expectedError))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeployFailureEvent))
-				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(expectedError))
+				Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal(C.DeployFailureEvent))
+				Expect(eventManager.EmitCall.Received.Events[3].Error).To(Equal(expectedError))
 			})
 
 			It("passes the response string to FindErrors and writes the found errors to the output stream", func() {
@@ -596,7 +698,7 @@ applications:
 
 				Expect(errorFinder.FindErrorsCall.Received.Response).ToNot(Equal(""))
 				Expect(response.String()).To(ContainSubstring(errorFinder.FindErrorsCall.Received.Response))
-				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(errors[0]))
+				Expect(eventManager.EmitCall.Received.Events[3].Error).To(Equal(errors[0]))
 				Expect(response.String()).To(ContainSubstring("an error description"))
 				Expect(response.String()).To(ContainSubstring("error 1"))
 				Expect(response.String()).To(ContainSubstring("error solution"))
@@ -616,7 +718,7 @@ applications:
 
 				Expect(errorFinder.FindErrorsCall.Received.Response).ToNot(Equal(""))
 				Expect(response.String()).To(ContainSubstring(errorFinder.FindErrorsCall.Received.Response))
-				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(errors[0]))
+				Expect(eventManager.EmitCall.Received.Events[3].Error).To(Equal(errors[0]))
 				Expect(response.String()).To(ContainSubstring("an error description"))
 				Expect(response.String()).To(ContainSubstring("error 1"))
 				Expect(response.String()).To(ContainSubstring("error solution"))
@@ -635,11 +737,10 @@ applications:
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
 				deployResponse := <-reqChannel1
-
 				Expect(deployResponse.Error).To(BeNil())
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
+				Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal(C.DeploySuccessEvent))
 			})
 
 			It("returns correct deployment info", func() {
@@ -655,8 +756,33 @@ applications:
 				Expect(deployResponse.DeploymentInfo.Manifest).To(ContainSubstring("manifest-"))
 			})
 
+			It("calls DeployFinishEvent with correct deployment info", func() {
+				fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+				reqChannel1 := make(chan interfaces.DeployResponse)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				_ = <-reqChannel1
+				deploymentInfo := eventManager.EmitCall.Received.Events[4].Data.(*S.DeployEventData).DeploymentInfo
+
+				Expect(deploymentInfo.ArtifactURL).To(ContainSubstring("artifact"))
+				Expect(deploymentInfo.Manifest).To(ContainSubstring("manifest"))
+				Expect(deploymentInfo.Username).To(ContainSubstring("username"))
+				Expect(deploymentInfo.Password).To(ContainSubstring("password"))
+				Expect(deploymentInfo.Environment).To(ContainSubstring("environment"))
+				Expect(deploymentInfo.Org).To(ContainSubstring("org"))
+				Expect(deploymentInfo.Space).To(ContainSubstring("space"))
+				Expect(deploymentInfo.AppName).To(ContainSubstring("appName"))
+				Expect(deploymentInfo.UUID).To(ContainSubstring("uuid"))
+				Expect(deploymentInfo.SkipSSL).To(Equal(false))
+				Expect(deploymentInfo.Instances).To(Equal(instances))
+				Expect(deploymentInfo.Domain).To(ContainSubstring("domain"))
+				Expect(deploymentInfo.AppPath).To(ContainSubstring("apppath"))
+
+			})
+
 			Context("when emitting a "+C.DeploySuccessEvent+" event fails", func() {
 				It("return an error and outputs a "+C.DeploySuccessEvent+" and http.StatusOK", func() {
+					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New("event error"))
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
@@ -669,7 +795,7 @@ applications:
 
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
 					Expect(response.String()).To(ContainSubstring("event error"))
-					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
+					Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal(C.DeploySuccessEvent))
 				})
 			})
 		})
@@ -800,12 +926,14 @@ applications:
 				Expect(response.String()).To(ContainSubstring("Deployment Parameters"))
 				Expect(response.String()).To(ContainSubstring("deploy was successful"))
 
+				Eventually(logBuffer).Should(Say("building deploymentInfo"))
+
+				Eventually(logBuffer).Should(Say("emitting a " + C.DeployStartEvent + " event"))
+
 				Eventually(logBuffer).Should(Say("prechecking the foundations"))
 				Eventually(logBuffer).Should(Say("checking for basic auth"))
 				Eventually(logBuffer).Should(Say("deploying from json request"))
-				Eventually(logBuffer).Should(Say("building deploymentInfo"))
 				Eventually(logBuffer).Should(Say("Deployment Parameters"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DeployStartEvent + " event"))
 				Eventually(logBuffer).Should(Say("emitting a " + C.DeploySuccessEvent + " event"))
 				Eventually(logBuffer).Should(Say("emitting a " + C.DeployFinishEvent + " event"))
 
@@ -813,11 +941,12 @@ applications:
 				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
 				Expect(fetcher.FetchCall.Received.Manifest).To(Equal(manifest))
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
-				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.DeployFinishEvent))
+				Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal(C.DeploySuccessEvent))
+				Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal(C.DeployFinishEvent))
 				Expect(blueGreener.ExecuteCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(blueGreener.ExecuteCall.Received.AppPath).To(Equal(appPath))
 				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+
 			})
 		})
 	})
@@ -840,23 +969,24 @@ applications:
 				Expect(response.String()).To(ContainSubstring("Deployment Parameters"))
 				Expect(response.String()).To(ContainSubstring("deploy was successful"))
 
+				Eventually(logBuffer).Should(Say("emitting a " + C.DeployStartEvent + " event"))
 				Eventually(logBuffer).Should(Say("prechecking the foundations"))
 				Eventually(logBuffer).Should(Say("checking for basic auth"))
 				Eventually(logBuffer).Should(Say("deploying from zip request"))
 				Eventually(logBuffer).Should(Say("Deployment Parameters"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DeployStartEvent + " event"))
 				Eventually(logBuffer).Should(Say("emitting a " + C.DeploySuccessEvent + " event"))
 				Eventually(logBuffer).Should(Say("emitting a " + C.DeployFinishEvent + " event"))
 
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(fetcher.FetchFromZipCall.Received.Request).To(Equal(req))
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
-				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.DeployFinishEvent))
+				Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal(C.DeploySuccessEvent))
+				Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal(C.DeployFinishEvent))
 				Expect(blueGreener.ExecuteCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(blueGreener.ExecuteCall.Received.AppPath).To(Equal(testManifestLocation))
 				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
 				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.ArtifactURL).To(ContainSubstring(testManifestLocation))
+
 			})
 		})
 	})

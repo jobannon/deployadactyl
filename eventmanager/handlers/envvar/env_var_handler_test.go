@@ -25,7 +25,7 @@ var _ = Describe("Env_Var_Handler", func() {
 	BeforeEach(func() {
 		logBuffer = gbytes.NewBuffer()
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")
-		event = I.Event{Type: "test-event", Data: S.DeployEventData{}}
+		event = I.Event{Type: "test-event", Data: &S.DeployEventData{}}
 		eventHandler = Envvarhandler{Logger: log, FileSystem: filesystem}
 	})
 
@@ -39,7 +39,7 @@ var _ = Describe("Env_Var_Handler", func() {
 	Context("when an envvarhandler is called with event without env variables", func() {
 		It("it should be succeed", func() {
 
-			event.Data = S.DeployEventData{DeploymentInfo: &S.DeploymentInfo{}}
+			event.Data = &S.DeployEventData{DeploymentInfo: &S.DeploymentInfo{}}
 
 			Expect(eventHandler.OnEvent(event)).To(Succeed())
 		})
@@ -61,7 +61,7 @@ var _ = Describe("Env_Var_Handler", func() {
 				EnvironmentVariables: envvars,
 			}
 
-			event.Data = S.DeployEventData{DeploymentInfo: &info}
+			event.Data = &S.DeployEventData{DeploymentInfo: &info}
 
 			//Process the event
 			Expect(eventHandler.OnEvent(event)).To(Succeed())
@@ -92,7 +92,7 @@ var _ = Describe("Env_Var_Handler", func() {
 				EnvironmentVariables: envvars,
 			}
 
-			event.Data = S.DeployEventData{DeploymentInfo: &info}
+			event.Data = &S.DeployEventData{DeploymentInfo: &info}
 
 			err := eventHandler.OnEvent(event)
 

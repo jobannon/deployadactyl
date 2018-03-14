@@ -16,7 +16,7 @@ func (handler Envvarhandler) OnEvent(event I.Event) error {
 
 	handler.Logger.Debugf("Environment Variable Handler Processing Event => %+v", event)
 
-	info := event.Data.(S.DeployEventData)
+	info := event.Data.(*S.DeployEventData)
 
 	if info.DeploymentInfo == nil || !deploymentInfoHasEnvironmentVariables(info.DeploymentInfo) {
 		handler.Logger.Info("No Deployment Info or Environment Variables to process!")

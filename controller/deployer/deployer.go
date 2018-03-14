@@ -121,6 +121,8 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 		uuid = d.Randomizer.StringRunes(10)
 	}
 
+	deploymentInfo = &S.DeploymentInfo{}
+
 	e, ok := environments[environment]
 	if !ok {
 		fmt.Fprintln(response, EnvironmentNotFoundError{environment}.Error())
@@ -129,7 +131,14 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 	deploymentLogger := logger.DeploymentLogger{d.Log, uuid}
 
-	deploymentInfo = &S.DeploymentInfo{}
+	if contentType.JSON {
+		deploymentInfo, err = getDeploymentInfo(req.Body, deploymentInfo)
+		if err != nil {
+			deploymentLogger.Error(err)
+			return http.StatusInternalServerError, deploymentInfo, err
+		}
+	}
+
 	deploymentInfo.Org = org
 	deploymentInfo.Space = space
 	deploymentInfo.AppName = appName
@@ -142,13 +151,6 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 	deploymentLogger.Debug("building deploymentInfo")
 
-	if contentType.JSON {
-		deploymentInfo, err = getDeploymentInfo(req.Body, deploymentInfo)
-		if err != nil {
-			deploymentLogger.Error(err)
-			return http.StatusInternalServerError, deploymentInfo, err
-		}
-	}
 	deployEventData := &S.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: req.Body}
 
 	defer emitDeployFinish(d, deployEventData, response, &err, &statusCode, deploymentLogger)

@@ -209,15 +209,16 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 		appPath, err = d.Fetcher.Fetch(deploymentInfo.ArtifactURL, string(manifest))
 		if err != nil {
 			deploymentLogger.Error(err)
+			_ = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalFailure, Data: deployEventData})
 			return http.StatusInternalServerError, deploymentInfo, err
 		}
-		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalEnd)
+		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalSuccess)
 
-		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalEnd, Data: deployEventData})
+		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalSuccess, Data: deployEventData})
 		if err != nil {
 			deploymentLogger.Error(err)
 			err = &bluegreen.InitializationError{err}
-			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalEnd, Err: err}
+			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalSuccess, Err: err}
 		}
 
 	} else if contentType.ZIP {
@@ -234,16 +235,17 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 		appPath, err = d.Fetcher.FetchZipFromRequest(req)
 		if err != nil {
+			_ = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalFailure, Data: deployEventData})
 			return http.StatusInternalServerError, deploymentInfo, err
 		}
 
-		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalEnd)
+		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalSuccess)
 
-		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalEnd, Data: deployEventData})
+		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalSuccess, Data: deployEventData})
 		if err != nil {
 			deploymentLogger.Error(err)
 			err = &bluegreen.InitializationError{err}
-			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalEnd, Err: err}
+			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalSuccess, Err: err}
 		}
 
 		manifest, _ = d.FileSystem.ReadFile(appPath + "/manifest.yml")

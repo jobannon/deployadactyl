@@ -290,7 +290,7 @@ var _ = Describe("Deployer", func() {
 					Expect(fetcher.FetchCall.Received.Manifest).ToNot(Equal(base64Manifest), "manifest was not decoded")
 				})
 
-				It("will emit ArtifactRetrievalStart and ArtifactRetrievalEnd", func() {
+				It("will emit ArtifactRetrievalStart and ArtifactRetrievalSuccess", func() {
 					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
 					fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
 
@@ -316,8 +316,34 @@ var _ = Describe("Deployer", func() {
 
 					Eventually(logBuffer).Should(Say("emitting a " + C.ArtifactRetrievalStart + " event"))
 					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.ArtifactRetrievalStart))
-					Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.ArtifactRetrievalEnd))
+					Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.ArtifactRetrievalSuccess))
 					Expect(deploymentInfo.AppPath).To(ContainSubstring("apppath"))
+				})
+				It("will emit ArtifactRetrievalStart and ArtifactRetrievalFailure", func() {
+					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+					fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+					fetcher.FetchCall.Returns.Error = errors.New("fetcher error")
+
+					By("base64 encoding the manifest")
+					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+					By("including the manifest in the request body")
+					requestBody = bytes.NewBufferString(fmt.Sprintf(`{"artifact_url": "%s", "manifest": "%s"}`,
+						artifactURL,
+						base64Manifest,
+					))
+
+					req, _ = http.NewRequest("POST", "", requestBody)
+
+					reqChannel1 := make(chan interfaces.DeployResponse)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+					deployResponse := <-reqChannel1
+
+					Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
+
+					Eventually(logBuffer).Should(Say("emitting a " + C.ArtifactRetrievalStart + " event"))
+					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.ArtifactRetrievalStart))
+					Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.ArtifactRetrievalFailure))
 				})
 
 			})
@@ -444,7 +470,7 @@ var _ = Describe("Deployer", func() {
 
 					Eventually(logBuffer).Should(Say("emitting a " + C.ArtifactRetrievalStart + " event"))
 					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.ArtifactRetrievalStart))
-					Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.ArtifactRetrievalEnd))
+					Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.ArtifactRetrievalSuccess))
 					Expect(deploymentInfo.AppPath).To(ContainSubstring("apppath"))
 				})
 			})
@@ -460,6 +486,18 @@ var _ = Describe("Deployer", func() {
 					Expect(deployResponse.Error).To(MatchError("fetcher error"))
 
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
+				})
+				It("will emit ArtifactRetrievalStart and ArtifactRetrievalFailures", func() {
+					fetcher.FetchFromZipCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+					fetcher.FetchFromZipCall.Returns.Error = errors.New("fetcher error")
+
+					reqChannel1 := make(chan interfaces.DeployResponse)
+					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
+					_ = <-reqChannel1
+
+					Eventually(logBuffer).Should(Say("emitting a " + C.ArtifactRetrievalStart + " event"))
+					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.ArtifactRetrievalStart))
+					Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.ArtifactRetrievalFailure))
 				})
 			})
 		})

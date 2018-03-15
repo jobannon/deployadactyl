@@ -124,7 +124,6 @@ func (bg BlueGreen) Push(environment S.Environment, appPath string, deploymentIn
 	pushErrors := bg.commands(func(action I.Action) error {
 		return action.Execute()
 	})
-
 	if len(pushErrors) != 0 {
 		if !environment.EnableRollback {
 			deploymentLogger.Errorf("Failed to deploy, deployment not rolled back due to EnableRollback=false")

@@ -286,6 +286,14 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	deploymentLogger.Info(deploymentMessage)
 	fmt.Fprintln(response, deploymentMessage)
 
+	// Add event for changemanager to attach to
+	d.EventManager.Emit(I.Event{Type: C.PushStartedEvent, Data: deployEventData})
+	if err != nil {
+		deploymentLogger.Error(err)
+		err = &bluegreen.InitializationError{err}
+		return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.PushStartedEvent, Err: err}
+	}
+
 	err = d.BlueGreener.Push(e, appPath, *deploymentInfo, response)
 
 	if err != nil {

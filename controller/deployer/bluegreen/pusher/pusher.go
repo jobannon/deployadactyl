@@ -7,8 +7,8 @@ import (
 
 	"encoding/base64"
 
-	"github.com/compozed/controller/deployer/manifestro"
 	C "github.com/compozed/deployadactyl/constants"
+	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
 	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
 )

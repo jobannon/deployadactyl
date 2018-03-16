@@ -4,6 +4,7 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/startstopper"
+	"github.com/compozed/deployadactyl/creator"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
@@ -11,7 +12,7 @@ import (
 )
 
 type PusherCreator struct {
-	Courier      I.Courier
+	Creator      creator.Creator
 	EventManager I.EventManager
 	Logger       I.Logger
 	Fetcher      I.Fetcher
@@ -25,8 +26,9 @@ type StopperCreator struct {
 
 func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 
+	courier, _ := a.Creator.CreateCourier()
 	p := &pusher.Pusher{
-		Courier:        a.Courier,
+		Courier:        courier,
 		DeploymentInfo: deploymentInfo,
 		EventManager:   a.EventManager,
 		Response:       response,

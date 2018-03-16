@@ -22,9 +22,9 @@ type PusherCreator struct {
 }
 
 type StopperCreator struct {
-	Courier      I.Courier
-	EventManager I.EventManager
-	Logger       I.Logger
+	CourierCreator courierCreator
+	EventManager   I.EventManager
+	Logger         I.Logger
 }
 
 func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
@@ -65,9 +65,13 @@ func (a PusherCreator) SuccessError(successErrors []error) error {
 }
 
 func (a StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
-
+	courier, err := a.CourierCreator.CreateCourier()
+	if err != nil {
+		a.Logger.Error(err)
+		return &pusher.Pusher{}, pusher.CourierCreationError{Err: err}
+	}
 	p := &startstopper.Stopper{
-		Courier:       a.Courier,
+		Courier:       courier,
 		CFContext:     cfContext,
 		Authorization: authorization,
 		EventManager:  a.EventManager,

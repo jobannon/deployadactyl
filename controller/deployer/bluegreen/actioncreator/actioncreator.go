@@ -11,10 +11,14 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
+type courierCreator interface {
+	CreateCourier() (I.Courier, error)
+}
+
 type PusherCreator struct {
-	Courier      I.Courier
-	EventManager I.EventManager
-	Logger       I.Logger
+	CourierCreator courierCreator
+	EventManager   I.EventManager
+	Logger         I.Logger
 }
 
 type StopperCreator struct {
@@ -25,8 +29,13 @@ type StopperCreator struct {
 
 func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
 
+	courier, err := a.CourierCreator.CreateCourier()
+	if err != nil {
+		a.Logger.Error(err)
+		return &pusher.Pusher{}, pusher.CourierCreationError{Err: err}
+	}
 	p := &pusher.Pusher{
-		Courier:        a.Courier,
+		Courier:        courier,
 		DeploymentInfo: deploymentInfo,
 		EventManager:   a.EventManager,
 		Response:       response,

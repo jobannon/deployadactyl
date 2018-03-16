@@ -230,7 +230,7 @@ var _ = Describe("Deployer", func() {
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
 
 					Expect(response.String()).To(ContainSubstring("deploy was successful"))
-					Expect(eventManager.EmitCall.TimesCalled).To(Equal(5), eventManagerNotEnoughCalls)
+					Expect(eventManager.EmitCall.TimesCalled).To(Equal(6), eventManagerNotEnoughCalls)
 					Expect(response.String()).To(ContainSubstring(username))
 				})
 			})
@@ -669,6 +669,7 @@ applications:
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				expectedError := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
 				blueGreener.ExecuteCall.Returns.Error = expectedError
@@ -680,8 +681,8 @@ applications:
 				Expect(deployResponse.Error).To(Equal(expectedError))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal(C.DeployFailureEvent))
-				Expect(eventManager.EmitCall.Received.Events[3].Error).To(Equal(expectedError))
+				Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal(C.DeployFailureEvent))
+				Expect(eventManager.EmitCall.Received.Events[4].Error).To(Equal(expectedError))
 			})
 
 			It("passes the response string to FindErrors and writes the found errors to the output stream", func() {
@@ -698,7 +699,7 @@ applications:
 
 				Expect(errorFinder.FindErrorsCall.Received.Response).ToNot(Equal(""))
 				Expect(response.String()).To(ContainSubstring(errorFinder.FindErrorsCall.Received.Response))
-				Expect(eventManager.EmitCall.Received.Events[3].Error).To(Equal(errors[0]))
+				Expect(eventManager.EmitCall.Received.Events[4].Error).To(Equal(errors[0]))
 				Expect(response.String()).To(ContainSubstring("an error description"))
 				Expect(response.String()).To(ContainSubstring("error 1"))
 				Expect(response.String()).To(ContainSubstring("error solution"))
@@ -718,7 +719,7 @@ applications:
 
 				Expect(errorFinder.FindErrorsCall.Received.Response).ToNot(Equal(""))
 				Expect(response.String()).To(ContainSubstring(errorFinder.FindErrorsCall.Received.Response))
-				Expect(eventManager.EmitCall.Received.Events[3].Error).To(Equal(errors[0]))
+				Expect(eventManager.EmitCall.Received.Events[4].Error).To(Equal(errors[0]))
 				Expect(response.String()).To(ContainSubstring("an error description"))
 				Expect(response.String()).To(ContainSubstring("error 1"))
 				Expect(response.String()).To(ContainSubstring("error solution"))
@@ -726,7 +727,7 @@ applications:
 				Expect(deployResponse.Error.(interfaces.DeploymentError).Code()).To(Equal("TestCode"))
 
 			})
-			FIt("PushStartedEvent has already been emitted", func() {
+			It("PushStartedEvent has already been emitted", func() {
 				err := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
 				blueGreener.ExecuteCall.Returns.Error = err
 
@@ -748,6 +749,7 @@ applications:
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
 				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
@@ -755,7 +757,7 @@ applications:
 				Expect(deployResponse.Error).To(BeNil())
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
-				Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal(C.DeploySuccessEvent))
+				Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal(C.DeploySuccessEvent))
 			})
 
 			It("returns correct deployment info", func() {
@@ -799,6 +801,7 @@ applications:
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New("event error"))
 					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
@@ -810,7 +813,7 @@ applications:
 
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
 					Expect(response.String()).To(ContainSubstring("event error"))
-					Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal(C.DeploySuccessEvent))
+					Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal(C.DeploySuccessEvent))
 				})
 			})
 		})
@@ -956,8 +959,8 @@ applications:
 				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
 				Expect(fetcher.FetchCall.Received.Manifest).To(Equal(manifest))
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
-				Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal(C.DeploySuccessEvent))
-				Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal(C.DeployFinishEvent))
+				Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal(C.DeploySuccessEvent))
+				Expect(eventManager.EmitCall.Received.Events[5].Type).To(Equal(C.DeployFinishEvent))
 				Expect(blueGreener.ExecuteCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(blueGreener.ExecuteCall.Received.AppPath).To(Equal(appPath))
 				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
@@ -995,8 +998,8 @@ applications:
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(fetcher.FetchFromZipCall.Received.Request).To(Equal(req))
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
-				Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal(C.DeploySuccessEvent))
-				Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal(C.DeployFinishEvent))
+				Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal(C.DeploySuccessEvent))
+				Expect(eventManager.EmitCall.Received.Events[5].Type).To(Equal(C.DeployFinishEvent))
 				Expect(blueGreener.ExecuteCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(blueGreener.ExecuteCall.Received.AppPath).To(Equal(testManifestLocation))
 				Expect(blueGreener.ExecuteCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))

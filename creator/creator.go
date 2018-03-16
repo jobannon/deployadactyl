@@ -176,15 +176,10 @@ func (c Creator) createDeployer() (I.Deployer, error) {
 }
 
 func (c Creator) PusherCreator() (I.ActionCreator, error) {
-	courier, err := c.CreateCourier()
-	if err != nil {
-		return actioncreator.PusherCreator{}, err
-	}
-
 	return actioncreator.PusherCreator{
-		Courier:      courier,
-		EventManager: c.CreateEventManager(),
-		Logger:       c.CreateLogger(),
+		CourierCreator: c,
+		EventManager:   c.CreateEventManager(),
+		Logger:         c.CreateLogger(),
 	}, nil
 }
 

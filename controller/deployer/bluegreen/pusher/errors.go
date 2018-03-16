@@ -60,3 +60,11 @@ type UnmapRouteError struct {
 func (e UnmapRouteError) Error() string {
 	return fmt.Sprintf("failed to unmap route for %s: %s", e.ApplicationName, string(e.Out))
 }
+
+type CourierCreationError struct {
+	Err error
+}
+
+func (e CourierCreationError) Error() string {
+	return fmt.Sprintf("failed to create Courier: %s", e.Err.Error())
+}

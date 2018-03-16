@@ -287,6 +287,12 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	fmt.Fprintln(response, deploymentMessage)
 
 	enableRollback := e.EnableRollback
+	err = d.EventManager.Emit(I.Event{Type: C.PushStartedEvent, Data: deployEventData})
+	if err != nil {
+		deploymentLogger.Error(err)
+		err = &bluegreen.InitializationError{err}
+		return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.PushStartedEvent, Err: err}
+	}
 
 	err = d.BlueGreener.Execute(d.PusherCreator, e, appPath, *deploymentInfo, response)
 

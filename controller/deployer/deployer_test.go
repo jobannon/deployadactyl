@@ -726,6 +726,21 @@ applications:
 				Expect(deployResponse.Error.(interfaces.DeploymentError).Code()).To(Equal("TestCode"))
 
 			})
+			FIt("PushStartedEvent has already been emitted", func() {
+				err := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
+				blueGreener.ExecuteCall.Returns.Error = err
+
+				errors := make([]interfaces.LogMatchedError, 0, 0)
+				errors = append(errors, error_finder.CreateLogMatchedError("an error description", []string{"error 1", "error 2", "error 3"}, "error solution", "TestCode"))
+				errorFinder.FindErrorsCall.Returns.Errors = errors
+
+				reqChannel1 := make(chan interfaces.DeployResponse)
+				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
+				<-reqChannel1
+
+				Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal(C.PushStartedEvent))
+
+			})
 		})
 
 		Context("when blue greener succeeds", func() {

@@ -113,8 +113,9 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	var (
 		environments           = d.Config.Environments
 		authenticationRequired = environments[environment].Authenticate
-		manifest               []byte
+		manifest               string
 		appPath                string
+		instances              uint16
 	)
 	if uuid == "" {
 		uuid = d.Randomizer.StringRunes(10)
@@ -185,16 +186,56 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	if contentType.JSON {
 		deploymentLogger.Debug("deploying from json request")
 
+		deploymentInfo.ContentType = "JSON"
+		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalStart)
+
+		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalStart, Data: deployEventData})
 		if err != nil {
 			deploymentLogger.Error(err)
+			err = &bluegreen.InitializationError{err}
+			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalStart, Err: err}
+		}
+		appPath, manifest, instances, err = d.PusherCreator.SetUp(*deploymentInfo)
+		if err != nil {
+			deploymentLogger.Error(err)
+			_ = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalFailure, Data: deployEventData})
 			return http.StatusInternalServerError, deploymentInfo, err
 		}
-		deploymentInfo.ContentType = "JSON"
+		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalSuccess)
 
+		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalSuccess, Data: deployEventData})
+		if err != nil {
+			deploymentLogger.Error(err)
+			err = &bluegreen.InitializationError{err}
+			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalSuccess, Err: err}
+		}
 	} else if contentType.ZIP {
 		deploymentLogger.Debug("deploying from zip request")
 		deploymentInfo.DeployRequest = req
 		deploymentInfo.ContentType = "ZIP"
+
+		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalStart)
+
+		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalStart, Data: deployEventData})
+		if err != nil {
+			deploymentLogger.Error(err)
+			err = &bluegreen.InitializationError{err}
+			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalStart, Err: err}
+		}
+		appPath, manifest, instances, err = d.PusherCreator.SetUp(*deploymentInfo)
+		if err != nil {
+			deploymentLogger.Error(err)
+			_ = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalFailure, Data: deployEventData})
+			return http.StatusInternalServerError, deploymentInfo, err
+		}
+		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalSuccess)
+
+		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalSuccess, Data: deployEventData})
+		if err != nil {
+			deploymentLogger.Error(err)
+			err = &bluegreen.InitializationError{err}
+			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalSuccess, Err: err}
+		}
 
 	} else {
 		return http.StatusBadRequest, deploymentInfo, InvalidContentTypeError{}
@@ -202,8 +243,9 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 
 	deploymentInfo.Username = username
 	deploymentInfo.Password = password
-	deploymentInfo.Manifest = string(manifest)
+	deploymentInfo.Manifest = manifest
 	deploymentInfo.AppPath = appPath
+	deploymentInfo.Instances = instances
 
 	defer func() { d.FileSystem.RemoveAll(deploymentInfo.AppPath) }()
 

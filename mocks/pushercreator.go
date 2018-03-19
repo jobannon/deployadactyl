@@ -20,6 +20,11 @@ type PusherCreator struct {
 }
 
 // CreatePusher mock method.
+
+func (p *PusherCreator) SetUp(deploymentInfo S.DeploymentInfo) (string, string, uint16, error) {
+	return "", "", 0, nil
+}
+
 func (p *PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext interfaces.CFContext, authorization interfaces.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (interfaces.Action, error) {
 	defer func() { p.CreatePusherCall.TimesCalled++ }()
 

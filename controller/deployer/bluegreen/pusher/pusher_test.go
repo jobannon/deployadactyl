@@ -96,7 +96,7 @@ var _ = Describe("Pusher", func() {
 			Response:       response,
 			Log:            logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
 			FoundationURL:  randomFoundationURL,
-			AppPath:        "",
+			AppPath:        randomAppPath,
 			Environment:    S.Environment{EnableRollback: true},
 			Fetcher:        fetcher,
 		}
@@ -160,7 +160,6 @@ var _ = Describe("Pusher", func() {
 			Context("when the push succeeds", func() {
 				It("pushes the new app", func() {
 					courier.PushCall.Returns.Output = []byte("push succeeded")
-					fetcher.FetchCall.Returns.AppPath = randomAppPath
 
 					Expect(pusher.Execute()).To(Succeed())
 
@@ -168,30 +167,6 @@ var _ = Describe("Pusher", func() {
 					Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
 					Expect(courier.PushCall.Received.Hostname).To(Equal(randomAppName))
 					Expect(courier.PushCall.Received.Instances).To(Equal(randomInstances))
-
-					Eventually(response).Should(Say("push succeeded"))
-
-					Eventually(logBuffer).Should(Say(fmt.Sprintf("pushing app %s to %s", tempAppWithUUID, randomDomain)))
-					Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", tempAppWithUUID, randomAppPath)))
-					Eventually(logBuffer).Should(Say("output from Cloud Foundry"))
-					Eventually(logBuffer).Should(Say("successfully deployed new build"))
-				})
-
-				It("pushes the new app with instances specified in the manifest", func() {
-					courier.PushCall.Returns.Output = []byte("push succeeded")
-					fetcher.FetchCall.Returns.AppPath = randomAppPath
-					pusher.DeploymentInfo.Manifest = base64.StdEncoding.EncodeToString([]byte(`---
-applications:
-- name: deployadactyl
-  instances: 121
-`))
-
-					Expect(pusher.Execute()).To(Succeed())
-
-					Expect(courier.PushCall.Received.AppName).To(Equal(tempAppWithUUID))
-					Expect(courier.PushCall.Received.AppPath).To(Equal(randomAppPath))
-					Expect(courier.PushCall.Received.Hostname).To(Equal(randomAppName))
-					Expect(courier.PushCall.Received.Instances).To(Equal(uint16(121)))
 
 					Eventually(response).Should(Say("push succeeded"))
 
@@ -210,23 +185,6 @@ applications:
 					err := pusher.Execute()
 
 					Expect(err).To(MatchError(PushError{}))
-				})
-
-				It("returns an error when app path is empty", func() {
-					fetcher.FetchCall.Returns.AppPath = ""
-
-					err := pusher.Execute()
-
-					Expect(err).To(MatchError(AppPathError{Err: fetcher.FetchCall.Returns.Error}))
-				})
-
-				It("returns an error when manifest is empty", func() {
-					pusher.DeploymentInfo.Manifest = "I refuse to type I am a sexy monkey"
-					fetcher.FetchCall.Returns.AppPath = randomAppPath
-
-					err := pusher.Execute()
-
-					Expect(err).To(MatchError(ManifestError{}))
 				})
 
 				It("gets logs from the courier", func() {
@@ -282,19 +240,6 @@ applications:
 					Eventually(logBuffer).Should(Say("successfully deployed new build"))
 				})
 			})
-
-			Context("when the push fails from unzipping zip body", func() {
-				It("returns the mooseBattle error", func() {
-					pusher.DeploymentInfo.ContentType = "ZIP"
-					courier.PushCall.Returns.Output = []byte("push succeeded")
-					fetcher.FetchFromZipCall.Returns.AppPath = ""
-					fetcher.FetchFromZipCall.Returns.Error = errors.New("unzippe error")
-
-					err := pusher.Execute()
-
-					Expect(err).To(MatchError(UnzippingError{Err: fetcher.FetchFromZipCall.Returns.Error}))
-				})
-			})
 		})
 
 		Context("with other besides zip and json request body type", func() {
@@ -317,16 +262,6 @@ applications:
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", tempAppWithUUID, randomAppPath)))
 					Eventually(logBuffer).Should(Say("output from Cloud Foundry"))
 					Eventually(logBuffer).Should(Say("successfully deployed new build"))
-				})
-			})
-
-			Context("when the push fails from unzipping zip body", func() {
-				It("returns the mooseBattle error", func() {
-					pusher.DeploymentInfo.ContentType = "other"
-
-					err := pusher.Execute()
-
-					Expect(err).To(MatchError(InvalidContentTypeError{}))
 				})
 			})
 		})

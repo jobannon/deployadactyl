@@ -24,6 +24,10 @@ type StopperCreator struct {
 	}
 }
 
+func (s *StopperCreator) SetUp(deploymentInfo S.DeploymentInfo) (string, string, uint16, error) {
+	return "", "", 0, nil
+}
+
 func (s *StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext interfaces.CFContext, authorization interfaces.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (interfaces.Action, error) {
 	defer func() { s.CreateStopperCall.TimesCalled++ }()
 

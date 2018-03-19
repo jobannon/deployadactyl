@@ -97,8 +97,15 @@ var _ = Describe("Deployer", func() {
 		space = "space-" + randomizer.StringRunes(10)
 		username = "username-" + randomizer.StringRunes(10)
 		uuid = "uuid-" + randomizer.StringRunes(10)
-		manifest = "manifest-" + randomizer.StringRunes(10)
 		instances = uint16(rand.Uint32())
+
+		manifest = fmt.Sprintf(`---
+applications:
+- name: manifest-%s
+  memory: 256M
+  disk_quota: 256M
+  instances: %d`, randomizer.StringRunes(10), instances)
+
 		enableRollback = true
 
 		base64Manifest = base64.StdEncoding.EncodeToString([]byte(manifest))
@@ -135,7 +142,7 @@ var _ = Describe("Deployer", func() {
 			Instances:    instances,
 			Manifest:     manifest,
 			Domain:       domain,
-			AppPath:      "",
+			AppPath:      appPath,
 			CustomParams: customParams,
 		}
 
@@ -151,7 +158,7 @@ var _ = Describe("Deployer", func() {
 			Instances:   instances,
 			Manifest:    manifest,
 			Domain:      domain,
-			AppPath:     "",
+			AppPath:     appPath,
 		}
 
 		foundations = []string{randomizer.StringRunes(10)}
@@ -172,7 +179,7 @@ var _ = Describe("Deployer", func() {
 			Environments: environments,
 		}
 
-		pusherCreator = actioncreator.PusherCreator{}
+		pusherCreator = actioncreator.PusherCreator{Fetcher: fetcher}
 		stopperCreator = actioncreator.StopperCreator{}
 
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
@@ -275,7 +282,13 @@ var _ = Describe("Deployer", func() {
 		Context("when manifest is given in the request body", func() {
 			Context("if the provided manifest is base64 encoded", func() {
 				It("decodes the manifest, does not return an error and returns http.StatusOK", func() {
-					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+					manifest := `---
+applications:
+- name: manifest-%s
+  memory: 256M
+  disk_quota: 256M
+  instances: 2`
+					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 
 					By("base64 encoding the manifest")
 					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
@@ -299,7 +312,13 @@ var _ = Describe("Deployer", func() {
 				})
 
 				It("will emit ArtifactRetrievalStart and ArtifactRetrievalSuccess", func() {
-					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+					manifest := `---
+applications:
+- name: manifest-%s
+  memory: 256M
+  disk_quota: 256M
+  instances: 2`
+					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 					fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
 
 					By("base64 encoding the manifest")
@@ -328,7 +347,13 @@ var _ = Describe("Deployer", func() {
 					Expect(deploymentInfo.AppPath).To(ContainSubstring("apppath"))
 				})
 				It("will emit ArtifactRetrievalStart and ArtifactRetrievalFailure", func() {
-					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+					manifest := `---
+applications:
+- name: manifest-%s
+  memory: 256M
+  disk_quota: 256M
+  instances: 2`
+					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 					fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
 					fetcher.FetchCall.Returns.Error = errors.New("fetcher error")
 
@@ -359,7 +384,13 @@ var _ = Describe("Deployer", func() {
 
 		Context("when a UUID is provided", func() {
 			It("does not create a new UUID", func() {
-				deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+				manifest := `---
+applications:
+- name: manifest-%s
+  memory: 256M
+  disk_quota: 256M
+  instances: 2`
+				deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
 
 				requestBody = bytes.NewBufferString(fmt.Sprintf(`{"artifact_url": "%s", "manifest": "%s"}`,
@@ -383,7 +414,13 @@ var _ = Describe("Deployer", func() {
 
 		Context("when no UUID is provided", func() {
 			It("creates a new UUID", func() {
-				deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+				manifest := `---
+applications:
+- name: manifest-%s
+  memory: 256M
+  disk_quota: 256M
+  instances: 2`
+				deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
 
 				requestBody = bytes.NewBufferString(fmt.Sprintf(`{"artifact_url": "%s", "manifest": "%s"}`,
@@ -448,7 +485,7 @@ var _ = Describe("Deployer", func() {
 					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
 					deployResponse := <-reqChannel1
 
-					Expect(deployResponse.Error).To(MatchError("fetcher error"))
+					Expect(deployResponse.Error.Error()).To(ContainSubstring("fetcher error"))
 
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
 				})
@@ -684,8 +721,8 @@ var _ = Describe("Deployer", func() {
 				deployResponse := <-reqChannel1
 
 				Expect(deployResponse.DeploymentInfo.UUID).ToNot(Equal(""))
-				manifest, _ := base64.StdEncoding.DecodeString(deployResponse.DeploymentInfo.Manifest)
-				Expect(string(manifest)).To(ContainSubstring("manifest-"))
+				manifest := deployResponse.DeploymentInfo.Manifest
+				Expect(manifest).To(ContainSubstring("manifest-"))
 			})
 
 			It("calls DeployFinishEvent with correct deployment info", func() {
@@ -775,10 +812,7 @@ var _ = Describe("Deployer", func() {
 		Context("when BlueGreener fails during a deploy with JSON in the request body", func() {
 			It("returns an error and a http.StatusInternalServerError", func() {
 				fetcher.FetchCall.Returns.AppPath = appPath
-
 				blueGreener.ExecuteCall.Returns.Error = bluegreen.InitializationError{Err: errors.New("blue green error")}
-
-				deploymentInfo.Manifest = base64Manifest
 				deploymentInfo.ContentType = "JSON"
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
@@ -797,7 +831,6 @@ var _ = Describe("Deployer", func() {
 				fetcher.FetchCall.Returns.AppPath = appPath
 				expectedError := bluegreen.PushError{[]error{errors.New("blue green error")}}
 				blueGreener.ExecuteCall.Returns.Error = expectedError
-				deploymentInfo.Manifest = base64Manifest
 				deploymentInfo.ContentType = "JSON"
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
@@ -848,8 +881,6 @@ var _ = Describe("Deployer", func() {
 		Context("when no errors occur", func() {
 			It("accepts the request and returns http.StatusOK", func() {
 				fetcher.FetchCall.Returns.AppPath = appPath
-
-				deploymentInfo.Manifest = base64Manifest
 				deploymentInfo.ContentType = "JSON"
 
 				reqChannel1 := make(chan interfaces.DeployResponse)
@@ -873,7 +904,6 @@ var _ = Describe("Deployer", func() {
 				Eventually(logBuffer).Should(Say("Deployment Parameters"))
 				Eventually(logBuffer).Should(Say("emitting a " + C.DeploySuccessEvent + " event"))
 				Eventually(logBuffer).Should(Say("emitting a " + C.DeployFinishEvent + " event"))
-
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environment]))
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
 				Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal(C.DeploySuccessEvent))

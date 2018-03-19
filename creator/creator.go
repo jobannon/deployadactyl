@@ -136,69 +136,44 @@ func (c Creator) CreateHTTPClient() *http.Client {
 	return insecureClient
 }
 
-func (c Creator) CreateController() (I.Controller, error) {
-	deployer, err := c.createDeployer()
-	if err != nil {
-		return &controller.Controller{}, err
-	}
-
+func (c Creator) CreateController() I.Controller {
 	return &controller.Controller{
-		Deployer:       deployer,
+		Deployer:       c.createDeployer(),
 		SilentDeployer: c.createSilentDeployer(),
 		Log:            c.CreateLogger(),
-	}, nil
+	}
 }
 
-func (c Creator) createDeployer() (I.Deployer, error) {
-	pusherCreator, err := c.PusherCreator()
-	if err != nil {
-		return deployer.Deployer{}, err
-	}
-
-	stopperCreator, err := c.StopperCreator()
-	if err != nil {
-		return deployer.Deployer{}, err
-	}
-
+func (c Creator) createDeployer() I.Deployer {
 	return deployer.Deployer{
 		Config:         c.CreateConfig(),
 		BlueGreener:    c.createBlueGreener(),
-		PusherCreator:  pusherCreator,
-		StopperCreator: stopperCreator,
+		PusherCreator:  c.PusherCreator(),
+		StopperCreator: c.StopperCreator(),
 		Prechecker:     c.createPrechecker(),
 		EventManager:   c.CreateEventManager(),
 		Randomizer:     c.createRandomizer(),
 		ErrorFinder:    c.createErrorFinder(),
 		Log:            c.CreateLogger(),
 		FileSystem:     c.CreateFileSystem(),
-	}, nil
-}
-
-func (c Creator) PusherCreator() (I.ActionCreator, error) {
-	//courier, err := c.CreateCourier()
-	//if err != nil {
-	//	return actioncreator.PusherCreator{}, err
-	//}
-
-	return actioncreator.PusherCreator{
-		Creator:      c,
-		EventManager: c.CreateEventManager(),
-		Logger:       c.CreateLogger(),
-		Fetcher:      c.createFetcher(),
-	}, nil
-}
-
-func (c Creator) StopperCreator() (I.ActionCreator, error) {
-	courier, err := c.CreateCourier()
-	if err != nil {
-		return actioncreator.StopperCreator{}, err
 	}
+}
 
+func (c Creator) PusherCreator() I.ActionCreator {
+	return actioncreator.PusherCreator{
+		CourierCreator: c,
+		EventManager:   c.CreateEventManager(),
+		Logger:         c.CreateLogger(),
+		Fetcher:        c.createFetcher(),
+	}
+}
+
+func (c Creator) StopperCreator() I.ActionCreator {
 	return actioncreator.StopperCreator{
-		Courier:      courier,
-		EventManager: c.CreateEventManager(),
-		Logger:       c.CreateLogger(),
-	}, nil
+		CourierCreator: c,
+		EventManager:   c.CreateEventManager(),
+		Logger:         c.CreateLogger(),
+	}
 }
 
 func (c Creator) createSilentDeployer() I.Deployer {

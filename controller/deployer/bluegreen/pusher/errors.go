@@ -88,3 +88,11 @@ type UnzippingError struct {
 func (e UnzippingError) Error() string {
 	return fmt.Sprintf("unzipping request body error: %s", e.Err)
 }
+
+type CourierCreationError struct {
+	Err error
+}
+
+func (e CourierCreationError) Error() string {
+	return fmt.Sprintf("failed to create Courier: %s", e.Err.Error())
+}

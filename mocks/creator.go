@@ -106,7 +106,7 @@ func (c Creator) CreateDeployer() I.Deployer {
 func (c Creator) CreatePusherCreator() I.ActionCreator {
 	return &creatorPusherMock{
 		EventManager: c.CreateEventManager(),
-		Log:          c.CreateLogger(),
+		Logger:       c.CreateLogger(),
 		Fetcher:      c.CreateFetcher(),
 	}
 }
@@ -202,12 +202,20 @@ func getLevel(level string) (logging.Level, error) {
 	return logging.INFO, nil
 }
 
+type courierCreator interface {
+	CreateCourier() (I.Courier, error)
+}
+
 type creatorPusherMock struct {
-	EventManager I.EventManager
-	Log          I.Logger
-	Fetcher      I.Fetcher
-	logger       I.Logger
-	fileSystem   *afero.Afero
+	CourierCreator I.Courier
+	EventManager   I.EventManager
+	Logger         I.Logger
+	Fetcher        I.Fetcher
+}
+
+func (c creatorPusherMock) SetUp(deploymentInfo S.DeploymentInfo) (string, string, uint16, error) {
+
+	return "", "", 0, nil
 }
 
 func (c creatorPusherMock) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
@@ -225,7 +233,7 @@ func (c creatorPusherMock) Create(deploymentInfo S.DeploymentInfo, cfContext I.C
 		DeploymentInfo: deploymentInfo,
 		EventManager:   c.EventManager,
 		Response:       response,
-		Log:            c.Log,
+		Log:            c.Logger,
 		FoundationURL:  foundationURL,
 		AppPath:        appPath,
 		Fetcher:        c.createFetcher(),

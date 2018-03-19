@@ -213,7 +213,7 @@ type creatorPusherMock struct {
 	Fetcher        I.Fetcher
 }
 
-func (c creatorPusherMock) SetUp(deploymentInfo S.DeploymentInfo) (string, string, uint16, error) {
+func (c creatorPusherMock) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
 
 	return "", "", 0, nil
 }

@@ -195,7 +195,8 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 			err = &bluegreen.InitializationError{err}
 			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalStart, Err: err}
 		}
-		appPath, manifest, instances, err = d.PusherCreator.SetUp(*deploymentInfo)
+		appPath, manifest, instances, err = d.PusherCreator.SetUp(*deploymentInfo, environments[environment].Instances)
+
 		if err != nil {
 			deploymentLogger.Error(err)
 			_ = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalFailure, Data: deployEventData})
@@ -222,7 +223,7 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 			err = &bluegreen.InitializationError{err}
 			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalStart, Err: err}
 		}
-		appPath, manifest, instances, err = d.PusherCreator.SetUp(*deploymentInfo)
+		appPath, manifest, instances, err = d.PusherCreator.SetUp(*deploymentInfo, environments[environment].Instances)
 		if err != nil {
 			deploymentLogger.Error(err)
 			_ = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalFailure, Data: deployEventData})

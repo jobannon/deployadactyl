@@ -29,7 +29,7 @@ type StopperCreator struct {
 	Logger         I.Logger
 }
 
-func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo) (string, string, uint16, error) {
+func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
 	var (
 		manifestString string
 		instances      *uint16
@@ -52,6 +52,11 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo) (string, string, u
 		}
 
 		instances = manifestro.GetInstances(manifestString)
+		if instances != nil {
+			*instances = *instances
+		} else {
+			instances = &envInstances
+		}
 	} else if deploymentInfo.ContentType == "ZIP" {
 
 		appPath, err = a.Fetcher.FetchZipFromRequest(deploymentInfo.DeployRequest)
@@ -102,7 +107,7 @@ func (a PusherCreator) SuccessError(successErrors []error) error {
 	return bluegreen.FinishPushError{FinishPushError: successErrors}
 }
 
-func (a StopperCreator) SetUp(deploymentInfo S.DeploymentInfo) (string, string, uint16, error) {
+func (a StopperCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
 	return "", "", 0, nil
 }
 

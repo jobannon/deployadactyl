@@ -21,7 +21,7 @@ type PusherCreator struct {
 
 // CreatePusher mock method.
 
-func (p *PusherCreator) SetUp(deploymentInfo S.DeploymentInfo) (string, string, uint16, error) {
+func (p *PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
 	return "", "", 0, nil
 }
 

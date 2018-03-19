@@ -28,7 +28,7 @@ applications:
 				pusherCreator.Fetcher = fetcher
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
 
-				_, returnsManifest, _, _ := pusherCreator.SetUp(deploymentInfo)
+				_, returnsManifest, _, _ := pusherCreator.SetUp(deploymentInfo, 0)
 				Expect(returnsManifest).To(Equal(manifest))
 			})
 			It("should fetch and return app path", func() {
@@ -43,7 +43,7 @@ applications:
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
 				pusherCreator.Fetcher = fetcher
 
-				appPath, _, _, _ := pusherCreator.SetUp(deploymentInfo)
+				appPath, _, _, _ := pusherCreator.SetUp(deploymentInfo, 0)
 				Expect(appPath).To(Equal("newAppPath"))
 				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(deploymentInfo.ArtifactURL))
 				Expect(fetcher.FetchCall.Received.Manifest).To(Equal(manifest))
@@ -61,7 +61,7 @@ applications:
 				fetcher.FetchCall.Returns.Error = errors.New("fetch error")
 				pusherCreator.Fetcher = fetcher
 
-				_, _, _, err := pusherCreator.SetUp(deploymentInfo)
+				_, _, _, err := pusherCreator.SetUp(deploymentInfo, 0)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("unzipped app path failed: fetch error"))
 			})
@@ -76,7 +76,7 @@ applications:
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
 				pusherCreator.Fetcher = fetcher
 
-				_, _, instances, _ := pusherCreator.SetUp(deploymentInfo)
+				_, _, instances, _ := pusherCreator.SetUp(deploymentInfo, 0)
 				Expect(instances).To(Equal(uint16(2)))
 			})
 		})
@@ -90,7 +90,7 @@ applications:
 				fetcher.FetchFromZipCall.Returns.AppPath = "newAppPath"
 				pusherCreator.Fetcher = fetcher
 
-				appPath, _, _, _ := pusherCreator.SetUp(deploymentInfo)
+				appPath, _, _, _ := pusherCreator.SetUp(deploymentInfo, 0)
 
 				Expect(appPath).To(Equal("newAppPath"))
 			})

@@ -24,7 +24,7 @@ type StopperCreator struct {
 	}
 }
 
-func (s *StopperCreator) SetUp(deploymentInfo S.DeploymentInfo) (string, string, uint16, error) {
+func (s *StopperCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
 	return "", "", 0, nil
 }
 

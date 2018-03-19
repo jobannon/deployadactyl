@@ -98,13 +98,13 @@ var _ = Describe("Deployer", func() {
 		username = "username-" + randomizer.StringRunes(10)
 		uuid = "uuid-" + randomizer.StringRunes(10)
 		instances = uint16(rand.Uint32())
-
-		manifest = fmt.Sprintf(`---
-applications:
-- name: manifest-%s
-  memory: 256M
-  disk_quota: 256M
-  instances: %d`, randomizer.StringRunes(10), instances)
+		manifest = "manifest-" + randomizer.StringRunes(10)
+		//		manifest = fmt.Sprintf(`---
+		//applications:
+		//- name: manifest-%s
+		//  memory: 256M
+		//  disk_quota: 256M
+		//  instances: %d`, randomizer.StringRunes(10), instances)
 
 		enableRollback = true
 
@@ -282,12 +282,8 @@ applications:
 		Context("when manifest is given in the request body", func() {
 			Context("if the provided manifest is base64 encoded", func() {
 				It("decodes the manifest, does not return an error and returns http.StatusOK", func() {
-					manifest := `---
-applications:
-- name: manifest-%s
-  memory: 256M
-  disk_quota: 256M
-  instances: 2`
+					manifest = "manifest-" + randomizer.StringRunes(10)
+
 					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 
 					By("base64 encoding the manifest")
@@ -312,12 +308,8 @@ applications:
 				})
 
 				It("will emit ArtifactRetrievalStart and ArtifactRetrievalSuccess", func() {
-					manifest := `---
-applications:
-- name: manifest-%s
-  memory: 256M
-  disk_quota: 256M
-  instances: 2`
+					manifest = "manifest-" + randomizer.StringRunes(10)
+
 					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 					fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
 
@@ -347,12 +339,8 @@ applications:
 					Expect(deploymentInfo.AppPath).To(ContainSubstring("apppath"))
 				})
 				It("will emit ArtifactRetrievalStart and ArtifactRetrievalFailure", func() {
-					manifest := `---
-applications:
-- name: manifest-%s
-  memory: 256M
-  disk_quota: 256M
-  instances: 2`
+					manifest = "manifest-" + randomizer.StringRunes(10)
+
 					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 					fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
 					fetcher.FetchCall.Returns.Error = errors.New("fetcher error")
@@ -384,12 +372,8 @@ applications:
 
 		Context("when a UUID is provided", func() {
 			It("does not create a new UUID", func() {
-				manifest := `---
-applications:
-- name: manifest-%s
-  memory: 256M
-  disk_quota: 256M
-  instances: 2`
+				manifest = "manifest-" + randomizer.StringRunes(10)
+
 				deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
 
@@ -414,12 +398,8 @@ applications:
 
 		Context("when no UUID is provided", func() {
 			It("creates a new UUID", func() {
-				manifest := `---
-applications:
-- name: manifest-%s
-  memory: 256M
-  disk_quota: 256M
-  instances: 2`
+				manifest = "manifest-" + randomizer.StringRunes(10)
+
 				deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
 

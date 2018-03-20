@@ -80,6 +80,30 @@ applications:
 				Expect(instances).To(Equal(uint16(2)))
 			})
 		})
+
+		Context("when instances is nil", func() {
+			It("assigns environmental instances as the instance", func() {
+				manifest := `---
+applications:
+- name: long-running-spring-app`
+				encodedManifest := base64.StdEncoding.EncodeToString([]byte(manifest))
+
+				pusherCreator := &actioncreator.PusherCreator{}
+				deploymentInfo := structs.DeploymentInfo{
+					Manifest:    encodedManifest,
+					ArtifactURL: "https://artifacturl.com",
+					ContentType: "JSON",
+				}
+				fetcher := &mocks.Fetcher{}
+				fetcher.FetchCall.Returns.AppPath = "newAppPath"
+				pusherCreator.Fetcher = fetcher
+
+				_, _, instances, _ := pusherCreator.SetUp(deploymentInfo, 22)
+
+				Expect(instances).To(Equal(uint16(22)))
+			})
+		})
+
 		Context("contentType is ZIP", func() {
 
 			It("should extract manifest from the zip file", func() {
@@ -94,9 +118,20 @@ applications:
 
 				Expect(appPath).To(Equal("newAppPath"))
 			})
+			It("should error when artifact cannot be fetched", func() {
+				pusherCreator := &actioncreator.PusherCreator{}
+				deploymentInfo := structs.DeploymentInfo{
+					ContentType: "ZIP",
+				}
 
+				fetcher := &mocks.Fetcher{}
+				fetcher.FetchFromZipCall.Returns.Error = errors.New("fetch error")
+				pusherCreator.Fetcher = fetcher
+
+				_, _, _, err := pusherCreator.SetUp(deploymentInfo, 0)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("unzipping request body error: fetch error"))
+			})
 		})
-
 	})
-
 })

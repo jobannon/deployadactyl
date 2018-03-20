@@ -99,12 +99,6 @@ var _ = Describe("Deployer", func() {
 		uuid = "uuid-" + randomizer.StringRunes(10)
 		instances = uint16(rand.Uint32())
 		manifest = "manifest-" + randomizer.StringRunes(10)
-		//		manifest = fmt.Sprintf(`---
-		//applications:
-		//- name: manifest-%s
-		//  memory: 256M
-		//  disk_quota: 256M
-		//  instances: %d`, randomizer.StringRunes(10), instances)
 
 		enableRollback = true
 

@@ -52,9 +52,7 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 		}
 
 		instances = manifestro.GetInstances(manifestString)
-		if instances != nil {
-			*instances = *instances
-		} else {
+		if instances == nil {
 			instances = &envInstances
 		}
 	} else if deploymentInfo.ContentType == "ZIP" {

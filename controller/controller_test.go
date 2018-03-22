@@ -29,12 +29,14 @@ const (
 var _ = Describe("Controller", func() {
 
 	var (
-		deployer       *mocks.Deployer
-		silentDeployer *mocks.Deployer
-		controller     *Controller
-		router         *gin.Engine
-		resp           *httptest.ResponseRecorder
-		jsonBuffer     *bytes.Buffer
+		deployer             *mocks.Deployer
+		silentDeployer       *mocks.Deployer
+		pusherCreator        *mocks.PusherCreator
+		pusherCreatorFactory *mocks.PusherCreatorFactory
+		controller           *Controller
+		router               *gin.Engine
+		resp                 *httptest.ResponseRecorder
+		jsonBuffer           *bytes.Buffer
 
 		foundationURL string
 		appName       string
@@ -49,12 +51,14 @@ var _ = Describe("Controller", func() {
 	BeforeEach(func() {
 		deployer = &mocks.Deployer{}
 		silentDeployer = &mocks.Deployer{}
-
+		pusherCreatorFactory = &mocks.PusherCreatorFactory{}
 		controller = &Controller{
-			Deployer:       deployer,
-			SilentDeployer: silentDeployer,
-			Log:            logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "api_test"),
+			Deployer:             deployer,
+			SilentDeployer:       silentDeployer,
+			Log:                  logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "api_test"),
+			PusherCreatorFactory: pusherCreatorFactory,
 		}
+		pusherCreatorFactory.PusherCreatorCall.Returns.ActionCreator = pusherCreator
 
 		router = gin.New()
 		resp = httptest.NewRecorder()
@@ -160,6 +164,84 @@ var _ = Describe("Controller", func() {
 
 	Describe("RunDeployment", func() {
 		Context("when verbose deployer is called", func() {
+			It("deployer is provided correct authorization", func() {
+
+				deployer.DeployCall.Returns.Error = nil
+				deployer.DeployCall.Returns.StatusCode = http.StatusOK
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+
+				response := &bytes.Buffer{}
+
+				deployment := &I.Deployment{
+					Body: &[]byte{},
+					Authorization: I.Authorization{
+						Username: "username",
+						Password: "password",
+					},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+				}
+				deployResponse := controller.RunDeployment(deployment, response)
+
+				Eventually(deployer.DeployCall.Called).Should(Equal(1))
+				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
+
+				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
+
+				Eventually(deployer.DeployCall.Received.Authorization).Should(Equal(deployment.Authorization))
+				//Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
+				//Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
+				//Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
+				//Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				//
+				//ret, _ := ioutil.ReadAll(response)
+				//Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+			})
+
+			It("deployer is provided the body", func() {
+
+				deployer.DeployCall.Returns.Error = nil
+				deployer.DeployCall.Returns.StatusCode = http.StatusOK
+				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+
+				response := &bytes.Buffer{}
+
+				bodyBytes := []byte("a test body string")
+
+				deployment := &I.Deployment{
+					Body: &bodyBytes,
+					Authorization: I.Authorization{
+						Username: "username",
+						Password: "password",
+					},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+				}
+				deployResponse := controller.RunDeployment(deployment, response)
+				receivedBody, _ := ioutil.ReadAll(deployer.DeployCall.Received.Body)
+				Eventually(deployer.DeployCall.Called).Should(Equal(1))
+				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
+
+				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
+
+				Eventually(receivedBody).Should(Equal(*deployment.Body))
+				//Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
+				//Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
+				//Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
+				//Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				//
+				//ret, _ := ioutil.ReadAll(response)
+				//Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+			})
+
 			It("channel resolves when no errors occur", func() {
 
 				deployer.DeployCall.Returns.Error = nil
@@ -252,7 +334,9 @@ var _ = Describe("Controller", func() {
 				}
 				controller.RunDeployment(deployment, response)
 
-				Eventually(deployer.DeployCall.Received.Request.Header.Get("Authorization")).Should(Equal(""))
+				Eventually(deployer.DeployCall.Received.Authorization.Username).Should(Equal(""))
+				Eventually(deployer.DeployCall.Received.Authorization.Password).Should(Equal(""))
+
 			})
 
 			It("sets the basic auth header if credentials are passed", func() {
@@ -276,7 +360,8 @@ var _ = Describe("Controller", func() {
 				}
 				controller.RunDeployment(deployment, response)
 
-				Eventually(deployer.DeployCall.Received.Request.Header.Get("Authorization")).Should(Equal("Basic VGVzdFVzZXJuYW1lOlRlc3RQYXNzd29yZA=="))
+				Eventually(deployer.DeployCall.Received.Authorization.Username).Should(Equal("TestUsername"))
+				Eventually(deployer.DeployCall.Received.Authorization.Password).Should(Equal("TestPassword"))
 			})
 		})
 
@@ -358,6 +443,63 @@ var _ = Describe("Controller", func() {
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
 			})
 		})
+
+		Context("when called", func() {
+			It("creates a pusher creator", func() {
+				bodyString := "body string"
+				bodyBytes := []byte(bodyString)
+				deployment := I.Deployment{
+					Body: &bodyBytes,
+					Type: I.DeploymentType{JSON: true},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+				}
+				pusherCreatorFactory := &mocks.PusherCreatorFactory{}
+				response := &bytes.Buffer{}
+				controller = &Controller{
+					Deployer:             deployer,
+					SilentDeployer:       silentDeployer,
+					Log:                  logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "api_test"),
+					PusherCreatorFactory: pusherCreatorFactory,
+				}
+
+				controller.RunDeployment(&deployment, response)
+				Eventually(pusherCreatorFactory.PusherCreatorCall.Called).Should(Equal(true))
+
+			})
+			It("Provides body for pusher creator", func() {
+				bodyByte := []byte("body string")
+				deployment := I.Deployment{
+					Body: &bodyByte,
+					Type: I.DeploymentType{JSON: true},
+					CFContext: I.CFContext{
+						Environment:  environment,
+						Organization: org,
+						Space:        space,
+						Application:  appName,
+					},
+				}
+
+				pusherCreatorFactory := &mocks.PusherCreatorFactory{}
+
+				response := &bytes.Buffer{}
+				controller = &Controller{
+					Deployer:             deployer,
+					SilentDeployer:       silentDeployer,
+					Log:                  logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "api_test"),
+					PusherCreatorFactory: pusherCreatorFactory,
+				}
+
+				controller.RunDeployment(&deployment, response)
+				returnedBody, _ := ioutil.ReadAll(pusherCreatorFactory.PusherCreatorCall.Received.Body)
+				Eventually(returnedBody).Should(Equal(bodyByte))
+			})
+		})
+
 	})
 	Describe("StopDeployment", func() {
 		Context("when verbose deployer is called", func() {
@@ -453,7 +595,8 @@ var _ = Describe("Controller", func() {
 				}
 				controller.RunDeployment(deployment, response)
 
-				Eventually(deployer.DeployCall.Received.Request.Header.Get("Authorization")).Should(Equal(""))
+				Eventually(deployer.DeployCall.Received.Authorization.Username).Should(Equal(""))
+				Eventually(deployer.DeployCall.Received.Authorization.Password).Should(Equal(""))
 			})
 
 			It("sets the basic auth header if credentials are passed", func() {
@@ -477,7 +620,8 @@ var _ = Describe("Controller", func() {
 				}
 				controller.RunDeployment(deployment, response)
 
-				Eventually(deployer.DeployCall.Received.Request.Header.Get("Authorization")).Should(Equal("Basic VGVzdFVzZXJuYW1lOlRlc3RQYXNzd29yZA=="))
+				Eventually(deployer.DeployCall.Received.Authorization.Username).Should(Equal("TestUsername"))
+				Eventually(deployer.DeployCall.Received.Authorization.Password).Should(Equal("TestPassword"))
 			})
 		})
 

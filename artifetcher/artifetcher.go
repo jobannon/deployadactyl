@@ -85,7 +85,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 // FetchZipFromRequest fetches files from a compressed zip file in the request body.
 //
 // Returns a string to the unzipped application path and an error.
-func (a *Artifetcher) FetchZipFromRequest(req *http.Request) (string, error) {
+func (a *Artifetcher) FetchZipFromRequest(body io.Reader) (string, error) {
 	zipFile, err := a.FileSystem.TempFile("", "deployadactyl-")
 	if err != nil {
 		return "", CreateTempFileError{err}
@@ -95,7 +95,7 @@ func (a *Artifetcher) FetchZipFromRequest(req *http.Request) (string, error) {
 
 	a.Log.Infof("fetching zip file %s", zipFile.Name())
 
-	if _, err = io.Copy(zipFile, req.Body); err != nil {
+	if _, err = io.Copy(zipFile, body); err != nil {
 		return "", WriteResponseError{err}
 	}
 

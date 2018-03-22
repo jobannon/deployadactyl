@@ -3,7 +3,6 @@ package mocks
 import (
 	"fmt"
 	"io"
-	"net/http"
 
 	I "github.com/compozed/deployadactyl/interfaces"
 )
@@ -13,14 +12,16 @@ type Deployer struct {
 	DeployCall struct {
 		Called   int
 		Received struct {
-			Request     *http.Request
-			Environment string
-			Org         string
-			Space       string
-			AppName     string
-			UUID        string
-			ContentType I.DeploymentType
-			Response    io.ReadWriter
+			Authorization I.Authorization
+			Body          io.Reader
+			ActionCreator I.ActionCreator
+			Environment   string
+			Org           string
+			Space         string
+			AppName       string
+			UUID          string
+			ContentType   I.DeploymentType
+			Response      io.ReadWriter
 		}
 		Write struct {
 			Output string
@@ -33,10 +34,13 @@ type Deployer struct {
 }
 
 // Deploy mock method.
-func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName, uuid string, contentType I.DeploymentType, out io.ReadWriter, reqChan chan I.DeployResponse) {
+func (d *Deployer) Deploy(authorization I.Authorization, body io.Reader, actionCreator I.ActionCreator, environment, org, space, appName, uuid string, contentType I.DeploymentType, out io.ReadWriter) *I.DeployResponse {
 	d.DeployCall.Called++
 
-	d.DeployCall.Received.Request = req
+	d.DeployCall.Received.Authorization = authorization
+	d.DeployCall.Received.Body = body
+	d.DeployCall.Received.ActionCreator = actionCreator
+
 	d.DeployCall.Received.Environment = environment
 	d.DeployCall.Received.Org = org
 	d.DeployCall.Received.Space = space
@@ -47,10 +51,11 @@ func (d *Deployer) Deploy(req *http.Request, environment, org, space, appName, u
 
 	fmt.Fprint(out, d.DeployCall.Write.Output)
 
-	response := I.DeployResponse{
+	response := &I.DeployResponse{
 		StatusCode: d.DeployCall.Returns.StatusCode,
 		Error:      d.DeployCall.Returns.Error,
 	}
 
-	reqChan <- response
+	//reqChan <- response
+	return response
 }

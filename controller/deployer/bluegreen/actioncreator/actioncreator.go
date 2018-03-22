@@ -57,7 +57,7 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 		}
 	} else if deploymentInfo.ContentType == "ZIP" {
 
-		appPath, err = a.Fetcher.FetchZipFromRequest(deploymentInfo.DeployRequest)
+		appPath, err = a.Fetcher.FetchZipFromRequest(deploymentInfo.Body)
 		if err != nil {
 			return "", "", 0, pusher.UnzippingError{Err: err}
 		}

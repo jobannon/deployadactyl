@@ -78,9 +78,10 @@ func (c Creator) CreateControllerHandler() *gin.Engine {
 
 func (c Creator) CreateController() controller.Controller {
 	return controller.Controller{
-		Deployer:       c.CreateDeployer(),
-		SilentDeployer: c.CreateSilentDeployer(),
-		Log:            c.CreateLogger(),
+		Deployer:             c.CreateDeployer(),
+		SilentDeployer:       c.CreateSilentDeployer(),
+		Log:                  c.CreateLogger(),
+		PusherCreatorFactory: c,
 	}
 }
 
@@ -90,20 +91,18 @@ func (c Creator) CreateRandomizer() I.Randomizer {
 
 func (c Creator) CreateDeployer() I.Deployer {
 	return deployer.Deployer{
-		Config:         c.CreateConfig(),
-		BlueGreener:    c.CreateBlueGreener(),
-		PusherCreator:  c.CreatePusherCreator(),
-		StopperCreator: c.CreateStopperCreator(),
-		Prechecker:     c.CreatePrechecker(),
-		EventManager:   c.CreateEventManager(),
-		Randomizer:     c.CreateRandomizer(),
-		Log:            c.CreateLogger(),
-		FileSystem:     c.CreateFileSystem(),
-		ErrorFinder:    c.createErrorFinder(),
+		Config:       c.CreateConfig(),
+		BlueGreener:  c.CreateBlueGreener(),
+		Prechecker:   c.CreatePrechecker(),
+		EventManager: c.CreateEventManager(),
+		Randomizer:   c.CreateRandomizer(),
+		Log:          c.CreateLogger(),
+		FileSystem:   c.CreateFileSystem(),
+		ErrorFinder:  c.createErrorFinder(),
 	}
 }
 
-func (c Creator) CreatePusherCreator() I.ActionCreator {
+func (c Creator) PusherCreator(body io.Reader) I.ActionCreator {
 	return &creatorPusherMock{
 		EventManager: c.CreateEventManager(),
 		Logger:       c.CreateLogger(),

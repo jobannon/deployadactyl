@@ -14,6 +14,7 @@ import (
 	"log"
 	"os"
 
+	"encoding/base64"
 	"github.com/compozed/deployadactyl/config"
 	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
@@ -44,20 +45,19 @@ AppName:      %s`
 type SilentDeployer struct {
 }
 
-func (d SilentDeployer) Deploy(req *http.Request, environment, org, space, appName, uuid string, contentType I.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
+func (d SilentDeployer) Deploy(authorization I.Authorization, body io.Reader, actionCreator I.ActionCreator, environment, org, space, appName, uuid string, contentType I.DeploymentType, response io.ReadWriter) *I.DeployResponse {
 	url := os.Getenv("SILENT_DEPLOY_URL")
-	deployResponse := I.DeployResponse{}
+	deployResponse := &I.DeployResponse{}
 
-	request, err := http.NewRequest("POST", fmt.Sprintf(url+"/%s/%s/%s", org, space, appName), req.Body)
+	request, err := http.NewRequest("POST", fmt.Sprintf(url+"/%s/%s/%s", org, space, appName), body)
 	if err != nil {
 		log.Println(fmt.Sprintf("Silent deployer request err: %s", err))
 		deployResponse.Error = err
-		reqChannel <- deployResponse
 	}
-
+	usernamePassword := base64.StdEncoding.EncodeToString([]byte(authorization.Username + ":" + authorization.Password))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Authorization", req.Header.Get("Authorization"))
+	request.Header.Set("Authorization", usernamePassword)
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -70,46 +70,25 @@ func (d SilentDeployer) Deploy(req *http.Request, environment, org, space, appNa
 		log.Println(fmt.Sprintf("Silent deployer response err: %s", err))
 		deployResponse.StatusCode = resp.StatusCode
 		deployResponse.Error = err
-		reqChannel <- deployResponse
 	}
 
 	deployResponse.StatusCode = resp.StatusCode
 	deployResponse.Error = err
-	reqChannel <- deployResponse
+	return deployResponse
 }
 
 type Deployer struct {
-	Config         config.Config
-	BlueGreener    I.BlueGreener
-	PusherCreator  I.ActionCreator
-	StopperCreator I.ActionCreator
-	Prechecker     I.Prechecker
-	EventManager   I.EventManager
-	Randomizer     I.Randomizer
-	ErrorFinder    I.ErrorFinder
-	Log            I.Logger
-	FileSystem     *afero.Afero
+	Config       config.Config
+	BlueGreener  I.BlueGreener
+	Prechecker   I.Prechecker
+	EventManager I.EventManager
+	Randomizer   I.Randomizer
+	ErrorFinder  I.ErrorFinder
+	Log          I.Logger
+	FileSystem   *afero.Afero
 }
 
-func (d Deployer) Deploy(req *http.Request, environment, org, space, appName, uuid string, contentType I.DeploymentType, response io.ReadWriter, reqChannel chan I.DeployResponse) {
-	deployResponse := I.DeployResponse{}
-	statusCode, deploymentInfo, err := d.deployInternal(
-		req,
-		environment,
-		org,
-		space,
-		appName,
-		uuid,
-		contentType,
-		response,
-	)
-	deployResponse.StatusCode = statusCode
-	deployResponse.DeploymentInfo = deploymentInfo
-	deployResponse.Error = err
-	reqChannel <- deployResponse
-}
-
-func (d Deployer) deployInternal(req *http.Request, environment, org, space, appName, uuid string, contentType I.DeploymentType, response io.ReadWriter) (statusCode int, deploymentInfo *S.DeploymentInfo, err error) {
+func (d Deployer) Deploy(authorization I.Authorization, body io.Reader, actionCreator I.ActionCreator, environment, org, space, appName, uuid string, contentType I.DeploymentType, response io.ReadWriter) *I.DeployResponse {
 	var (
 		environments           = d.Config.Environments
 		authenticationRequired = environments[environment].Authenticate
@@ -120,47 +99,60 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	if uuid == "" {
 		uuid = d.Randomizer.StringRunes(10)
 	}
-
-	e, ok := environments[environment]
-	if !ok {
-		fmt.Fprintln(response, EnvironmentNotFoundError{environment}.Error())
-		return http.StatusInternalServerError, deploymentInfo, EnvironmentNotFoundError{environment}
-	}
-	d.Log.Debugf("Starting deploy of %s with UUID %s", appName, uuid)
-
 	deploymentLogger := logger.DeploymentLogger{d.Log, uuid}
 
-	deploymentInfo = &S.DeploymentInfo{}
+	deploymentInfo := &S.DeploymentInfo{}
 	deploymentInfo.Org = org
 	deploymentInfo.Space = space
 	deploymentInfo.AppName = appName
 	deploymentInfo.UUID = uuid
 	deploymentInfo.Environment = environment
+	deploymentInfo.CustomParams = make(map[string]interface{})
+
+	deployResponse := &I.DeployResponse{
+		DeploymentInfo: deploymentInfo,
+	}
+
+	e, ok := environments[environment]
+	if !ok {
+		fmt.Fprintln(response, EnvironmentNotFoundError{environment}.Error())
+		deployResponse.Error = EnvironmentNotFoundError{environment}
+		deployResponse.StatusCode = http.StatusInternalServerError
+		return deployResponse
+	}
+	d.Log.Debugf("Starting deploy of %s with UUID %s", appName, uuid)
+
 	deploymentInfo.SkipSSL = environments[environment].SkipSSL
 	deploymentInfo.Domain = environments[environment].Domain
-	deploymentInfo.CustomParams = make(map[string]interface{})
+
 	deploymentInfo.CustomParams = environments[environment].CustomParams
 
 	deploymentLogger.Debug("building deploymentInfo")
 
 	if contentType.JSON {
-		deploymentInfo, err = getDeploymentInfo(req.Body, deploymentInfo)
+		deploymentInfo, err := getDeploymentInfo(body, deploymentInfo)
 		if err != nil {
 			deploymentLogger.Error(err)
-			return http.StatusInternalServerError, deploymentInfo, err
+			deployResponse.StatusCode = http.StatusInternalServerError
+			deployResponse.Error = err
+			deployResponse.DeploymentInfo = deploymentInfo
+			return deployResponse
 		}
 	}
-	deployEventData := &S.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: req.Body}
 
-	defer emitDeployFinish(d, deployEventData, response, &err, &statusCode, deploymentLogger)
-	defer emitDeploySuccess(d, deployEventData, response, &err, &statusCode, deploymentLogger)
+	deployEventData := &S.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: body}
+
+	defer emitDeployFinish(d, deployEventData, response, deployResponse, deploymentLogger)
+	defer emitDeploySuccess(d, deployEventData, response, deployResponse, deploymentLogger)
 
 	deploymentLogger.Debugf("emitting a %s event", C.DeployStartEvent)
-	err = d.EventManager.Emit(I.Event{Type: C.DeployStartEvent, Data: deployEventData})
+	err := d.EventManager.Emit(I.Event{Type: C.DeployStartEvent, Data: deployEventData})
 	if err != nil {
 		deploymentLogger.Error(err)
 		err = &bluegreen.InitializationError{err}
-		return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.DeployStartEvent, Err: err}
+		deployResponse.StatusCode = http.StatusInternalServerError
+		deployResponse.Error = EventError{Type: C.DeployStartEvent, Err: err}
+		return deployResponse
 	}
 
 	defer func() { d.FileSystem.RemoveAll(appPath) }()
@@ -170,80 +162,70 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	err = d.Prechecker.AssertAllFoundationsUp(environments[environment])
 	if err != nil {
 		deploymentLogger.Error(err)
-		return http.StatusInternalServerError, deploymentInfo, err
+		deployResponse.StatusCode = http.StatusInternalServerError
+		deployResponse.Error = err
+		return deployResponse
 	}
 
 	deploymentLogger.Debug("checking for basic auth")
-	username, password, ok := req.BasicAuth()
-	if !ok {
+	//username, password, ok := req.BasicAuth()
+	if authorization.Username == "" && authorization.Password == "" {
 		if authenticationRequired {
-			return http.StatusUnauthorized, deploymentInfo, BasicAuthError{}
+			deployResponse.StatusCode = http.StatusUnauthorized
+			deployResponse.Error = BasicAuthError{}
+			return deployResponse
 		}
-		username = d.Config.Username
-		password = d.Config.Password
+		authorization.Username = d.Config.Username
+		authorization.Password = d.Config.Password
 	}
 
 	if contentType.JSON {
 		deploymentLogger.Debug("deploying from json request")
 
 		deploymentInfo.ContentType = "JSON"
-		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalStart)
-
-		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalStart, Data: deployEventData})
-		if err != nil {
-			deploymentLogger.Error(err)
-			err = &bluegreen.InitializationError{err}
-			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalStart, Err: err}
-		}
-		appPath, manifest, instances, err = d.PusherCreator.SetUp(*deploymentInfo, environments[environment].Instances)
-
-		if err != nil {
-			deploymentLogger.Error(err)
-			_ = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalFailure, Data: deployEventData})
-			return http.StatusInternalServerError, deploymentInfo, err
-		}
-		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalSuccess)
-
-		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalSuccess, Data: deployEventData})
-		if err != nil {
-			deploymentLogger.Error(err)
-			err = &bluegreen.InitializationError{err}
-			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalSuccess, Err: err}
-		}
 	} else if contentType.ZIP {
 		deploymentLogger.Debug("deploying from zip request")
-		deploymentInfo.DeployRequest = req
+		deploymentInfo.Body = body
 		deploymentInfo.ContentType = "ZIP"
-
-		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalStart)
-
-		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalStart, Data: deployEventData})
-		if err != nil {
-			deploymentLogger.Error(err)
-			err = &bluegreen.InitializationError{err}
-			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalStart, Err: err}
-		}
-		appPath, manifest, instances, err = d.PusherCreator.SetUp(*deploymentInfo, environments[environment].Instances)
-		if err != nil {
-			deploymentLogger.Error(err)
-			_ = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalFailure, Data: deployEventData})
-			return http.StatusInternalServerError, deploymentInfo, err
-		}
-		deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalSuccess)
-
-		err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalSuccess, Data: deployEventData})
-		if err != nil {
-			deploymentLogger.Error(err)
-			err = &bluegreen.InitializationError{err}
-			return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.ArtifactRetrievalSuccess, Err: err}
-		}
-
 	} else {
-		return http.StatusBadRequest, deploymentInfo, InvalidContentTypeError{}
+		deployResponse.StatusCode = http.StatusBadRequest
+		deployResponse.Error = InvalidContentTypeError{}
+		return deployResponse
 	}
 
-	deploymentInfo.Username = username
-	deploymentInfo.Password = password
+	deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalStart)
+	err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalStart, Data: deployEventData})
+
+	if err != nil {
+		deploymentLogger.Error(err)
+		err = &bluegreen.InitializationError{err}
+		deployResponse.StatusCode = http.StatusInternalServerError
+		deployResponse.Error = EventError{Type: C.ArtifactRetrievalStart, Err: err}
+		return deployResponse
+	}
+
+	appPath, manifest, instances, err = actionCreator.SetUp(*deploymentInfo, environments[environment].Instances)
+
+	if err != nil {
+		deploymentLogger.Error(err)
+		_ = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalFailure, Data: deployEventData})
+		deployResponse.StatusCode = http.StatusInternalServerError
+		deployResponse.Error = err
+		return deployResponse
+	}
+	deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalSuccess)
+
+	err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalSuccess, Data: deployEventData})
+	if err != nil {
+		deploymentLogger.Error(err)
+		err = &bluegreen.InitializationError{err}
+		deployResponse.StatusCode = http.StatusInternalServerError
+		deployResponse.Error = EventError{Type: C.ArtifactRetrievalSuccess, Err: err}
+		return deployResponse
+	}
+
+	deploymentInfo.Username = authorization.Username
+	deploymentInfo.Password = authorization.Password
 	deploymentInfo.Manifest = manifest
 	deploymentInfo.AppPath = appPath
 	deploymentInfo.Instances = instances
@@ -259,28 +241,38 @@ func (d Deployer) deployInternal(req *http.Request, environment, org, space, app
 	if err != nil {
 		deploymentLogger.Error(err)
 		err = &bluegreen.InitializationError{err}
-		return http.StatusInternalServerError, deploymentInfo, EventError{Type: C.PushStartedEvent, Err: err}
+		deployResponse.StatusCode = http.StatusInternalServerError
+		deployResponse.Error = EventError{Type: C.PushStartedEvent, Err: err}
+		return deployResponse
 	}
 
-	err = d.BlueGreener.Execute(d.PusherCreator, e, appPath, *deploymentInfo, response)
+	err = d.BlueGreener.Execute(actionCreator, e, appPath, *deploymentInfo, response)
 
 	if err != nil {
 		if !enableRollback {
 			deploymentLogger.Errorf("EnableRollback %t, returning status %d and err %s", enableRollback, http.StatusOK, err)
-			return http.StatusOK, deploymentInfo, err
+			deployResponse.StatusCode = http.StatusOK
+			deployResponse.Error = err
+			return deployResponse
 		}
 
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
-			return http.StatusBadRequest, deploymentInfo, err
+			deployResponse.StatusCode = http.StatusBadRequest
+			deployResponse.Error = err
+			return deployResponse
 		}
 
-		return http.StatusInternalServerError, deploymentInfo, err
+		deployResponse.StatusCode = http.StatusInternalServerError
+		deployResponse.Error = err
+		return deployResponse
 	}
 
 	deploymentLogger.Infof("successfully deployed application %s", deploymentInfo.AppName)
 	fmt.Fprintf(response, "\n%s", successfulDeploy)
 
-	return http.StatusOK, deploymentInfo, err
+	deployResponse.StatusCode = http.StatusOK
+	deployResponse.Error = err
+	return deployResponse
 }
 
 func getDeploymentInfo(reader io.Reader, deploymentInfo *S.DeploymentInfo) (*S.DeploymentInfo, error) {
@@ -305,23 +297,24 @@ func getDeploymentInfo(reader io.Reader, deploymentInfo *S.DeploymentInfo) (*S.D
 	return deploymentInfo, nil
 }
 
-func emitDeployFinish(d Deployer, deployEventData *S.DeployEventData, response io.ReadWriter, err *error, statusCode *int, deploymentLogger logger.DeploymentLogger) {
+func emitDeployFinish(d Deployer, deployEventData *S.DeployEventData, response io.ReadWriter, deployResponse *I.DeployResponse, deploymentLogger logger.DeploymentLogger) {
 	deploymentLogger.Debugf("emitting a %s event", C.DeployFinishEvent)
 	finishErr := d.EventManager.Emit(I.Event{Type: C.DeployFinishEvent, Data: deployEventData})
 	if finishErr != nil {
 		fmt.Fprintln(response, finishErr)
-		*err = bluegreen.FinishDeployError{Err: fmt.Errorf("%s: %s", *err, EventError{C.DeployFinishEvent, finishErr})}
-		*statusCode = http.StatusInternalServerError
+		err := bluegreen.FinishDeployError{Err: fmt.Errorf("%s: %s", deployResponse.Error, EventError{C.DeployFinishEvent, finishErr})}
+		deployResponse.Error = err
+		deployResponse.StatusCode = http.StatusInternalServerError
 	}
 }
 
-func emitDeploySuccess(d Deployer, deployEventData *S.DeployEventData, response io.ReadWriter, err *error, statusCode *int, deploymentLogger logger.DeploymentLogger) {
+func emitDeploySuccess(d Deployer, deployEventData *S.DeployEventData, response io.ReadWriter, deployResponse *I.DeployResponse, deploymentLogger logger.DeploymentLogger) {
 	deployEvent := I.Event{Type: C.DeploySuccessEvent, Data: deployEventData}
-	if *err != nil {
-		printErrors(d, response, err)
+	if deployResponse.Error != nil {
+		printErrors(d, response, &deployResponse.Error)
 
 		deployEvent.Type = C.DeployFailureEvent
-		deployEvent.Error = *err
+		deployEvent.Error = deployResponse.Error
 	}
 
 	deploymentLogger.Debug(fmt.Sprintf("emitting a %s event", deployEvent.Type))

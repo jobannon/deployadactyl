@@ -7,3 +7,4 @@ config.yml
 .config
 *.coverprofile
 .idea
+**/coverage.out

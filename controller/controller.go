@@ -5,24 +5,25 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net/http"
-
 	"io/ioutil"
 
 	"os"
-
-	"encoding/base64"
 
 	I "github.com/compozed/deployadactyl/interfaces"
 
 	"github.com/gin-gonic/gin"
 )
 
+type pusherCreatorFactory interface {
+	PusherCreator(body io.Reader) I.ActionCreator
+}
+
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
-	Deployer       I.Deployer
-	SilentDeployer I.Deployer
-	Log            I.Logger
+	Deployer             I.Deployer
+	SilentDeployer       I.Deployer
+	Log                  I.Logger
+	PusherCreatorFactory pusherCreatorFactory
 }
 
 func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
@@ -30,41 +31,29 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 
-	headers := http.Header{}
-	if deployment.Authorization.Username != "" && deployment.Authorization.Password != "" {
-		headers["Authorization"] = []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(deployment.Authorization.Username+":"+deployment.Authorization.Password))}
+	pusherCreator := c.PusherCreatorFactory.PusherCreator(bodyNotSilent)
 
-	} else {
-		headers["Authorization"] = []string{}
-	}
-
-	request1 := &http.Request{
-		Header: headers,
-		Body:   bodyNotSilent,
-	}
-
-	request2 := &http.Request{
-		Header: headers,
-		Body:   bodySilent,
-	}
-
-	reqChannel1 := make(chan I.DeployResponse)
-	reqChannel2 := make(chan I.DeployResponse)
+	reqChannel1 := make(chan *I.DeployResponse)
+	reqChannel2 := make(chan *I.DeployResponse)
 	defer close(reqChannel1)
 	defer close(reqChannel2)
 
 	cf := deployment.CFContext
-	go c.Deployer.Deploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, response, reqChannel1)
+	go func() {
+		reqChannel1 <- c.Deployer.Deploy(deployment.Authorization, bodyNotSilent, pusherCreator, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, response)
+	}()
 
 	silentResponse := &bytes.Buffer{}
 	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
-		go c.SilentDeployer.Deploy(request2, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, silentResponse, reqChannel2)
+		go func() {
+			reqChannel2 <- c.SilentDeployer.Deploy(deployment.Authorization, bodySilent, pusherCreator, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, silentResponse)
+		}()
 		<-reqChannel2
 	}
 
 	deployResponse := <-reqChannel1
 
-	return deployResponse
+	return *deployResponse
 }
 
 func (c *Controller) StopDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
@@ -72,23 +61,7 @@ func (c *Controller) StopDeployment(deployment *I.Deployment, response *bytes.Bu
 	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 
-	headers := http.Header{}
-	if deployment.Authorization.Username != "" && deployment.Authorization.Password != "" {
-		headers["Authorization"] = []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(deployment.Authorization.Username+":"+deployment.Authorization.Password))}
-
-	} else {
-		headers["Authorization"] = []string{}
-	}
-
-	request1 := &http.Request{
-		Header: headers,
-		Body:   bodyNotSilent,
-	}
-
-	request2 := &http.Request{
-		Header: headers,
-		Body:   bodySilent,
-	}
+	pusherCreator := c.PusherCreatorFactory.PusherCreator(bodyNotSilent)
 
 	reqChannel1 := make(chan I.DeployResponse)
 	reqChannel2 := make(chan I.DeployResponse)
@@ -96,11 +69,11 @@ func (c *Controller) StopDeployment(deployment *I.Deployment, response *bytes.Bu
 	defer close(reqChannel2)
 
 	cf := deployment.CFContext
-	go c.Deployer.Deploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, response, reqChannel1)
+	go c.Deployer.Deploy(deployment.Authorization, bodyNotSilent, pusherCreator, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, response)
 
 	silentResponse := &bytes.Buffer{}
 	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
-		go c.SilentDeployer.Deploy(request2, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, silentResponse, reqChannel2)
+		go c.SilentDeployer.Deploy(deployment.Authorization, bodySilent, pusherCreator, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, silentResponse)
 		<-reqChannel2
 	}
 

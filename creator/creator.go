@@ -138,28 +138,27 @@ func (c Creator) CreateHTTPClient() *http.Client {
 
 func (c Creator) CreateController() I.Controller {
 	return &controller.Controller{
-		Deployer:       c.createDeployer(),
-		SilentDeployer: c.createSilentDeployer(),
-		Log:            c.CreateLogger(),
+		Deployer:             c.createDeployer(),
+		SilentDeployer:       c.createSilentDeployer(),
+		Log:                  c.CreateLogger(),
+		PusherCreatorFactory: c,
 	}
 }
 
 func (c Creator) createDeployer() I.Deployer {
 	return deployer.Deployer{
-		Config:         c.CreateConfig(),
-		BlueGreener:    c.createBlueGreener(),
-		PusherCreator:  c.PusherCreator(),
-		StopperCreator: c.StopperCreator(),
-		Prechecker:     c.createPrechecker(),
-		EventManager:   c.CreateEventManager(),
-		Randomizer:     c.createRandomizer(),
-		ErrorFinder:    c.createErrorFinder(),
-		Log:            c.CreateLogger(),
-		FileSystem:     c.CreateFileSystem(),
+		Config:       c.CreateConfig(),
+		BlueGreener:  c.createBlueGreener(),
+		Prechecker:   c.createPrechecker(),
+		EventManager: c.CreateEventManager(),
+		Randomizer:   c.createRandomizer(),
+		ErrorFinder:  c.createErrorFinder(),
+		Log:          c.CreateLogger(),
+		FileSystem:   c.CreateFileSystem(),
 	}
 }
 
-func (c Creator) PusherCreator() I.ActionCreator {
+func (c Creator) PusherCreator(body io.Reader) I.ActionCreator {
 	return actioncreator.PusherCreator{
 		CourierCreator: c,
 		EventManager:   c.CreateEventManager(),

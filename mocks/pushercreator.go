@@ -10,6 +10,19 @@ import (
 
 // PusherCreator handmade mock for tests.
 type PusherCreator struct {
+	SetUpCall struct {
+		Called   bool
+		Received struct {
+			DeploymentInfo S.DeploymentInfo
+			EnvInstances   uint16
+		}
+		Returns struct {
+			AppPath        string
+			ManifestString string
+			Instances      uint16
+			Err            error
+		}
+	}
 	CreatePusherCall struct {
 		TimesCalled int
 		Returns     struct {
@@ -22,7 +35,11 @@ type PusherCreator struct {
 // CreatePusher mock method.
 
 func (p *PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
-	return "", "", 0, nil
+	p.SetUpCall.Received.DeploymentInfo = deploymentInfo
+	p.SetUpCall.Received.EnvInstances = envInstances
+
+	p.SetUpCall.Called = true
+	return p.SetUpCall.Returns.AppPath, p.SetUpCall.Returns.ManifestString, p.SetUpCall.Returns.Instances, p.SetUpCall.Returns.Err
 }
 
 func (p *PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext interfaces.CFContext, authorization interfaces.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (interfaces.Action, error) {

@@ -57,6 +57,7 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 		}
 
 		fetchFn = func() (string, error) {
+			a.Logger.Debug("deploying from json request")
 			appPath, err = a.Fetcher.Fetch(deploymentInfo.ArtifactURL, manifestString)
 			if err != nil {
 				return "", pusher.AppPathError{Err: err}
@@ -68,6 +69,7 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 		instances = &instanceVal
 
 		fetchFn = func() (string, error) {
+			a.Logger.Debug("deploying from zip request")
 			appPath, err = a.Fetcher.FetchZipFromRequest(deploymentInfo.Body)
 			if err != nil {
 				return "", pusher.UnzippingError{Err: err}

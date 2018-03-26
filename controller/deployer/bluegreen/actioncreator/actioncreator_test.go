@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/op/go-logging"
+	"io/ioutil"
 	"reflect"
 )
 
@@ -22,7 +23,7 @@ var log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
 
 var _ = Describe("Actioncreator", func() {
 	Describe("Setup", func() {
-		Context("content-type is json", func() {
+		Context("content-type is JSON", func() {
 
 			manifest := `---
 applications:
@@ -43,6 +44,8 @@ applications:
 
 				_, returnsManifest, _, _ := pusherCreator.SetUp(deploymentInfo, 0)
 				Expect(returnsManifest).To(Equal(manifest))
+				logBytes, _ := ioutil.ReadAll(logBuffer)
+				Eventually(string(logBytes)).Should(ContainSubstring("deploying from json request"))
 			})
 			It("should fetch and return app path", func() {
 				fetcher := &mocks.Fetcher{}
@@ -237,6 +240,8 @@ applications:
 				appPath, _, _, _ := pusherCreator.SetUp(deploymentInfo, 0)
 
 				Expect(appPath).To(Equal("newAppPath"))
+				logBytes, _ := ioutil.ReadAll(logBuffer)
+				Eventually(string(logBytes)).Should(ContainSubstring("deploying from zip request"))
 			})
 			It("should error when artifact cannot be fetched", func() {
 				fetcher := &mocks.Fetcher{}

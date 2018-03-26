@@ -5,6 +5,7 @@ import (
 	"io"
 
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/structs"
 )
 
 // Deployer handmade mock for tests.
@@ -12,16 +13,17 @@ type Deployer struct {
 	DeployCall struct {
 		Called   int
 		Received struct {
-			Authorization I.Authorization
-			Body          io.Reader
-			ActionCreator I.ActionCreator
-			Environment   string
-			Org           string
-			Space         string
-			AppName       string
-			UUID          string
-			ContentType   I.DeploymentType
-			Response      io.ReadWriter
+			DeploymentInfo *structs.DeploymentInfo
+			Env            structs.Environment
+			Authorization  I.Authorization
+			Body           io.Reader
+			ActionCreator  I.ActionCreator
+			Environment    string
+			Org            string
+			Space          string
+			AppName        string
+			ContentType    I.DeploymentType
+			Response       io.ReadWriter
 		}
 		Write struct {
 			Output string
@@ -34,9 +36,11 @@ type Deployer struct {
 }
 
 // Deploy mock method.
-func (d *Deployer) Deploy(authorization I.Authorization, body io.Reader, actionCreator I.ActionCreator, environment, org, space, appName, uuid string, contentType I.DeploymentType, out io.ReadWriter) *I.DeployResponse {
+func (d *Deployer) Deploy(deploymentInfo *structs.DeploymentInfo, env structs.Environment, authorization I.Authorization, body io.Reader, actionCreator I.ActionCreator, environment, org, space, appName string, contentType I.DeploymentType, out io.ReadWriter) *I.DeployResponse {
 	d.DeployCall.Called++
 
+	d.DeployCall.Received.DeploymentInfo = deploymentInfo
+	d.DeployCall.Received.Env = env
 	d.DeployCall.Received.Authorization = authorization
 	d.DeployCall.Received.Body = body
 	d.DeployCall.Received.ActionCreator = actionCreator
@@ -45,7 +49,6 @@ func (d *Deployer) Deploy(authorization I.Authorization, body io.Reader, actionC
 	d.DeployCall.Received.Org = org
 	d.DeployCall.Received.Space = space
 	d.DeployCall.Received.AppName = appName
-	d.DeployCall.Received.UUID = uuid
 	d.DeployCall.Received.ContentType = contentType
 	d.DeployCall.Received.Response = out
 

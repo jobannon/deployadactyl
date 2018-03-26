@@ -15,14 +15,15 @@ type DeployResponse struct {
 // Deployer interface.
 type Deployer interface {
 	Deploy(
+		deploymentInfo *structs.DeploymentInfo,
+		environment structs.Environment,
 		authorization Authorization,
 		body io.Reader,
 		actionCreator ActionCreator,
-		environment,
+		environmentStr,
 		org,
 		space,
-		appName,
-		uuid string,
+		appName string,
 		contentType DeploymentType,
 		response io.ReadWriter,
 	) *DeployResponse

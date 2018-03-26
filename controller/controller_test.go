@@ -16,6 +16,7 @@ import (
 	. "github.com/compozed/deployadactyl/controller"
 	D "github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
+	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
@@ -24,6 +25,7 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
 	"reflect"
 )
@@ -35,24 +37,23 @@ var _ = Describe("Controller", func() {
 		silentDeployer       *mocks.Deployer
 		pusherCreator        *mocks.PusherCreator
 		pusherCreatorFactory *mocks.PusherCreatorFactory
-		controller           *Controller
-		router               *gin.Engine
-		resp                 *httptest.ResponseRecorder
-		jsonBuffer           *bytes.Buffer
-		deployment           I.Deployment
 		eventManager         *mocks.EventManager
+		errorFinder          *mocks.ErrorFinder
+		controller           *Controller
+		deployment           I.Deployment
+		logBuffer            *Buffer
 
-		foundationURL string
-		appName       string
-		environment   string
-		org           string
-		space         string
-		byteBody      []byte
-		server        *httptest.Server
-		response      *bytes.Buffer
+		appName     string
+		environment string
+		org         string
+		space       string
+		byteBody    []byte
+		server      *httptest.Server
+		response    *bytes.Buffer
 	)
 
 	BeforeEach(func() {
+		logBuffer = NewBuffer()
 		appName = "appName-" + randomizer.StringRunes(10)
 		environment = "environment-" + randomizer.StringRunes(10)
 		org = "org-" + randomizer.StringRunes(10)
@@ -62,13 +63,15 @@ var _ = Describe("Controller", func() {
 		deployer = &mocks.Deployer{}
 		silentDeployer = &mocks.Deployer{}
 		pusherCreatorFactory = &mocks.PusherCreatorFactory{}
+		errorFinder = &mocks.ErrorFinder{}
 		controller = &Controller{
 			Deployer:             deployer,
 			SilentDeployer:       silentDeployer,
-			Log:                  logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "api_test"),
+			Log:                  logger.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
 			PusherCreatorFactory: pusherCreatorFactory,
 			EventManager:         eventManager,
 			Config:               config.Config{},
+			ErrorFinder:          errorFinder,
 		}
 		environments := map[string]structs.Environment{}
 		environments[environment] = structs.Environment{}
@@ -86,11 +89,13 @@ var _ = Describe("Controller", func() {
 		pusherCreatorFactory.PusherCreatorCall.Returns.ActionCreator = pusherCreator
 	})
 
-	AfterEach(func() {
-		server.Close()
-	})
-
 	Describe("RunDeploymentViaHttp handler", func() {
+		var (
+			router        *gin.Engine
+			resp          *httptest.ResponseRecorder
+			jsonBuffer    *bytes.Buffer
+			foundationURL string
+		)
 		BeforeEach(func() {
 			router = gin.New()
 			resp = httptest.NewRecorder()
@@ -106,11 +111,16 @@ var _ = Describe("Controller", func() {
 			silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
 			os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
 		})
+		AfterEach(func() {
+			server.Close()
+		})
 		Context("when deployer succeeds", func() {
 			It("deploys and returns http.StatusOK", func() {
 				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/zip")
+
 				Expect(err).ToNot(HaveOccurred())
 
 				deployer.DeployCall.Returns.Error = nil
@@ -132,6 +142,8 @@ var _ = Describe("Controller", func() {
 				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, "not-non-prod", appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/zip")
+
 				Expect(err).ToNot(HaveOccurred())
 
 				deployer.DeployCall.Returns.Error = nil
@@ -152,6 +164,8 @@ var _ = Describe("Controller", func() {
 				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/zip")
+
 				Expect(err).ToNot(HaveOccurred())
 
 				deployer.DeployCall.Returns.Error = errors.New("bork")
@@ -169,6 +183,8 @@ var _ = Describe("Controller", func() {
 				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s?broken=false", environment, org, space, appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/zip")
+
 				Expect(err).ToNot(HaveOccurred())
 
 				deployer.DeployCall.Write.Output = "deploy success"
@@ -205,6 +221,7 @@ var _ = Describe("Controller", func() {
 						Application:  appName,
 					},
 				}
+				deployment.Type.ZIP = true
 				deployResponse := controller.RunDeployment(deployment, response)
 
 				Eventually(deployer.DeployCall.Called).Should(Equal(1))
@@ -238,6 +255,8 @@ var _ = Describe("Controller", func() {
 						Application:  appName,
 					},
 				}
+				deployment.Type.ZIP = true
+
 				deployResponse := controller.RunDeployment(deployment, response)
 				receivedBody, _ := ioutil.ReadAll(deployer.DeployCall.Received.Body)
 				Eventually(deployer.DeployCall.Called).Should(Equal(1))
@@ -253,6 +272,7 @@ var _ = Describe("Controller", func() {
 				deployment.CFContext.Organization = org
 				deployment.CFContext.Space = space
 				deployment.CFContext.Application = appName
+				deployment.Type.ZIP = true
 
 				deployer.DeployCall.Returns.Error = nil
 				deployer.DeployCall.Returns.StatusCode = http.StatusOK
@@ -266,7 +286,7 @@ var _ = Describe("Controller", func() {
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: false}))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
@@ -280,6 +300,7 @@ var _ = Describe("Controller", func() {
 				deployment.CFContext.Organization = org
 				deployment.CFContext.Space = space
 				deployment.CFContext.Application = appName
+				deployment.Type.ZIP = true
 
 				deployer.DeployCall.Returns.Error = errors.New("bork")
 				deployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
@@ -294,7 +315,7 @@ var _ = Describe("Controller", func() {
 				Eventually(deployResponse.Error.Error()).Should(Equal("bork"))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: false}))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
@@ -331,6 +352,8 @@ var _ = Describe("Controller", func() {
 
 			It("sets the basic auth header if credentials are passed", func() {
 				deployment.CFContext.Environment = environment
+				deployment.Type.ZIP = true
+
 				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
 				deployment.Authorization = I.Authorization{
@@ -351,6 +374,7 @@ var _ = Describe("Controller", func() {
 				deployment.CFContext.Organization = org
 				deployment.CFContext.Space = space
 				deployment.CFContext.Application = appName
+				deployment.Type.ZIP = true
 
 				os.Setenv("SILENT_DEPLOY_ENVIRONMENT", environment)
 				deployer.DeployCall.Returns.Error = nil
@@ -365,7 +389,7 @@ var _ = Describe("Controller", func() {
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: false}))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
@@ -378,6 +402,7 @@ var _ = Describe("Controller", func() {
 				deployment.CFContext.Organization = org
 				deployment.CFContext.Space = space
 				deployment.CFContext.Application = appName
+				deployment.Type.ZIP = true
 
 				os.Setenv("SILENT_DEPLOY_ENVIRONMENT", environment)
 				deployer.DeployCall.Returns.Error = nil
@@ -398,7 +423,7 @@ var _ = Describe("Controller", func() {
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: false}))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
@@ -409,8 +434,19 @@ var _ = Describe("Controller", func() {
 		})
 
 		Context("when called", func() {
+			It("logs building deploymentInfo", func() {
+				deployment.CFContext.Environment = environment
+
+				environments := map[string]structs.Environment{}
+				environments[environment] = structs.Environment{}
+				controller.Config.Environments = environments
+
+				controller.RunDeployment(&deployment, response)
+				Eventually(logBuffer).Should(Say("building deploymentInfo"))
+			})
 			It("creates a pusher creator", func() {
 				deployment.CFContext.Environment = environment
+				deployment.Type.ZIP = true
 
 				environments := map[string]structs.Environment{}
 				environments[environment] = structs.Environment{}
@@ -424,6 +460,7 @@ var _ = Describe("Controller", func() {
 				bodyByte := []byte("body string")
 				deployment.CFContext.Environment = environment
 				deployment.Body = &bodyByte
+				deployment.Type.ZIP = true
 
 				environments := map[string]structs.Environment{}
 				environments[environment] = structs.Environment{}
@@ -435,6 +472,7 @@ var _ = Describe("Controller", func() {
 			})
 			It("Provides response for pusher creator", func() {
 				deployment.CFContext.Environment = environment
+				deployment.Type.ZIP = true
 
 				environments := map[string]structs.Environment{}
 				environments[environment] = structs.Environment{}
@@ -449,6 +487,7 @@ var _ = Describe("Controller", func() {
 				Context("when environment does not exist", func() {
 					It("returns an error with StatusInternalServerError", func() {
 						deployment.CFContext.Environment = "bad env"
+						deployment.Type.ZIP = true
 
 						environments := map[string]structs.Environment{}
 						controller.Config.Environments = environments
@@ -463,6 +502,7 @@ var _ = Describe("Controller", func() {
 						Context("and authentication is not required", func() {
 							It("returns username and password from the config", func() {
 								deployment.CFContext.Environment = environment
+								deployment.Type.ZIP = true
 
 								environments := map[string]structs.Environment{}
 								environments[environment] = structs.Environment{}
@@ -482,6 +522,7 @@ var _ = Describe("Controller", func() {
 						Context("and authentication is required", func() {
 							It("returns an error", func() {
 								deployment.CFContext.Environment = environment
+								deployment.Type.ZIP = true
 
 								deployment.Authorization.Username = ""
 								deployment.Authorization.Password = ""
@@ -500,8 +541,22 @@ var _ = Describe("Controller", func() {
 						})
 					})
 					Context("when Authorization has values", func() {
+						It("logs checking auth", func() {
+							deployment.CFContext.Environment = environment
+							deployment.Type.ZIP = true
+
+							environments := map[string]structs.Environment{}
+							environments[environment] = structs.Environment{}
+
+							controller.Config.Environments = environments
+
+							controller.RunDeployment(&deployment, response)
+
+							Eventually(logBuffer).Should(Say("checking for basic auth"))
+						})
 						It("returns username and password from the authorization", func() {
 							deployment.CFContext.Environment = environment
+							deployment.Type.ZIP = true
 
 							environments := map[string]structs.Environment{}
 							environments[environment] = structs.Environment{}
@@ -518,6 +573,7 @@ var _ = Describe("Controller", func() {
 					})
 					It("has the correct org, space ,appname, env, uuid", func() {
 						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
 
 						environments := map[string]structs.Environment{}
 						environments[environment] = structs.Environment{}
@@ -534,12 +590,51 @@ var _ = Describe("Controller", func() {
 						Eventually(pusherCreatorFactory.PusherCreatorCall.Received.DeployEventData.DeploymentInfo.Space).Should(Equal(space))
 						Eventually(pusherCreatorFactory.PusherCreatorCall.Received.DeployEventData.DeploymentInfo.AppName).Should(Equal(appName))
 						Eventually(pusherCreatorFactory.PusherCreatorCall.Received.DeployEventData.DeploymentInfo.Environment).Should(Equal(environment))
+					})
+					It("has the correct JSON content type", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.JSON = true
+						bodyByte := []byte(`{"artifact_url": "xyz"}`)
+						deployment.Body = &bodyByte
 
+						controller.RunDeployment(&deployment, response)
+
+						Eventually(pusherCreatorFactory.PusherCreatorCall.Received.DeployEventData.DeploymentInfo.ContentType).Should(Equal("JSON"))
+					})
+					It("has the correct ZIP content type", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						Eventually(pusherCreatorFactory.PusherCreatorCall.Received.DeployEventData.DeploymentInfo.ContentType).Should(Equal("ZIP"))
+					})
+					It("has the correct body", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
+						bodyByte := []byte(`{"artifact_url": "xyz"}`)
+						deployment.Body = &bodyByte
+
+						controller.RunDeployment(&deployment, response)
+
+						returnedBody, _ := ioutil.ReadAll(pusherCreatorFactory.PusherCreatorCall.Received.DeployEventData.DeploymentInfo.Body)
+						Eventually(string(returnedBody)).Should(Equal(string(bodyByte)))
+					})
+
+					Context("when contentType is neither", func() {
+						It("returns an error", func() {
+							deployment.CFContext.Environment = environment
+
+							deployResponse := controller.RunDeployment(&deployment, response)
+
+							Eventually(reflect.TypeOf(deployResponse.Error)).Should(Equal(reflect.TypeOf(D.InvalidContentTypeError{})))
+						})
 					})
 
 					Context("when uuid is not provided", func() {
 						It("creates a new uuid", func() {
 							deployment.CFContext.Environment = environment
+							deployment.Type.ZIP = true
 
 							environments := map[string]structs.Environment{}
 							environments[environment] = structs.Environment{}
@@ -548,7 +643,6 @@ var _ = Describe("Controller", func() {
 							controller.RunDeployment(&deployment, response)
 
 							Eventually(pusherCreatorFactory.PusherCreatorCall.Received.DeployEventData.DeploymentInfo.UUID).ShouldNot(BeEmpty())
-
 						})
 					})
 					Context("when uuid is provided", func() {
@@ -556,6 +650,7 @@ var _ = Describe("Controller", func() {
 							deployment.CFContext.Environment = environment
 							uuid := randomizer.StringRunes(10)
 							deployment.CFContext.UUID = uuid
+							deployment.Type.ZIP = true
 
 							environments := map[string]structs.Environment{}
 							environments[environment] = structs.Environment{}
@@ -572,6 +667,7 @@ var _ = Describe("Controller", func() {
 						domain := "domain-" + randomizer.StringRunes(10)
 						deployment.Authorization.Username = ""
 						deployment.Authorization.Password = ""
+						deployment.Type.ZIP = true
 
 						environments := map[string]structs.Environment{}
 						environments[environment] = structs.Environment{
@@ -592,6 +688,7 @@ var _ = Describe("Controller", func() {
 						customParams["param2"] = "value2"
 
 						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
 
 						environments := map[string]structs.Environment{}
 						environments[environment] = structs.Environment{
@@ -607,6 +704,7 @@ var _ = Describe("Controller", func() {
 					})
 					It("is passed to the pusher creator", func() {
 						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
 
 						environments := map[string]structs.Environment{}
 						environments[environment] = structs.Environment{}
@@ -647,7 +745,7 @@ var _ = Describe("Controller", func() {
 							deploymentResponse := controller.RunDeployment(&deployment, response)
 
 							Eventually(deploymentResponse.Error).ShouldNot(BeNil())
-							Eventually(deploymentResponse.Error.Error()).Should(ContainSubstring("The following properties are missing"))
+							Eventually(deploymentResponse.Error.Error()).Should(ContainSubstring("The following properties are missing: artifact_url"))
 						})
 					})
 					Context("if body is invalid", func() {
@@ -667,8 +765,22 @@ var _ = Describe("Controller", func() {
 							Eventually(deploymentResponse.Error.Error()).Should(ContainSubstring("EOF"))
 						})
 					})
+					It("logs a start event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
+
+						environments := map[string]structs.Environment{}
+						environments[environment] = structs.Environment{}
+
+						controller.Config.Environments = environments
+
+						controller.RunDeployment(&deployment, response)
+
+						Eventually(logBuffer).Should(Say("emitting a deploy.start event"))
+					})
 					It("emits a start event", func() {
 						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
 
 						environments := map[string]structs.Environment{}
 						environments[environment] = structs.Environment{}
@@ -682,6 +794,8 @@ var _ = Describe("Controller", func() {
 					Context("when start emit fails", func() {
 						It("returns error", func() {
 							deployment.CFContext.Environment = environment
+							deployment.Type.ZIP = true
+
 							eventManager.EmitCall.Returns.Error = []error{errors.New("a test error")}
 
 							environments := map[string]structs.Environment{}
@@ -694,8 +808,24 @@ var _ = Describe("Controller", func() {
 							Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.EventError{})))
 						})
 					})
+					It("passes populated deploymentInfo to DeployStartEvent event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.CFContext.Application = appName
+						deployment.CFContext.Space = space
+						deployment.CFContext.Organization = org
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						deploymentInfo := eventManager.EmitCall.Received.Events[0].Data.(*structs.DeployEventData).DeploymentInfo
+						Expect(deploymentInfo.AppName).To(Equal(appName))
+						Expect(deploymentInfo.Org).To(Equal(org))
+						Expect(deploymentInfo.Space).To(Equal(space))
+						Expect(deploymentInfo.UUID).ToNot(BeNil())
+					})
 					It("emits a finished event", func() {
 						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
 
 						environments := map[string]structs.Environment{}
 						environments[environment] = structs.Environment{}
@@ -704,12 +834,14 @@ var _ = Describe("Controller", func() {
 
 						controller.RunDeployment(&deployment, response)
 						//
-						Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.DeployFinishEvent))
+						Expect(eventManager.EmitCall.Received.Events[2].Type).Should(Equal(constants.DeployFinishEvent))
 					})
 					Context("when finished emit fails", func() {
 						It("returns error", func() {
 							deployment.CFContext.Environment = environment
-							eventManager.EmitCall.Returns.Error = []error{nil, errors.New("a test error")}
+							deployment.Type.ZIP = true
+
+							eventManager.EmitCall.Returns.Error = []error{nil, nil, errors.New("a test error")}
 
 							environments := map[string]structs.Environment{}
 							environments[environment] = structs.Environment{}
@@ -723,6 +855,7 @@ var _ = Describe("Controller", func() {
 					})
 					It("emits a success event", func() {
 						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
 
 						environments := map[string]structs.Environment{}
 						environments[environment] = structs.Environment{}
@@ -730,54 +863,91 @@ var _ = Describe("Controller", func() {
 						controller.Config.Environments = environments
 
 						controller.RunDeployment(&deployment, response)
-						//
-						Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.DeployFinishEvent))
+						Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.DeploySuccessEvent))
 					})
-					//Context("when finished emit fails", func() {
-					//	FIt("returns error", func() {
-					//		deployment.CFContext.Environment = environment
-					//		eventManager.EmitCall.Returns.Error = []error{nil, errors.New("a test error")}
-					//
-					//		environments := map[string]structs.Environment{}
-					//		environments[environment] = structs.Environment{}
-					//
-					//		controller.Config.Environments = environments
-					//
-					//		deploymentResponse := controller.RunDeployment(&deployment, response)
-					//
-					//		Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(bluegreen.FinishDeployError{})))
-					//	})
-					//})
-				})
+					Context("when emit successOrFailure fails", func() {
+						It("logs an error", func() {
+							deployment.CFContext.Environment = environment
+							deployment.Type.ZIP = true
 
-				//FIt("has the correct username and password", func() {
-				//	//environment = "environment-" + randomizer.StringRunes(10)
-				//
-				//	//environments                 := map[string]structs.Environment {}
-				//	//domain := "domain-" + randomizer.StringRunes(10)
-				//	//
-				//	//environments[environment] = structs.Environment{
-				//	//	Name:           environment,
-				//	//	Domain:         domain,
-				//	//	//Foundations:    foundations,
-				//	//	//Instances:      instances,
-				//	//	//CustomParams:   customParams,
-				//	//	//EnableRollback: enableRollback,
-				//	//}
-				//	//c := config.Config{
-				//	//	Environments: environments,
-				//	//}
-				//
-				//
-				//	//deploymentInfo.Manifest = manifest
-				//	//deploymentInfo.AppPath = appPath
-				//	//deploymentInfo.Instances = instances
-				//
-				//
-				//	Eventually(pusherCreatorFactory.PusherCreatorCall.Received.DeploymentInfo.Username).Should(Equal(deployment.Authorization.Username))
-				//	Eventually(pusherCreatorFactory.PusherCreatorCall.Received.DeploymentInfo.Password).Should(Equal(deployment.Authorization.Password))
-				//
-				//})
+							eventManager.EmitCall.Returns.Error = []error{nil, errors.New("a test error"), nil}
+
+							environments := map[string]structs.Environment{}
+							environments[environment] = structs.Environment{}
+
+							controller.Config.Environments = environments
+
+							controller.RunDeployment(&deployment, response)
+							Eventually(logBuffer).Should(Say("an error occurred when emitting a deploy.success event"))
+						})
+					})
+					It("emits a failure event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
+
+						eventManager.EmitCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
+
+						environments := map[string]structs.Environment{}
+						environments[environment] = structs.Environment{}
+
+						controller.Config.Environments = environments
+
+						controller.RunDeployment(&deployment, response)
+						Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.DeployFailureEvent))
+					})
+					It("logs emitting an event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+						Eventually(logBuffer).Should(Say("emitting a deploy.success event"))
+					})
+					It("prints found errors to the response", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
+
+						eventManager.EmitCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
+
+						retError := error_finder.CreateLogMatchedError("a description", []string{"some details"}, "a solution", "a code")
+						errorFinder.FindErrorsCall.Returns.Errors = []I.LogMatchedError{retError}
+
+						controller.RunDeployment(&deployment, response)
+						responseBytes, _ := ioutil.ReadAll(response)
+						Eventually(string(responseBytes)).Should(ContainSubstring("The following error was found in the above logs: a description"))
+						Eventually(string(responseBytes)).Should(ContainSubstring("Error: some details"))
+						Eventually(string(responseBytes)).Should(ContainSubstring("Potential solution: a solution"))
+					})
+					It("passes populated deploymentInfo to DeploySuccessEvent event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.CFContext.Application = appName
+						deployment.CFContext.Space = space
+						deployment.CFContext.Organization = org
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						deploymentInfo := eventManager.EmitCall.Received.Events[1].Data.(*structs.DeployEventData).DeploymentInfo
+						Expect(deploymentInfo.AppName).To(Equal(appName))
+						Expect(deploymentInfo.Org).To(Equal(org))
+						Expect(deploymentInfo.Space).To(Equal(space))
+						Expect(deploymentInfo.UUID).ToNot(BeNil())
+					})
+					It("passes populated deploymentInfo to DeployFinishEvent event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.CFContext.Application = appName
+						deployment.CFContext.Space = space
+						deployment.CFContext.Organization = org
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						deploymentInfo := eventManager.EmitCall.Received.Events[2].Data.(*structs.DeployEventData).DeploymentInfo
+						Expect(deploymentInfo.AppName).To(Equal(appName))
+						Expect(deploymentInfo.Org).To(Equal(org))
+						Expect(deploymentInfo.Space).To(Equal(space))
+						Expect(deploymentInfo.UUID).ToNot(BeNil())
+					})
+				})
 			})
 
 		})
@@ -790,6 +960,7 @@ var _ = Describe("Controller", func() {
 				deployment.CFContext.Organization = org
 				deployment.CFContext.Space = space
 				deployment.CFContext.Application = appName
+				deployment.Type.ZIP = true
 
 				deployer.DeployCall.Returns.Error = nil
 				deployer.DeployCall.Returns.StatusCode = http.StatusOK
@@ -803,7 +974,7 @@ var _ = Describe("Controller", func() {
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: false}))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(deployment.CFContext.Organization))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
@@ -817,6 +988,7 @@ var _ = Describe("Controller", func() {
 				deployment.CFContext.Organization = org
 				deployment.CFContext.Space = space
 				deployment.CFContext.Application = appName
+				deployment.Type.ZIP = true
 
 				deployer.DeployCall.Returns.Error = errors.New("bork")
 				deployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
@@ -831,7 +1003,7 @@ var _ = Describe("Controller", func() {
 				Eventually(deployResponse.Error.Error()).Should(Equal("bork"))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: false}))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
@@ -867,6 +1039,7 @@ var _ = Describe("Controller", func() {
 
 			It("sets the basic auth header if credentials are passed", func() {
 				deployment.CFContext.Environment = environment
+				deployment.Type.ZIP = true
 
 				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
@@ -887,6 +1060,7 @@ var _ = Describe("Controller", func() {
 				deployment.CFContext.Organization = org
 				deployment.CFContext.Space = space
 				deployment.CFContext.Application = appName
+				deployment.Type.ZIP = true
 
 				os.Setenv("SILENT_DEPLOY_ENVIRONMENT", environment)
 				deployer.DeployCall.Returns.Error = nil
@@ -901,7 +1075,7 @@ var _ = Describe("Controller", func() {
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: false}))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
@@ -913,6 +1087,7 @@ var _ = Describe("Controller", func() {
 				deployment.CFContext.Environment = environment
 				deployment.CFContext.Space = space
 				deployment.CFContext.Application = appName
+				deployment.Type.ZIP = true
 
 				os.Setenv("SILENT_DEPLOY_ENVIRONMENT", environment)
 				deployer.DeployCall.Returns.Error = nil
@@ -933,7 +1108,7 @@ var _ = Describe("Controller", func() {
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
 				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: false}))
+				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
 				Eventually(deployer.DeployCall.Received.Org).Should(Equal(deployment.CFContext.Organization))
 				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
 				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))

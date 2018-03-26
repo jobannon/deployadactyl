@@ -75,7 +75,7 @@ var _ = Describe("Deployer", func() {
 		environments                 = map[string]S.Environment{}
 		environmentsNoCustomParams   = map[string]S.Environment{}
 		af                           *afero.Afero
-		pusherCreator                interfaces.ActionCreator
+		pusherCreator                *mocks.PusherCreator
 		stopperCreator               interfaces.ActionCreator
 	)
 
@@ -172,16 +172,19 @@ var _ = Describe("Deployer", func() {
 			Password:     password,
 			Environments: environments,
 		}
-
-		pusherCreator = actioncreator.PusherCreator{Fetcher: fetcher}
+		logBuffer = NewBuffer()
+		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
+		pusherCreator = &mocks.PusherCreator{}
+		//actioncreator.PusherCreator{
+		//	Fetcher:      fetcher,
+		//	Logger:       logger.DeploymentLogger{log, uuid},
+		//	EventManager: eventManager,
+		//}
 		stopperCreator = actioncreator.StopperCreator{}
 
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
 
 		testManifestLocation, _ = af.TempDir("", "")
-
-		logBuffer = NewBuffer()
-		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
 
 		deployer = Deployer{
 			c,
@@ -291,6 +294,7 @@ var _ = Describe("Deployer", func() {
 
 					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 					fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+					pusherCreator.SetUpCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
 
 					By("base64 encoding the manifest")
 					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
@@ -318,9 +322,10 @@ var _ = Describe("Deployer", func() {
 					manifest = "manifest-" + randomizer.StringRunes(10)
 
 					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
-					fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
-					fetcher.FetchCall.Returns.Error = errors.New("fetcher error")
-
+					//fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+					//fetcher.FetchCall.Returns.Error = errors.New("fetcher error")
+					pusherCreator.SetUpCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+					pusherCreator.SetUpCall.Returns.Err = errors.New("a test error")
 					By("base64 encoding the manifest")
 					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
 
@@ -405,7 +410,8 @@ var _ = Describe("Deployer", func() {
 		Describe("fetching an artifact from the request body", func() {
 			Context("When Fetcher succeeds", func() {
 				It("will emit ArtifactRetrievalStart and ArtifactRetrievalEnd", func() {
-					fetcher.FetchFromZipCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+					//fetcher.FetchFromZipCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+					pusherCreator.SetUpCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
 
 					deployer.Deploy(authorization, requestBody, pusherCreator, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response)
 
@@ -419,18 +425,22 @@ var _ = Describe("Deployer", func() {
 			})
 			Context("when Fetcher fails", func() {
 				It("returns an error and http.StatusInternalServerError", func() {
-					fetcher.FetchFromZipCall.Returns.AppPath = ""
-					fetcher.FetchFromZipCall.Returns.Error = errors.New("fetcher error")
+					//fetcher.FetchFromZipCall.Returns.AppPath = ""
+					//fetcher.FetchFromZipCall.Returns.Error = errors.New("fetcher error")
+					pusherCreator.SetUpCall.Returns.AppPath = ""
+					pusherCreator.SetUpCall.Returns.Err = errors.New("a test error")
 
 					deployResponse := deployer.Deploy(authorization, requestBody, pusherCreator, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response)
 
-					Expect(deployResponse.Error.Error()).To(ContainSubstring("fetcher error"))
+					Expect(deployResponse.Error.Error()).To(ContainSubstring("a test error"))
 
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
 				})
 				It("will emit ArtifactRetrievalStart and ArtifactRetrievalFailures", func() {
-					fetcher.FetchFromZipCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
-					fetcher.FetchFromZipCall.Returns.Error = errors.New("fetcher error")
+					//fetcher.FetchFromZipCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+					//fetcher.FetchFromZipCall.Returns.Error = errors.New("fetcher error")
+					pusherCreator.SetUpCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+					pusherCreator.SetUpCall.Returns.Err = errors.New("a test error")
 
 					deployer.Deploy(authorization, requestBody, pusherCreator, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response)
 
@@ -629,6 +639,7 @@ var _ = Describe("Deployer", func() {
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+				pusherCreator.SetUpCall.Returns.ManifestString = manifest
 
 				deployResponse := deployer.Deploy(authorization, requestBody, pusherCreator, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response)
 
@@ -638,7 +649,11 @@ var _ = Describe("Deployer", func() {
 			})
 
 			It("calls DeployFinishEvent with correct deployment info", func() {
-				fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+				//fetcher.FetchCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+				pusherCreator.SetUpCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
+				pusherCreator.SetUpCall.Returns.ManifestString = manifest
+				pusherCreator.SetUpCall.Returns.Instances = instances
+
 				deployer.Deploy(authorization, requestBody, pusherCreator, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response)
 
 				deploymentInfo := eventManager.EmitCall.Received.Events[5].Data.(*S.DeployEventData).DeploymentInfo
@@ -716,7 +731,11 @@ var _ = Describe("Deployer", func() {
 
 		Context("when BlueGreener fails during a deploy with JSON in the request body", func() {
 			It("returns an error and a http.StatusInternalServerError", func() {
-				fetcher.FetchCall.Returns.AppPath = appPath
+				//fetcher.FetchCall.Returns.AppPath = appPath
+				pusherCreator.SetUpCall.Returns.AppPath = appPath
+				pusherCreator.SetUpCall.Returns.ManifestString = manifest
+				pusherCreator.SetUpCall.Returns.Instances = instances
+
 				blueGreener.ExecuteCall.Returns.Error = bluegreen.InitializationError{Err: errors.New("blue green error")}
 				deploymentInfo.ContentType = "JSON"
 
@@ -731,7 +750,11 @@ var _ = Describe("Deployer", func() {
 
 		Context("when BlueGreener fails during a deploy with EnableRollback set to false", func() {
 			It("returns an error and a http.StatusInternalServerError", func() {
-				fetcher.FetchCall.Returns.AppPath = appPath
+				//fetcher.FetchCall.Returns.AppPath = appPath
+				pusherCreator.SetUpCall.Returns.AppPath = appPath
+				pusherCreator.SetUpCall.Returns.ManifestString = manifest
+				pusherCreator.SetUpCall.Returns.Instances = instances
+
 				expectedError := bluegreen.PushError{[]error{errors.New("blue green error")}}
 				blueGreener.ExecuteCall.Returns.Error = expectedError
 				deploymentInfo.ContentType = "JSON"
@@ -777,7 +800,11 @@ var _ = Describe("Deployer", func() {
 	Describe("happy path deploying with json in the request body", func() {
 		Context("when no errors occur", func() {
 			It("accepts the request and returns http.StatusOK", func() {
-				fetcher.FetchCall.Returns.AppPath = appPath
+				//fetcher.FetchCall.Returns.AppPath = appPath
+				pusherCreator.SetUpCall.Returns.AppPath = appPath
+				pusherCreator.SetUpCall.Returns.ManifestString = manifest
+				pusherCreator.SetUpCall.Returns.Instances = instances
+
 				deploymentInfo.ContentType = "JSON"
 
 				deployResponse := deployer.Deploy(authorization, requestBody, pusherCreator, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response)

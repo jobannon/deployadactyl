@@ -2,6 +2,8 @@ package actioncreator
 
 import (
 	"encoding/base64"
+	"github.com/compozed/deployadactyl/constants"
+	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/startstopper"
@@ -17,10 +19,11 @@ type courierCreator interface {
 }
 
 type PusherCreator struct {
-	CourierCreator courierCreator
-	EventManager   I.EventManager
-	Logger         I.Logger
-	Fetcher        I.Fetcher
+	CourierCreator  courierCreator
+	EventManager    I.EventManager
+	Logger          logger.DeploymentLogger
+	Fetcher         I.Fetcher
+	DeployEventData S.DeployEventData
 }
 
 type StopperCreator struct {
@@ -36,6 +39,8 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 		appPath        string
 		err            error
 	)
+
+	var fetchFn func() (string, error)
 	if deploymentInfo.ContentType == "JSON" {
 
 		if deploymentInfo.Manifest != "" {
@@ -45,24 +50,58 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 			}
 			manifestString = string(manifest)
 		}
-		appPath, err = a.Fetcher.Fetch(deploymentInfo.ArtifactURL, manifestString)
-
-		if err != nil {
-			return "", "", 0, pusher.AppPathError{Err: err}
-		}
 
 		instances = manifestro.GetInstances(manifestString)
 		if instances == nil {
 			instances = &envInstances
 		}
-	} else if deploymentInfo.ContentType == "ZIP" {
 
-		appPath, err = a.Fetcher.FetchZipFromRequest(deploymentInfo.Body)
-		if err != nil {
-			return "", "", 0, pusher.UnzippingError{Err: err}
+		fetchFn = func() (string, error) {
+			appPath, err = a.Fetcher.Fetch(deploymentInfo.ArtifactURL, manifestString)
+			if err != nil {
+				return "", pusher.AppPathError{Err: err}
+			}
+			return appPath, nil
 		}
-		return appPath, "", 0, err
+	} else {
+		instanceVal := uint16(0)
+		instances = &instanceVal
+
+		fetchFn = func() (string, error) {
+			appPath, err = a.Fetcher.FetchZipFromRequest(deploymentInfo.Body)
+			if err != nil {
+				return "", pusher.UnzippingError{Err: err}
+			}
+			return appPath, nil
+		}
 	}
+
+	deployEventData := a.DeployEventData
+
+	a.Logger.Debugf("emitting a %s event", constants.ArtifactRetrievalStart)
+	err = a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalStart, Data: deployEventData})
+	if err != nil {
+		a.Logger.Error(err)
+		err = &bluegreen.InitializationError{err}
+		return "", "", 0, deployer.EventError{Type: constants.ArtifactRetrievalStart, Err: err}
+
+	}
+
+	appPath, err = fetchFn()
+	if err != nil {
+		a.Logger.Error(err)
+		a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalFailure, Data: deployEventData})
+		return "", "", 0, err
+	}
+
+	a.Logger.Debugf("emitting a %s event", constants.ArtifactRetrievalSuccess)
+	err = a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalSuccess, Data: deployEventData})
+	if err != nil {
+		a.Logger.Error(err)
+		err = &bluegreen.InitializationError{err}
+		return "", "", 0, deployer.EventError{Type: constants.ArtifactRetrievalSuccess, Err: err}
+	}
+
 	return appPath, manifestString, *instances, err
 }
 

@@ -2,7 +2,7 @@ package mocks
 
 import (
 	"github.com/compozed/deployadactyl/interfaces"
-	"io"
+	"github.com/compozed/deployadactyl/structs"
 )
 
 // PusherCreator handmade mock for tests.
@@ -10,7 +10,7 @@ type PusherCreatorFactory struct {
 	PusherCreatorCall struct {
 		Called   bool
 		Received struct {
-			Body io.Reader
+			DeployEventData structs.DeployEventData
 		}
 		Returns struct {
 			ActionCreator interfaces.ActionCreator
@@ -20,8 +20,9 @@ type PusherCreatorFactory struct {
 
 // CreatePusher mock method.
 
-func (p *PusherCreatorFactory) PusherCreator(body io.Reader) interfaces.ActionCreator {
+func (p *PusherCreatorFactory) PusherCreator(deployEventData structs.DeployEventData) interfaces.ActionCreator {
 	p.PusherCreatorCall.Called = true
-	p.PusherCreatorCall.Received.Body = body
+	p.PusherCreatorCall.Received.DeployEventData = deployEventData
+
 	return p.PusherCreatorCall.Returns.ActionCreator
 }

@@ -4,13 +4,6 @@ package creator
 import (
 	"crypto/tls"
 	"fmt"
-	"io"
-	"log"
-	"net"
-	"net/http"
-	"os"
-	"os/exec"
-
 	"github.com/compozed/deployadactyl/artifetcher"
 	"github.com/compozed/deployadactyl/artifetcher/extractor"
 	"github.com/compozed/deployadactyl/config"
@@ -26,9 +19,16 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
@@ -142,6 +142,8 @@ func (c Creator) CreateController() I.Controller {
 		SilentDeployer:       c.createSilentDeployer(),
 		Log:                  c.CreateLogger(),
 		PusherCreatorFactory: c,
+		Config:               c.CreateConfig(),
+		EventManager:         c.CreateEventManager(),
 	}
 }
 
@@ -158,12 +160,14 @@ func (c Creator) createDeployer() I.Deployer {
 	}
 }
 
-func (c Creator) PusherCreator(body io.Reader) I.ActionCreator {
+func (c Creator) PusherCreator(deployEventData structs.DeployEventData) I.ActionCreator {
+	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
 	return actioncreator.PusherCreator{
-		CourierCreator: c,
-		EventManager:   c.CreateEventManager(),
-		Logger:         c.CreateLogger(),
-		Fetcher:        c.createFetcher(),
+		CourierCreator:  c,
+		EventManager:    c.CreateEventManager(),
+		Logger:          deploymentLogger,
+		Fetcher:         c.createFetcher(),
+		DeployEventData: deployEventData,
 	}
 }
 

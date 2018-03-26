@@ -82,6 +82,8 @@ func (c Creator) CreateController() controller.Controller {
 		SilentDeployer:       c.CreateSilentDeployer(),
 		Log:                  c.CreateLogger(),
 		PusherCreatorFactory: c,
+		Config:               c.CreateConfig(),
+		EventManager:         c.CreateEventManager(),
 	}
 }
 
@@ -102,11 +104,13 @@ func (c Creator) CreateDeployer() I.Deployer {
 	}
 }
 
-func (c Creator) PusherCreator(body io.Reader) I.ActionCreator {
+func (c Creator) PusherCreator(deployEventData S.DeployEventData) I.ActionCreator {
+	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
 	return &creatorPusherMock{
-		EventManager: c.CreateEventManager(),
-		Logger:       c.CreateLogger(),
-		Fetcher:      c.CreateFetcher(),
+		EventManager:    c.CreateEventManager(),
+		Logger:          deploymentLogger,
+		Fetcher:         c.CreateFetcher(),
+		DeployEventData: deployEventData,
 	}
 }
 
@@ -206,10 +210,11 @@ type courierCreator interface {
 }
 
 type creatorPusherMock struct {
-	CourierCreator I.Courier
-	EventManager   I.EventManager
-	Logger         I.Logger
-	Fetcher        I.Fetcher
+	CourierCreator  I.Courier
+	EventManager    I.EventManager
+	Logger          I.Logger
+	Fetcher         I.Fetcher
+	DeployEventData S.DeployEventData
 }
 
 func (c creatorPusherMock) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {

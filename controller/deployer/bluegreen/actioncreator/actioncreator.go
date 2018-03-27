@@ -27,21 +27,27 @@ type courierCreator interface {
 	CreateCourier() (I.Courier, error)
 }
 
+type fileSystemCleaner interface {
+	RemoveAll(path string) error
+}
+
 type PusherCreator struct {
-	CourierCreator  courierCreator
-	EventManager    I.EventManager
-	Logger          logger.DeploymentLogger
-	Fetcher         I.Fetcher
-	DeployEventData S.DeployEventData
+	CourierCreator    courierCreator
+	EventManager      I.EventManager
+	Logger            logger.DeploymentLogger
+	Fetcher           I.Fetcher
+	DeployEventData   S.DeployEventData
+	FileSystemCleaner fileSystemCleaner
 }
 
 type StopperCreator struct {
-	CourierCreator courierCreator
-	EventManager   I.EventManager
-	Logger         I.Logger
+	CourierCreator  courierCreator
+	EventManager    I.EventManager
+	Logger          I.Logger
+	DeployEventData S.DeployEventData
 }
 
-func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
+func (a *PusherCreator) SetUp(envInstances uint16) error {
 	var (
 		manifestString string
 		instances      *uint16
@@ -50,12 +56,13 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 	)
 
 	var fetchFn func() (string, error)
-	if deploymentInfo.ContentType == "JSON" {
 
-		if deploymentInfo.Manifest != "" {
-			manifest, err := base64.StdEncoding.DecodeString(deploymentInfo.Manifest)
+	if a.DeployEventData.DeploymentInfo.ContentType == "JSON" {
+
+		if a.DeployEventData.DeploymentInfo.Manifest != "" {
+			manifest, err := base64.StdEncoding.DecodeString(a.DeployEventData.DeploymentInfo.Manifest)
 			if err != nil {
-				return "", "", 0, pusher.ManifestError{}
+				return pusher.ManifestError{}
 			}
 			manifestString = string(manifest)
 		}
@@ -67,7 +74,7 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 
 		fetchFn = func() (string, error) {
 			a.Logger.Debug("deploying from json request")
-			appPath, err = a.Fetcher.Fetch(deploymentInfo.ArtifactURL, manifestString)
+			appPath, err = a.Fetcher.Fetch(a.DeployEventData.DeploymentInfo.ArtifactURL, manifestString)
 			if err != nil {
 				return "", pusher.AppPathError{Err: err}
 			}
@@ -79,7 +86,7 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 
 		fetchFn = func() (string, error) {
 			a.Logger.Debug("deploying from zip request")
-			appPath, err = a.Fetcher.FetchZipFromRequest(deploymentInfo.Body)
+			appPath, err = a.Fetcher.FetchZipFromRequest(a.DeployEventData.DeploymentInfo.Body)
 			if err != nil {
 				return "", pusher.UnzippingError{Err: err}
 			}
@@ -94,14 +101,14 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 	if err != nil {
 		a.Logger.Error(err)
 		err = &bluegreen.InitializationError{err}
-		return "", "", 0, deployer.EventError{Type: constants.ArtifactRetrievalStart, Err: err}
+		return deployer.EventError{Type: constants.ArtifactRetrievalStart, Err: err}
 	}
 
 	appPath, err = fetchFn()
 	if err != nil {
 		a.Logger.Error(err)
 		a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalFailure, Data: deployEventData})
-		return "", "", 0, err
+		return err
 	}
 
 	a.Logger.Debugf("emitting a %s event", constants.ArtifactRetrievalSuccess)
@@ -109,10 +116,14 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 	if err != nil {
 		a.Logger.Error(err)
 		err = &bluegreen.InitializationError{err}
-		return "", "", 0, deployer.EventError{Type: constants.ArtifactRetrievalSuccess, Err: err}
+		return deployer.EventError{Type: constants.ArtifactRetrievalSuccess, Err: err}
 	}
 
-	return appPath, manifestString, *instances, err
+	a.DeployEventData.DeploymentInfo.Manifest = manifestString
+	a.DeployEventData.DeploymentInfo.AppPath = appPath
+	a.DeployEventData.DeploymentInfo.Instances = *instances
+
+	return nil
 }
 
 func (a PusherCreator) OnStart() error {
@@ -131,7 +142,11 @@ func (a PusherCreator) OnStart() error {
 	return nil
 }
 
-func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
+func (a PusherCreator) CleanUp() {
+	a.FileSystemCleaner.RemoveAll(a.DeployEventData.DeploymentInfo.AppPath)
+}
+
+func (a PusherCreator) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (I.Action, error) {
 
 	courier, err := a.CourierCreator.CreateCourier()
 	if err != nil {
@@ -141,12 +156,12 @@ func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFCon
 
 	p := &pusher.Pusher{
 		Courier:        courier,
-		DeploymentInfo: deploymentInfo,
+		DeploymentInfo: *a.DeployEventData.DeploymentInfo,
 		EventManager:   a.EventManager,
 		Response:       response,
-		Log:            logger.DeploymentLogger{a.Logger, deploymentInfo.UUID},
+		Log:            logger.DeploymentLogger{a.Logger, a.DeployEventData.DeploymentInfo.UUID},
 		FoundationURL:  foundationURL,
-		AppPath:        appPath,
+		AppPath:        a.DeployEventData.DeploymentInfo.AppPath,
 		Environment:    environment,
 		Fetcher:        a.Fetcher,
 	}
@@ -170,29 +185,41 @@ func (a PusherCreator) SuccessError(successErrors []error) error {
 	return bluegreen.FinishPushError{FinishPushError: successErrors}
 }
 
-func (a StopperCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
-	return "", "", 0, nil
+func (a StopperCreator) SetUp(envInstances uint16) error {
+	return nil
 }
 
 func (a StopperCreator) OnStart() error {
 	return nil
 }
 
-func (a StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
+func (a StopperCreator) CleanUp() {}
+
+func (a StopperCreator) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (I.Action, error) {
 	courier, err := a.CourierCreator.CreateCourier()
 	if err != nil {
 		a.Logger.Error(err)
 		return &pusher.Pusher{}, pusher.CourierCreationError{Err: err}
 	}
 	p := &startstopper.Stopper{
-		Courier:       courier,
-		CFContext:     cfContext,
-		Authorization: authorization,
+		Courier: courier,
+		CFContext: I.CFContext{
+			Environment:  environment.Name,
+			Organization: a.DeployEventData.DeploymentInfo.Org,
+			Space:        a.DeployEventData.DeploymentInfo.Space,
+			Application:  a.DeployEventData.DeploymentInfo.AppName,
+			UUID:         a.DeployEventData.DeploymentInfo.UUID,
+			SkipSSL:      a.DeployEventData.DeploymentInfo.SkipSSL,
+		},
+		Authorization: I.Authorization{
+			Username: a.DeployEventData.DeploymentInfo.Username,
+			Password: a.DeployEventData.DeploymentInfo.Password,
+		},
 		EventManager:  a.EventManager,
 		Response:      response,
-		Log:           logger.DeploymentLogger{a.Logger, deploymentInfo.UUID},
+		Log:           logger.DeploymentLogger{a.Logger, a.DeployEventData.DeploymentInfo.UUID},
 		FoundationURL: foundationURL,
-		AppName:       deploymentInfo.AppName,
+		AppName:       a.DeployEventData.DeploymentInfo.AppName,
 	}
 
 	return p, nil

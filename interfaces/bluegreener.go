@@ -10,14 +10,6 @@ type BlueGreener interface {
 	Execute(
 		actionCreator ActionCreator,
 		environment S.Environment,
-		appPath string,
-		deploymentInfo S.DeploymentInfo,
-		response io.ReadWriter,
-	) error
-	Stop(
-		actionCreator ActionCreator,
-		environment S.Environment,
-		appPath string,
 		deploymentInfo S.DeploymentInfo,
 		response io.ReadWriter,
 	) error

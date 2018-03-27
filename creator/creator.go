@@ -156,18 +156,18 @@ func (c Creator) createDeployer() I.Deployer {
 		Randomizer:   c.createRandomizer(),
 		ErrorFinder:  c.createErrorFinder(),
 		Log:          c.CreateLogger(),
-		FileSystem:   c.CreateFileSystem(),
 	}
 }
 
 func (c Creator) PusherCreator(deployEventData structs.DeployEventData) I.ActionCreator {
 	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
-	return actioncreator.PusherCreator{
-		CourierCreator:  c,
-		EventManager:    c.CreateEventManager(),
-		Logger:          deploymentLogger,
-		Fetcher:         c.createFetcher(),
-		DeployEventData: deployEventData,
+	return &actioncreator.PusherCreator{
+		CourierCreator:    c,
+		EventManager:      c.CreateEventManager(),
+		Logger:            deploymentLogger,
+		Fetcher:           c.createFetcher(),
+		DeployEventData:   deployEventData,
+		FileSystemCleaner: c.CreateFileSystem(),
 	}
 }
 

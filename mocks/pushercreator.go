@@ -13,14 +13,10 @@ type PusherCreator struct {
 	SetUpCall struct {
 		Called   bool
 		Received struct {
-			DeploymentInfo S.DeploymentInfo
-			EnvInstances   uint16
+			EnvInstances uint16
 		}
 		Returns struct {
-			AppPath        string
-			ManifestString string
-			Instances      uint16
-			Err            error
+			Err error
 		}
 	}
 	OnStartCall struct {
@@ -36,16 +32,42 @@ type PusherCreator struct {
 			Error   []error
 		}
 	}
+	CleanUpCall struct {
+		Called bool
+	}
+}
+
+type FileSystemCleaner struct {
+	RemoveAllCall struct {
+		Called   bool
+		Received struct {
+			Path string
+		}
+		Returns struct {
+			Error error
+		}
+	}
 }
 
 // CreatePusher mock method.
 
-func (p *PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
-	p.SetUpCall.Received.DeploymentInfo = deploymentInfo
+func (p *FileSystemCleaner) RemoveAll(path string) error {
+	p.RemoveAllCall.Called = true
+
+	p.RemoveAllCall.Received.Path = path
+
+	return p.RemoveAllCall.Returns.Error
+}
+
+func (p *PusherCreator) SetUp(envInstances uint16) error {
 	p.SetUpCall.Received.EnvInstances = envInstances
 
 	p.SetUpCall.Called = true
-	return p.SetUpCall.Returns.AppPath, p.SetUpCall.Returns.ManifestString, p.SetUpCall.Returns.Instances, p.SetUpCall.Returns.Err
+	return p.SetUpCall.Returns.Err
+}
+
+func (p *PusherCreator) CleanUp() {
+	p.CleanUpCall.Called = true
 }
 
 func (p *PusherCreator) OnStart() error {
@@ -54,7 +76,7 @@ func (p *PusherCreator) OnStart() error {
 	return p.OnStartCall.Returns.Err
 }
 
-func (p *PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext interfaces.CFContext, authorization interfaces.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (interfaces.Action, error) {
+func (p *PusherCreator) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (interfaces.Action, error) {
 	defer func() { p.CreatePusherCall.TimesCalled++ }()
 
 	return p.CreatePusherCall.Returns.Pushers[p.CreatePusherCall.TimesCalled], p.CreatePusherCall.Returns.Error[p.CreatePusherCall.TimesCalled]

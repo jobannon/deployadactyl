@@ -99,7 +99,6 @@ func (c Creator) CreateDeployer() I.Deployer {
 		EventManager: c.CreateEventManager(),
 		Randomizer:   c.CreateRandomizer(),
 		Log:          c.CreateLogger(),
-		FileSystem:   c.CreateFileSystem(),
 		ErrorFinder:  c.createErrorFinder(),
 	}
 }
@@ -217,15 +216,17 @@ type creatorPusherMock struct {
 	DeployEventData S.DeployEventData
 }
 
-func (c creatorPusherMock) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
-	return "", "", 0, nil
+func (c creatorPusherMock) SetUp(envInstances uint16) error {
+	return nil
 }
+
+func (c creatorPusherMock) CleanUp() {}
 
 func (c creatorPusherMock) OnStart() error {
 	return nil
 }
 
-func (c creatorPusherMock) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
+func (c creatorPusherMock) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (I.Action, error) {
 	courier := &Courier{}
 
 	courier.LoginCall.Returns.Output = []byte("logged in\t")
@@ -237,12 +238,12 @@ func (c creatorPusherMock) Create(deploymentInfo S.DeploymentInfo, cfContext I.C
 
 	p := &pusher.Pusher{
 		Courier:        courier,
-		DeploymentInfo: deploymentInfo,
+		DeploymentInfo: *c.DeployEventData.DeploymentInfo,
 		EventManager:   c.EventManager,
 		Response:       response,
 		Log:            c.Logger,
 		FoundationURL:  foundationURL,
-		AppPath:        appPath,
+		AppPath:        c.DeployEventData.DeploymentInfo.AppPath,
 		Fetcher:        c.createFetcher(),
 	}
 

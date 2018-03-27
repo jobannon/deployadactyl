@@ -15,9 +15,10 @@ type Action interface {
 }
 
 type ActionCreator interface {
-	SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error)
+	SetUp(envInstances uint16) error
+	CleanUp()
 	OnStart() error
-	Create(deploymentInfo S.DeploymentInfo, cfContext CFContext, authorization Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (Action, error)
+	Create(environment S.Environment, response io.ReadWriter, foundationURL string) (Action, error)
 	InitiallyError(initiallyErrors []error) error
 	ExecuteError(executeErrors []error) error
 	UndoError(executeErrors, undoErrors []error) error

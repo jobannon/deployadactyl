@@ -32,7 +32,6 @@ applications:
   memory: 256M
   disk_quota: 256M
 `
-	eventManagerNotEnoughCalls = "event manager didn't have the right number of calls"
 )
 
 var _ = Describe("Deployer", func() {
@@ -187,7 +186,6 @@ var _ = Describe("Deployer", func() {
 			randomizerMock,
 			nil,
 			log,
-			af,
 		}
 	})
 
@@ -254,7 +252,6 @@ var _ = Describe("Deployer", func() {
 					manifest = "manifest-" + randomizer.StringRunes(10)
 
 					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
-					pusherCreator.SetUpCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
 
 					By("base64 encoding the manifest")
 					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
@@ -275,7 +272,6 @@ var _ = Describe("Deployer", func() {
 					manifest = "manifest-" + randomizer.StringRunes(10)
 
 					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
-					pusherCreator.SetUpCall.Returns.AppPath = "apppath-" + randomizer.StringRunes(10)
 					pusherCreator.SetUpCall.Returns.Err = errors.New("a test error")
 					By("base64 encoding the manifest")
 					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
@@ -357,7 +353,6 @@ var _ = Describe("Deployer", func() {
 		Describe("fetching an artifact from the request body", func() {
 			Context("when Fetcher fails", func() {
 				It("returns an error and http.StatusInternalServerError", func() {
-					pusherCreator.SetUpCall.Returns.AppPath = ""
 					pusherCreator.SetUpCall.Returns.Err = errors.New("a test error")
 
 					deployResponse := deployer.Deploy(&deploymentInfo, S.Environment{}, authorization, requestBody, pusherCreator, environment, org, space, appName, interfaces.DeploymentType{ZIP: true}, response)
@@ -392,7 +387,6 @@ var _ = Describe("Deployer", func() {
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
-				pusherCreator.SetUpCall.Returns.ManifestString = manifest
 
 				deployResponse := deployer.Deploy(&deploymentInfo, S.Environment{}, authorization, requestBody, pusherCreator, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response)
 
@@ -437,10 +431,6 @@ var _ = Describe("Deployer", func() {
 
 		Context("when BlueGreener fails during a deploy with JSON in the request body", func() {
 			It("returns an error and a http.StatusInternalServerError", func() {
-				pusherCreator.SetUpCall.Returns.AppPath = appPath
-				pusherCreator.SetUpCall.Returns.ManifestString = manifest
-				pusherCreator.SetUpCall.Returns.Instances = instances
-
 				blueGreener.ExecuteCall.Returns.Error = bluegreen.InitializationError{Err: errors.New("blue green error")}
 				deploymentInfo.ContentType = "JSON"
 
@@ -455,11 +445,6 @@ var _ = Describe("Deployer", func() {
 
 		Context("when BlueGreener fails during a deploy with EnableRollback set to false", func() {
 			It("returns an error and a http.StatusInternalServerError", func() {
-				//fetcher.FetchCall.Returns.AppPath = appPath
-				pusherCreator.SetUpCall.Returns.AppPath = appPath
-				pusherCreator.SetUpCall.Returns.ManifestString = manifest
-				pusherCreator.SetUpCall.Returns.Instances = instances
-
 				expectedError := bluegreen.PushError{[]error{errors.New("blue green error")}}
 				blueGreener.ExecuteCall.Returns.Error = expectedError
 				deploymentInfo.ContentType = "JSON"
@@ -475,38 +460,34 @@ var _ = Describe("Deployer", func() {
 	})
 
 	Describe("removing files after deploying", func() {
-		It("deletes the unzipped folder from the fetcher", func() {
-			af = &afero.Afero{Fs: afero.NewMemMapFs()}
-			deployer = Deployer{
-				c,
-				blueGreener,
-				prechecker,
-				eventManager,
-				randomizerMock,
-				nil,
-				log,
-				af,
-			}
-
-			directoryName, err := af.TempDir("", "deployadactyl-")
-			Expect(err).ToNot(HaveOccurred())
-
-			deployer.Deploy(&deploymentInfo, S.Environment{}, authorization, requestBody, pusherCreator, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response)
-
-			exists, err := af.DirExists(directoryName)
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(exists).ToNot(BeTrue())
-		})
+		//FIt("deletes the unzipped folder from the fetcher", func() {
+		//	af = &afero.Afero{Fs: afero.NewMemMapFs()}
+		//	deployer = Deployer{
+		//		c,
+		//		blueGreener,
+		//		prechecker,
+		//		eventManager,
+		//		randomizerMock,
+		//		nil,
+		//		log,
+		//		af,
+		//	}
+		//
+		//	directoryName, err := af.TempDir("", "deployadactyl-")
+		//	Expect(err).ToNot(HaveOccurred())
+		//
+		//	deployer.Deploy(&deploymentInfo, S.Environment{}, authorization, requestBody, pusherCreator, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response)
+		//
+		//	exists, err := af.DirExists(directoryName)
+		//	Expect(err).ToNot(HaveOccurred())
+		//
+		//	Expect(exists).ToNot(BeTrue())
+		//})
 	})
 
 	Describe("happy path deploying with json in the request body", func() {
 		Context("when no errors occur", func() {
 			It("accepts the request and returns http.StatusOK", func() {
-				pusherCreator.SetUpCall.Returns.AppPath = appPath
-				pusherCreator.SetUpCall.Returns.ManifestString = manifest
-				pusherCreator.SetUpCall.Returns.Instances = instances
-
 				deploymentInfo.ContentType = "JSON"
 
 				deployResponse := deployer.Deploy(&deploymentInfo, environments[environment], authorization, requestBody, pusherCreator, environment, org, space, appName, interfaces.DeploymentType{JSON: true}, response)
@@ -581,7 +562,6 @@ var _ = Describe("Deployer", func() {
 					randomizerMock,
 					nil,
 					log,
-					af,
 				}
 			})
 
@@ -609,7 +589,6 @@ var _ = Describe("Deployer", func() {
 				randomizerMock,
 				nil,
 				log,
-				af,
 			}
 		})
 		Context("when no initialization errors occur", func() {
@@ -618,7 +597,6 @@ var _ = Describe("Deployer", func() {
 				deployer.Deploy(&deploymentInfo, S.Environment{}, authorization, requestBody, pusherCreatorMock, environment, org, space, appName, interfaces.DeploymentType{ZIP: true}, response)
 
 				Expect(pusherCreatorMock.SetUpCall.Called).To(Equal(true))
-				Expect(pusherCreatorMock.SetUpCall.Received.DeploymentInfo).ToNot(BeNil())
 				Expect(pusherCreatorMock.SetUpCall.Received.EnvInstances).ToNot(BeNil())
 			})
 		})
@@ -638,6 +616,12 @@ var _ = Describe("Deployer", func() {
 
 				Expect(deployResponse.Error).To(Equal(pusherCreatorMock.OnStartCall.Returns.Err))
 			})
+		})
+
+		It("calls CleanUp on the provided action creator", func() {
+			deployer.Deploy(&deploymentInfo, S.Environment{}, authorization, requestBody, pusherCreatorMock, environment, org, space, appName, interfaces.DeploymentType{ZIP: true}, response)
+
+			Expect(pusherCreatorMock.CleanUpCall.Called).To(Equal(true))
 		})
 	})
 })

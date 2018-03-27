@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
+	"github.com/spf13/afero"
 	"io"
 	"io/ioutil"
 	"reflect"
@@ -25,14 +26,16 @@ var log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
 
 var _ = Describe("Actioncreator", func() {
 	var (
-		fetcher       *mocks.Fetcher
-		eventManager  *mocks.EventManager
-		pusherCreator *actioncreator.PusherCreator
-		response      io.Writer
+		fetcher           *mocks.Fetcher
+		eventManager      *mocks.EventManager
+		pusherCreator     *actioncreator.PusherCreator
+		fileSystemCleaner *mocks.FileSystemCleaner
+		response          io.Writer
 	)
 	BeforeEach(func() {
 		fetcher = &mocks.Fetcher{}
 		eventManager = &mocks.EventManager{}
+		fileSystemCleaner = &mocks.FileSystemCleaner{}
 
 		response = NewBuffer()
 		pusherCreator = &actioncreator.PusherCreator{
@@ -43,6 +46,7 @@ var _ = Describe("Actioncreator", func() {
 				DeploymentInfo: &structs.DeploymentInfo{},
 				Writer:         response,
 			},
+			FileSystemCleaner: fileSystemCleaner,
 		}
 	})
 	Describe("Setup", func() {
@@ -57,10 +61,11 @@ applications:
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
 
 				deploymentInfo := structs.DeploymentInfo{Manifest: encodedManifest, ContentType: "JSON"}
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				_, returnsManifest, _, _ := pusherCreator.SetUp(deploymentInfo, 0)
+				pusherCreator.SetUp(0)
 
-				Expect(returnsManifest).To(Equal(manifest))
+				Expect(pusherCreator.DeployEventData.DeploymentInfo.Manifest).To(Equal(manifest))
 				logBytes, _ := ioutil.ReadAll(logBuffer)
 				Eventually(string(logBytes)).Should(ContainSubstring("deploying from json request"))
 			})
@@ -72,10 +77,11 @@ applications:
 					ArtifactURL: "https://artifacturl.com",
 					ContentType: "JSON",
 				}
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				appPath, _, _, _ := pusherCreator.SetUp(deploymentInfo, 0)
+				pusherCreator.SetUp(0)
 
-				Expect(appPath).To(Equal("newAppPath"))
+				Expect(pusherCreator.DeployEventData.DeploymentInfo.AppPath).To(Equal("newAppPath"))
 				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(deploymentInfo.ArtifactURL))
 				Expect(fetcher.FetchCall.Received.Manifest).To(Equal(manifest))
 
@@ -88,8 +94,9 @@ applications:
 					ArtifactURL: "https://artifacturl.com",
 					ContentType: "JSON",
 				}
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				_, _, _, err := pusherCreator.SetUp(deploymentInfo, 0)
+				err := pusherCreator.SetUp(0)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("unzipped app path failed: fetch error"))
@@ -101,10 +108,11 @@ applications:
 					Manifest:    encodedManifest,
 					ContentType: "JSON",
 				}
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				_, _, instances, _ := pusherCreator.SetUp(deploymentInfo, 0)
+				pusherCreator.SetUp(0)
 
-				Expect(instances).To(Equal(uint16(2)))
+				Expect(pusherCreator.DeployEventData.DeploymentInfo.Instances).To(Equal(uint16(2)))
 			})
 			It("should emit artifact retrieval events", func() {
 
@@ -114,7 +122,9 @@ applications:
 					ContentType: "JSON",
 				}
 
-				pusherCreator.SetUp(deploymentInfo, 0)
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
+
+				pusherCreator.SetUp(0)
 
 				Expect(eventManager.EmitCall.Received.Events[0].Type).Should(Equal(constants.ArtifactRetrievalStart))
 				Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.ArtifactRetrievalSuccess))
@@ -127,8 +137,9 @@ applications:
 					ArtifactURL: "https://artifacturl.com",
 					ContentType: "JSON",
 				}
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(deploymentInfo, 0)
+				pusherCreator.SetUp(0)
 
 				logBytes, _ := ioutil.ReadAll(logBuffer)
 				Eventually(string(logBytes)).Should(ContainSubstring("emitting a artifact.retrieval.start event"))
@@ -141,8 +152,9 @@ applications:
 					ArtifactURL: "https://artifacturl.com",
 					ContentType: "JSON",
 				}
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				_, _, _, err := pusherCreator.SetUp(deploymentInfo, 0)
+				err := pusherCreator.SetUp(0)
 
 				Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(deployer.EventError{})))
 
@@ -155,8 +167,9 @@ applications:
 					ArtifactURL: "https://artifacturl.com",
 					ContentType: "JSON",
 				}
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				_, _, _, err := pusherCreator.SetUp(deploymentInfo, 0)
+				err := pusherCreator.SetUp(0)
 
 				Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(deployer.EventError{})))
 
@@ -171,8 +184,9 @@ applications:
 					ArtifactURL: "https://artifacturl.com",
 					ContentType: "JSON",
 				}
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(deploymentInfo, 0)
+				pusherCreator.SetUp(0)
 
 				Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.ArtifactRetrievalFailure))
 			})
@@ -192,10 +206,11 @@ applications:
 					ArtifactURL: "https://artifacturl.com",
 					ContentType: "JSON",
 				}
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				_, _, instances, _ := pusherCreator.SetUp(deploymentInfo, 22)
+				pusherCreator.SetUp(22)
 
-				Expect(instances).To(Equal(uint16(22)))
+				Expect(pusherCreator.DeployEventData.DeploymentInfo.Instances).To(Equal(uint16(22)))
 			})
 		})
 
@@ -205,10 +220,11 @@ applications:
 				fetcher.FetchFromZipCall.Returns.AppPath = "newAppPath"
 
 				deploymentInfo := structs.DeploymentInfo{ContentType: "ZIP"}
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				appPath, _, _, _ := pusherCreator.SetUp(deploymentInfo, 0)
+				pusherCreator.SetUp(0)
 
-				Expect(appPath).To(Equal("newAppPath"))
+				Expect(pusherCreator.DeployEventData.DeploymentInfo.AppPath).To(Equal("newAppPath"))
 				logBytes, _ := ioutil.ReadAll(logBuffer)
 				Eventually(string(logBytes)).Should(ContainSubstring("deploying from zip request"))
 			})
@@ -218,8 +234,9 @@ applications:
 				deploymentInfo := structs.DeploymentInfo{
 					ContentType: "ZIP",
 				}
+				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				_, _, _, err := pusherCreator.SetUp(deploymentInfo, 0)
+				err := pusherCreator.SetUp(0)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("unzipping request body error: a test error"))
 			})
@@ -289,4 +306,27 @@ applications:
 		})
 	})
 
+	Describe("CleanUp", func() {
+		It("deletes all temp artifacts", func() {
+			path := randomizer.StringRunes(10)
+			pusherCreator.DeployEventData.DeploymentInfo.AppPath = path
+
+			pusherCreator.CleanUp()
+
+			Expect(fileSystemCleaner.RemoveAllCall.Received.Path).To(Equal(path))
+		})
+		It("really deletes all temp artifacts", func() {
+			af := &afero.Afero{Fs: afero.NewMemMapFs()}
+			pusherCreator.FileSystemCleaner = af
+
+			directoryName, _ := af.TempDir("", "deployadactyl-")
+
+			pusherCreator.CleanUp()
+
+			exists, err := af.DirExists(directoryName)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(exists).ToNot(BeTrue())
+		})
+	})
 })

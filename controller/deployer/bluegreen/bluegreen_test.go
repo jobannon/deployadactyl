@@ -78,7 +78,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 			}
 
-			err := blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)
+			err := blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)
 
 			Expect(err).To(MatchError("push creator failed"))
 		})
@@ -94,7 +94,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 			}
 
-			err := blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)
+			err := blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)
 			Expect(err).ToNot(HaveOccurred())
 
 			for range environment.Foundations {
@@ -111,7 +111,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 			}
 
-			err := blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)
+			err := blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)
 			Expect(err).To(MatchError(LoginError{[]error{errors.New(loginOutput)}}))
 
 			for range environment.Foundations {
@@ -142,7 +142,7 @@ var _ = Describe("Bluegreen", func() {
 
 			blueGreen = BlueGreen{Log: log}
 
-			Expect(blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)).To(Succeed())
+			Expect(blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)).To(Succeed())
 
 			Eventually(response).Should(Say(loginOutput))
 			Eventually(response).Should(Say(pushOutput))
@@ -157,7 +157,7 @@ var _ = Describe("Bluegreen", func() {
 				pusher.ExecuteCall.Write.Output = pushOutput
 			}
 
-			Expect(blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)).To(Succeed())
+			Expect(blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)).To(Succeed())
 
 			Eventually(response).Should(Say(loginOutput))
 			Eventually(response).Should(Say(loginOutput))
@@ -187,7 +187,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{Log: log}
 
-				Expect(blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)).To(Succeed())
+				Expect(blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)).To(Succeed())
 
 				Eventually(response).Should(Say(loginOutput))
 				Eventually(response).Should(Say(pushOutput))
@@ -214,7 +214,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{Log: log}
 
-				err := blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)
+				err := blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)
 
 				Expect(err).To(MatchError(FinishPushError{[]error{errors.New("finish push error")}}))
 			})
@@ -235,7 +235,7 @@ var _ = Describe("Bluegreen", func() {
 					}
 				}
 
-				err := blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)
+				err := blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)
 				Expect(err).To(MatchError(PushError{[]error{pushError}}))
 
 				Eventually(response).Should(Say(loginOutput))
@@ -249,7 +249,7 @@ var _ = Describe("Bluegreen", func() {
 					pushers[0].ExecuteCall.Returns.Error = pushError
 					pushers[0].UndoCall.Returns.Error = rollbackError
 
-					err := blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)
+					err := blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)
 
 					Expect(err).To(MatchError(RollbackError{[]error{pushError}, []error{rollbackError}}))
 				})
@@ -262,7 +262,7 @@ var _ = Describe("Bluegreen", func() {
 					pusher.ExecuteCall.Returns.Error = pushError
 				}
 
-				err := blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)
+				err := blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)
 				Expect(err).To(MatchError(PushError{[]error{pushError, pushError}}))
 
 				Eventually(response).Should(Say(loginOutput))
@@ -280,7 +280,7 @@ var _ = Describe("Bluegreen", func() {
 					pusher.ExecuteCall.Returns.Error = pushError
 				}
 
-				err := blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)
+				err := blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("push failed: push error: push error"))
@@ -293,7 +293,7 @@ var _ = Describe("Bluegreen", func() {
 					pusher.ExecuteCall.Returns.Error = errors.New("a push execute error")
 				}
 				pushers[0].UndoCall.Returns.Error = errors.New("a push success error")
-				err := blueGreen.Execute(pusherCreator, environment, appPath, deploymentInfo, response)
+				err := blueGreen.Execute(pusherCreator, environment, deploymentInfo, response)
 
 				Expect(err.Error()).To(Equal("push failed: a push execute error: a push execute error: rollback failed: a push success error"))
 			})
@@ -312,11 +312,11 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{}
 
-				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
+				err := blueGreen.Execute(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
 
-				for i := range environment.Foundations {
-					Expect(stopperFactory.CreateStopperCall.Received[i].DeploymentInfo).To(Equal(deploymentInfo))
+				for i, foundation := range environment.Foundations {
+					Expect(stopperFactory.CreateStopperCall.Received[i].FoundationURL).To(Equal(foundation))
 				}
 			})
 
@@ -326,7 +326,7 @@ var _ = Describe("Bluegreen", func() {
 				stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, errors.New("stop creator failed"))
 
 				blueGreen = BlueGreen{Log: log}
-				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
+				err := blueGreen.Execute(stopperFactory, environment, deploymentInfo, NewBuffer())
 
 				Expect(err).To(MatchError("stop creator failed"))
 			})
@@ -344,7 +344,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{}
 
-				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
+				err := blueGreen.Execute(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
 
 			})
@@ -361,7 +361,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 				stoppers[0].InitiallyCall.Returns.Error = errors.New("login to stop failed")
 				blueGreen = BlueGreen{}
-				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
+				err := blueGreen.Execute(stopperFactory, environment, deploymentInfo, NewBuffer())
 
 				Expect(err.Error()).To(Equal("login failed: login to stop failed"))
 			})
@@ -379,7 +379,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 
 				blueGreen = BlueGreen{}
-				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
+				err := blueGreen.Execute(stopperFactory, environment, deploymentInfo, NewBuffer())
 
 				Expect(err.Error()).To(Equal("login failed: login 0 to stop failed: login 1 to stop failed"))
 			})
@@ -397,7 +397,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{}
 
-				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
+				err := blueGreen.Execute(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).ToNot(HaveOccurred())
 
 			})
@@ -416,7 +416,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{}
 
-				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
+				err := blueGreen.Execute(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).To(MatchError(StopError{[]error{errors.New("stop failed")}}))
 			})
 
@@ -434,7 +434,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{}
 
-				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
+				err := blueGreen.Execute(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err.Error()).To(Equal("stop failed: stop failed: stop failed"))
 			})
 
@@ -452,7 +452,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{}
 
-				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
+				err := blueGreen.Execute(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("stop failed: an error occurred"))
 			})
@@ -471,7 +471,7 @@ var _ = Describe("Bluegreen", func() {
 				stoppers[0].UndoCall.Returns.Error = errors.New("an error occurred while attempting undo")
 				blueGreen = BlueGreen{}
 
-				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, NewBuffer())
+				err := blueGreen.Execute(stopperFactory, environment, deploymentInfo, NewBuffer())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("stop failed: an error occurred: rollback failed: an error occurred while attempting undo"))
 			})
@@ -491,7 +491,7 @@ var _ = Describe("Bluegreen", func() {
 
 				blueGreen = BlueGreen{}
 
-				err := blueGreen.Stop(stopperFactory, environment, "", deploymentInfo, out)
+				err := blueGreen.Execute(stopperFactory, environment, deploymentInfo, out)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(out).Should(Say("- Cloud Foundry Output -"))

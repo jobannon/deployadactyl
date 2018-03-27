@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/compozed/deployadactyl/constants"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
@@ -445,8 +446,8 @@ var _ = Describe("StateManager", func() {
 					Password: "authpassword",
 				}
 
-				expectedError := errors.New("stop failed")
-				blueGreener.StopCall.Returns.Error = expectedError
+				expectedError := bluegreen.InitializationError{errors.New("blue green error")}
+				blueGreener.ExecuteCall.Returns.Error = expectedError
 
 				statusCode, _, err := manager.Stop(context, uuid, auth, response)
 

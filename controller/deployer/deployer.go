@@ -16,7 +16,6 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
-	"github.com/spf13/afero"
 )
 
 const (
@@ -79,24 +78,15 @@ type Deployer struct {
 	Randomizer   I.Randomizer
 	ErrorFinder  I.ErrorFinder
 	Log          I.Logger
-	FileSystem   *afero.Afero
 }
 
 func (d Deployer) Deploy(deploymentInfo *S.DeploymentInfo, env S.Environment, authorization I.Authorization, body io.Reader, actionCreator I.ActionCreator, environment, org, space, appName string, contentType I.DeploymentType, response io.ReadWriter) *I.DeployResponse {
-	var (
-		//environments = d.Config.Environments
-		manifest  string
-		appPath   string
-		instances uint16
-	)
 
 	deploymentLogger := logger.DeploymentLogger{d.Log, deploymentInfo.UUID}
 
 	deployResponse := &I.DeployResponse{
 		DeploymentInfo: deploymentInfo,
 	}
-
-	defer func() { d.FileSystem.RemoveAll(appPath) }()
 
 	deploymentLogger.Debug("prechecking the foundations")
 	err := d.Prechecker.AssertAllFoundationsUp(env)
@@ -107,18 +97,13 @@ func (d Deployer) Deploy(deploymentInfo *S.DeploymentInfo, env S.Environment, au
 		return deployResponse
 	}
 
-	appPath, manifest, instances, err = actionCreator.SetUp(*deploymentInfo, env.Instances)
+	err = actionCreator.SetUp(env.Instances)
 	if err != nil {
 		deployResponse.StatusCode = http.StatusInternalServerError
 		deployResponse.Error = err
 		return deployResponse
 	}
-
-	deploymentInfo.Manifest = manifest
-	deploymentInfo.AppPath = appPath
-	deploymentInfo.Instances = instances
-
-	defer func() { d.FileSystem.RemoveAll(deploymentInfo.AppPath) }()
+	defer func() { actionCreator.CleanUp() }()
 
 	err = actionCreator.OnStart()
 	if err != nil {
@@ -127,7 +112,7 @@ func (d Deployer) Deploy(deploymentInfo *S.DeploymentInfo, env S.Environment, au
 		return deployResponse
 	}
 
-	err = d.BlueGreener.Execute(actionCreator, env, appPath, *deploymentInfo, response)
+	err = d.BlueGreener.Execute(actionCreator, env, *deploymentInfo, response)
 
 	enableRollback := env.EnableRollback
 	if err != nil {

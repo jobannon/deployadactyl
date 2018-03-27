@@ -9,8 +9,8 @@ import (
 )
 
 type receivedCall struct {
-	DeploymentInfo S.DeploymentInfo
-	Response       io.ReadWriter
+	FoundationURL string
+	Response      io.ReadWriter
 }
 
 type StopperCreator struct {
@@ -24,28 +24,30 @@ type StopperCreator struct {
 	}
 }
 
-func (s *StopperCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
-	return "", "", 0, nil
+func (s *StopperCreator) SetUp(envInstances uint16) error {
+	return nil
 }
 
 func (s *StopperCreator) OnStart() error {
 	return nil
 }
 
-func (s *StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext interfaces.CFContext, authorization interfaces.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (interfaces.Action, error) {
+func (s *StopperCreator) CleanUp() {}
+
+func (s *StopperCreator) InitiallyError(initiallyErrors []error) error {
+	return bluegreen.LoginError{LoginErrors: initiallyErrors}
+}
+
+func (s *StopperCreator) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (interfaces.Action, error) {
 	defer func() { s.CreateStopperCall.TimesCalled++ }()
 
 	received := receivedCall{
-		DeploymentInfo: deploymentInfo,
-		Response:       response,
+		FoundationURL: foundationURL,
+		Response:      response,
 	}
 	s.CreateStopperCall.Received = append(s.CreateStopperCall.Received, received)
 
 	return s.CreateStopperCall.Returns.Stoppers[s.CreateStopperCall.TimesCalled], s.CreateStopperCall.Returns.Error[s.CreateStopperCall.TimesCalled]
-}
-
-func (s *StopperCreator) InitiallyError(initiallyErrors []error) error {
-	return bluegreen.LoginError{LoginErrors: initiallyErrors}
 }
 
 func (s *StopperCreator) ExecuteError(executeErrors []error) error {

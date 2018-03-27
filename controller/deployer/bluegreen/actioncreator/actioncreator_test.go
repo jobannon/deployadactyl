@@ -13,7 +13,9 @@ import (
 	"github.com/go-errors/errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
+	"io"
 	"io/ioutil"
 	"reflect"
 )
@@ -22,6 +24,27 @@ var logBuffer = bytes.NewBuffer([]byte{})
 var log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
 
 var _ = Describe("Actioncreator", func() {
+	var (
+		fetcher       *mocks.Fetcher
+		eventManager  *mocks.EventManager
+		pusherCreator *actioncreator.PusherCreator
+		response      io.Writer
+	)
+	BeforeEach(func() {
+		fetcher = &mocks.Fetcher{}
+		eventManager = &mocks.EventManager{}
+
+		response = NewBuffer()
+		pusherCreator = &actioncreator.PusherCreator{
+			Fetcher:      fetcher,
+			Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
+			EventManager: eventManager,
+			DeployEventData: structs.DeployEventData{
+				DeploymentInfo: &structs.DeploymentInfo{},
+				Writer:         response,
+			},
+		}
+	})
 	Describe("Setup", func() {
 		Context("content-type is JSON", func() {
 
@@ -31,31 +54,19 @@ applications:
 			encodedManifest := base64.StdEncoding.EncodeToString([]byte(manifest))
 
 			It("should extract manifest from the request", func() {
-				fetcher := &mocks.Fetcher{}
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
-				eventManager := &mocks.EventManager{}
 
-				pusherCreator := &actioncreator.PusherCreator{
-					Fetcher:      fetcher,
-					Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
-					EventManager: eventManager,
-				}
 				deploymentInfo := structs.DeploymentInfo{Manifest: encodedManifest, ContentType: "JSON"}
 
 				_, returnsManifest, _, _ := pusherCreator.SetUp(deploymentInfo, 0)
+
 				Expect(returnsManifest).To(Equal(manifest))
 				logBytes, _ := ioutil.ReadAll(logBuffer)
 				Eventually(string(logBytes)).Should(ContainSubstring("deploying from json request"))
 			})
 			It("should fetch and return app path", func() {
-				fetcher := &mocks.Fetcher{}
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
-				eventManager := &mocks.EventManager{}
 
-				pusherCreator := &actioncreator.PusherCreator{Fetcher: fetcher,
-					Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
-					EventManager: eventManager,
-				}
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
 					ArtifactURL: "https://artifacturl.com",
@@ -63,21 +74,14 @@ applications:
 				}
 
 				appPath, _, _, _ := pusherCreator.SetUp(deploymentInfo, 0)
+
 				Expect(appPath).To(Equal("newAppPath"))
 				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(deploymentInfo.ArtifactURL))
 				Expect(fetcher.FetchCall.Received.Manifest).To(Equal(manifest))
 
 			})
 			It("should error when artifact cannot be fetched", func() {
-				fetcher := &mocks.Fetcher{}
 				fetcher.FetchCall.Returns.Error = errors.New("fetch error")
-				eventManager := &mocks.EventManager{}
-
-				pusherCreator := &actioncreator.PusherCreator{
-					Fetcher:      fetcher,
-					Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
-					EventManager: eventManager,
-				}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -86,18 +90,12 @@ applications:
 				}
 
 				_, _, _, err := pusherCreator.SetUp(deploymentInfo, 0)
+
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("unzipped app path failed: fetch error"))
 			})
 			It("should retrieve instances from manifest", func() {
-				fetcher := &mocks.Fetcher{}
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
-				eventManager := &mocks.EventManager{}
-				pusherCreator := &actioncreator.PusherCreator{
-					Fetcher:      fetcher,
-					Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
-					EventManager: eventManager,
-				}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -105,16 +103,11 @@ applications:
 				}
 
 				_, _, instances, _ := pusherCreator.SetUp(deploymentInfo, 0)
+
 				Expect(instances).To(Equal(uint16(2)))
 			})
 			It("should emit artifact retrieval events", func() {
-				fetcher := &mocks.Fetcher{}
-				eventManager := &mocks.EventManager{}
-				pusherCreator := &actioncreator.PusherCreator{
-					Fetcher:      fetcher,
-					Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
-					EventManager: eventManager,
-				}
+
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
 					ArtifactURL: "https://artifacturl.com",
@@ -127,17 +120,22 @@ applications:
 				Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.ArtifactRetrievalSuccess))
 
 			})
-			It("should return error if start emit fails", func() {
-				fetcher := &mocks.Fetcher{}
-				eventManager := &mocks.EventManager{}
+			It("should log an artifact retrieval event", func() {
 
+				deploymentInfo := structs.DeploymentInfo{
+					Manifest:    encodedManifest,
+					ArtifactURL: "https://artifacturl.com",
+					ContentType: "JSON",
+				}
+
+				pusherCreator.SetUp(deploymentInfo, 0)
+
+				logBytes, _ := ioutil.ReadAll(logBuffer)
+				Eventually(string(logBytes)).Should(ContainSubstring("emitting a artifact.retrieval.start event"))
+			})
+			It("should return error if start emit fails", func() {
 				eventManager.EmitCall.Returns.Error = []error{errors.New("error")}
 
-				pusherCreator := &actioncreator.PusherCreator{
-					Fetcher:      fetcher,
-					Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
-					EventManager: eventManager,
-				}
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
 					ArtifactURL: "https://artifacturl.com",
@@ -150,16 +148,8 @@ applications:
 
 			})
 			It("should return error if emit success fails", func() {
-				fetcher := &mocks.Fetcher{}
-				eventManager := &mocks.EventManager{}
-
 				eventManager.EmitCall.Returns.Error = []error{nil, errors.New("error")}
 
-				pusherCreator := &actioncreator.PusherCreator{
-					Fetcher:      fetcher,
-					Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
-					EventManager: eventManager,
-				}
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
 					ArtifactURL: "https://artifacturl.com",
@@ -172,18 +162,10 @@ applications:
 
 			})
 			It("should emit failure if fetch fails", func() {
-				fetcher := &mocks.Fetcher{}
 				fetcher.FetchCall.Returns.Error = errors.New("a test error")
-
-				eventManager := &mocks.EventManager{}
 
 				eventManager.EmitCall.Returns.Error = []error{nil, errors.New("error")}
 
-				pusherCreator := &actioncreator.PusherCreator{
-					Fetcher:      fetcher,
-					Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
-					EventManager: eventManager,
-				}
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
 					ArtifactURL: "https://artifacturl.com",
@@ -203,14 +185,7 @@ applications:
 - name: long-running-spring-app`
 				encodedManifest := base64.StdEncoding.EncodeToString([]byte(manifest))
 
-				fetcher := &mocks.Fetcher{}
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
-				eventManager := &mocks.EventManager{}
-				pusherCreator := &actioncreator.PusherCreator{
-					Fetcher:      fetcher,
-					Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
-					EventManager: eventManager,
-				}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -227,14 +202,8 @@ applications:
 		Context("contentType is ZIP", func() {
 
 			It("should extract manifest from the zip file", func() {
-				fetcher := &mocks.Fetcher{}
 				fetcher.FetchFromZipCall.Returns.AppPath = "newAppPath"
-				eventManager := &mocks.EventManager{}
-				pusherCreator := &actioncreator.PusherCreator{
-					Fetcher:      fetcher,
-					Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
-					EventManager: eventManager,
-				}
+
 				deploymentInfo := structs.DeploymentInfo{ContentType: "ZIP"}
 
 				appPath, _, _, _ := pusherCreator.SetUp(deploymentInfo, 0)
@@ -244,14 +213,8 @@ applications:
 				Eventually(string(logBytes)).Should(ContainSubstring("deploying from zip request"))
 			})
 			It("should error when artifact cannot be fetched", func() {
-				fetcher := &mocks.Fetcher{}
 				fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
-				eventManager := &mocks.EventManager{}
-				pusherCreator := &actioncreator.PusherCreator{
-					Fetcher:      fetcher,
-					Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
-					EventManager: eventManager,
-				}
+
 				deploymentInfo := structs.DeploymentInfo{
 					ContentType: "ZIP",
 				}
@@ -262,6 +225,68 @@ applications:
 			})
 		})
 
+	})
+
+	Describe("OnStart", func() {
+		It("emits a push started event", func() {
+			pusherCreator.OnStart()
+
+			Expect(eventManager.EmitCall.Received.Events[0].Type).Should(Equal(constants.PushStartedEvent))
+		})
+		It("logs the parameters", func() {
+			deployInfo := pusherCreator.DeployEventData.DeploymentInfo
+			deployInfo.ArtifactURL = randomizer.StringRunes(10)
+			deployInfo.Username = randomizer.StringRunes(10)
+			deployInfo.Environment = randomizer.StringRunes(10)
+			deployInfo.Org = randomizer.StringRunes(10)
+			deployInfo.Space = randomizer.StringRunes(10)
+			deployInfo.AppName = randomizer.StringRunes(10)
+
+			pusherCreator.OnStart()
+
+			logBytes, _ := ioutil.ReadAll(logBuffer)
+			Eventually(string(logBytes)).Should(ContainSubstring("Artifact URL: " + pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL))
+			Eventually(string(logBytes)).Should(ContainSubstring("Username:     " + pusherCreator.DeployEventData.DeploymentInfo.Username))
+			Eventually(string(logBytes)).Should(ContainSubstring("Environment:  " + pusherCreator.DeployEventData.DeploymentInfo.Environment))
+			Eventually(string(logBytes)).Should(ContainSubstring("Org:          " + pusherCreator.DeployEventData.DeploymentInfo.Org))
+			Eventually(string(logBytes)).Should(ContainSubstring("Space:        " + pusherCreator.DeployEventData.DeploymentInfo.Space))
+			Eventually(string(logBytes)).Should(ContainSubstring("AppName:      " + pusherCreator.DeployEventData.DeploymentInfo.AppName))
+		})
+		It("prints the parameters to the response", func() {
+			deployInfo := pusherCreator.DeployEventData.DeploymentInfo
+			deployInfo.ArtifactURL = randomizer.StringRunes(10)
+			deployInfo.Username = randomizer.StringRunes(10)
+			deployInfo.Environment = randomizer.StringRunes(10)
+			deployInfo.Org = randomizer.StringRunes(10)
+			deployInfo.Space = randomizer.StringRunes(10)
+			deployInfo.AppName = randomizer.StringRunes(10)
+
+			pusherCreator.OnStart()
+
+			Eventually(response).Should(Say("Artifact URL: " + pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL))
+			Eventually(response).Should(Say("Username:     " + pusherCreator.DeployEventData.DeploymentInfo.Username))
+			Eventually(response).Should(Say("Environment:  " + pusherCreator.DeployEventData.DeploymentInfo.Environment))
+			Eventually(response).Should(Say("Org:          " + pusherCreator.DeployEventData.DeploymentInfo.Org))
+			Eventually(response).Should(Say("Space:        " + pusherCreator.DeployEventData.DeploymentInfo.Space))
+			Eventually(response).Should(Say("AppName:      " + pusherCreator.DeployEventData.DeploymentInfo.AppName))
+		})
+		Context("if push started event fails", func() {
+			It("returns an error", func() {
+				eventManager.EmitCall.Returns.Error = []error{errors.New("a test error")}
+
+				err := pusherCreator.OnStart()
+
+				Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(deployer.EventError{})))
+			})
+			It("logs the error", func() {
+				eventManager.EmitCall.Returns.Error = []error{errors.New("a test error")}
+
+				pusherCreator.OnStart()
+
+				logBytes, _ := ioutil.ReadAll(logBuffer)
+				Eventually(string(logBytes)).Should(ContainSubstring("a test error"))
+			})
+		})
 	})
 
 })

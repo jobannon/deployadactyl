@@ -2,6 +2,7 @@ package actioncreator
 
 import (
 	"encoding/base64"
+	"fmt"
 	"github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
@@ -13,6 +14,14 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 	"io"
 )
+
+const deploymentOutput = `Deployment Parameters:
+Artifact URL: %s,
+Username:     %s,
+Environment:  %s,
+Org:          %s,
+Space:        %s,
+AppName:      %s`
 
 type courierCreator interface {
 	CreateCourier() (I.Courier, error)
@@ -86,7 +95,6 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 		a.Logger.Error(err)
 		err = &bluegreen.InitializationError{err}
 		return "", "", 0, deployer.EventError{Type: constants.ArtifactRetrievalStart, Err: err}
-
 	}
 
 	appPath, err = fetchFn()
@@ -105,6 +113,22 @@ func (a PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint1
 	}
 
 	return appPath, manifestString, *instances, err
+}
+
+func (a PusherCreator) OnStart() error {
+	info := a.DeployEventData.DeploymentInfo
+	deploymentMessage := fmt.Sprintf(deploymentOutput, info.ArtifactURL, info.Username, info.Environment, info.Org, info.Space, info.AppName)
+
+	a.Logger.Info(deploymentMessage)
+	fmt.Fprintln(a.DeployEventData.Writer, deploymentMessage)
+
+	err := a.EventManager.Emit(I.Event{Type: constants.PushStartedEvent, Data: a.DeployEventData})
+	if err != nil {
+		a.Logger.Error(err)
+		err = &bluegreen.InitializationError{err}
+		return deployer.EventError{Type: constants.PushStartedEvent, Err: err}
+	}
+	return nil
 }
 
 func (a PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {
@@ -148,6 +172,10 @@ func (a PusherCreator) SuccessError(successErrors []error) error {
 
 func (a StopperCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
 	return "", "", 0, nil
+}
+
+func (a StopperCreator) OnStart() error {
+	return nil
 }
 
 func (a StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {

@@ -23,6 +23,12 @@ type PusherCreator struct {
 			Err            error
 		}
 	}
+	OnStartCall struct {
+		Called  bool
+		Returns struct {
+			Err error
+		}
+	}
 	CreatePusherCall struct {
 		TimesCalled int
 		Returns     struct {
@@ -40,6 +46,12 @@ func (p *PusherCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint
 
 	p.SetUpCall.Called = true
 	return p.SetUpCall.Returns.AppPath, p.SetUpCall.Returns.ManifestString, p.SetUpCall.Returns.Instances, p.SetUpCall.Returns.Err
+}
+
+func (p *PusherCreator) OnStart() error {
+	p.OnStartCall.Called = true
+
+	return p.OnStartCall.Returns.Err
 }
 
 func (p *PusherCreator) Create(deploymentInfo S.DeploymentInfo, cfContext interfaces.CFContext, authorization interfaces.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (interfaces.Action, error) {

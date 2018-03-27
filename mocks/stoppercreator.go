@@ -28,6 +28,10 @@ func (s *StopperCreator) SetUp(deploymentInfo S.DeploymentInfo, envInstances uin
 	return "", "", 0, nil
 }
 
+func (s *StopperCreator) OnStart() error {
+	return nil
+}
+
 func (s *StopperCreator) Create(deploymentInfo S.DeploymentInfo, cfContext interfaces.CFContext, authorization interfaces.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (interfaces.Action, error) {
 	defer func() { s.CreateStopperCall.TimesCalled++ }()
 

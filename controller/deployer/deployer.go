@@ -13,8 +13,6 @@ import (
 
 	"encoding/base64"
 	"github.com/compozed/deployadactyl/config"
-	C "github.com/compozed/deployadactyl/constants"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
@@ -86,8 +84,7 @@ type Deployer struct {
 
 func (d Deployer) Deploy(deploymentInfo *S.DeploymentInfo, env S.Environment, authorization I.Authorization, body io.Reader, actionCreator I.ActionCreator, environment, org, space, appName string, contentType I.DeploymentType, response io.ReadWriter) *I.DeployResponse {
 	var (
-		environments = d.Config.Environments
-		//authenticationRequired = environments[environment].Authenticate
+		//environments = d.Config.Environments
 		manifest  string
 		appPath   string
 		instances uint16
@@ -99,12 +96,10 @@ func (d Deployer) Deploy(deploymentInfo *S.DeploymentInfo, env S.Environment, au
 		DeploymentInfo: deploymentInfo,
 	}
 
-	deployEventData := &S.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: body}
-
 	defer func() { d.FileSystem.RemoveAll(appPath) }()
 
 	deploymentLogger.Debug("prechecking the foundations")
-	err := d.Prechecker.AssertAllFoundationsUp(environments[environment])
+	err := d.Prechecker.AssertAllFoundationsUp(env)
 	if err != nil {
 		deploymentLogger.Error(err)
 		deployResponse.StatusCode = http.StatusInternalServerError
@@ -112,34 +107,10 @@ func (d Deployer) Deploy(deploymentInfo *S.DeploymentInfo, env S.Environment, au
 		return deployResponse
 	}
 
-	deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalStart)
-	//err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalStart, Data: deployEventData})
-	//
-	//if err != nil {
-	//	deploymentLogger.Error(err)
-	//	err = &bluegreen.InitializationError{err}
-	//	deployResponse.StatusCode = http.StatusInternalServerError
-	//	deployResponse.Error = EventError{Type: C.ArtifactRetrievalStart, Err: err}
-	//	return deployResponse
-	//}
-
-	appPath, manifest, instances, err = actionCreator.SetUp(*deploymentInfo, environments[environment].Instances)
-
+	appPath, manifest, instances, err = actionCreator.SetUp(*deploymentInfo, env.Instances)
 	if err != nil {
-		deploymentLogger.Error(err)
-		_ = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalFailure, Data: deployEventData})
 		deployResponse.StatusCode = http.StatusInternalServerError
 		deployResponse.Error = err
-		return deployResponse
-	}
-	deploymentLogger.Debugf("emitting a %s event", C.ArtifactRetrievalSuccess)
-
-	err = d.EventManager.Emit(I.Event{Type: C.ArtifactRetrievalSuccess, Data: deployEventData})
-	if err != nil {
-		deploymentLogger.Error(err)
-		err = &bluegreen.InitializationError{err}
-		deployResponse.StatusCode = http.StatusInternalServerError
-		deployResponse.Error = EventError{Type: C.ArtifactRetrievalSuccess, Err: err}
 		return deployResponse
 	}
 
@@ -149,22 +120,16 @@ func (d Deployer) Deploy(deploymentInfo *S.DeploymentInfo, env S.Environment, au
 
 	defer func() { d.FileSystem.RemoveAll(deploymentInfo.AppPath) }()
 
-	deploymentMessage := fmt.Sprintf(deploymentOutput, deploymentInfo.ArtifactURL, deploymentInfo.Username, deploymentInfo.Environment, deploymentInfo.Org, deploymentInfo.Space, deploymentInfo.AppName)
-	deploymentLogger.Info(deploymentMessage)
-	fmt.Fprintln(response, deploymentMessage)
-
-	enableRollback := env.EnableRollback
-	err = d.EventManager.Emit(I.Event{Type: C.PushStartedEvent, Data: deployEventData})
+	err = actionCreator.OnStart()
 	if err != nil {
-		deploymentLogger.Error(err)
-		err = &bluegreen.InitializationError{err}
 		deployResponse.StatusCode = http.StatusInternalServerError
-		deployResponse.Error = EventError{Type: C.PushStartedEvent, Err: err}
+		deployResponse.Error = err
 		return deployResponse
 	}
 
 	err = d.BlueGreener.Execute(actionCreator, env, appPath, *deploymentInfo, response)
 
+	enableRollback := env.EnableRollback
 	if err != nil {
 		if !enableRollback {
 			deploymentLogger.Errorf("EnableRollback %t, returning status %d and err %s", enableRollback, http.StatusOK, err)

@@ -111,11 +111,11 @@ var _ = Describe("Stopper", func() {
 		Context("when the start succeeds", func() {
 			It("returns with success", func() {
 				courier.ExistsCall.Returns.Bool = true
-				courier.StartCall.Returns.Output = []byte("start succeeded")
+				courier.OnStartCall.Returns.Output = []byte("start succeeded")
 
 				Expect(starter.Execute()).To(Succeed())
 
-				Expect(courier.StartCall.Received.AppName).To(Equal(randomAppName))
+				Expect(courier.OnStartCall.Received.AppName).To(Equal(randomAppName))
 
 				Eventually(response).Should(Say("start succeeded"))
 
@@ -125,7 +125,7 @@ var _ = Describe("Stopper", func() {
 
 			It("emits a StartFinished event", func() {
 				courier.ExistsCall.Returns.Bool = true
-				courier.StartCall.Returns.Output = []byte("start succeeded")
+				courier.OnStartCall.Returns.Output = []byte("start succeeded")
 
 				Expect(starter.Execute()).To(Succeed())
 				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.StartFinishedEvent))
@@ -135,7 +135,7 @@ var _ = Describe("Stopper", func() {
 		Context("when the start fails", func() {
 			It("returns an error", func() {
 				courier.ExistsCall.Returns.Bool = true
-				courier.StartCall.Returns.Error = errors.New("start error")
+				courier.OnStartCall.Returns.Error = errors.New("start error")
 
 				err := starter.Execute()
 

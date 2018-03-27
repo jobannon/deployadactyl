@@ -218,8 +218,11 @@ type creatorPusherMock struct {
 }
 
 func (c creatorPusherMock) SetUp(deploymentInfo S.DeploymentInfo, envInstances uint16) (string, string, uint16, error) {
-
 	return "", "", 0, nil
+}
+
+func (c creatorPusherMock) OnStart() error {
+	return nil
 }
 
 func (c creatorPusherMock) Create(deploymentInfo S.DeploymentInfo, cfContext I.CFContext, authorization I.Authorization, environment S.Environment, response io.ReadWriter, foundationURL, appPath string) (I.Action, error) {

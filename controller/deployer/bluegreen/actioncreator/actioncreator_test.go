@@ -45,7 +45,7 @@ var _ = Describe("Actioncreator", func() {
 			EventManager: eventManager,
 			DeployEventData: structs.DeployEventData{
 				DeploymentInfo: &structs.DeploymentInfo{},
-				Writer:         response,
+				Response:       response,
 			},
 			FileSystemCleaner: fileSystemCleaner,
 		}

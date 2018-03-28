@@ -106,7 +106,7 @@ func (a *PusherCreator) SetUp(environment S.Environment) error {
 	deployEventData := a.DeployEventData
 
 	a.Logger.Debugf("emitting a %s event", constants.ArtifactRetrievalStart)
-	err = a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalStart, Data: deployEventData})
+	err = a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalStart, Data: &deployEventData})
 	if err != nil {
 		a.Logger.Error(err)
 		err = &bluegreen.InitializationError{err}
@@ -116,12 +116,12 @@ func (a *PusherCreator) SetUp(environment S.Environment) error {
 	appPath, err = fetchFn()
 	if err != nil {
 		a.Logger.Error(err)
-		a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalFailure, Data: deployEventData})
+		a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalFailure, Data: &deployEventData})
 		return err
 	}
 
 	a.Logger.Debugf("emitting a %s event", constants.ArtifactRetrievalSuccess)
-	err = a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalSuccess, Data: deployEventData})
+	err = a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalSuccess, Data: &deployEventData})
 	if err != nil {
 		a.Logger.Error(err)
 		err = &bluegreen.InitializationError{err}
@@ -140,9 +140,9 @@ func (a PusherCreator) OnStart() error {
 	deploymentMessage := fmt.Sprintf(deploymentOutput, info.ArtifactURL, info.Username, info.Environment, info.Org, info.Space, info.AppName)
 
 	a.Logger.Info(deploymentMessage)
-	fmt.Fprintln(a.DeployEventData.Writer, deploymentMessage)
+	fmt.Fprintln(a.DeployEventData.Response, deploymentMessage)
 
-	err := a.EventManager.Emit(I.Event{Type: constants.PushStartedEvent, Data: a.DeployEventData})
+	err := a.EventManager.Emit(I.Event{Type: constants.PushStartedEvent, Data: &a.DeployEventData})
 	if err != nil {
 		a.Logger.Error(err)
 		err = &bluegreen.InitializationError{err}

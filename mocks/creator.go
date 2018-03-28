@@ -25,7 +25,7 @@ import (
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
-const ENDPOINT = "/v1/deploy/:environment/:org/:space/:appName"
+const ENDPOINT = "/v2/deploy/:environment/:org/:space/:appName"
 
 // Handmade Creator mock.
 // Uses a mock prechecker to skip verifying the foundations are up and running.
@@ -71,15 +71,16 @@ func (c Creator) CreateControllerHandler() *gin.Engine {
 	r.Use(gin.LoggerWithWriter(c.CreateWriter()))
 	r.Use(gin.ErrorLogger())
 
-	r.POST(ENDPOINT, d.Deploy)
+	r.POST(ENDPOINT, d.RunDeploymentViaHttp)
 
 	return r
 }
 
 func (c Creator) CreateController() controller.Controller {
 	return controller.Controller{
-		Deployer: c.CreateDeployer(),
-		Log:      c.CreateLogger(),
+		Deployer:       c.CreateDeployer(),
+		SilentDeployer: c.CreateSilentDeployer(),
+		Log:            c.CreateLogger(),
 	}
 }
 
@@ -106,6 +107,10 @@ func (c Creator) CreateDeployer() I.Deployer {
 		FileSystem:   c.CreateFileSystem(),
 		ErrorFinder:  c.createErrorFinder(),
 	}
+}
+
+func (c Creator) CreateSilentDeployer() I.Deployer {
+	return deployer.SilentDeployer{}
 }
 
 func (c Creator) createFetcher() I.Fetcher {
@@ -172,7 +177,9 @@ func (c Creator) CreateFileSystem() *afero.Afero {
 }
 
 func (c Creator) createErrorFinder() I.ErrorFinder {
-	return &error_finder.ErrorFinder{}
+	return &error_finder.ErrorFinder{
+		Matchers: c.config.ErrorMatchers,
+	}
 }
 
 func getLevel(level string) (logging.Level, error) {

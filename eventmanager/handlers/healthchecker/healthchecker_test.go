@@ -16,6 +16,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
+
+	I "github.com/compozed/deployadactyl/interfaces"
 )
 
 var _ = Describe("Healthchecker", func() {
@@ -29,9 +31,10 @@ var _ = Describe("Healthchecker", func() {
 		randomPassword      string
 		randomOrg           string
 		randomSpace         string
-		randomHostname		string
+		randomHostname      string
+		randomEnvironment   string
 
-		event         S.Event
+		event         I.Event
 		healthchecker HealthChecker
 		client        *mocks.Client
 		courier       *mocks.Courier
@@ -53,11 +56,12 @@ var _ = Describe("Healthchecker", func() {
 		randomPassword = "randomPassword" + randomizer.StringRunes(10)
 		randomOrg = "randomOrg" + randomizer.StringRunes(10)
 		randomSpace = "randomSpace" + randomizer.StringRunes(10)
+		randomEnvironment = "randomEnvironment" + randomizer.StringRunes(10)
 
 		courier = &mocks.Courier{}
 		client = &mocks.Client{}
 
-		event = S.Event{
+		event = I.Event{
 			Type: C.PushFinishedEvent,
 			Data: S.PushEventData{
 				TempAppWithUUID: randomAppName,
@@ -69,16 +73,19 @@ var _ = Describe("Healthchecker", func() {
 					Password:            randomPassword,
 					Org:                 randomOrg,
 					Space:               randomSpace,
+					Environment:         randomEnvironment,
 				},
 			},
 		}
 
 		logBuffer = NewBuffer()
 		healthchecker = HealthChecker{
-			OldURL: "api.cf",
-			NewURL: "apps",
-			Client: client,
-			Log:    logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
+			OldURL:                  "api.cf",
+			NewURL:                  "apps",
+			SilentDeployURL:         "silentapps",
+			SilentDeployEnvironment: "silentenvironment",
+			Client:                  client,
+			Log:                     logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
 		}
 
 		client.GetCall.Returns.Response = http.Response{
@@ -127,7 +134,7 @@ var _ = Describe("Healthchecker", func() {
 					Expect(courier.DeleteRouteCall.Received.Hostname).To(Equal(randomHostname))
 				})
 
-				It("unmaps the temporary route before deleting it", func(){
+				It("unmaps the temporary route before deleting it", func() {
 					healthchecker.OnEvent(event)
 
 					Expect(courier.UnmapRouteCall.OrderCalled < courier.DeleteRouteCall.OrderCalled).To(Equal(true))
@@ -145,6 +152,22 @@ var _ = Describe("Healthchecker", func() {
 					Eventually(logBuffer).Should(Say("health check successful for https://%s.%s%s", randomAppName, randomDomain, randomEndpoint))
 					Eventually(logBuffer).Should(Say("unmapping temporary route %s.%s", randomAppName, randomDomain))
 					Eventually(logBuffer).Should(Say("unmapped temporary route %s.%s", randomAppName, randomDomain))
+					Eventually(logBuffer).Should(Say("finished health check"))
+				})
+
+				It("maps route for silent deploy environment", func() {
+					healthchecker = HealthChecker{
+						OldURL:                  "api.cf",
+						NewURL:                  "apps",
+						SilentDeployURL:         "silentapps",
+						SilentDeployEnvironment: randomEnvironment,
+						Client:                  client,
+						Log:                     logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
+					}
+
+					healthchecker.OnEvent(event)
+
+					Expect(courier.MapRouteCall.Received.Domain[0]).To(ContainSubstring("silentapps"))
 					Eventually(logBuffer).Should(Say("finished health check"))
 				})
 			})
@@ -232,7 +255,7 @@ var _ = Describe("Healthchecker", func() {
 
 		Context("when a health check endpoint is not provided", func() {
 			It("returns nil", func() {
-				event = S.Event{
+				event = I.Event{
 					Type: C.PushFinishedEvent,
 					Data: S.PushEventData{
 						Courier:         courier,
@@ -252,7 +275,7 @@ var _ = Describe("Healthchecker", func() {
 
 		Context("when the healthchecker receives the wrong event type", func() {
 			It("returns an error", func() {
-				event = S.Event{Type: "wrong.type"}
+				event = I.Event{Type: "wrong.type"}
 
 				err := healthchecker.OnEvent(event)
 

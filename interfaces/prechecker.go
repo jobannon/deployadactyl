@@ -1,8 +1,8 @@
 package interfaces
 
-import "github.com/compozed/deployadactyl/config"
+import S "github.com/compozed/deployadactyl/structs"
 
 // Prechecker interface.
 type Prechecker interface {
-	AssertAllFoundationsUp(environment config.Environment) error
+	AssertAllFoundationsUp(environment S.Environment) error
 }

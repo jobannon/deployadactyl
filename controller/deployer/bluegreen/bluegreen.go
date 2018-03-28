@@ -7,7 +7,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
@@ -23,18 +22,18 @@ type BlueGreen struct {
 
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
 // If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
-func (bg BlueGreen) Push(environment config.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) error {
+func (bg BlueGreen) Push(environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) I.DeploymentError {
 	bg.actors = make([]actor, len(environment.Foundations))
 	bg.buffers = make([]*bytes.Buffer, len(environment.Foundations))
 
-	deploymentLogger := logger.DeploymentLogger{bg.Log, deploymentInfo.UUID}
+	deploymentLogger := logger.DeploymentLogger{Log: bg.Log, UUID: deploymentInfo.UUID}
 
 	for i, foundationURL := range environment.Foundations {
 		bg.buffers[i] = &bytes.Buffer{}
 
 		pusher, err := bg.PusherCreator.CreatePusher(deploymentInfo, bg.buffers[i])
 		if err != nil {
-			return err
+			return InitializationError{err}
 		}
 		defer pusher.CleanUp()
 
@@ -61,6 +60,13 @@ func (bg BlueGreen) Push(environment config.Environment, appPath string, deploym
 	if len(pushErrors) != 0 {
 		if !environment.EnableRollback {
 			deploymentLogger.Errorf("Failed to deploy, deployment not rolled back due to EnableRollback=false")
+
+			finishPushErrors := bg.finishPushAll()
+			if len(finishPushErrors) != 0 {
+				return FinishPushError{finishPushErrors}
+			}
+
+			return PushError{pushErrors}
 		} else {
 			rollbackErrors := bg.undoPushAll(deploymentLogger)
 			if len(rollbackErrors) != 0 {

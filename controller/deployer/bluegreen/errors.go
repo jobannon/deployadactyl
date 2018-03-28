@@ -14,6 +14,10 @@ func (e LoginError) Error() string {
 	return fmt.Sprintf("login failed: %s", errs)
 }
 
+func (e LoginError) Code() string {
+	return "LoginError"
+}
+
 type PushError struct {
 	PushErrors []error
 }
@@ -21,6 +25,10 @@ type PushError struct {
 func (e PushError) Error() string {
 	errs := makeErrorString(e.PushErrors)
 	return fmt.Sprintf("push failed: %s", errs)
+}
+
+func (e PushError) Code() string {
+	return "PushError"
 }
 
 type RollbackError struct {
@@ -37,6 +45,10 @@ func (e RollbackError) Error() string {
 	return fmt.Sprintf("push failed: %s: rollback failed: %s", pushErrs, rollbackErrors)
 }
 
+func (e RollbackError) Code() string {
+	return "RollbackError"
+}
+
 type FinishPushError struct {
 	FinishPushError []error
 }
@@ -47,6 +59,34 @@ func (e FinishPushError) Error() string {
 	)
 
 	return fmt.Sprintf("finish push failed: %s", finishPushErrors)
+}
+
+func (e FinishPushError) Code() string {
+	return "FinishPushError"
+}
+
+type InitializationError struct {
+	Err error
+}
+
+func (e InitializationError) Error() string {
+	return e.Err.Error()
+}
+
+func (e InitializationError) Code() string {
+	return "InitError"
+}
+
+type FinishDeployError struct {
+	Err error
+}
+
+func (e FinishDeployError) Error() string {
+	return e.Err.Error()
+}
+
+func (e FinishDeployError) Code() string {
+	return "FinishDeployError"
 }
 
 func makeErrorString(manyErrors []error) error {

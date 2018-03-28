@@ -3,7 +3,15 @@ package interfaces
 import (
 	"io"
 	"net/http"
+
+	"github.com/compozed/deployadactyl/structs"
 )
+
+type DeployResponse struct {
+	StatusCode     int
+	Error          error
+	DeploymentInfo *structs.DeploymentInfo
+}
 
 // Deployer interface.
 type Deployer interface {
@@ -13,7 +21,9 @@ type Deployer interface {
 		org,
 		space,
 		appName,
-		contentType string,
+		uuid string,
+		contentType DeploymentType,
 		response io.ReadWriter,
-	) (int, error)
+		reqChan chan DeployResponse,
+	)
 }

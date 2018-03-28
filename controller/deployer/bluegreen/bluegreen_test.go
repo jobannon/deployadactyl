@@ -3,7 +3,6 @@ package bluegreen_test
 import (
 	"errors"
 
-	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
@@ -28,7 +27,7 @@ var _ = Describe("Bluegreen", func() {
 		pushers        []*mocks.Pusher
 		log            I.Logger
 		blueGreen      BlueGreen
-		environment    config.Environment
+		environment    S.Environment
 		deploymentInfo S.DeploymentInfo
 		response       *Buffer
 		logBuffer      *Buffer
@@ -46,7 +45,7 @@ var _ = Describe("Bluegreen", func() {
 
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "test")
 
-		environment = config.Environment{Name: randomizer.StringRunes(10)}
+		environment = S.Environment{Name: randomizer.StringRunes(10)}
 		environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 		environment.EnableRollback = true
 
@@ -288,8 +287,7 @@ var _ = Describe("Bluegreen", func() {
 
 			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
 
-			Expect(err).ToNot(HaveOccurred())
-
+			Expect(err).To(HaveOccurred())
 			Expect(pushers[0].UndoPushCall.Received.UndoPushWasCalled).To(Equal(false))
 		})
 	})

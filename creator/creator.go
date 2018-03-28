@@ -69,15 +69,14 @@ func Custom(level string, configFilename string) (Creator, error) {
 
 // CreateControllerHandler returns a gin.Engine that implements http.Handler.
 // Sets up the controller endpoint.
-func (c Creator) CreateControllerHandler() *gin.Engine {
-	controller := c.createController()
+func (c Creator) CreateControllerHandler(controller I.Controller) *gin.Engine {
 
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(gin.LoggerWithWriter(c.createWriter()))
 	r.Use(gin.ErrorLogger())
 
-	r.POST(ENDPOINT, controller.Deploy)
+	r.POST(ENDPOINT, controller.RunDeploymentViaHttp)
 
 	return r
 }
@@ -158,11 +157,13 @@ func (c Creator) CreateHTTPClient() *http.Client {
 	return insecureClient
 }
 
-func (c Creator) createController() controller.Controller {
-	return controller.Controller{
-		Deployer: c.createDeployer(),
-		Log:      c.CreateLogger(),
+func (c Creator) CreateController() I.Controller {
+	con := &controller.Controller{
+		Deployer:       c.createDeployer(),
+		SilentDeployer: c.createSilentDeployer(),
+		Log:            c.CreateLogger(),
 	}
+	return con
 }
 
 func (c Creator) createDeployer() I.Deployer {
@@ -177,6 +178,10 @@ func (c Creator) createDeployer() I.Deployer {
 		Log:          c.CreateLogger(),
 		FileSystem:   c.CreateFileSystem(),
 	}
+}
+
+func (c Creator) createSilentDeployer() I.Deployer {
+	return deployer.SilentDeployer{}
 }
 
 func (c Creator) createFetcher() I.Fetcher {
@@ -212,7 +217,9 @@ func (c Creator) createBlueGreener() I.BlueGreener {
 }
 
 func (c Creator) createErrorFinder() I.ErrorFinder {
-	return &error_finder.ErrorFinder{}
+	return &error_finder.ErrorFinder{
+		Matchers: c.config.ErrorMatchers,
+	}
 }
 
 func createCreator(l logging.Level, cfg config.Config) (Creator, error) {

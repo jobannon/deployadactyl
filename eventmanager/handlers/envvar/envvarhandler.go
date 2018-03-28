@@ -12,7 +12,7 @@ type Envvarhandler struct {
 	FileSystem *afero.Afero
 }
 
-func (handler Envvarhandler) OnEvent(event S.Event) error {
+func (handler Envvarhandler) OnEvent(event I.Event) error {
 
 	handler.Logger.Debugf("Environment Variable Handler Processing Event => %+v", event)
 

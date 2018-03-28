@@ -3,7 +3,6 @@ package eventmanager
 
 import (
 	I "github.com/compozed/deployadactyl/interfaces"
-	S "github.com/compozed/deployadactyl/structs"
 )
 
 // EventManager has handlers for each registered event type.
@@ -31,7 +30,7 @@ func (e *EventManager) AddHandler(handler I.Handler, eventType string) error {
 }
 
 // Emit emits an event.
-func (e *EventManager) Emit(event S.Event) error {
+func (e *EventManager) Emit(event I.Event) error {
 	for _, handler := range e.handlers[event.Type] {
 		err := handler.OnEvent(event)
 		if err != nil {

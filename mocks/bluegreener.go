@@ -3,31 +3,37 @@ package mocks
 import (
 	"io"
 
-	"github.com/compozed/deployadactyl/config"
+	"bytes"
+
+	I "github.com/compozed/deployadactyl/interfaces"
 	S "github.com/compozed/deployadactyl/structs"
 )
 
 // BlueGreener handmade mock for tests.
 type BlueGreener struct {
 	PushCall struct {
+		Write    string
 		Received struct {
-			Environment    config.Environment
+			Environment    S.Environment
 			AppPath        string
 			DeploymentInfo S.DeploymentInfo
 			Out            io.Writer
 		}
 		Returns struct {
-			Error error
+			Error I.DeploymentError
 		}
 	}
 }
 
 // Push mock method.
-func (b *BlueGreener) Push(environment config.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+func (b *BlueGreener) Push(environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, out io.ReadWriter) I.DeploymentError {
 	b.PushCall.Received.Environment = environment
 	b.PushCall.Received.AppPath = appPath
 	b.PushCall.Received.DeploymentInfo = deploymentInfo
 	b.PushCall.Received.Out = out
 
+	if b.PushCall.Write != "" {
+		bytes.NewBufferString(b.PushCall.Write).WriteTo(out)
+	}
 	return b.PushCall.Returns.Error
 }

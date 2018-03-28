@@ -14,10 +14,9 @@ type BlueGreener struct {
 	ExecuteCall struct {
 		Write    string
 		Received struct {
-			ActionCreator  I.ActionCreator
-			Environment    S.Environment
-			DeploymentInfo S.DeploymentInfo
-			Out            io.Writer
+			ActionCreator I.ActionCreator
+			Environment   S.Environment
+			Out           io.Writer
 		}
 		Returns struct {
 			Error I.DeploymentError
@@ -26,10 +25,9 @@ type BlueGreener struct {
 }
 
 // Push mock method.
-func (b *BlueGreener) Execute(actionCreator I.ActionCreator, environment S.Environment, deploymentInfo S.DeploymentInfo, out io.ReadWriter) error {
+func (b *BlueGreener) Execute(actionCreator I.ActionCreator, environment S.Environment, out io.ReadWriter) error {
 	b.ExecuteCall.Received.ActionCreator = actionCreator
 	b.ExecuteCall.Received.Environment = environment
-	b.ExecuteCall.Received.DeploymentInfo = deploymentInfo
 	b.ExecuteCall.Received.Out = out
 
 	if b.ExecuteCall.Write != "" {

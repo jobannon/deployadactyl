@@ -15,9 +15,10 @@ type Action interface {
 }
 
 type ActionCreator interface {
-	SetUp(envInstances uint16) error
+	SetUp(environment S.Environment) error
 	CleanUp()
 	OnStart() error
+	OnFinish(environment S.Environment, response io.ReadWriter, err error) DeployResponse
 	Create(environment S.Environment, response io.ReadWriter, foundationURL string) (Action, error)
 	InitiallyError(initiallyErrors []error) error
 	ExecuteError(executeErrors []error) error

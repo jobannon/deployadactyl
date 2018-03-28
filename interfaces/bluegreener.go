@@ -10,7 +10,6 @@ type BlueGreener interface {
 	Execute(
 		actionCreator ActionCreator,
 		environment S.Environment,
-		deploymentInfo S.DeploymentInfo,
 		response io.ReadWriter,
 	) error
 }

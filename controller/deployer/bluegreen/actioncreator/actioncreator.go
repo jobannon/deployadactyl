@@ -13,6 +13,8 @@ import (
 	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
 	"io"
+	"net/http"
+	"regexp"
 )
 
 const deploymentOutput = `Deployment Parameters:
@@ -22,6 +24,13 @@ Environment:  %s,
 Org:          %s,
 Space:        %s,
 AppName:      %s`
+
+const successfulDeploy = `Your deploy was successful! (^_^)b
+If you experience any problems after this point, check that you can manually push your application to Cloud Foundry on a lower environment.
+It is likely that it is an error with your application and not with Deployadactyl.
+Thanks for using Deployadactyl! Please push down pull up on your lap bar and exit to your left.
+
+`
 
 type courierCreator interface {
 	CreateCourier() (I.Courier, error)
@@ -47,7 +56,7 @@ type StopperCreator struct {
 	DeployEventData S.DeployEventData
 }
 
-func (a *PusherCreator) SetUp(envInstances uint16) error {
+func (a *PusherCreator) SetUp(environment S.Environment) error {
 	var (
 		manifestString string
 		instances      *uint16
@@ -69,7 +78,7 @@ func (a *PusherCreator) SetUp(envInstances uint16) error {
 
 		instances = manifestro.GetInstances(manifestString)
 		if instances == nil {
-			instances = &envInstances
+			instances = &environment.Instances
 		}
 
 		fetchFn = func() (string, error) {
@@ -142,6 +151,34 @@ func (a PusherCreator) OnStart() error {
 	return nil
 }
 
+func (a PusherCreator) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
+	if err != nil {
+		if !env.EnableRollback {
+			a.Logger.Errorf("EnableRollback %t, returning status %d and err %s", env.EnableRollback, http.StatusOK, err)
+			return I.DeployResponse{
+				StatusCode: http.StatusOK,
+				Error:      err,
+			}
+		}
+
+		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
+			return I.DeployResponse{
+				StatusCode: http.StatusBadRequest,
+				Error:      err,
+			}
+		}
+
+		return I.DeployResponse{
+			StatusCode: http.StatusInternalServerError,
+			Error:      err,
+		}
+	}
+	a.Logger.Infof("successfully deployed application %s", a.DeployEventData.DeploymentInfo.AppName)
+	fmt.Fprintf(response, "\n%s", successfulDeploy)
+
+	return I.DeployResponse{StatusCode: http.StatusOK}
+}
+
 func (a PusherCreator) CleanUp() {
 	a.FileSystemCleaner.RemoveAll(a.DeployEventData.DeploymentInfo.AppPath)
 }
@@ -185,12 +222,16 @@ func (a PusherCreator) SuccessError(successErrors []error) error {
 	return bluegreen.FinishPushError{FinishPushError: successErrors}
 }
 
-func (a StopperCreator) SetUp(envInstances uint16) error {
+func (a StopperCreator) SetUp(environment S.Environment) error {
 	return nil
 }
 
 func (a StopperCreator) OnStart() error {
 	return nil
+}
+
+func (a StopperCreator) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
+	return I.DeployResponse{}
 }
 
 func (a StopperCreator) CleanUp() {}

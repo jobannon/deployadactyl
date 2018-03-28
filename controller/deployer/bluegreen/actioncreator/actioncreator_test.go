@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/afero"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"reflect"
 )
 
@@ -30,7 +31,7 @@ var _ = Describe("Actioncreator", func() {
 		eventManager      *mocks.EventManager
 		pusherCreator     *actioncreator.PusherCreator
 		fileSystemCleaner *mocks.FileSystemCleaner
-		response          io.Writer
+		response          io.ReadWriter
 	)
 	BeforeEach(func() {
 		fetcher = &mocks.Fetcher{}
@@ -59,11 +60,12 @@ applications:
 
 			It("should extract manifest from the request", func() {
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
+				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{Manifest: encodedManifest, ContentType: "JSON"}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(0)
+				pusherCreator.SetUp(environment)
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.Manifest).To(Equal(manifest))
 				logBytes, _ := ioutil.ReadAll(logBuffer)
@@ -71,6 +73,7 @@ applications:
 			})
 			It("should fetch and return app path", func() {
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
+				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -79,7 +82,7 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(0)
+				pusherCreator.SetUp(environment)
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.AppPath).To(Equal("newAppPath"))
 				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(deploymentInfo.ArtifactURL))
@@ -88,6 +91,7 @@ applications:
 			})
 			It("should error when artifact cannot be fetched", func() {
 				fetcher.FetchCall.Returns.Error = errors.New("fetch error")
+				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -96,13 +100,14 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				err := pusherCreator.SetUp(0)
+				err := pusherCreator.SetUp(environment)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("unzipped app path failed: fetch error"))
 			})
 			It("should retrieve instances from manifest", func() {
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
+				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -110,11 +115,12 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(0)
+				pusherCreator.SetUp(environment)
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.Instances).To(Equal(uint16(2)))
 			})
 			It("should emit artifact retrieval events", func() {
+				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -124,13 +130,14 @@ applications:
 
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(0)
+				pusherCreator.SetUp(environment)
 
 				Expect(eventManager.EmitCall.Received.Events[0].Type).Should(Equal(constants.ArtifactRetrievalStart))
 				Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.ArtifactRetrievalSuccess))
 
 			})
 			It("should log an artifact retrieval event", func() {
+				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -139,13 +146,14 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(0)
+				pusherCreator.SetUp(environment)
 
 				logBytes, _ := ioutil.ReadAll(logBuffer)
 				Eventually(string(logBytes)).Should(ContainSubstring("emitting a artifact.retrieval.start event"))
 			})
 			It("should return error if start emit fails", func() {
 				eventManager.EmitCall.Returns.Error = []error{errors.New("error")}
+				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -154,13 +162,14 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				err := pusherCreator.SetUp(0)
+				err := pusherCreator.SetUp(environment)
 
 				Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(deployer.EventError{})))
 
 			})
 			It("should return error if emit success fails", func() {
 				eventManager.EmitCall.Returns.Error = []error{nil, errors.New("error")}
+				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -169,13 +178,14 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				err := pusherCreator.SetUp(0)
+				err := pusherCreator.SetUp(environment)
 
 				Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(deployer.EventError{})))
 
 			})
 			It("should emit failure if fetch fails", func() {
 				fetcher.FetchCall.Returns.Error = errors.New("a test error")
+				environment := structs.Environment{Instances: 0}
 
 				eventManager.EmitCall.Returns.Error = []error{nil, errors.New("error")}
 
@@ -186,7 +196,7 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(0)
+				pusherCreator.SetUp(environment)
 
 				Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.ArtifactRetrievalFailure))
 			})
@@ -198,6 +208,7 @@ applications:
 applications:
 - name: long-running-spring-app`
 				encodedManifest := base64.StdEncoding.EncodeToString([]byte(manifest))
+				environment := structs.Environment{Instances: 22}
 
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
 
@@ -208,7 +219,7 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(22)
+				pusherCreator.SetUp(environment)
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.Instances).To(Equal(uint16(22)))
 			})
@@ -218,11 +229,12 @@ applications:
 
 			It("should extract manifest from the zip file", func() {
 				fetcher.FetchFromZipCall.Returns.AppPath = "newAppPath"
+				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{ContentType: "ZIP"}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(0)
+				pusherCreator.SetUp(environment)
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.AppPath).To(Equal("newAppPath"))
 				logBytes, _ := ioutil.ReadAll(logBuffer)
@@ -230,13 +242,14 @@ applications:
 			})
 			It("should error when artifact cannot be fetched", func() {
 				fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
+				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					ContentType: "ZIP",
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				err := pusherCreator.SetUp(0)
+				err := pusherCreator.SetUp(environment)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("unzipping request body error: a test error"))
 			})
@@ -327,6 +340,73 @@ applications:
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(exists).ToNot(BeTrue())
+		})
+	})
+
+	Describe("OnFinish", func() {
+		Context("when error occurs", func() {
+			Context("and EnableRollback is false", func() {
+				It("returns StatusOK", func() {
+					env := structs.Environment{EnableRollback: false}
+					err := errors.New("a test error")
+
+					resp := pusherCreator.OnFinish(env, response, err)
+
+					Expect(resp.StatusCode).To(Equal(http.StatusOK))
+				})
+				It("logs the failure", func() {
+					env := structs.Environment{EnableRollback: false}
+					err := errors.New("a test error")
+
+					pusherCreator.OnFinish(env, response, err)
+
+					logBytes, _ := ioutil.ReadAll(logBuffer)
+					Eventually(string(logBytes)).Should(ContainSubstring("EnableRollback false, returning status"))
+				})
+			})
+			Context("and EnableRollback is true", func() {
+				Context("and error is a login failure", func() {
+					It("returns StatusBadRequest", func() {
+						env := structs.Environment{EnableRollback: true}
+						err := errors.New("the login failed")
+
+						resp := pusherCreator.OnFinish(env, response, err)
+
+						Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
+					})
+				})
+				It("returns StatusInternalServerError", func() {
+					env := structs.Environment{EnableRollback: true}
+					err := errors.New("a test error")
+
+					resp := pusherCreator.OnFinish(env, response, err)
+
+					Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
+				})
+			})
+		})
+		Context("when no error occurs", func() {
+			It("returns StatusOK", func() {
+				env := structs.Environment{EnableRollback: true}
+
+				resp := pusherCreator.OnFinish(env, response, nil)
+
+				Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			})
+			It("logs a successful deployment message", func() {
+				env := structs.Environment{EnableRollback: true}
+
+				pusherCreator.OnFinish(env, response, nil)
+				logBytes, _ := ioutil.ReadAll(logBuffer)
+				Eventually(string(logBytes)).Should(ContainSubstring("successfully deployed application"))
+			})
+			It("writes success to the output", func() {
+				env := structs.Environment{EnableRollback: true}
+
+				pusherCreator.OnFinish(env, response, nil)
+				logBytes, _ := ioutil.ReadAll(response)
+				Eventually(string(logBytes)).Should(ContainSubstring("Your deploy was successful!"))
+			})
 		})
 	})
 })

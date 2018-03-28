@@ -13,7 +13,7 @@ type PusherCreator struct {
 	SetUpCall struct {
 		Called   bool
 		Received struct {
-			EnvInstances uint16
+			Environment S.Environment
 		}
 		Returns struct {
 			Err error
@@ -30,6 +30,17 @@ type PusherCreator struct {
 		Returns     struct {
 			Pushers []interfaces.Action
 			Error   []error
+		}
+	}
+	OnFinishCall struct {
+		Called   bool
+		Received struct {
+			Environment S.Environment
+			Response    io.ReadWriter
+			Error       error
+		}
+		Returns struct {
+			DeployResponse interfaces.DeployResponse
 		}
 	}
 	CleanUpCall struct {
@@ -59,8 +70,8 @@ func (p *FileSystemCleaner) RemoveAll(path string) error {
 	return p.RemoveAllCall.Returns.Error
 }
 
-func (p *PusherCreator) SetUp(envInstances uint16) error {
-	p.SetUpCall.Received.EnvInstances = envInstances
+func (p *PusherCreator) SetUp(environment S.Environment) error {
+	p.SetUpCall.Received.Environment = environment
 
 	p.SetUpCall.Called = true
 	return p.SetUpCall.Returns.Err
@@ -74,6 +85,15 @@ func (p *PusherCreator) OnStart() error {
 	p.OnStartCall.Called = true
 
 	return p.OnStartCall.Returns.Err
+}
+
+func (p *PusherCreator) OnFinish(env S.Environment, response io.ReadWriter, err error) interfaces.DeployResponse {
+	p.OnFinishCall.Called = true
+	p.OnFinishCall.Received.Environment = env
+	p.OnFinishCall.Received.Response = response
+	p.OnFinishCall.Received.Error = err
+
+	return p.OnFinishCall.Returns.DeployResponse
 }
 
 func (p *PusherCreator) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (interfaces.Action, error) {

@@ -57,15 +57,15 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 	deploymentLogger.Debugf("Starting deploy of %s with UUID %s", cf.Application, deploymentInfo.UUID)
 	deploymentLogger.Debug("building deploymentInfo")
 
-	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
-	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
+	body := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
+	//bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 	if deployment.Type.JSON {
 		deploymentLogger.Debug("deploying from json request")
 
 		deploymentInfo.ContentType = "JSON"
 	} else if deployment.Type.ZIP {
 		deploymentLogger.Debug("deploying from zip request")
-		deploymentInfo.Body = bodyNotSilent
+		deploymentInfo.Body = body
 		deploymentInfo.ContentType = "ZIP"
 	} else {
 		return I.DeployResponse{
@@ -73,7 +73,6 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 			Error:      deployer.InvalidContentTypeError{},
 		}
 	}
-
 	environment, err := c.resolveEnvironment(cf.Environment)
 	if err != nil {
 		fmt.Fprintln(response, err.Error())
@@ -82,7 +81,6 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 			Error:      err,
 		}
 	}
-
 	auth, err := c.resolveAuthorization(deployment.Authorization, environment, deploymentLogger)
 	if err != nil {
 		return I.DeployResponse{
@@ -109,7 +107,7 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 		}
 	}
 
-	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: bodyNotSilent}
+	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: body}
 	defer c.emitDeployFinish(&deployEventData, response, &deployResponse, deploymentLogger)
 	defer c.emitDeploySuccessOrFailure(&deployEventData, response, &deployResponse, deploymentLogger)
 
@@ -133,13 +131,13 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 	defer close(reqChannel2)
 
 	go func() {
-		reqChannel1 <- c.Deployer.Deploy(deploymentInfo, environment, deployment.Authorization, bodyNotSilent, pusherCreator, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, response)
+		reqChannel1 <- c.Deployer.Deploy(deploymentInfo, environment, pusherCreator, response)
 	}()
 
 	silentResponse := &bytes.Buffer{}
 	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
 		go func() {
-			reqChannel2 <- c.SilentDeployer.Deploy(deploymentInfo, environment, deployment.Authorization, bodySilent, pusherCreator, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, silentResponse)
+			reqChannel2 <- c.SilentDeployer.Deploy(deploymentInfo, environment, pusherCreator, silentResponse)
 		}()
 		<-reqChannel2
 	}
@@ -160,11 +158,10 @@ func (c *Controller) StopDeployment(deployment *I.Deployment, response *bytes.Bu
 		}
 	}
 
-	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
-	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
+	body := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 
 	deploymentInfo := structs.DeploymentInfo{}
-	deployEventData := &structs.DeployEventData{Response: response, DeploymentInfo: &deploymentInfo, RequestBody: bodyNotSilent}
+	deployEventData := &structs.DeployEventData{Response: response, DeploymentInfo: &deploymentInfo, RequestBody: body}
 
 	pusherCreator := c.PusherCreatorFactory.PusherCreator(*deployEventData)
 
@@ -173,11 +170,11 @@ func (c *Controller) StopDeployment(deployment *I.Deployment, response *bytes.Bu
 	defer close(reqChannel1)
 	defer close(reqChannel2)
 
-	go c.Deployer.Deploy(&deploymentInfo, environment, deployment.Authorization, bodyNotSilent, pusherCreator, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, response)
+	go c.Deployer.Deploy(&deploymentInfo, environment, pusherCreator, response)
 
 	silentResponse := &bytes.Buffer{}
 	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
-		go c.SilentDeployer.Deploy(&deploymentInfo, environment, deployment.Authorization, bodySilent, pusherCreator, cf.Environment, cf.Organization, cf.Space, cf.Application, deployment.Type, silentResponse)
+		go c.SilentDeployer.Deploy(&deploymentInfo, environment, pusherCreator, silentResponse)
 		<-reqChannel2
 	}
 

@@ -132,10 +132,10 @@ var _ = Describe("Controller", func() {
 				Eventually(resp.Code).Should(Equal(http.StatusOK))
 				Eventually(resp.Body).Should(ContainSubstring("deploy success"))
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.AppName).Should(Equal(appName))
 			})
 
 			It("does not run silent deploy when environment other than non-prop", func() {
@@ -229,7 +229,8 @@ var _ = Describe("Controller", func() {
 
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
-				Eventually(deployer.DeployCall.Received.Authorization).Should(Equal(deployment.Authorization))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Username).Should(Equal(deployment.Authorization.Username))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Password).Should(Equal(deployment.Authorization.Password))
 			})
 
 			It("deployer is provided the body", func() {
@@ -258,7 +259,7 @@ var _ = Describe("Controller", func() {
 				deployment.Type.ZIP = true
 
 				deployResponse := controller.RunDeployment(deployment, response)
-				receivedBody, _ := ioutil.ReadAll(deployer.DeployCall.Received.Body)
+				receivedBody, _ := ioutil.ReadAll(deployer.DeployCall.Received.DeploymentInfo.Body)
 				Eventually(deployer.DeployCall.Called).Should(Equal(1))
 				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
 
@@ -285,11 +286,11 @@ var _ = Describe("Controller", func() {
 
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.ContentType).Should(Equal("ZIP"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.AppName).Should(Equal(appName))
 
 				ret, _ := ioutil.ReadAll(response)
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
@@ -314,11 +315,11 @@ var _ = Describe("Controller", func() {
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))
 				Eventually(deployResponse.Error.Error()).Should(Equal("bork"))
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.ContentType).Should(Equal("ZIP"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.AppName).Should(Equal(appName))
 
 				ret, _ := ioutil.ReadAll(response)
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
@@ -331,7 +332,7 @@ var _ = Describe("Controller", func() {
 
 				deployment := &I.Deployment{
 					Body: &[]byte{},
-					Type: I.DeploymentType{JSON: true},
+					Type: I.DeploymentType{ZIP: true},
 					CFContext: I.CFContext{
 						Environment:  environment,
 						Organization: org,
@@ -345,9 +346,8 @@ var _ = Describe("Controller", func() {
 				}
 				controller.RunDeployment(deployment, response)
 
-				Eventually(deployer.DeployCall.Received.Authorization.Username).Should(Equal(""))
-				Eventually(deployer.DeployCall.Received.Authorization.Password).Should(Equal(""))
-
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Username).Should(Equal(""))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Password).Should(Equal(""))
 			})
 
 			It("sets the basic auth header if credentials are passed", func() {
@@ -363,8 +363,8 @@ var _ = Describe("Controller", func() {
 
 				controller.RunDeployment(&deployment, response)
 
-				Eventually(deployer.DeployCall.Received.Authorization.Username).Should(Equal("TestUsername"))
-				Eventually(deployer.DeployCall.Received.Authorization.Password).Should(Equal("TestPassword"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Username).Should(Equal("TestUsername"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Password).Should(Equal("TestPassword"))
 			})
 		})
 
@@ -388,11 +388,11 @@ var _ = Describe("Controller", func() {
 
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.ContentType).Should(Equal("ZIP"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.AppName).Should(Equal(appName))
 
 				ret, _ := ioutil.ReadAll(response)
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
@@ -422,11 +422,11 @@ var _ = Describe("Controller", func() {
 
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.ContentType).Should(Equal("ZIP"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.AppName).Should(Equal(appName))
 
 				ret, _ := ioutil.ReadAll(response)
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
@@ -467,6 +467,35 @@ var _ = Describe("Controller", func() {
 				controller.RunDeployment(&deployment, response)
 				returnedResponse, _ := ioutil.ReadAll(pusherCreatorFactory.PusherCreatorCall.Received.DeployEventData.Response)
 				Eventually(returnedResponse).Should(Equal([]byte("hello")))
+			})
+			Context("when type is JSON", func() {
+				It("gets the artifact url from the request", func() {
+					bodyByte := []byte("{\"artifact_url\": \"the artifact url\"}")
+					deployment.Body = &bodyByte
+					deployment.CFContext.Environment = environment
+					deployment.Type.JSON = true
+
+					controller.RunDeployment(&deployment, response)
+					Eventually(pusherCreatorFactory.PusherCreatorCall.Received.DeployEventData.DeploymentInfo.ArtifactURL).Should(Equal("the artifact url"))
+				})
+				It("gets the manifest from the request", func() {
+					bodyByte := []byte("{\"artifact_url\": \"the artifact url\", \"manifest\": \"the manifest\"}")
+					deployment.Body = &bodyByte
+					deployment.CFContext.Environment = environment
+					deployment.Type.JSON = true
+
+					controller.RunDeployment(&deployment, response)
+					Eventually(pusherCreatorFactory.PusherCreatorCall.Received.DeployEventData.DeploymentInfo.Manifest).Should(Equal("the manifest"))
+				})
+				It("gets the data from the request", func() {
+					bodyByte := []byte("{\"artifact_url\": \"the artifact url\", \"data\": {\"avalue\": \"the data\"}}")
+					deployment.Body = &bodyByte
+					deployment.CFContext.Environment = environment
+					deployment.Type.JSON = true
+
+					controller.RunDeployment(&deployment, response)
+					Eventually(pusherCreatorFactory.PusherCreatorCall.Received.DeployEventData.DeploymentInfo.Data["avalue"]).Should(Equal("the data"))
+				})
 			})
 			Context("the deployment info", func() {
 				Context("when environment does not exist", func() {
@@ -636,12 +665,12 @@ var _ = Describe("Controller", func() {
 					})
 					It("has correct custom parameters", func() {
 
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
+
 						customParams := make(map[string]interface{})
 						customParams["param1"] = "value1"
 						customParams["param2"] = "value2"
-
-						deployment.CFContext.Environment = environment
-						deployment.Type.ZIP = true
 
 						controller.Config.Environments[environment] = structs.Environment{
 							CustomParams: customParams,
@@ -870,11 +899,11 @@ var _ = Describe("Controller", func() {
 
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(deployment.CFContext.Organization))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.ContentType).Should(Equal("ZIP"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Org).Should(Equal(deployment.CFContext.Organization))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.AppName).Should(Equal(appName))
 
 				ret, _ := ioutil.ReadAll(response)
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
@@ -899,11 +928,11 @@ var _ = Describe("Controller", func() {
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))
 				Eventually(deployResponse.Error.Error()).Should(Equal("bork"))
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.ContentType).Should(Equal("ZIP"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.AppName).Should(Equal(appName))
 
 				ret, _ := ioutil.ReadAll(response)
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
@@ -916,7 +945,7 @@ var _ = Describe("Controller", func() {
 
 				deployment := &I.Deployment{
 					Body: &[]byte{},
-					Type: I.DeploymentType{JSON: true},
+					Type: I.DeploymentType{ZIP: true},
 					CFContext: I.CFContext{
 						Environment:  environment,
 						Organization: org,
@@ -930,8 +959,8 @@ var _ = Describe("Controller", func() {
 				}
 				controller.RunDeployment(deployment, response)
 
-				Eventually(deployer.DeployCall.Received.Authorization.Username).Should(Equal(""))
-				Eventually(deployer.DeployCall.Received.Authorization.Password).Should(Equal(""))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Username).Should(Equal(""))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Password).Should(Equal(""))
 			})
 
 			It("sets the basic auth header if credentials are passed", func() {
@@ -946,8 +975,8 @@ var _ = Describe("Controller", func() {
 				}
 				controller.RunDeployment(&deployment, response)
 
-				Eventually(deployer.DeployCall.Received.Authorization.Username).Should(Equal("TestUsername"))
-				Eventually(deployer.DeployCall.Received.Authorization.Password).Should(Equal("TestPassword"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Username).Should(Equal("TestUsername"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Password).Should(Equal("TestPassword"))
 			})
 		})
 
@@ -971,11 +1000,11 @@ var _ = Describe("Controller", func() {
 
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.ContentType).Should(Equal("ZIP"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Org).Should(Equal(org))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.AppName).Should(Equal(appName))
 
 				ret, _ := ioutil.ReadAll(response)
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
@@ -1004,11 +1033,11 @@ var _ = Describe("Controller", func() {
 
 				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{ZIP: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(deployment.CFContext.Organization))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.ContentType).Should(Equal("ZIP"))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Environment).Should(Equal(environment))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Org).Should(Equal(deployment.CFContext.Organization))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.Space).Should(Equal(space))
+				Eventually(deployer.DeployCall.Received.DeploymentInfo.AppName).Should(Equal(appName))
 
 				ret, _ := ioutil.ReadAll(response)
 				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))

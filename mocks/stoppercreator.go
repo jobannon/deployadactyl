@@ -24,12 +24,16 @@ type StopperCreator struct {
 	}
 }
 
-func (s *StopperCreator) SetUp(envInstances uint16) error {
+func (s *StopperCreator) SetUp(environment S.Environment) error {
 	return nil
 }
 
 func (s *StopperCreator) OnStart() error {
 	return nil
+}
+
+func (s *StopperCreator) OnFinish(env S.Environment, response io.ReadWriter, err error) interfaces.DeployResponse {
+	return interfaces.DeployResponse{}
 }
 
 func (s *StopperCreator) CleanUp() {}

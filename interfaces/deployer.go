@@ -17,14 +17,7 @@ type Deployer interface {
 	Deploy(
 		deploymentInfo *structs.DeploymentInfo,
 		environment structs.Environment,
-		authorization Authorization,
-		body io.Reader,
 		actionCreator ActionCreator,
-		environmentStr,
-		org,
-		space,
-		appName string,
-		contentType DeploymentType,
 		response io.ReadWriter,
 	) *DeployResponse
 }

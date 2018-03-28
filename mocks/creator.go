@@ -216,7 +216,7 @@ type creatorPusherMock struct {
 	DeployEventData S.DeployEventData
 }
 
-func (c creatorPusherMock) SetUp(envInstances uint16) error {
+func (c creatorPusherMock) SetUp(environment S.Environment) error {
 	return nil
 }
 
@@ -224,6 +224,10 @@ func (c creatorPusherMock) CleanUp() {}
 
 func (c creatorPusherMock) OnStart() error {
 	return nil
+}
+
+func (c creatorPusherMock) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
+	return I.DeployResponse{}
 }
 
 func (c creatorPusherMock) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (I.Action, error) {

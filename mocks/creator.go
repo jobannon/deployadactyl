@@ -84,6 +84,7 @@ func (c Creator) CreateController() controller.Controller {
 		PusherCreatorFactory: c,
 		Config:               c.CreateConfig(),
 		EventManager:         c.CreateEventManager(),
+		ErrorFinder:          c.createErrorFinder(),
 	}
 }
 

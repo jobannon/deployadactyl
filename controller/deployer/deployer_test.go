@@ -15,10 +15,8 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/compozed/deployadactyl/config"
-	C "github.com/compozed/deployadactyl/constants"
 	. "github.com/compozed/deployadactyl/controller/deployer"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
-	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/actioncreator"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
@@ -33,7 +31,6 @@ applications:
   memory: 256M
   disk_quota: 256M
 `
-	eventManagerNotEnoughCalls = "event manager didn't have the right number of calls"
 )
 
 var _ = Describe("Deployer", func() {
@@ -42,17 +39,15 @@ var _ = Describe("Deployer", func() {
 
 		c              config.Config
 		blueGreener    *mocks.BlueGreener
-		fetcher        *mocks.Fetcher
 		prechecker     *mocks.Prechecker
 		eventManager   *mocks.EventManager
 		randomizerMock *mocks.Randomizer
-		errorFinder    *mocks.ErrorFinder
 
-		req                          *http.Request
 		requestBody                  *bytes.Buffer
 		appName                      string
 		appPath                      string
 		artifactURL                  string
+		authorization                interfaces.Authorization
 		domain                       string
 		environment                  string
 		org                          string
@@ -60,6 +55,7 @@ var _ = Describe("Deployer", func() {
 		username                     string
 		uuid                         string
 		manifest                     string
+		base64Manifest               string
 		instances                    uint16
 		password                     string
 		testManifestLocation         string
@@ -73,15 +69,16 @@ var _ = Describe("Deployer", func() {
 		environments                 = map[string]S.Environment{}
 		environmentsNoCustomParams   = map[string]S.Environment{}
 		af                           *afero.Afero
+		pusherCreator                *mocks.PusherCreator
+		stopperCreator               interfaces.ActionCreator
+		contentType                  string
 	)
 
 	BeforeEach(func() {
 		blueGreener = &mocks.BlueGreener{}
-		fetcher = &mocks.Fetcher{}
 		prechecker = &mocks.Prechecker{}
 		eventManager = &mocks.EventManager{}
 		randomizerMock = &mocks.Randomizer{}
-		errorFinder = &mocks.ErrorFinder{}
 
 		appName = "appName-" + randomizer.StringRunes(10)
 		appPath = "appPath-" + randomizer.StringRunes(10)
@@ -93,11 +90,13 @@ var _ = Describe("Deployer", func() {
 		space = "space-" + randomizer.StringRunes(10)
 		username = "username-" + randomizer.StringRunes(10)
 		uuid = "uuid-" + randomizer.StringRunes(10)
-		manifest = "manifest-" + randomizer.StringRunes(10)
 		instances = uint16(rand.Uint32())
+		manifest = "manifest-" + randomizer.StringRunes(10)
+		contentType = randomizer.StringRunes(10)
+
 		enableRollback = true
 
-		base64Manifest := base64.StdEncoding.EncodeToString([]byte(manifest))
+		base64Manifest = base64.StdEncoding.EncodeToString([]byte(manifest))
 
 		randomizerMock.RandomizeCall.Returns.Runes = uuid
 		eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
@@ -112,8 +111,6 @@ var _ = Describe("Deployer", func() {
 			artifactURL,
 			base64Manifest,
 		))
-
-		req, _ = http.NewRequest("POST", "", requestBody)
 
 		customParams := make(map[string]interface{})
 		customParams["service_now_column_name"] = "u_change"
@@ -133,6 +130,8 @@ var _ = Describe("Deployer", func() {
 			Domain:       domain,
 			AppPath:      appPath,
 			CustomParams: customParams,
+			ContentType:  contentType,
+			Body:         requestBody,
 		}
 
 		deploymentInfoNoCustomParams = S.DeploymentInfo{
@@ -161,30 +160,31 @@ var _ = Describe("Deployer", func() {
 			CustomParams:   customParams,
 			EnableRollback: enableRollback,
 		}
+		authorization.Username = deploymentInfo.Username
+		authorization.Password = deploymentInfo.Password
 
 		c = config.Config{
 			Username:     username,
 			Password:     password,
 			Environments: environments,
 		}
+		logBuffer = NewBuffer()
+		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
+		pusherCreator = &mocks.PusherCreator{}
+		stopperCreator = actioncreator.StopperCreator{}
 
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
 
 		testManifestLocation, _ = af.TempDir("", "")
 
-		logBuffer = NewBuffer()
-		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
-
 		deployer = Deployer{
 			c,
 			blueGreener,
-			fetcher,
 			prechecker,
 			eventManager,
 			randomizerMock,
-			errorFinder,
+			nil,
 			log,
-			af,
 		}
 	})
 
@@ -193,10 +193,7 @@ var _ = Describe("Deployer", func() {
 			It("rejects the request with a http.StatusInternalServerError", func() {
 				prechecker.AssertAllFoundationsUpCall.Returns.Error = errors.New("prechecker failed")
 
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
+				deployResponse := deployer.Deploy(&deploymentInfo, deployer.Config.Environments[environment], pusherCreator, response)
 				Expect(deployResponse.Error).To(MatchError("prechecker failed"))
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
@@ -210,64 +207,29 @@ var _ = Describe("Deployer", func() {
 			Context("when authenticate in the config is not true", func() {
 				It("uses the config username and password and accepts the request with a http.StatusOK", func() {
 					By("setting authenticate to false")
-					deployer.Config.Environments[environment] = S.Environment{Authenticate: false}
+					env := S.Environment{Authenticate: false}
+					deployer.Config.Environments[environment] = env
+					pusherCreator.OnFinishCall.Returns.DeployResponse = interfaces.DeployResponse{
+						StatusCode: http.StatusOK,
+					}
 
 					By("not setting basic auth")
 
-					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-					deployResponse := <-reqChannel1
+					deployResponse := deployer.Deploy(&deploymentInfo, env, pusherCreator, response)
 
 					Expect(deployResponse.Error).ToNot(HaveOccurred())
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
-
-					Expect(response.String()).To(ContainSubstring("deploy was successful"))
-					Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
-					Expect(response.String()).To(ContainSubstring(username))
-				})
-			})
-
-			Context("when authenticate in the config is true", func() {
-				It("rejects the request with a http.StatusUnauthorized", func() {
-					deployer.Config.Environments[environment] = S.Environment{Authenticate: true}
-
-					By("not setting basic auth")
-
-					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-					deployResponse := <-reqChannel1
-
-					Expect(deployResponse.Error).To(MatchError("basic auth header not found"))
-
-					Expect(deployResponse.StatusCode).To(Equal(http.StatusUnauthorized))
-					Expect(eventManager.EmitCall.TimesCalled).To(Equal(0), eventManagerNotEnoughCalls)
 				})
 			})
 		})
 	})
 
 	Describe("deploying with JSON in the request body", func() {
-		Context("with missing properties in the JSON", func() {
-			It("returns an error and http.StatusInternalServerError", func() {
-				By("sending empty JSON")
-				requestBody = bytes.NewBufferString("{}")
-
-				req, _ = http.NewRequest("POST", "", requestBody)
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				Expect(deployResponse.Error).To(MatchError("The following properties are missing: artifact_url"))
-
-				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-			})
-		})
-
 		Context("when manifest is given in the request body", func() {
 			Context("if the provided manifest is base64 encoded", func() {
 				It("decodes the manifest, does not return an error and returns http.StatusOK", func() {
-					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+					manifest = "manifest-" + randomizer.StringRunes(10)
+					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 
 					By("base64 encoding the manifest")
 					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
@@ -278,78 +240,78 @@ var _ = Describe("Deployer", func() {
 						base64Manifest,
 					))
 
-					req, _ = http.NewRequest("POST", "", requestBody)
+					pusherCreator.OnFinishCall.Returns.DeployResponse = interfaces.DeployResponse{
+						StatusCode: http.StatusOK,
+					}
 
-					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-					deployResponse := <-reqChannel1
+					deployResponse := deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreator, response)
 
 					Expect(deployResponse.Error).ToNot(HaveOccurred())
 
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
-					Expect(fetcher.FetchCall.Received.Manifest).ToNot(Equal(base64Manifest), "manifest was not decoded")
 				})
-			})
 
-			Context("if the provided manifest is not base64 encoded", func() {
-				It("returns an error and http.StatusBadRequest", func() {
-					deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+				It("will emit ArtifactRetrievalStart and ArtifactRetrievalSuccess", func() {
+					manifest = "manifest-" + randomizer.StringRunes(10)
+					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 
-					By("not base64 encoding the manifest")
+					By("base64 encoding the manifest")
+					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
 
-					By("including the manifest in the JSON")
+					By("including the manifest in the request body")
 					requestBody = bytes.NewBufferString(fmt.Sprintf(`{"artifact_url": "%s", "manifest": "%s"}`,
 						artifactURL,
-						deploymentInfo.Manifest,
+						base64Manifest,
 					))
 
-					req, _ = http.NewRequest("POST", "", requestBody)
+					pusherCreator.OnFinishCall.Returns.DeployResponse = interfaces.DeployResponse{
+						StatusCode: http.StatusOK,
+					}
 
-					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-					deployResponse := <-reqChannel1
+					deployResponse := deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreator, response)
 
-					Expect(deployResponse.Error.Error()).To(ContainSubstring("base64 encoded manifest could not be decoded"))
+					Expect(deployResponse.Error).ToNot(HaveOccurred())
 
-					Expect(deployResponse.StatusCode).To(Equal(http.StatusBadRequest))
+					Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
 				})
-			})
-		})
+				It("returns statusInternalServerError when actionCreator setup fails", func() {
+					manifest = "manifest-" + randomizer.StringRunes(10)
 
-		Describe("fetching an artifact from an artifact url", func() {
-			Context("when Fetcher fails", func() {
-				It("returns an error and http.StatusInternalServerError", func() {
-					fetcher.FetchCall.Returns.AppPath = ""
-					fetcher.FetchCall.Returns.Error = errors.New("fetcher error")
+					deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
+					pusherCreator.SetUpCall.Returns.Err = errors.New("a test error")
+					By("base64 encoding the manifest")
+					base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
 
-					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-					deployResponse := <-reqChannel1
+					By("including the manifest in the request body")
+					requestBody = bytes.NewBufferString(fmt.Sprintf(`{"artifact_url": "%s", "manifest": "%s"}`,
+						artifactURL,
+						base64Manifest,
+					))
 
-					Expect(deployResponse.Error).To(MatchError("fetcher error"))
+					deployResponse := deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreator, response)
 
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-					Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
-					Expect(fetcher.FetchCall.Received.Manifest).To(Equal(manifest))
+
 				})
 			})
 		})
 
 		Context("when a UUID is provided", func() {
 			It("does not create a new UUID", func() {
-				deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+				manifest = "manifest-" + randomizer.StringRunes(10)
+				deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+				pusherCreator.OnFinishCall.Returns.DeployResponse = interfaces.DeployResponse{
+					StatusCode: http.StatusOK,
+				}
 
 				requestBody = bytes.NewBufferString(fmt.Sprintf(`{"artifact_url": "%s", "manifest": "%s"}`,
 					artifactURL,
 					base64Manifest,
 				))
 
-				req, _ = http.NewRequest("POST", "", requestBody)
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
+				deployResponse := deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreator, response)
 
 				Expect(deployResponse.Error).ToNot(HaveOccurred())
 
@@ -361,19 +323,21 @@ var _ = Describe("Deployer", func() {
 
 		Context("when no UUID is provided", func() {
 			It("creates a new UUID", func() {
-				deploymentInfo.Manifest = "manifest-" + randomizer.StringRunes(10)
+				manifest = "manifest-" + randomizer.StringRunes(10)
+				deploymentInfo.Manifest = fmt.Sprintf(manifest, randomizer.StringRunes(10))
 				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
+
+				pusherCreator.OnFinishCall.Returns.DeployResponse = interfaces.DeployResponse{
+					StatusCode: http.StatusOK,
+				}
 
 				requestBody = bytes.NewBufferString(fmt.Sprintf(`{"artifact_url": "%s", "manifest": "%s"}`,
 					artifactURL,
 					base64Manifest,
 				))
 
-				req, _ = http.NewRequest("POST", "", requestBody)
 				uuid = ""
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
+				deployResponse := deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreator, response)
 
 				Expect(deployResponse.Error).ToNot(HaveOccurred())
 
@@ -385,132 +349,18 @@ var _ = Describe("Deployer", func() {
 	})
 
 	Describe("deploying with a zip file in the request body", func() {
-		Context("when manifest file cannot be found in the extracted zip", func() {
-			It("deploys successfully and returns http.StatusOK because manifest is optional", func() {
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				Expect(deployResponse.Error).To(BeNil())
-
-				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
-				Expect(response.String()).To(ContainSubstring("deploy was successful"))
-			})
-		})
-
-		Describe("fetching an artifact from the request body", func() {
+		Context("fetching an artifact from the request body", func() {
 			Context("when Fetcher fails", func() {
 				It("returns an error and http.StatusInternalServerError", func() {
-					fetcher.FetchFromZipCall.Returns.AppPath = ""
-					fetcher.FetchFromZipCall.Returns.Error = errors.New("fetcher error")
+					pusherCreator.SetUpCall.Returns.Err = errors.New("a test error")
 
-					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
-					deployResponse := <-reqChannel1
+					deployResponse := deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreator, response)
 
-					Expect(deployResponse.Error).To(MatchError("fetcher error"))
+					Expect(deployResponse.Error.Error()).To(ContainSubstring("a test error"))
 
 					Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
 				})
 			})
-		})
-	})
-
-	Describe("deploying with an unknown request type", func() {
-		It("returns an http.StatusBadRequest and an error", func() {
-
-			reqChannel1 := make(chan interfaces.DeployResponse)
-			go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{}, response, reqChannel1)
-			deployResponse := <-reqChannel1
-
-			Expect(deployResponse.Error).To(MatchError(InvalidContentTypeError{}))
-
-			Expect(deployResponse.StatusCode).To(Equal(http.StatusBadRequest))
-		})
-	})
-
-	Describe("setting the number of instances in the deployment", func() {
-		Context("when a manifest with instances is provided", func() {
-			It("uses the instances declared in the manifest", func() {
-				deploymentInfo.Manifest = `---
-applications:
-- name: deployadactyl
-  instances: 1337
-`
-				base64Manifest := base64.StdEncoding.EncodeToString([]byte(deploymentInfo.Manifest))
-
-				requestBody = bytes.NewBufferString(fmt.Sprintf(`{
-	 					"artifact_url": "%s",
-	 					"manifest": "%s"
-	 				}`,
-					artifactURL,
-					base64Manifest,
-				))
-
-				req, _ = http.NewRequest("POST", "", requestBody)
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				Expect(deployResponse.Error).ToNot(HaveOccurred())
-
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.Instances).To(Equal(uint16(1337)))
-			})
-		})
-
-		Context("when a manifest is not provided", func() {
-			It("uses the instances declared in the deployadactyl config", func() {
-				deployer.Config.Environments[environment] = S.Environment{Instances: 303}
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				<-reqChannel1
-
-				Eventually(blueGreener.PushCall.Received.DeploymentInfo.Instances).Should(Equal(uint16(303)))
-			})
-		})
-	})
-
-	Describe("not finding an environment in the config", func() {
-		It("returns an error and an http.StatusInternalServerError", func() {
-
-			reqChannel1 := make(chan interfaces.DeployResponse)
-			go deployer.Deploy(req, "doesnt_exist", org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-			deployResponse := <-reqChannel1
-
-			Eventually(deployResponse.Error).Should(MatchError(EnvironmentNotFoundError{"doesnt_exist"}))
-
-			Eventually(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))
-			Eventually(response.String()).Should(ContainSubstring("environment not found: doesnt_exist"))
-		})
-	})
-
-	Describe("deployment output", func() {
-		It("shows the user deployment info properties", func() {
-
-			reqChannel1 := make(chan interfaces.DeployResponse)
-			go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-			deployResponse := <-reqChannel1
-
-			Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
-			Expect(response.String()).To(ContainSubstring(artifactURL))
-			Expect(response.String()).To(ContainSubstring(username))
-			Expect(response.String()).To(ContainSubstring(environment))
-			Expect(response.String()).To(ContainSubstring(org))
-			Expect(response.String()).To(ContainSubstring(space))
-			Expect(response.String()).To(ContainSubstring(appName))
-		})
-
-		It("shows the user their deploy was successful", func() {
-
-			reqChannel1 := make(chan interfaces.DeployResponse)
-			go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-			deployResponse := <-reqChannel1
-
-			Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
-			Eventually(response.String()).Should(ContainSubstring("deploy was successful"))
 		})
 	})
 
@@ -519,295 +369,39 @@ applications:
 			eventManager.EmitCall.Returns.Error = nil
 		})
 
-		Context("when EventManager fails on "+C.DeployStartEvent, func() {
-			It("returns an error and an http.StatusInternalServerError", func() {
-				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(C.DeployStartEvent+" error"))
-				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				expected := EventError{C.DeployStartEvent, bluegreen.InitializationError{errors.New(C.DeployStartEvent + " error")}}
-				Expect(deployResponse.Error.Error()).To(Equal(expected.Error()))
-
-				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
-			})
-
-			Context("when EventManager also fails on "+C.DeployFinishEvent, func() {
-				It("outputs "+C.DeployFinishEvent+" error", func() {
-					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(C.DeployStartEvent+" error"))
-					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
-					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New(""+C.DeployFinishEvent+" error"))
-
-					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-					deployResponse := <-reqChannel1
-
-					expectedErr := bluegreen.FinishDeployError{Err: errors.New("an error occurred in the " + C.DeployStartEvent + " event: " + C.DeployStartEvent + " error: an error occurred in the " + C.DeployFinishEvent + " event: " + C.DeployFinishEvent + " error")}
-					Expect(deployResponse.Error.Error()).To(Equal(expectedErr.Error()))
-
-					Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-					Expect(eventManager.EmitCall.TimesCalled).To(Equal(3), eventManagerNotEnoughCalls)
-				})
-			})
-		})
-
-		Context("when the blue greener fails", func() {
-			It("returns an error and outputs "+C.DeployFailureEvent, func() {
-				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
-				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
-				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
-
-				expectedError := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
-				blueGreener.PushCall.Returns.Error = expectedError
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				Expect(deployResponse.Error).To(Equal(expectedError))
-
-				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeployFailureEvent))
-				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(expectedError))
-			})
-
-			It("passes the response string to FindErrors and writes the found errors to the output stream", func() {
-				err := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
-				blueGreener.PushCall.Returns.Error = err
-
-				errors := make([]interfaces.LogMatchedError, 0, 0)
-				errors = append(errors, error_finder.CreateLogMatchedError("an error description", []string{"error 1", "error 2", "error 3"}, "error solution", "TestCode"))
-				errorFinder.FindErrorsCall.Returns.Errors = errors
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				<-reqChannel1
-
-				Expect(errorFinder.FindErrorsCall.Received.Response).ToNot(Equal(""))
-				Expect(response.String()).To(ContainSubstring(errorFinder.FindErrorsCall.Received.Response))
-				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(errors[0]))
-				Expect(response.String()).To(ContainSubstring("an error description"))
-				Expect(response.String()).To(ContainSubstring("error 1"))
-				Expect(response.String()).To(ContainSubstring("error solution"))
-			})
-
-			It("returns a matched error with code", func() {
-				err := bluegreen.FinishPushError{[]error{errors.New("blue greener failed")}}
-				blueGreener.PushCall.Returns.Error = err
-
-				errors := make([]interfaces.LogMatchedError, 0, 0)
-				errors = append(errors, error_finder.CreateLogMatchedError("an error description", []string{"error 1", "error 2", "error 3"}, "error solution", "TestCode"))
-				errorFinder.FindErrorsCall.Returns.Errors = errors
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				Expect(errorFinder.FindErrorsCall.Received.Response).ToNot(Equal(""))
-				Expect(response.String()).To(ContainSubstring(errorFinder.FindErrorsCall.Received.Response))
-				Expect(eventManager.EmitCall.Received.Events[1].Error).To(Equal(errors[0]))
-				Expect(response.String()).To(ContainSubstring("an error description"))
-				Expect(response.String()).To(ContainSubstring("error 1"))
-				Expect(response.String()).To(ContainSubstring("error solution"))
-				Expect(deployResponse.Error.Error()).To(Equal("an error description"))
-				Expect(deployResponse.Error.(interfaces.DeploymentError).Code()).To(Equal("TestCode"))
-
-			})
-		})
-
 		Context("when blue greener succeeds", func() {
-			It("does not return an error and outputs a "+C.DeploySuccessEvent+" and http.StatusOK", func() {
-				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
-				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
-				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				Expect(deployResponse.Error).To(BeNil())
-
-				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
-			})
 
 			It("returns correct deployment info", func() {
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 				eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
 
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
+				deployResponse := deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreator, response)
 
 				Expect(deployResponse.DeploymentInfo.UUID).ToNot(Equal(""))
-				Expect(deployResponse.DeploymentInfo.Manifest).To(ContainSubstring("manifest-"))
+				manifest := deployResponse.DeploymentInfo.Manifest
+				Expect(manifest).To(ContainSubstring("manifest-"))
 			})
-
-			Context("when emitting a "+C.DeploySuccessEvent+" event fails", func() {
-				It("return an error and outputs a "+C.DeploySuccessEvent+" and http.StatusOK", func() {
-					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
-					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, errors.New("event error"))
-					eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
-
-					reqChannel1 := make(chan interfaces.DeployResponse)
-					go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-					deployResponse := <-reqChannel1
-
-					Expect(deployResponse.Error).To(BeNil())
-
-					Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
-					Expect(response.String()).To(ContainSubstring("event error"))
-					Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
-				})
-			})
-		})
-	})
-
-	Describe("BlueGreener.Push", func() {
-		Context("when BlueGreener fails with a login failed error", func() {
-			It("returns an error and a http.StatusUnauthorized", func() {
-				expectedError := bluegreen.LoginError{[]error{errors.New("login failed")}}
-				blueGreener.PushCall.Returns.Error = expectedError
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				Expect(deployResponse.Error).To(Equal(expectedError))
-
-				Expect(deployResponse.StatusCode).To(Equal(http.StatusBadRequest))
-			})
-		})
-
-		Context("when BlueGreener fails during a deploy with a zip file in the request body", func() {
-			It("returns an error and a http.StatusInternalServerError", func() {
-				Expect(af.WriteFile(testManifestLocation+"/manifest.yml", []byte(testManifest), 0644)).To(Succeed())
-
-				fetcher.FetchFromZipCall.Returns.AppPath = testManifestLocation
-
-				expectedError := bluegreen.InitializationError{errors.New("blue green error")}
-
-				blueGreener.PushCall.Returns.Error = expectedError
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				Expect(deployResponse.Error).To(Equal(expectedError))
-
-				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(testManifestLocation))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.ArtifactURL).To(ContainSubstring(testManifestLocation))
-			})
-		})
-
-		Context("when BlueGreener fails during a deploy with JSON in the request body", func() {
-			It("returns an error and a http.StatusInternalServerError", func() {
-				fetcher.FetchCall.Returns.AppPath = appPath
-
-				blueGreener.PushCall.Returns.Error = bluegreen.InitializationError{Err: errors.New("blue green error")}
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				Expect(deployResponse.Error).To(MatchError("blue green error"))
-
-				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-			})
-		})
-
-		Context("when BlueGreener fails during a deploy with EnableRollback set to false", func() {
-			It("returns an error and a http.StatusInternalServerError", func() {
-				fetcher.FetchCall.Returns.AppPath = appPath
-				expectedError := bluegreen.PushError{[]error{errors.New("blue green error")}}
-				blueGreener.PushCall.Returns.Error = expectedError
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
-				Expect(deployResponse.Error).To(Equal(expectedError))
-
-				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
-			})
-		})
-	})
-
-	Describe("removing files after deploying", func() {
-		It("deletes the unzipped folder from the fetcher", func() {
-			af = &afero.Afero{Fs: afero.NewMemMapFs()}
-			deployer = Deployer{
-				c,
-				blueGreener,
-				fetcher,
-				prechecker,
-				eventManager,
-				randomizerMock,
-				errorFinder,
-				log,
-				af,
-			}
-
-			directoryName, err := af.TempDir("", "deployadactyl-")
-			Expect(err).ToNot(HaveOccurred())
-
-			fetcher.FetchCall.Returns.AppPath = directoryName
-
-			reqChannel1 := make(chan interfaces.DeployResponse)
-			go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-			<-reqChannel1
-
-			exists, err := af.DirExists(directoryName)
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(exists).ToNot(BeTrue())
 		})
 	})
 
 	Describe("happy path deploying with json in the request body", func() {
 		Context("when no errors occur", func() {
 			It("accepts the request and returns http.StatusOK", func() {
-				fetcher.FetchCall.Returns.AppPath = appPath
+				deploymentInfo.ContentType = "JSON"
+				pusherCreator.OnFinishCall.Returns.DeployResponse = interfaces.DeployResponse{
+					StatusCode: http.StatusOK,
+				}
 
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
+				deployResponse := deployer.Deploy(&deploymentInfo, environments[environment], pusherCreator, response)
 
 				Expect(deployResponse.Error).To(BeNil())
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
 
-				Expect(response.String()).To(ContainSubstring("Deployment Parameters"))
-				Expect(response.String()).To(ContainSubstring("deploy was successful"))
-
 				Eventually(logBuffer).Should(Say("prechecking the foundations"))
-				Eventually(logBuffer).Should(Say("checking for basic auth"))
-				Eventually(logBuffer).Should(Say("deploying from json request"))
-				Eventually(logBuffer).Should(Say("building deploymentInfo"))
-				Eventually(logBuffer).Should(Say("Deployment Parameters"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DeployStartEvent + " event"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DeploySuccessEvent + " event"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DeployFinishEvent + " event"))
-
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environment]))
-				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(artifactURL))
-				Expect(fetcher.FetchCall.Received.Manifest).To(Equal(manifest))
-				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
-				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.DeployFinishEvent))
-				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environment]))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(appPath))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo).To(Equal(deploymentInfo))
+				Expect(blueGreener.ExecuteCall.Received.Environment).To(Equal(environments[environment]))
 			})
 		})
 	})
@@ -817,52 +411,24 @@ applications:
 			It("accepts the request and returns http.StatusOK", func() {
 				Expect(af.WriteFile(testManifestLocation+"/manifest.yml", []byte(testManifest), 0644)).To(Succeed())
 
-				fetcher.FetchFromZipCall.Returns.AppPath = testManifestLocation
+				pusherCreator.OnFinishCall.Returns.DeployResponse = interfaces.DeployResponse{
+					StatusCode: http.StatusOK,
+				}
 
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{ZIP: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
-
+				deployResponse := deployer.Deploy(&deploymentInfo, environments[environment], pusherCreator, response)
 				Expect(deployResponse.Error).To(BeNil())
 
 				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
 
-				Expect(response.String()).To(ContainSubstring("Deployment Parameters"))
-				Expect(response.String()).To(ContainSubstring("deploy was successful"))
-
 				Eventually(logBuffer).Should(Say("prechecking the foundations"))
-				Eventually(logBuffer).Should(Say("checking for basic auth"))
-				Eventually(logBuffer).Should(Say("deploying from zip request"))
-				Eventually(logBuffer).Should(Say("Deployment Parameters"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DeployStartEvent + " event"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DeploySuccessEvent + " event"))
-				Eventually(logBuffer).Should(Say("emitting a " + C.DeployFinishEvent + " event"))
 
 				Expect(prechecker.AssertAllFoundationsUpCall.Received.Environment).To(Equal(environments[environment]))
-				Expect(fetcher.FetchFromZipCall.Received.Request).To(Equal(req))
-				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.DeployStartEvent))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal(C.DeploySuccessEvent))
-				Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal(C.DeployFinishEvent))
-				Expect(blueGreener.PushCall.Received.Environment).To(Equal(environments[environment]))
-				Expect(blueGreener.PushCall.Received.AppPath).To(Equal(testManifestLocation))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.Manifest).To(Equal(fmt.Sprintf("---\napplications:\n- name: deployadactyl\n  memory: 256M\n  disk_quota: 256M\n")))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.ArtifactURL).To(ContainSubstring(testManifestLocation))
+				Expect(blueGreener.ExecuteCall.Received.Environment).To(Equal(environments[environment]))
 			})
 		})
 	})
 
 	Describe("extract custom params from yaml", func() {
-		Context("when custom params are provided", func() {
-			It("should marshal params to deploymentInfo", func() {
-
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				<-reqChannel1
-
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.CustomParams["service_now_column_name"].(string)).To(Equal("u_change"))
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.CustomParams["service_now_table_name"].(string)).To(Equal("u_table"))
-			})
-		})
 
 		Context("when no custom params are provided", func() {
 			BeforeEach(func() {
@@ -882,25 +448,77 @@ applications:
 				deployer = Deployer{
 					c,
 					blueGreener,
-					fetcher,
 					prechecker,
 					eventManager,
 					randomizerMock,
-					errorFinder,
+					nil,
 					log,
-					af,
 				}
 			})
 
 			It("doesn't return an error", func() {
 
-				reqChannel1 := make(chan interfaces.DeployResponse)
-				go deployer.Deploy(req, environment, org, space, appName, uuid, interfaces.DeploymentType{JSON: true}, response, reqChannel1)
-				deployResponse := <-reqChannel1
+				deployResponse := deployer.Deploy(&deploymentInfoNoCustomParams, environmentsNoCustomParams[environment], pusherCreator, response)
 
 				Expect(deployResponse.Error).ToNot(HaveOccurred())
-				Expect(blueGreener.PushCall.Received.DeploymentInfo.CustomParams).To(BeNil())
+				Expect(blueGreener.ExecuteCall.Received.Environment).To(Equal(environmentsNoCustomParams[environment]))
 			})
+		})
+	})
+	Describe("Deploy", func() {
+		var (
+			deployer          interfaces.Deployer
+			pusherCreatorMock *mocks.PusherCreator
+		)
+		BeforeEach(func() {
+			pusherCreatorMock = &mocks.PusherCreator{}
+			deployer = Deployer{
+				c,
+				blueGreener,
+				prechecker,
+				eventManager,
+				randomizerMock,
+				nil,
+				log,
+			}
+		})
+		Context("when no initialization errors occur", func() {
+			It("it calls setup on the provided action creator", func() {
+
+				deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreatorMock, response)
+
+				Expect(pusherCreatorMock.SetUpCall.Called).To(Equal(true))
+				Expect(pusherCreatorMock.SetUpCall.Received.Environment).ToNot(BeNil())
+			})
+		})
+
+		It("calls Start on the provided action creator", func() {
+
+			deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreatorMock, response)
+
+			Expect(pusherCreatorMock.OnStartCall.Called).To(Equal(true))
+		})
+
+		Context("when action creator OnStart fails", func() {
+			It("returns an error", func() {
+				pusherCreatorMock.OnStartCall.Returns.Err = errors.New("a test error")
+
+				deployResponse := deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreatorMock, response)
+
+				Expect(deployResponse.Error).To(Equal(pusherCreatorMock.OnStartCall.Returns.Err))
+			})
+		})
+
+		It("calls CleanUp on the provided action creator", func() {
+			deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreatorMock, response)
+
+			Expect(pusherCreatorMock.CleanUpCall.Called).To(Equal(true))
+		})
+
+		It("calls OnFinish on the provided action creator", func() {
+			deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreatorMock, response)
+
+			Expect(pusherCreatorMock.OnFinishCall.Called).To(Equal(true))
 		})
 	})
 })

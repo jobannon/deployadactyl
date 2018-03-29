@@ -90,10 +90,10 @@ var _ = Describe("Artifetcher", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// for go 1.7 change this to httptest
-			req, err := http.NewRequest("POST", "https://example.com", body)
+			//req, err := http.NewRequest("POST", "https://example.com", body)
 			Expect(err).ToNot(HaveOccurred())
 
-			path, err := artifetcher.FetchZipFromRequest(req)
+			path, err := artifetcher.FetchZipFromRequest(body)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(path).To(ContainSubstring("deployadactyl-"))
@@ -109,10 +109,10 @@ var _ = Describe("Artifetcher", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// for go 1.7 change this to httptest
-				req, err := http.NewRequest("POST", "https://example.com", body)
+				//req, err := http.NewRequest("POST", "https://example.com", body)
 				Expect(err).ToNot(HaveOccurred())
 
-				path, err := artifetcher.FetchZipFromRequest(req)
+				path, err := artifetcher.FetchZipFromRequest(body)
 				Expect(err).To(MatchError(UnzipError{errors.New(errorMessage)}))
 
 				Expect(path).To(BeEmpty())

@@ -11,6 +11,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/op/go-logging"
 
+	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -23,7 +24,7 @@ var _ = Describe("Bluegreen", func() {
 		appPath        string
 		pushOutput     string
 		loginOutput    string
-		pusherFactory  *mocks.PusherCreator
+		pusherCreator  *mocks.PusherCreator
 		pushers        []*mocks.Pusher
 		log            I.Logger
 		blueGreen      BlueGreen
@@ -51,54 +52,67 @@ var _ = Describe("Bluegreen", func() {
 
 		deploymentInfo = S.DeploymentInfo{AppName: appName}
 
-		pusherFactory = &mocks.PusherCreator{}
+		pusherCreator = &mocks.PusherCreator{}
 
 		pushers = nil
 		for range environment.Foundations {
 			pusher := &mocks.Pusher{Response: response}
 			pushers = append(pushers, pusher)
-			pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
-			pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+			pusherCreator.CreatePusherCall.Returns.Pushers = append(pusherCreator.CreatePusherCall.Returns.Pushers, pusher)
+			pusherCreator.CreatePusherCall.Returns.Error = append(pusherCreator.CreatePusherCall.Returns.Error, nil)
 		}
 
-		blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
+		blueGreen = BlueGreen{Log: log}
 	})
 
 	Context("when pusher factory fails", func() {
 		It("returns an error", func() {
-			pusherFactory = &mocks.PusherCreator{}
-			blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
+			pusherCreator = &mocks.PusherCreator{}
+			blueGreen = BlueGreen{Log: log}
 
 			for i := range environment.Foundations {
-				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, &mocks.Pusher{})
+				pusherCreator.CreatePusherCall.Returns.Pushers = append(pusherCreator.CreatePusherCall.Returns.Pushers, &mocks.Pusher{})
 
 				if i != 0 {
-					pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, errors.New("push creator failed"))
+					pusherCreator.CreatePusherCall.Returns.Error = append(pusherCreator.CreatePusherCall.Returns.Error, errors.New("push creator failed"))
 				}
 			}
 
-			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+			err := blueGreen.Execute(pusherCreator, environment, response)
 
 			Expect(err).To(MatchError("push creator failed"))
 		})
 	})
 
-	Context("when a login command fails", func() {
-		It("not start a deployment", func() {
+	Context("when a login command is called", func() {
+		It("starts a deployment when successful", func() {
 			for i, pusher := range pushers {
-				pusher.LoginCall.Write.Output = loginOutput
+				pusher.InitiallyCall.Write.Output = loginOutput
 
 				if i == 0 {
-					pusher.LoginCall.Returns.Error = errors.New(loginOutput)
+					pusher.InitiallyCall.Returns.Error = nil
 				}
 			}
 
-			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
-			Expect(err).To(MatchError(LoginError{[]error{errors.New(loginOutput)}}))
+			err := blueGreen.Execute(pusherCreator, environment, response)
+			Expect(err).ToNot(HaveOccurred())
 
-			for i, pusher := range pushers {
-				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
+			for range environment.Foundations {
+				Eventually(response).Should(Say(loginOutput))
 			}
+		})
+
+		It("does not start a deployment when failed", func() {
+			for i, pusher := range pushers {
+				pusher.InitiallyCall.Write.Output = loginOutput
+
+				if i == 0 {
+					pusher.InitiallyCall.Returns.Error = errors.New(loginOutput)
+				}
+			}
+
+			err := blueGreen.Execute(pusherCreator, environment, response)
+			Expect(err).To(MatchError(LoginError{[]error{errors.New(loginOutput)}}))
 
 			for range environment.Foundations {
 				Eventually(response).Should(Say(loginOutput))
@@ -112,7 +126,7 @@ var _ = Describe("Bluegreen", func() {
 			var (
 				foundationURL = "foundationURL-" + randomizer.StringRunes(10)
 				pusher        = &mocks.Pusher{Response: response}
-				pusherFactory = &mocks.PusherCreator{}
+				pusherCreator = &mocks.PusherCreator{}
 			)
 
 			environment.Foundations = []string{foundationURL}
@@ -120,18 +134,15 @@ var _ = Describe("Bluegreen", func() {
 			pushers = nil
 			pushers = append(pushers, pusher)
 
-			pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
-			pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+			pusherCreator.CreatePusherCall.Returns.Pushers = append(pusherCreator.CreatePusherCall.Returns.Pushers, pusher)
+			pusherCreator.CreatePusherCall.Returns.Error = append(pusherCreator.CreatePusherCall.Returns.Error, nil)
 
-			pusher.LoginCall.Write.Output = loginOutput
-			pusher.PushCall.Write.Output = pushOutput
+			pusher.InitiallyCall.Write.Output = loginOutput
+			pusher.ExecuteCall.Write.Output = pushOutput
 
-			blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
+			blueGreen = BlueGreen{Log: log}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
-
-			Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
-			Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
+			Expect(blueGreen.Execute(pusherCreator, environment, response)).To(Succeed())
 
 			Eventually(response).Should(Say(loginOutput))
 			Eventually(response).Should(Say(pushOutput))
@@ -142,16 +153,11 @@ var _ = Describe("Bluegreen", func() {
 			environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
 
 			for _, pusher := range pushers {
-				pusher.LoginCall.Write.Output = loginOutput
-				pusher.PushCall.Write.Output = pushOutput
+				pusher.InitiallyCall.Write.Output = loginOutput
+				pusher.ExecuteCall.Write.Output = pushOutput
 			}
 
-			Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
-
-			for i, pusher := range pushers {
-				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
-				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-			}
+			Expect(blueGreen.Execute(pusherCreator, environment, response)).To(Succeed())
 
 			Eventually(response).Should(Say(loginOutput))
 			Eventually(response).Should(Say(loginOutput))
@@ -165,7 +171,7 @@ var _ = Describe("Bluegreen", func() {
 				var (
 					foundationURL = "foundationURL-" + randomizer.StringRunes(10)
 					pusher        = &mocks.Pusher{Response: response}
-					pusherFactory = &mocks.PusherCreator{}
+					pusherCreator = &mocks.PusherCreator{}
 				)
 
 				environment.Foundations = []string{foundationURL}
@@ -173,18 +179,15 @@ var _ = Describe("Bluegreen", func() {
 				pushers = nil
 				pushers = append(pushers, pusher)
 
-				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
-				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+				pusherCreator.CreatePusherCall.Returns.Pushers = append(pusherCreator.CreatePusherCall.Returns.Pushers, pusher)
+				pusherCreator.CreatePusherCall.Returns.Error = append(pusherCreator.CreatePusherCall.Returns.Error, nil)
 
-				pusher.LoginCall.Write.Output = loginOutput
-				pusher.PushCall.Write.Output = pushOutput
+				pusher.InitiallyCall.Write.Output = loginOutput
+				pusher.ExecuteCall.Write.Output = pushOutput
 
-				blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
+				blueGreen = BlueGreen{Log: log}
 
-				Expect(blueGreen.Push(environment, appPath, deploymentInfo, response)).To(Succeed())
-
-				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(foundationURL))
-				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
+				Expect(blueGreen.Execute(pusherCreator, environment, response)).To(Succeed())
 
 				Eventually(response).Should(Say(loginOutput))
 				Eventually(response).Should(Say(pushOutput))
@@ -197,98 +200,303 @@ var _ = Describe("Bluegreen", func() {
 				var (
 					foundationURL = "foundationURL-" + randomizer.StringRunes(10)
 					pusher        = &mocks.Pusher{Response: response}
-					pusherFactory = &mocks.PusherCreator{}
+					pusherCreator = &mocks.PusherCreator{}
 				)
 
 				environment.Foundations = []string{foundationURL}
 				pushers = nil
 				pushers = append(pushers, pusher)
 
-				pusherFactory.CreatePusherCall.Returns.Pushers = append(pusherFactory.CreatePusherCall.Returns.Pushers, pusher)
-				pusherFactory.CreatePusherCall.Returns.Error = append(pusherFactory.CreatePusherCall.Returns.Error, nil)
+				pusherCreator.CreatePusherCall.Returns.Pushers = append(pusherCreator.CreatePusherCall.Returns.Pushers, pusher)
+				pusherCreator.CreatePusherCall.Returns.Error = append(pusherCreator.CreatePusherCall.Returns.Error, nil)
 
-				pusher.FinishPushCall.Returns.Error = errors.New("finish push error")
+				pusher.SuccessCall.Returns.Error = errors.New("finish push error")
 
-				blueGreen = BlueGreen{PusherCreator: pusherFactory, Log: log}
+				blueGreen = BlueGreen{Log: log}
 
-				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+				err := blueGreen.Execute(pusherCreator, environment, response)
 
 				Expect(err).To(MatchError(FinishPushError{[]error{errors.New("finish push error")}}))
 			})
 		})
 	})
 
-	Context("when at least one push command is unsuccessful and EnableRollback is true", func() {
-		It("should rollback all recent pushes and print Cloud Foundry logs", func() {
+	Context("when at least one push command is unsuccessful", func() {
 
-			for i, pusher := range pushers {
-				pusher.LoginCall.Write.Output = loginOutput
-				pusher.PushCall.Write.Output = pushOutput
+		Context("EnableRollback is true", func() {
+			It("should rollback all recent pushes and print Cloud Foundry logs", func() {
 
-				if i != 0 {
-					pusher.PushCall.Returns.Error = pushError
+				for i, pusher := range pushers {
+					pusher.InitiallyCall.Write.Output = loginOutput
+					pusher.ExecuteCall.Write.Output = pushOutput
+
+					if i != 0 {
+						pusher.ExecuteCall.Returns.Error = pushError
+					}
 				}
-			}
 
-			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
-			Expect(err).To(MatchError(PushError{[]error{pushError}}))
+				err := blueGreen.Execute(pusherCreator, environment, response)
+				Expect(err).To(MatchError(PushError{[]error{pushError}}))
 
-			for i, pusher := range pushers {
-				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
-				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-			}
+				Eventually(response).Should(Say(loginOutput))
+				Eventually(response).Should(Say(loginOutput))
+				Eventually(response).Should(Say(pushOutput))
+				Eventually(response).Should(Say(pushOutput))
+			})
 
-			Eventually(response).Should(Say(loginOutput))
-			Eventually(response).Should(Say(loginOutput))
-			Eventually(response).Should(Say(pushOutput))
-			Eventually(response).Should(Say(pushOutput))
-		})
+			Context("when rollback fails", func() {
+				It("return an error", func() {
+					pushers[0].ExecuteCall.Returns.Error = pushError
+					pushers[0].UndoCall.Returns.Error = rollbackError
 
-		Context("when rollback fails", func() {
-			It("return an error", func() {
-				pushers[0].PushCall.Returns.Error = pushError
-				pushers[0].UndoPushCall.Returns.Error = rollbackError
+					err := blueGreen.Execute(pusherCreator, environment, response)
 
-				err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+					Expect(err).To(MatchError(RollbackError{[]error{pushError}, []error{rollbackError}}))
+				})
+			})
 
-				Expect(err).To(MatchError(RollbackError{[]error{pushError}, []error{rollbackError}}))
+			It("should not rollback any pushes on the first deploy", func() {
+				for _, pusher := range pushers {
+					pusher.InitiallyCall.Write.Output = loginOutput
+					pusher.ExecuteCall.Write.Output = pushOutput
+					pusher.ExecuteCall.Returns.Error = pushError
+				}
+
+				err := blueGreen.Execute(pusherCreator, environment, response)
+				Expect(err).To(MatchError(PushError{[]error{pushError, pushError}}))
+
+				Eventually(response).Should(Say(loginOutput))
+				Eventually(response).Should(Say(loginOutput))
+				Eventually(response).Should(Say(pushOutput))
+				Eventually(response).Should(Say(pushOutput))
 			})
 		})
 
-		It("should not rollback any pushes on the first deploy", func() {
-			for _, pusher := range pushers {
-				pusher.LoginCall.Write.Output = loginOutput
-				pusher.PushCall.Write.Output = pushOutput
-				pusher.PushCall.Returns.Error = pushError
-			}
+		Context("EnableRollback is false", func() {
+			It("app is not rolled back to previous version", func() {
+				environment.EnableRollback = false
 
-			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
-			Expect(err).To(MatchError(PushError{[]error{pushError, pushError}}))
+				for _, pusher := range pushers {
+					pusher.ExecuteCall.Returns.Error = pushError
+				}
 
-			for i, pusher := range pushers {
-				Expect(pusher.LoginCall.Received.FoundationURL).To(Equal(environment.Foundations[i]))
-				Expect(pusher.PushCall.Received.AppPath).To(Equal(appPath))
-			}
+				err := blueGreen.Execute(pusherCreator, environment, response)
 
-			Eventually(response).Should(Say(loginOutput))
-			Eventually(response).Should(Say(loginOutput))
-			Eventually(response).Should(Say(pushOutput))
-			Eventually(response).Should(Say(pushOutput))
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("push failed: push error: push error"))
+			})
+
+			It("returns a FinishPushError if Success fails", func() {
+				environment.EnableRollback = false
+
+				for _, pusher := range pushers {
+					pusher.ExecuteCall.Returns.Error = errors.New("a push execute error")
+				}
+				pushers[0].UndoCall.Returns.Error = errors.New("a push success error")
+				err := blueGreen.Execute(pusherCreator, environment, response)
+
+				Expect(err.Error()).To(Equal("push failed: a push execute error: a push execute error: rollback failed: a push success error"))
+			})
 		})
 	})
 
-	Context("when at least one push command is unsuccessful and EnableRollback is false", func() {
-		It("app is not rolled back to previous version", func() {
-			environment.EnableRollback = false
+	Describe("Stop", func() {
+		Context("when called", func() {
+			It("creates a stopper for each foundation", func() {
+				stopperFactory := &mocks.StopperCreator{}
 
-			for _, pusher := range pushers {
-				pusher.PushCall.Returns.Error = pushError
-			}
+				for range environment.Foundations {
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, &mocks.StartStopper{})
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
 
-			err := blueGreen.Push(environment, appPath, deploymentInfo, response)
+				blueGreen = BlueGreen{}
 
-			Expect(err).To(HaveOccurred())
-			Expect(pushers[0].UndoPushCall.Received.UndoPushWasCalled).To(Equal(false))
+				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
+				Expect(err).ToNot(HaveOccurred())
+
+				for i, foundation := range environment.Foundations {
+					Expect(stopperFactory.CreateStopperCall.Received[i].FoundationURL).To(Equal(foundation))
+				}
+			})
+
+			It("returns an error when we fail to create a stopper", func() {
+				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, &mocks.StartStopper{})
+				stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, errors.New("stop creator failed"))
+
+				blueGreen = BlueGreen{Log: log}
+				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
+
+				Expect(err).To(MatchError("stop creator failed"))
+			})
+
+			It("logs in to all foundations", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+
+				blueGreen = BlueGreen{}
+
+				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
+				Expect(err).ToNot(HaveOccurred())
+
+			})
+
+			It("does not execute Stop when any login fails", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+				stoppers[0].InitiallyCall.Returns.Error = errors.New("login to stop failed")
+				blueGreen = BlueGreen{}
+				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
+
+				Expect(err.Error()).To(Equal("login failed: login to stop failed"))
+			})
+
+			It("does not execute Stop when multiple logins fail", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+					stoppers[i].InitiallyCall.Returns.Error = errors.New(fmt.Sprintf("login %d to stop failed", i))
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+
+				blueGreen = BlueGreen{}
+				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
+
+				Expect(err.Error()).To(Equal("login failed: login 0 to stop failed: login 1 to stop failed"))
+			})
+
+			It("calls Stop for each foundation", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+
+				blueGreen = BlueGreen{}
+
+				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
+				Expect(err).ToNot(HaveOccurred())
+
+			})
+
+			It("returns an error if any Stop fails", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+				stoppers[0].ExecuteCall.Returns.Error = errors.New("stop failed")
+
+				blueGreen = BlueGreen{}
+
+				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
+				Expect(err).To(MatchError(StopError{[]error{errors.New("stop failed")}}))
+			})
+
+			It("returns all errors when multiple Stops fail", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+					stoppers[i].ExecuteCall.Returns.Error = errors.New("stop failed")
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+
+				blueGreen = BlueGreen{}
+
+				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
+				Expect(err.Error()).To(Equal("stop failed: stop failed: stop failed"))
+			})
+
+			It("rolls back all Stops if any Stop fails", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+				stoppers[0].ExecuteCall.Returns.Error = errors.New("an error occurred")
+
+				blueGreen = BlueGreen{}
+
+				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("stop failed: an error occurred"))
+			})
+
+			It("returns an error if attemped roll back fails", func() {
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+				stoppers[0].ExecuteCall.Returns.Error = errors.New("an error occurred")
+				stoppers[0].UndoCall.Returns.Error = errors.New("an error occurred while attempting undo")
+				blueGreen = BlueGreen{}
+
+				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("stop failed: an error occurred: rollback failed: an error occurred while attempting undo"))
+			})
+
+			It("writes responses to output", func() {
+				out := NewBuffer()
+
+				stopperFactory := &mocks.StopperCreator{}
+
+				var stoppers []*mocks.StartStopper
+				for i := range environment.Foundations {
+					stoppers = append(stoppers, &mocks.StartStopper{})
+
+					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, stoppers[i])
+					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
+				}
+
+				blueGreen = BlueGreen{}
+
+				err := blueGreen.Execute(stopperFactory, environment, out)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(out).Should(Say("- Cloud Foundry Output -"))
+				Expect(out).Should(Say("- End Cloud Foundry Output -"))
+			})
 		})
 	})
 })

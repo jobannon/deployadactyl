@@ -4,20 +4,13 @@ package creator
 import (
 	"crypto/tls"
 	"fmt"
-	"io"
-	"log"
-	"net"
-	"net/http"
-	"os"
-	"os/exec"
-
 	"github.com/compozed/deployadactyl/artifetcher"
 	"github.com/compozed/deployadactyl/artifetcher/extractor"
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/controller"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/actioncreator"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier/executor"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
@@ -26,10 +19,16 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
-	S "github.com/compozed/deployadactyl/structs"
+	"github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
@@ -94,26 +93,6 @@ func (c Creator) CreateListener() net.Listener {
 	return ls
 }
 
-// CreatePusher is used by the BlueGreener.
-//
-// Returns a pusher and error.
-func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadWriter) (I.Pusher, error) {
-	newCourier, err := c.CreateCourier()
-	if err != nil {
-		return nil, err
-	}
-
-	p := &pusher.Pusher{
-		Courier:        newCourier,
-		DeploymentInfo: deploymentInfo,
-		EventManager:   c.CreateEventManager(),
-		Response:       response,
-		Log:            logger.DeploymentLogger{c.CreateLogger(), deploymentInfo.UUID},
-	}
-
-	return p, nil
-}
-
 // CreateCourier returns a courier with an executor.
 func (c Creator) CreateCourier() (I.Courier, error) {
 	ex, err := executor.New(c.CreateFileSystem())
@@ -158,25 +137,46 @@ func (c Creator) CreateHTTPClient() *http.Client {
 }
 
 func (c Creator) CreateController() I.Controller {
-	con := &controller.Controller{
-		Deployer:       c.createDeployer(),
-		SilentDeployer: c.createSilentDeployer(),
-		Log:            c.CreateLogger(),
+	return &controller.Controller{
+		Deployer:             c.createDeployer(),
+		SilentDeployer:       c.createSilentDeployer(),
+		Log:                  c.CreateLogger(),
+		PusherCreatorFactory: c,
+		Config:               c.CreateConfig(),
+		EventManager:         c.CreateEventManager(),
+		ErrorFinder:          c.createErrorFinder(),
 	}
-	return con
 }
 
 func (c Creator) createDeployer() I.Deployer {
 	return deployer.Deployer{
 		Config:       c.CreateConfig(),
 		BlueGreener:  c.createBlueGreener(),
-		Fetcher:      c.createFetcher(),
 		Prechecker:   c.createPrechecker(),
 		EventManager: c.CreateEventManager(),
 		Randomizer:   c.createRandomizer(),
 		ErrorFinder:  c.createErrorFinder(),
 		Log:          c.CreateLogger(),
-		FileSystem:   c.CreateFileSystem(),
+	}
+}
+
+func (c Creator) PusherCreator(deployEventData structs.DeployEventData) I.ActionCreator {
+	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
+	return &actioncreator.PusherCreator{
+		CourierCreator:    c,
+		EventManager:      c.CreateEventManager(),
+		Logger:            deploymentLogger,
+		Fetcher:           c.createFetcher(),
+		DeployEventData:   deployEventData,
+		FileSystemCleaner: c.CreateFileSystem(),
+	}
+}
+
+func (c Creator) StopperCreator() I.ActionCreator {
+	return actioncreator.StopperCreator{
+		CourierCreator: c,
+		EventManager:   c.CreateEventManager(),
+		Logger:         c.CreateLogger(),
 	}
 }
 
@@ -211,8 +211,7 @@ func (c Creator) createWriter() io.Writer {
 
 func (c Creator) createBlueGreener() I.BlueGreener {
 	return bluegreen.BlueGreen{
-		PusherCreator: c,
-		Log:           c.CreateLogger(),
+		Log: c.CreateLogger(),
 	}
 }
 

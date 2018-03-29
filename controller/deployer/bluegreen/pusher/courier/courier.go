@@ -45,8 +45,15 @@ func (c Courier) Restage(appName string) ([]byte, error) {
 	return c.Executor.Execute("restage", appName)
 }
 
+func (c Courier) Start(appName string) ([]byte, error) {
+	return c.Executor.Execute("start", appName)
+}
+
+func (c Courier) Stop(appName string) ([]byte, error) {
+	return c.Executor.Execute("stop", appName)
+}
+
 // Delete runs the Cloud Foundry delete command.
-//
 // Returns the combined standard output and standard error.
 func (c Courier) Delete(appName string) ([]byte, error) {
 	return c.Executor.Execute("delete", appName, "-f")

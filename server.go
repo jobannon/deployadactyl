@@ -75,7 +75,9 @@ func main() {
 	}
 
 	l := c.CreateListener()
-	deploy := c.CreateControllerHandler(c.CreateController())
+	controller := c.CreateController()
+
+	deploy := c.CreateControllerHandler(controller)
 
 	log.Infof("Listening on Port %d", c.CreateConfig().Port)
 

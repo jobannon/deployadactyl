@@ -60,3 +60,39 @@ type UnmapRouteError struct {
 func (e UnmapRouteError) Error() string {
 	return fmt.Sprintf("failed to unmap route for %s: %s", e.ApplicationName, string(e.Out))
 }
+
+type InvalidContentTypeError struct{}
+
+func (e InvalidContentTypeError) Error() string {
+	return "must be application/json or application/zip"
+}
+
+type AppPathError struct {
+	Err error
+}
+
+func (e AppPathError) Error() string {
+	return fmt.Sprintf("unzipped app path failed: %s", e.Err)
+}
+
+type ManifestError struct{}
+
+func (e ManifestError) Error() string {
+	return "manifest decoding error"
+}
+
+type UnzippingError struct {
+	Err error
+}
+
+func (e UnzippingError) Error() string {
+	return fmt.Sprintf("unzipping request body error: %s", e.Err)
+}
+
+type CourierCreationError struct {
+	Err error
+}
+
+func (e CourierCreationError) Error() string {
+	return fmt.Sprintf("failed to create Courier: %s", e.Err.Error())
+}

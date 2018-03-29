@@ -15,6 +15,8 @@ type Courier interface {
 	BindService(appName, serviceName string) ([]byte, error)
 	UnbindService(appName, serviceName string) ([]byte, error)
 	DeleteService(serviceName string) ([]byte, error)
+	Start(appName string) ([]byte, error)
+	Stop(appName string) ([]byte, error)
 	Restage(appName string) ([]byte, error)
 	Logs(appName string) ([]byte, error)
 	Exists(appName string) bool

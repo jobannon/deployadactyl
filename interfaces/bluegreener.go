@@ -6,12 +6,10 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
-// BlueGreener interface.
 type BlueGreener interface {
-	Push(
+	Execute(
+		actionCreator ActionCreator,
 		environment S.Environment,
-		appPath string,
-		deploymentInfo S.DeploymentInfo,
 		response io.ReadWriter,
-	) DeploymentError
+	) error
 }

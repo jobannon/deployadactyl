@@ -10,6 +10,7 @@ import (
 	"github.com/compozed/deployadactyl/controller"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/actioncreator"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	"github.com/compozed/deployadactyl/eventmanager"
@@ -103,14 +104,27 @@ func (c Creator) CreateDeployer() I.Deployer {
 		ErrorFinder:  c.createErrorFinder(),
 	}
 }
+func (c Creator) CreateCourier() (I.Courier, error) {
+	courier := &Courier{}
 
+	courier.LoginCall.Returns.Output = []byte("logged in\t")
+	courier.DeleteCall.Returns.Output = []byte("deleted app\t")
+	courier.PushCall.Returns.Output = []byte("pushed app\t")
+	courier.RenameCall.Returns.Output = []byte("renamed app\t")
+	courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route\t"))
+	courier.ExistsCall.Returns.Bool = true
+
+	return courier, nil
+}
 func (c Creator) PusherCreator(deployEventData S.DeployEventData) I.ActionCreator {
 	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
-	return &creatorPusherMock{
-		EventManager:    c.CreateEventManager(),
-		Logger:          deploymentLogger,
-		Fetcher:         c.CreateFetcher(),
-		DeployEventData: deployEventData,
+	return &actioncreator.PusherCreator{
+		CourierCreator:    c,
+		EventManager:      c.CreateEventManager(),
+		Logger:            deploymentLogger,
+		Fetcher:           c.CreateFetcher(),
+		DeployEventData:   deployEventData,
+		FileSystemCleaner: c.CreateFileSystem(),
 	}
 }
 
@@ -205,87 +219,87 @@ func getLevel(level string) (logging.Level, error) {
 	return logging.INFO, nil
 }
 
-type courierCreator interface {
-	CreateCourier() (I.Courier, error)
-}
-
-type creatorPusherMock struct {
-	CourierCreator  I.Courier
-	EventManager    I.EventManager
-	Logger          I.Logger
-	Fetcher         I.Fetcher
-	DeployEventData S.DeployEventData
-}
-
-func (c creatorPusherMock) SetUp(environment S.Environment) error {
-	return nil
-}
-
-func (c creatorPusherMock) CleanUp() {}
-
-func (c creatorPusherMock) OnStart() error {
-	return nil
-}
-
-func (c creatorPusherMock) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
-	return I.DeployResponse{}
-}
-
-func (c creatorPusherMock) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (I.Action, error) {
-	courier := &Courier{}
-
-	courier.LoginCall.Returns.Output = []byte("logged in\t")
-	courier.DeleteCall.Returns.Output = []byte("deleted app\t")
-	courier.PushCall.Returns.Output = []byte("pushed app\t")
-	courier.RenameCall.Returns.Output = []byte("renamed app\t")
-	courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route\t"))
-	courier.ExistsCall.Returns.Bool = true
-
-	p := &pusher.Pusher{
-		Courier:        courier,
-		DeploymentInfo: *c.DeployEventData.DeploymentInfo,
-		EventManager:   c.EventManager,
-		Response:       response,
-		Log:            c.Logger,
-		FoundationURL:  foundationURL,
-		AppPath:        c.DeployEventData.DeploymentInfo.AppPath,
-		Fetcher:        c.createFetcher(),
-	}
-
-	return p, nil
-}
-
-func (c creatorPusherMock) InitiallyError(initiallyErrors []error) error {
-	return bluegreen.LoginError{LoginErrors: initiallyErrors}
-}
-
-func (c creatorPusherMock) ExecuteError(executeErrors []error) error {
-	return bluegreen.PushError{PushErrors: executeErrors}
-}
-
-func (c creatorPusherMock) UndoError(executeErrors, undoErrors []error) error {
-	return bluegreen.RollbackError{PushErrors: executeErrors, RollbackErrors: undoErrors}
-}
-
-func (c creatorPusherMock) SuccessError(successErrors []error) error {
-	return bluegreen.FinishPushError{FinishPushError: successErrors}
-}
-
-func (c creatorPusherMock) createFetcher() I.Fetcher {
-	return &artifetcher.Artifetcher{
-		FileSystem: c.CreateFileSystem(),
-		Extractor: &extractor.Extractor{
-			Log:        c.CreateLogger(),
-			FileSystem: c.CreateFileSystem(),
-		},
-		Log: c.CreateLogger(),
-	}
-}
-
-func (c creatorPusherMock) CreateFileSystem() *afero.Afero {
-	return &afero.Afero{Fs: afero.NewMemMapFs()}
-}
-
-func (c creatorPusherMock) CreateLogger() I.Logger {
-	return logger.DefaultLogger(GinkgoWriter, logging.INFO, "creatorPusherMock")
-}
+//type courierCreator interface {
+//	CreateCourier() (I.Courier, error)
+//}
+//
+//type creatorPusherMock struct {
+//	CourierCreator  I.Courier
+//	EventManager    I.EventManager
+//	Logger          I.Logger
+//	Fetcher         I.Fetcher
+//	DeployEventData S.DeployEventData
+//}
+//
+//func (c creatorPusherMock) SetUp(environment S.Environment) error {
+//	return nil
+//}
+//
+//func (c creatorPusherMock) CleanUp() {}
+//
+//func (c creatorPusherMock) OnStart() error {
+//	return nil
+//}
+//
+//func (c creatorPusherMock) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
+//	return I.DeployResponse{}
+//}
+//
+//func (c creatorPusherMock) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (I.Action, error) {
+//	courier := &Courier{}
+//
+//	courier.LoginCall.Returns.Output = []byte("logged in\t")
+//	courier.DeleteCall.Returns.Output = []byte("deleted app\t")
+//	courier.PushCall.Returns.Output = []byte("pushed app\t")
+//	courier.RenameCall.Returns.Output = []byte("renamed app\t")
+//	courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route\t"))
+//	courier.ExistsCall.Returns.Bool = true
+//
+//	p := &pusher.Pusher{
+//		Courier:        courier,
+//		DeploymentInfo: *c.DeployEventData.DeploymentInfo,
+//		EventManager:   c.EventManager,
+//		Response:       response,
+//		Log:            c.Logger,
+//		FoundationURL:  foundationURL,
+//		AppPath:        c.DeployEventData.DeploymentInfo.AppPath,
+//		Fetcher:        c.createFetcher(),
+//	}
+//
+//	return p, nil
+//}
+//
+//func (c creatorPusherMock) InitiallyError(initiallyErrors []error) error {
+//	return bluegreen.LoginError{LoginErrors: initiallyErrors}
+//}
+//
+//func (c creatorPusherMock) ExecuteError(executeErrors []error) error {
+//	return bluegreen.PushError{PushErrors: executeErrors}
+//}
+//
+//func (c creatorPusherMock) UndoError(executeErrors, undoErrors []error) error {
+//	return bluegreen.RollbackError{PushErrors: executeErrors, RollbackErrors: undoErrors}
+//}
+//
+//func (c creatorPusherMock) SuccessError(successErrors []error) error {
+//	return bluegreen.FinishPushError{FinishPushError: successErrors}
+//}
+//
+//func (c creatorPusherMock) createFetcher() I.Fetcher {
+//	return &artifetcher.Artifetcher{
+//		FileSystem: c.CreateFileSystem(),
+//		Extractor: &extractor.Extractor{
+//			Log:        c.CreateLogger(),
+//			FileSystem: c.CreateFileSystem(),
+//		},
+//		Log: c.CreateLogger(),
+//	}
+//}
+//
+//func (c creatorPusherMock) CreateFileSystem() *afero.Afero {
+//	return &afero.Afero{Fs: afero.NewMemMapFs()}
+//}
+//
+//func (c creatorPusherMock) CreateLogger() I.Logger {
+//	return logger.DefaultLogger(GinkgoWriter, logging.INFO, "creatorPusherMock")
+//}

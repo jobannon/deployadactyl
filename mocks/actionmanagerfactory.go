@@ -45,3 +45,22 @@ func (s *StopManagerFactory) StopManager(DeployEventData structs.DeployEventData
 
 	return s.StopManagerCall.Returns.ActionCreater
 }
+
+type StartManagerFactory struct {
+	StartManagerCall struct {
+		Called   bool
+		Received struct {
+			DeployEventData structs.DeployEventData
+		}
+		Returns struct {
+			ActionCreater interfaces.ActionCreator
+		}
+	}
+}
+
+func (t *StartManagerFactory) StartManager(DeployEventData structs.DeployEventData) interfaces.ActionCreator {
+	t.StartManagerCall.Called = true
+	t.StartManagerCall.Received.DeployEventData = DeployEventData
+
+	return t.StartManagerCall.Returns.ActionCreater
+}

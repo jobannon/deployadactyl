@@ -148,3 +148,40 @@ func makeErrorString(manyErrors []error) error {
 
 	return errors.New(result)
 }
+
+type FinishStartError struct {
+	FinishStartErrors []error
+}
+
+func (e FinishStartError) Error() string {
+	finishStartErrors := makeErrorString(e.FinishStartErrors)
+
+	return fmt.Sprintf("finish stop failed: %s", finishStartErrors)
+}
+
+type StartError struct {
+	Errors []error
+}
+
+func (e StartError) Error() string {
+	errs := makeErrorString(e.Errors)
+	return fmt.Sprintf("start failed: %s", errs)
+}
+
+func (e StartError) Code() string {
+	return "StartError"
+}
+
+type RollbackStartError struct {
+	StartErrors    []error
+	RollbackErrors []error
+}
+
+func (e RollbackStartError) Error() string {
+	var (
+		startErrs           = makeErrorString(e.StartErrors)
+		rollbackStartErrors = makeErrorString(e.RollbackErrors)
+	)
+
+	return fmt.Sprintf("start failed: %s: rollback failed: %s", startErrs, rollbackStartErrors)
+}

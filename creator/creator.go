@@ -190,9 +190,10 @@ func (c Creator) PusherCreator(deployEventData structs.DeployEventData) I.Action
 func (c Creator) StopManager(deployEventData structs.DeployEventData) I.ActionCreator {
 	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
 	return stop.StopManager{
-		CourierCreator: c,
-		EventManager:   c.CreateEventManager(),
-		Logger:         deploymentLogger,
+		CourierCreator:  c,
+		EventManager:    c.CreateEventManager(),
+		Logger:          deploymentLogger,
+		DeployEventData: deployEventData,
 	}
 }
 

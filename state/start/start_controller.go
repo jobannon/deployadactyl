@@ -12,8 +12,8 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
+	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/structs"
-	"github.com/compozed/randomizer"
 )
 
 type startManagerFactory interface {

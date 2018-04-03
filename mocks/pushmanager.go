@@ -8,8 +8,8 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
-// PusherCreator handmade mock for tests.
-type PusherCreator struct {
+// PushManager handmade mock for tests.
+type PushManager struct {
 	SetUpCall struct {
 		Called   bool
 		Received struct {
@@ -70,24 +70,24 @@ func (p *FileSystemCleaner) RemoveAll(path string) error {
 	return p.RemoveAllCall.Returns.Error
 }
 
-func (p *PusherCreator) SetUp(environment S.Environment) error {
+func (p *PushManager) SetUp(environment S.Environment) error {
 	p.SetUpCall.Received.Environment = environment
 
 	p.SetUpCall.Called = true
 	return p.SetUpCall.Returns.Err
 }
 
-func (p *PusherCreator) CleanUp() {
+func (p *PushManager) CleanUp() {
 	p.CleanUpCall.Called = true
 }
 
-func (p *PusherCreator) OnStart() error {
+func (p *PushManager) OnStart() error {
 	p.OnStartCall.Called = true
 
 	return p.OnStartCall.Returns.Err
 }
 
-func (p *PusherCreator) OnFinish(env S.Environment, response io.ReadWriter, err error) interfaces.DeployResponse {
+func (p *PushManager) OnFinish(env S.Environment, response io.ReadWriter, err error) interfaces.DeployResponse {
 	p.OnFinishCall.Called = true
 	p.OnFinishCall.Received.Environment = env
 	p.OnFinishCall.Received.Response = response
@@ -96,24 +96,24 @@ func (p *PusherCreator) OnFinish(env S.Environment, response io.ReadWriter, err 
 	return p.OnFinishCall.Returns.DeployResponse
 }
 
-func (p *PusherCreator) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (interfaces.Action, error) {
+func (p *PushManager) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (interfaces.Action, error) {
 	defer func() { p.CreatePusherCall.TimesCalled++ }()
 
 	return p.CreatePusherCall.Returns.Pushers[p.CreatePusherCall.TimesCalled], p.CreatePusherCall.Returns.Error[p.CreatePusherCall.TimesCalled]
 }
 
-func (p *PusherCreator) InitiallyError(initiallyErrors []error) error {
+func (p *PushManager) InitiallyError(initiallyErrors []error) error {
 	return bluegreen.LoginError{LoginErrors: initiallyErrors}
 }
 
-func (p *PusherCreator) ExecuteError(executeErrors []error) error {
+func (p *PushManager) ExecuteError(executeErrors []error) error {
 	return bluegreen.PushError{PushErrors: executeErrors}
 }
 
-func (p *PusherCreator) UndoError(executeErrors, undoErrors []error) error {
+func (p *PushManager) UndoError(executeErrors, undoErrors []error) error {
 	return bluegreen.RollbackError{PushErrors: executeErrors, RollbackErrors: undoErrors}
 }
 
-func (p *PusherCreator) SuccessError(successErrors []error) error {
+func (p *PushManager) SuccessError(successErrors []error) error {
 	return bluegreen.FinishPushError{FinishPushError: successErrors}
 }

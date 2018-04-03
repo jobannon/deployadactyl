@@ -16,11 +16,11 @@ import (
 
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/actioncreator"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state/stop"
 	S "github.com/compozed/deployadactyl/structs"
 )
 
@@ -69,7 +69,7 @@ var _ = Describe("Deployer", func() {
 		environments                 = map[string]S.Environment{}
 		environmentsNoCustomParams   = map[string]S.Environment{}
 		af                           *afero.Afero
-		pusherCreator                *mocks.PusherCreator
+		pusherCreator                *mocks.PushManager
 		stopperCreator               interfaces.ActionCreator
 		contentType                  string
 	)
@@ -170,8 +170,8 @@ var _ = Describe("Deployer", func() {
 		}
 		logBuffer = NewBuffer()
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
-		pusherCreator = &mocks.PusherCreator{}
-		stopperCreator = actioncreator.StopperCreator{}
+		pusherCreator = &mocks.PushManager{}
+		stopperCreator = stop.StopManager{}
 
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
 
@@ -468,10 +468,10 @@ var _ = Describe("Deployer", func() {
 	Describe("Deploy", func() {
 		var (
 			deployer          interfaces.Deployer
-			pusherCreatorMock *mocks.PusherCreator
+			pusherCreatorMock *mocks.PushManager
 		)
 		BeforeEach(func() {
-			pusherCreatorMock = &mocks.PusherCreator{}
+			pusherCreatorMock = &mocks.PushManager{}
 			deployer = Deployer{
 				c,
 				blueGreener,

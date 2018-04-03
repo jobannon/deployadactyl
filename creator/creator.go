@@ -10,7 +10,8 @@ import (
 	"github.com/compozed/deployadactyl/controller"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/actioncreator"
+	"github.com/compozed/deployadactyl/state/push"
+
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier/executor"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
@@ -19,6 +20,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
@@ -138,13 +140,13 @@ func (c Creator) CreateHTTPClient() *http.Client {
 
 func (c Creator) CreateController() I.Controller {
 	return &controller.Controller{
-		Deployer:             c.createDeployer(),
-		SilentDeployer:       c.createSilentDeployer(),
-		Log:                  c.CreateLogger(),
-		PusherCreatorFactory: c,
-		Config:               c.CreateConfig(),
-		EventManager:         c.CreateEventManager(),
-		ErrorFinder:          c.createErrorFinder(),
+		Deployer:           c.createDeployer(),
+		SilentDeployer:     c.createSilentDeployer(),
+		Log:                c.CreateLogger(),
+		PushManagerFactory: c,
+		Config:             c.CreateConfig(),
+		EventManager:       c.CreateEventManager(),
+		ErrorFinder:        c.createErrorFinder(),
 	}
 }
 
@@ -162,7 +164,7 @@ func (c Creator) createDeployer() I.Deployer {
 
 func (c Creator) PusherCreator(deployEventData structs.DeployEventData) I.ActionCreator {
 	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
-	return &actioncreator.PusherCreator{
+	return &push.PushManager{
 		CourierCreator:    c,
 		EventManager:      c.CreateEventManager(),
 		Logger:            deploymentLogger,
@@ -172,11 +174,12 @@ func (c Creator) PusherCreator(deployEventData structs.DeployEventData) I.Action
 	}
 }
 
-func (c Creator) StopperCreator() I.ActionCreator {
-	return actioncreator.StopperCreator{
+func (c Creator) StopperCreator(deployEventData structs.DeployEventData) I.ActionCreator {
+	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
+	return stop.StopManager{
 		CourierCreator: c,
 		EventManager:   c.CreateEventManager(),
-		Logger:         c.CreateLogger(),
+		Logger:         deploymentLogger,
 	}
 }
 

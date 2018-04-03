@@ -13,7 +13,7 @@ type receivedCall struct {
 	Response      io.ReadWriter
 }
 
-type StopperCreator struct {
+type StopManager struct {
 	CreateStopperCall struct {
 		TimesCalled int
 		Received    []receivedCall
@@ -24,25 +24,25 @@ type StopperCreator struct {
 	}
 }
 
-func (s *StopperCreator) SetUp(environment S.Environment) error {
+func (s *StopManager) SetUp(environment S.Environment) error {
 	return nil
 }
 
-func (s *StopperCreator) OnStart() error {
+func (s *StopManager) OnStart() error {
 	return nil
 }
 
-func (s *StopperCreator) OnFinish(env S.Environment, response io.ReadWriter, err error) interfaces.DeployResponse {
+func (s *StopManager) OnFinish(env S.Environment, response io.ReadWriter, err error) interfaces.DeployResponse {
 	return interfaces.DeployResponse{}
 }
 
-func (s *StopperCreator) CleanUp() {}
+func (s *StopManager) CleanUp() {}
 
-func (s *StopperCreator) InitiallyError(initiallyErrors []error) error {
+func (s *StopManager) InitiallyError(initiallyErrors []error) error {
 	return bluegreen.LoginError{LoginErrors: initiallyErrors}
 }
 
-func (s *StopperCreator) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (interfaces.Action, error) {
+func (s *StopManager) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (interfaces.Action, error) {
 	defer func() { s.CreateStopperCall.TimesCalled++ }()
 
 	received := receivedCall{
@@ -54,14 +54,14 @@ func (s *StopperCreator) Create(environment S.Environment, response io.ReadWrite
 	return s.CreateStopperCall.Returns.Stoppers[s.CreateStopperCall.TimesCalled], s.CreateStopperCall.Returns.Error[s.CreateStopperCall.TimesCalled]
 }
 
-func (s *StopperCreator) ExecuteError(executeErrors []error) error {
+func (s *StopManager) ExecuteError(executeErrors []error) error {
 	return bluegreen.StopError{Errors: executeErrors}
 }
 
-func (s *StopperCreator) UndoError(executeErrors, undoErrors []error) error {
+func (s *StopManager) UndoError(executeErrors, undoErrors []error) error {
 	return bluegreen.RollbackStopError{StopErrors: executeErrors, RollbackErrors: undoErrors}
 }
 
-func (s *StopperCreator) SuccessError(successErrors []error) error {
+func (s *StopManager) SuccessError(successErrors []error) error {
 	return bluegreen.FinishStopError{FinishStopErrors: successErrors}
 }

@@ -1,14 +1,15 @@
-package actioncreator_test
+package push_test
 
 import (
 	"bytes"
 	"encoding/base64"
 	"github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/actioncreator"
+	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	. "github.com/compozed/deployadactyl/state/push"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/go-errors/errors"
 	. "github.com/onsi/ginkgo"
@@ -22,24 +23,26 @@ import (
 	"reflect"
 )
 
-var logBuffer = bytes.NewBuffer([]byte{})
-var log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
-
 var _ = Describe("Actioncreator", func() {
 	var (
+		logBuffer         *bytes.Buffer
+		log               interfaces.Logger
 		fetcher           *mocks.Fetcher
 		eventManager      *mocks.EventManager
-		pusherCreator     *actioncreator.PusherCreator
+		pusherCreator     *PushManager
 		fileSystemCleaner *mocks.FileSystemCleaner
 		response          io.ReadWriter
 	)
 	BeforeEach(func() {
+		logBuffer = bytes.NewBuffer([]byte{})
+		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
+
 		fetcher = &mocks.Fetcher{}
 		eventManager = &mocks.EventManager{}
 		fileSystemCleaner = &mocks.FileSystemCleaner{}
 
 		response = NewBuffer()
-		pusherCreator = &actioncreator.PusherCreator{
+		pusherCreator = &PushManager{
 			Fetcher:      fetcher,
 			Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
 			EventManager: eventManager,
@@ -62,7 +65,10 @@ applications:
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
 				environment := structs.Environment{Instances: 0}
 
-				deploymentInfo := structs.DeploymentInfo{Manifest: encodedManifest, ContentType: "JSON"}
+				deploymentInfo := structs.DeploymentInfo{
+					Manifest:    encodedManifest,
+					ContentType: "JSON",
+				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
 				pusherCreator.SetUp(environment)

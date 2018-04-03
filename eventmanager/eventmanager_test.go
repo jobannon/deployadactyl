@@ -13,6 +13,7 @@ import (
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state/stop"
 )
 
 var _ = Describe("Events", func() {
@@ -114,5 +115,52 @@ var _ = Describe("Events", func() {
 			Expect(eventHandlerOne.OnEventCall.Received.Event).To(Equal(event))
 			Expect(eventHandlerTwo.OnEventCall.Received.Event).ToNot(Equal(event))
 		})
+	})
+
+	Context("when events are added to the event manager", func() {
+		It("should bind each event", func() {
+
+			binding := &mocks.EventBinding{}
+
+			eventManager.AddBinding(binding)
+			Expect(eventManager.Bindings[0]).To(Equal(binding))
+		})
+		It("should emit each event", func() {
+			binding := &mocks.EventBinding{}
+			eventManager.AddBinding(binding)
+
+			stopStartedEvent := stop.StopStartedEvent{}
+			binding.AcceptsCall.Returns.Bool = true
+			eventManager.EmitEvent(stopStartedEvent)
+			Expect(binding.AcceptsCall.Received.Event).To(Equal(stopStartedEvent))
+			Expect(binding.EmitCall.Received.Event).To(Equal(stopStartedEvent))
+		})
+		Context("when event is an incorrect type", func() {
+			It("should not emit", func() {
+				binding := &mocks.EventBinding{}
+				eventManager.AddBinding(binding)
+
+				stopStartedEvent := stop.StopStartedEvent{}
+				binding.AcceptsCall.Returns.Bool = false
+				eventManager.EmitEvent(stopStartedEvent)
+				Expect(binding.AcceptsCall.Received.Event).To(Equal(stopStartedEvent))
+				Expect(binding.EmitCall.Called.Bool).To(Equal(false))
+			})
+		})
+		Context("when binding returns an error", func() {
+			It("emit should return error", func() {
+				binding := &mocks.EventBinding{}
+				eventManager.AddBinding(binding)
+
+				stopStartedEvent := stop.StopStartedEvent{}
+				binding.AcceptsCall.Returns.Bool = true
+				binding.EmitCall.Returns.Error = errors.New("emit error")
+				err := eventManager.EmitEvent(stopStartedEvent)
+				Expect(err).ShouldNot(BeNil())
+				Expect(err.Error()).To(Equal("emit error"))
+
+			})
+		})
+
 	})
 })

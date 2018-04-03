@@ -19,6 +19,7 @@ import (
 	"github.com/compozed/deployadactyl/geterrors"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -28,15 +29,20 @@ type pusherCreatorFactory interface {
 	PusherCreator(deployEventData structs.DeployEventData) I.ActionCreator
 }
 
+type stopManagerFactory interface {
+	StopManager(deployEventData structs.DeployEventData) I.ActionCreator
+}
+
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
-	Deployer             I.Deployer
-	SilentDeployer       I.Deployer
-	Log                  I.Logger
-	PusherCreatorFactory pusherCreatorFactory
-	Config               config.Config
-	EventManager         I.EventManager
-	ErrorFinder          I.ErrorFinder
+	Deployer           I.Deployer
+	SilentDeployer     I.Deployer
+	Log                I.Logger
+	PushManagerFactory pusherCreatorFactory
+	StopManagerFactory stopManagerFactory
+	Config             config.Config
+	EventManager       I.EventManager
+	ErrorFinder        I.ErrorFinder
 }
 
 // PUSH specific
@@ -112,6 +118,7 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 	defer c.emitDeploySuccessOrFailure(&deployEventData, response, &deployResponse, deploymentLogger)
 
 	deploymentLogger.Debugf("emitting a %s event", constants.DeployStartEvent)
+
 	err = c.EventManager.Emit(I.Event{Type: constants.DeployStartEvent, Data: &deployEventData})
 	if err != nil {
 		deploymentLogger.Error(err)
@@ -123,7 +130,7 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 		}
 
 	}
-	pusherCreator := c.PusherCreatorFactory.PusherCreator(deployEventData)
+	pusherCreator := c.PushManagerFactory.PusherCreator(deployEventData)
 
 	reqChannel1 := make(chan *I.DeployResponse)
 	reqChannel2 := make(chan *I.DeployResponse)
@@ -147,9 +154,42 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 	return deployResponse
 }
 
-func (c *Controller) StopDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
+func (c *Controller) StopDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+	auth := &I.Authorization{}
+	environment := &structs.Environment{}
+
 	cf := deployment.CFContext
-	environment, err := c.resolveEnvironment(cf.Environment)
+
+	deploymentInfo := &structs.DeploymentInfo{
+		Org:         cf.Organization,
+		Space:       cf.Space,
+		AppName:     cf.Application,
+		Environment: cf.Environment,
+		UUID:        cf.UUID,
+	}
+	if deploymentInfo.UUID == "" {
+		deploymentInfo.UUID = randomizer.StringRunes(10)
+		cf.UUID = deploymentInfo.UUID
+	}
+	deploymentLogger := logger.DeploymentLogger{c.Log, deploymentInfo.UUID}
+	deploymentLogger.Debugf("Preparing to stop %s with UUID %s", cf.Application, deploymentInfo.UUID)
+
+	event := stop.StopStartedEvent{CFContext: cf, Data: data}
+	defer c.emitStopFinish(response, deploymentLogger, cf, auth, environment, data, &deployResponse)
+	defer c.emitStopSuccessOrFailure(response, deploymentLogger, cf, auth, environment, data, &deployResponse)
+
+	err := c.EventManager.EmitEvent(event)
+	if err != nil {
+		deploymentLogger.Error(err)
+		err = &bluegreen.InitializationError{err}
+		return I.DeployResponse{
+			StatusCode:     http.StatusInternalServerError,
+			Error:          deployer.EventError{Type: "StopStartedEvent", Err: err},
+			DeploymentInfo: deploymentInfo,
+		}
+	}
+
+	*environment, err = c.resolveEnvironment(cf.Environment)
 	if err != nil {
 		fmt.Fprintln(response, err.Error())
 		return I.DeployResponse{
@@ -157,29 +197,29 @@ func (c *Controller) StopDeployment(deployment *I.Deployment, response *bytes.Bu
 			Error:      err,
 		}
 	}
+	*auth, err = c.resolveAuthorization(deployment.Authorization, *environment, deploymentLogger)
+	if err != nil {
+		return I.DeployResponse{
+			StatusCode: http.StatusUnauthorized,
+			Error:      err,
+		}
+	}
+	deploymentInfo.Domain = environment.Domain
+	deploymentInfo.SkipSSL = environment.SkipSSL
+	deploymentInfo.CustomParams = environment.CustomParams
+	deploymentInfo.Username = auth.Username
+	deploymentInfo.Password = auth.Password
 
-	body := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
-
-	deploymentInfo := structs.DeploymentInfo{}
-	deployEventData := &structs.DeployEventData{Response: response, DeploymentInfo: &deploymentInfo, RequestBody: body}
-
-	pusherCreator := c.PusherCreatorFactory.PusherCreator(*deployEventData)
-
-	reqChannel1 := make(chan I.DeployResponse)
-	reqChannel2 := make(chan I.DeployResponse)
-	defer close(reqChannel1)
-	defer close(reqChannel2)
-
-	go c.Deployer.Deploy(&deploymentInfo, environment, pusherCreator, response)
-
-	silentResponse := &bytes.Buffer{}
-	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
-		go c.SilentDeployer.Deploy(&deploymentInfo, environment, pusherCreator, silentResponse)
-		<-reqChannel2
+	if data != nil {
+		deploymentInfo.Data = data
+	} else {
+		deploymentInfo.Data = make(map[string]interface{})
 	}
 
-	deployResponse := <-reqChannel1
+	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo}
 
+	manager := c.StopManagerFactory.StopManager(deployEventData)
+	deployResponse = *c.Deployer.Deploy(deploymentInfo, *environment, manager, response)
 	return deployResponse
 }
 
@@ -307,6 +347,44 @@ func (c Controller) emitDeploySuccessOrFailure(deployEventData *structs.DeployEv
 	eventErr := c.EventManager.Emit(deployEvent)
 	if eventErr != nil {
 		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", deployEvent.Type, eventErr)
+		fmt.Fprintln(response, eventErr)
+	}
+}
+func (c Controller) emitStopFinish(response io.ReadWriter, deploymentLogger logger.DeploymentLogger, cfContext I.CFContext, auth *I.Authorization, environment *structs.Environment, data map[string]interface{}, deployResponse *I.DeployResponse) {
+	var event stop.IEvent
+	event = stop.StopFinishedEvent{
+		CFContext:     cfContext,
+		Authorization: *auth,
+		Environment:   *environment,
+		Data:          data,
+	}
+	deploymentLogger.Debugf("emitting a %s event", event.Type())
+	c.EventManager.EmitEvent(event)
+}
+func (c Controller) emitStopSuccessOrFailure(response io.ReadWriter, deploymentLogger logger.DeploymentLogger, cfContext I.CFContext, auth *I.Authorization, environment *structs.Environment, data map[string]interface{}, deployResponse *I.DeployResponse) {
+	var event stop.IEvent
+
+	if deployResponse.Error != nil {
+		c.printErrors(response, &deployResponse.Error)
+		event = stop.StopFailureEvent{
+			CFContext:     cfContext,
+			Authorization: *auth,
+			Environment:   *environment,
+			Data:          data,
+			Error:         deployResponse.Error,
+		}
+
+	} else {
+		event = stop.StopSuccessEvent{
+			CFContext:     cfContext,
+			Authorization: *auth,
+			Environment:   *environment,
+			Data:          data,
+		}
+	}
+	eventErr := c.EventManager.EmitEvent(event)
+	if eventErr != nil {
+		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", event.Type(), eventErr)
 		fmt.Fprintln(response, eventErr)
 	}
 }

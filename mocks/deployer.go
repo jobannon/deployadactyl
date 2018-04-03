@@ -41,10 +41,10 @@ func (d *Deployer) Deploy(deploymentInfo *structs.DeploymentInfo, env structs.En
 	fmt.Fprint(out, d.DeployCall.Write.Output)
 
 	response := &I.DeployResponse{
-		StatusCode: d.DeployCall.Returns.StatusCode,
-		Error:      d.DeployCall.Returns.Error,
+		StatusCode:     d.DeployCall.Returns.StatusCode,
+		Error:          d.DeployCall.Returns.Error,
+		DeploymentInfo: deploymentInfo,
 	}
 
-	//reqChan <- response
 	return response
 }

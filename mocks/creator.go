@@ -10,13 +10,12 @@ import (
 	"github.com/compozed/deployadactyl/controller"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/actioncreator"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	"github.com/compozed/deployadactyl/eventmanager"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state/push"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
@@ -33,11 +32,12 @@ const ENDPOINT = "/v2/deploy/:environment/:org/:space/:appName"
 // Uses a mock Courier and Executor to mock pushing an application.
 // Uses a mock FileSystem to mock writing to the operating system.
 type Creator struct {
-	config       config.Config
-	eventManager I.EventManager
-	logger       I.Logger
-	writer       io.Writer
-	fileSystem   *afero.Afero
+	CourierCreatorFn func() (I.Courier, error)
+	config           config.Config
+	eventManager     I.EventManager
+	logger           I.Logger
+	writer           io.Writer
+	fileSystem       *afero.Afero
 }
 
 func NewCreator(level string, configFilename string) (Creator, error) {
@@ -79,13 +79,13 @@ func (c Creator) CreateControllerHandler() *gin.Engine {
 
 func (c Creator) CreateController() controller.Controller {
 	return controller.Controller{
-		Deployer:             c.CreateDeployer(),
-		SilentDeployer:       c.CreateSilentDeployer(),
-		Log:                  c.CreateLogger(),
-		PusherCreatorFactory: c,
-		Config:               c.CreateConfig(),
-		EventManager:         c.CreateEventManager(),
-		ErrorFinder:          c.createErrorFinder(),
+		Deployer:           c.CreateDeployer(),
+		SilentDeployer:     c.CreateSilentDeployer(),
+		Log:                c.CreateLogger(),
+		PushManagerFactory: c,
+		Config:             c.CreateConfig(),
+		EventManager:       c.CreateEventManager(),
+		ErrorFinder:        c.createErrorFinder(),
 	}
 }
 
@@ -105,6 +105,10 @@ func (c Creator) CreateDeployer() I.Deployer {
 	}
 }
 func (c Creator) CreateCourier() (I.Courier, error) {
+	if c.CourierCreatorFn != nil {
+		return c.CourierCreatorFn()
+	}
+
 	courier := &Courier{}
 
 	courier.LoginCall.Returns.Output = []byte("logged in\t")
@@ -118,7 +122,7 @@ func (c Creator) CreateCourier() (I.Courier, error) {
 }
 func (c Creator) PusherCreator(deployEventData S.DeployEventData) I.ActionCreator {
 	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
-	return &actioncreator.PusherCreator{
+	return &push.PushManager{
 		CourierCreator:    c,
 		EventManager:      c.CreateEventManager(),
 		Logger:            deploymentLogger,
@@ -129,7 +133,7 @@ func (c Creator) PusherCreator(deployEventData S.DeployEventData) I.ActionCreato
 }
 
 func (c Creator) CreateStopperCreator() I.ActionCreator {
-	return &StopperCreator{}
+	return &StopManager{}
 }
 
 func (c Creator) CreateSilentDeployer() I.Deployer {
@@ -157,7 +161,7 @@ func (c Creator) CreatePusher(deploymentInfo S.DeploymentInfo, response io.ReadW
 	courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route\t"))
 	courier.ExistsCall.Returns.Bool = true
 
-	p := &pusher.Pusher{
+	p := &push.Pusher{
 		Courier:        courier,
 		DeploymentInfo: deploymentInfo,
 		EventManager:   c.CreateEventManager(),
@@ -218,88 +222,3 @@ func getLevel(level string) (logging.Level, error) {
 
 	return logging.INFO, nil
 }
-
-//type courierCreator interface {
-//	CreateCourier() (I.Courier, error)
-//}
-//
-//type creatorPusherMock struct {
-//	CourierCreator  I.Courier
-//	EventManager    I.EventManager
-//	Logger          I.Logger
-//	Fetcher         I.Fetcher
-//	DeployEventData S.DeployEventData
-//}
-//
-//func (c creatorPusherMock) SetUp(environment S.Environment) error {
-//	return nil
-//}
-//
-//func (c creatorPusherMock) CleanUp() {}
-//
-//func (c creatorPusherMock) OnStart() error {
-//	return nil
-//}
-//
-//func (c creatorPusherMock) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
-//	return I.DeployResponse{}
-//}
-//
-//func (c creatorPusherMock) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (I.Action, error) {
-//	courier := &Courier{}
-//
-//	courier.LoginCall.Returns.Output = []byte("logged in\t")
-//	courier.DeleteCall.Returns.Output = []byte("deleted app\t")
-//	courier.PushCall.Returns.Output = []byte("pushed app\t")
-//	courier.RenameCall.Returns.Output = []byte("renamed app\t")
-//	courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route\t"))
-//	courier.ExistsCall.Returns.Bool = true
-//
-//	p := &pusher.Pusher{
-//		Courier:        courier,
-//		DeploymentInfo: *c.DeployEventData.DeploymentInfo,
-//		EventManager:   c.EventManager,
-//		Response:       response,
-//		Log:            c.Logger,
-//		FoundationURL:  foundationURL,
-//		AppPath:        c.DeployEventData.DeploymentInfo.AppPath,
-//		Fetcher:        c.createFetcher(),
-//	}
-//
-//	return p, nil
-//}
-//
-//func (c creatorPusherMock) InitiallyError(initiallyErrors []error) error {
-//	return bluegreen.LoginError{LoginErrors: initiallyErrors}
-//}
-//
-//func (c creatorPusherMock) ExecuteError(executeErrors []error) error {
-//	return bluegreen.PushError{PushErrors: executeErrors}
-//}
-//
-//func (c creatorPusherMock) UndoError(executeErrors, undoErrors []error) error {
-//	return bluegreen.RollbackError{PushErrors: executeErrors, RollbackErrors: undoErrors}
-//}
-//
-//func (c creatorPusherMock) SuccessError(successErrors []error) error {
-//	return bluegreen.FinishPushError{FinishPushError: successErrors}
-//}
-//
-//func (c creatorPusherMock) createFetcher() I.Fetcher {
-//	return &artifetcher.Artifetcher{
-//		FileSystem: c.CreateFileSystem(),
-//		Extractor: &extractor.Extractor{
-//			Log:        c.CreateLogger(),
-//			FileSystem: c.CreateFileSystem(),
-//		},
-//		Log: c.CreateLogger(),
-//	}
-//}
-//
-//func (c creatorPusherMock) CreateFileSystem() *afero.Afero {
-//	return &afero.Afero{Fs: afero.NewMemMapFs()}
-//}
-//
-//func (c creatorPusherMock) CreateLogger() I.Logger {
-//	return logger.DefaultLogger(GinkgoWriter, logging.INFO, "creatorPusherMock")
-//}

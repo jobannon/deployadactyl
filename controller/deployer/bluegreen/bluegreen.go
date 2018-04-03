@@ -11,7 +11,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
-// BlueGreen has a PusherCreator to creater pushers for blue green deployments.
+// BlueGreen has a PushManager to creater pushers for blue green deployments.
 type BlueGreen struct {
 	Log I.Logger
 }

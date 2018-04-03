@@ -10,4 +10,5 @@ type Event struct {
 type EventManager interface {
 	AddHandler(handler Handler, eventType string) error
 	Emit(event Event) error
+	EmitEvent(event interface{}) error
 }

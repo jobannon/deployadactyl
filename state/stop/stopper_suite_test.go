@@ -1,4 +1,4 @@
-package startstopper
+package stop_test
 
 import (
 	. "github.com/onsi/ginkgo"

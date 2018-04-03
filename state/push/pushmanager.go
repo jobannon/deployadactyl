@@ -1,4 +1,4 @@
-package actioncreator
+package push
 
 import (
 	"encoding/base64"
@@ -6,11 +6,10 @@ import (
 	"github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/startstopper"
 	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
+	"github.com/compozed/deployadactyl/state"
 	S "github.com/compozed/deployadactyl/structs"
 	"io"
 	"net/http"
@@ -40,7 +39,7 @@ type fileSystemCleaner interface {
 	RemoveAll(path string) error
 }
 
-type PusherCreator struct {
+type PushManager struct {
 	CourierCreator    courierCreator
 	EventManager      I.EventManager
 	Logger            logger.DeploymentLogger
@@ -49,14 +48,7 @@ type PusherCreator struct {
 	FileSystemCleaner fileSystemCleaner
 }
 
-type StopperCreator struct {
-	CourierCreator  courierCreator
-	EventManager    I.EventManager
-	Logger          I.Logger
-	DeployEventData S.DeployEventData
-}
-
-func (a *PusherCreator) SetUp(environment S.Environment) error {
+func (a *PushManager) SetUp(environment S.Environment) error {
 	var (
 		manifestString string
 		instances      *uint16
@@ -71,7 +63,7 @@ func (a *PusherCreator) SetUp(environment S.Environment) error {
 		if a.DeployEventData.DeploymentInfo.Manifest != "" {
 			manifest, err := base64.StdEncoding.DecodeString(a.DeployEventData.DeploymentInfo.Manifest)
 			if err != nil {
-				return pusher.ManifestError{}
+				return state.ManifestError{}
 			}
 			manifestString = string(manifest)
 		}
@@ -85,7 +77,7 @@ func (a *PusherCreator) SetUp(environment S.Environment) error {
 			a.Logger.Debug("deploying from json request")
 			appPath, err = a.Fetcher.Fetch(a.DeployEventData.DeploymentInfo.ArtifactURL, manifestString)
 			if err != nil {
-				return "", pusher.AppPathError{Err: err}
+				return "", state.AppPathError{Err: err}
 			}
 			return appPath, nil
 		}
@@ -97,7 +89,7 @@ func (a *PusherCreator) SetUp(environment S.Environment) error {
 			a.Logger.Debug("deploying from zip request")
 			appPath, err = a.Fetcher.FetchZipFromRequest(a.DeployEventData.DeploymentInfo.Body)
 			if err != nil {
-				return "", pusher.UnzippingError{Err: err}
+				return "", state.UnzippingError{Err: err}
 			}
 			return appPath, nil
 		}
@@ -135,7 +127,7 @@ func (a *PusherCreator) SetUp(environment S.Environment) error {
 	return nil
 }
 
-func (a PusherCreator) OnStart() error {
+func (a PushManager) OnStart() error {
 	info := a.DeployEventData.DeploymentInfo
 	deploymentMessage := fmt.Sprintf(deploymentOutput, info.ArtifactURL, info.Username, info.Environment, info.Org, info.Space, info.AppName)
 
@@ -151,7 +143,7 @@ func (a PusherCreator) OnStart() error {
 	return nil
 }
 
-func (a PusherCreator) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
+func (a PushManager) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
 	if err != nil {
 		if !env.EnableRollback {
 			a.Logger.Errorf("EnableRollback %t, returning status %d and err %s", env.EnableRollback, http.StatusOK, err)
@@ -179,24 +171,24 @@ func (a PusherCreator) OnFinish(env S.Environment, response io.ReadWriter, err e
 	return I.DeployResponse{StatusCode: http.StatusOK}
 }
 
-func (a PusherCreator) CleanUp() {
+func (a PushManager) CleanUp() {
 	a.FileSystemCleaner.RemoveAll(a.DeployEventData.DeploymentInfo.AppPath)
 }
 
-func (a PusherCreator) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (I.Action, error) {
+func (a PushManager) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (I.Action, error) {
 
 	courier, err := a.CourierCreator.CreateCourier()
 	if err != nil {
 		a.Logger.Error(err)
-		return &pusher.Pusher{}, pusher.CourierCreationError{Err: err}
+		return &Pusher{}, state.CourierCreationError{Err: err}
 	}
 
-	p := &pusher.Pusher{
+	p := &Pusher{
 		Courier:        courier,
 		DeploymentInfo: *a.DeployEventData.DeploymentInfo,
 		EventManager:   a.EventManager,
 		Response:       response,
-		Log:            logger.DeploymentLogger{a.Logger, a.DeployEventData.DeploymentInfo.UUID},
+		Log:            a.Logger,
 		FoundationURL:  foundationURL,
 		AppPath:        a.DeployEventData.DeploymentInfo.AppPath,
 		Environment:    environment,
@@ -206,78 +198,18 @@ func (a PusherCreator) Create(environment S.Environment, response io.ReadWriter,
 	return p, nil
 }
 
-func (a PusherCreator) InitiallyError(initiallyErrors []error) error {
+func (a PushManager) InitiallyError(initiallyErrors []error) error {
 	return bluegreen.LoginError{LoginErrors: initiallyErrors}
 }
 
-func (a PusherCreator) ExecuteError(executeErrors []error) error {
+func (a PushManager) ExecuteError(executeErrors []error) error {
 	return bluegreen.PushError{PushErrors: executeErrors}
 }
 
-func (a PusherCreator) UndoError(executeErrors, undoErrors []error) error {
+func (a PushManager) UndoError(executeErrors, undoErrors []error) error {
 	return bluegreen.RollbackError{PushErrors: executeErrors, RollbackErrors: undoErrors}
 }
 
-func (a PusherCreator) SuccessError(successErrors []error) error {
+func (a PushManager) SuccessError(successErrors []error) error {
 	return bluegreen.FinishPushError{FinishPushError: successErrors}
-}
-
-func (a StopperCreator) SetUp(environment S.Environment) error {
-	return nil
-}
-
-func (a StopperCreator) OnStart() error {
-	return nil
-}
-
-func (a StopperCreator) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
-	return I.DeployResponse{}
-}
-
-func (a StopperCreator) CleanUp() {}
-
-func (a StopperCreator) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (I.Action, error) {
-	courier, err := a.CourierCreator.CreateCourier()
-	if err != nil {
-		a.Logger.Error(err)
-		return &pusher.Pusher{}, pusher.CourierCreationError{Err: err}
-	}
-	p := &startstopper.Stopper{
-		Courier: courier,
-		CFContext: I.CFContext{
-			Environment:  environment.Name,
-			Organization: a.DeployEventData.DeploymentInfo.Org,
-			Space:        a.DeployEventData.DeploymentInfo.Space,
-			Application:  a.DeployEventData.DeploymentInfo.AppName,
-			UUID:         a.DeployEventData.DeploymentInfo.UUID,
-			SkipSSL:      a.DeployEventData.DeploymentInfo.SkipSSL,
-		},
-		Authorization: I.Authorization{
-			Username: a.DeployEventData.DeploymentInfo.Username,
-			Password: a.DeployEventData.DeploymentInfo.Password,
-		},
-		EventManager:  a.EventManager,
-		Response:      response,
-		Log:           logger.DeploymentLogger{a.Logger, a.DeployEventData.DeploymentInfo.UUID},
-		FoundationURL: foundationURL,
-		AppName:       a.DeployEventData.DeploymentInfo.AppName,
-	}
-
-	return p, nil
-}
-
-func (a StopperCreator) InitiallyError(initiallyErrors []error) error {
-	return bluegreen.LoginError{LoginErrors: initiallyErrors}
-}
-
-func (a StopperCreator) ExecuteError(executeErrors []error) error {
-	return bluegreen.StopError{Errors: executeErrors}
-}
-
-func (a StopperCreator) UndoError(executeErrors, undoErrors []error) error {
-	return bluegreen.RollbackStopError{StopErrors: executeErrors, RollbackErrors: undoErrors}
-}
-
-func (a StopperCreator) SuccessError(successErrors []error) error {
-	return bluegreen.FinishStopError{FinishStopErrors: successErrors}
 }

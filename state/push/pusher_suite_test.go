@@ -1,4 +1,4 @@
-package pusher_test
+package push_test
 
 import (
 	. "github.com/onsi/ginkgo"

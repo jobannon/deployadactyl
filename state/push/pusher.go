@@ -1,5 +1,5 @@
 // Package pusher handles pushing to individual Cloud Foundry instances.
-package pusher
+package push
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 
 	C "github.com/compozed/deployadactyl/constants"
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/state"
 	S "github.com/compozed/deployadactyl/structs"
 )
 
@@ -50,7 +51,7 @@ func (p Pusher) Initially() error {
 	p.Response.Write(output)
 	if err != nil {
 		p.Log.Errorf("could not login to %s", p.FoundationURL)
-		return LoginError{p.FoundationURL, output}
+		return state.LoginError{p.FoundationURL, output}
 	}
 
 	p.Log.Infof("logged into cloud foundry %s", p.FoundationURL)
@@ -188,10 +189,10 @@ func (p Pusher) pushApplication(appName, appPath string) error {
 
 		cloudFoundryLogs, cloudFoundryLogsErr = p.Courier.Logs(appName)
 		if cloudFoundryLogsErr != nil {
-			return CloudFoundryGetLogsError{err, cloudFoundryLogsErr}
+			return state.CloudFoundryGetLogsError{err, cloudFoundryLogsErr}
 		}
 
-		return PushError{}
+		return state.PushError{}
 	}
 
 	p.Log.Infof("successfully deployed new build %s", appName)
@@ -205,7 +206,7 @@ func (p Pusher) mapTempAppToLoadBalancedDomain(appName string) error {
 	out, err := p.Courier.MapRoute(appName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
 	if err != nil {
 		p.Log.Errorf("could not map %s to %s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
-		return MapRouteError{out}
+		return state.MapRouteError{out}
 	}
 
 	p.Log.Infof("application route created: %s.%s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
@@ -222,7 +223,7 @@ func (p Pusher) unMapLoadBalancedRoute() error {
 		out, err := p.Courier.UnmapRoute(p.DeploymentInfo.AppName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
 		if err != nil {
 			p.Log.Errorf("could not unmap %s", p.DeploymentInfo.AppName)
-			return UnmapRouteError{p.DeploymentInfo.AppName, out}
+			return state.UnmapRouteError{p.DeploymentInfo.AppName, out}
 		}
 
 		p.Log.Infof("unmapped route %s", p.DeploymentInfo.AppName)
@@ -239,7 +240,7 @@ func (p Pusher) deleteApplication(appName string) error {
 		p.Log.Errorf("could not delete %s", appName)
 		p.Log.Errorf("deletion error %s", err.Error())
 		p.Log.Errorf("deletion output", string(out))
-		return DeleteApplicationError{appName, out}
+		return state.DeleteApplicationError{appName, out}
 	}
 
 	p.Log.Infof("deleted %s", appName)
@@ -253,7 +254,7 @@ func (p Pusher) renameNewBuildToOriginalAppName() error {
 	out, err := p.Courier.Rename(p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
 	if err != nil {
 		p.Log.Errorf("could not rename %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
-		return RenameError{p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID, out}
+		return state.RenameError{p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID, out}
 	}
 
 	p.Log.Infof("renamed %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)

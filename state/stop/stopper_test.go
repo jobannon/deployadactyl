@@ -1,4 +1,4 @@
-package startstopper_test
+package stop_test
 
 import (
 	"errors"
@@ -6,15 +6,17 @@ import (
 	"math/rand"
 
 	C "github.com/compozed/deployadactyl/constants"
-	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	. "github.com/compozed/deployadactyl/state/push"
+	. "github.com/compozed/deployadactyl/state/stop"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/op/go-logging"
 
 	"fmt"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/startstopper"
+	"github.com/compozed/deployadactyl/state"
+
 	"github.com/compozed/deployadactyl/interfaces"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -23,7 +25,7 @@ import (
 
 var _ = Describe("Stopper", func() {
 	var (
-		stopper      startstopper.Stopper
+		stopper      Stopper
 		courier      *mocks.Courier
 		eventManager *mocks.EventManager
 
@@ -94,7 +96,7 @@ var _ = Describe("Stopper", func() {
 			Password: randomPassword,
 		}
 
-		stopper = startstopper.Stopper{
+		stopper = Stopper{
 			Courier:       courier,
 			CFContext:     cfContext,
 			Authorization: auth,
@@ -135,7 +137,7 @@ var _ = Describe("Stopper", func() {
 				courier.LoginCall.Returns.Error = errors.New("login error")
 
 				err := stopper.Initially()
-				Expect(err).To(MatchError(LoginError{randomFoundationURL, []byte("login output")}))
+				Expect(err).To(MatchError(state.LoginError{randomFoundationURL, []byte("login output")}))
 			})
 
 			It("writes the output of the courier to the response", func() {
@@ -191,7 +193,7 @@ var _ = Describe("Stopper", func() {
 
 				err := stopper.Execute()
 
-				Expect(err).To(MatchError(startstopper.StopError{ApplicationName: randomAppName, Out: []byte("this is some output")}))
+				Expect(err).To(MatchError(state.StopError{ApplicationName: randomAppName, Out: []byte("this is some output")}))
 			})
 		})
 
@@ -201,7 +203,7 @@ var _ = Describe("Stopper", func() {
 
 				err := stopper.Execute()
 
-				Expect(err).To(MatchError(startstopper.ExistsError{ApplicationName: randomAppName}))
+				Expect(err).To(MatchError(state.ExistsError{ApplicationName: randomAppName}))
 			})
 		})
 	})
@@ -212,7 +214,7 @@ var _ = Describe("Stopper", func() {
 				courier.ExistsCall.Returns.Bool = false
 				err := stopper.Undo()
 
-				Expect(err).To(MatchError(startstopper.ExistsError{ApplicationName: randomAppName}))
+				Expect(err).To(MatchError(state.ExistsError{ApplicationName: randomAppName}))
 			})
 		})
 
@@ -224,7 +226,7 @@ var _ = Describe("Stopper", func() {
 
 				err := stopper.Undo()
 
-				Expect(err).To(MatchError(startstopper.StartError{ApplicationName: randomAppName, Out: []byte("this is some output")}))
+				Expect(err).To(MatchError(state.StartError{ApplicationName: randomAppName, Out: []byte("this is some output")}))
 			})
 		})
 

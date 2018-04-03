@@ -1,4 +1,4 @@
-package pusher_test
+package push_test
 
 import (
 	"errors"
@@ -6,15 +6,16 @@ import (
 	"math/rand"
 
 	C "github.com/compozed/deployadactyl/constants"
-	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	. "github.com/compozed/deployadactyl/state/push"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/op/go-logging"
 
 	"encoding/base64"
 
+	"github.com/compozed/deployadactyl/state"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -131,7 +132,7 @@ var _ = Describe("Pusher", func() {
 				courier.LoginCall.Returns.Error = errors.New("login error")
 
 				err := pusher.Initially()
-				Expect(err).To(MatchError(LoginError{randomFoundationURL, []byte("login output")}))
+				Expect(err).To(MatchError(state.LoginError{randomFoundationURL, []byte("login output")}))
 			})
 
 			It("writes the output of the courier to the response", func() {
@@ -184,7 +185,7 @@ var _ = Describe("Pusher", func() {
 
 					err := pusher.Execute()
 
-					Expect(err).To(MatchError(PushError{}))
+					Expect(err).To(MatchError(state.PushError{}))
 				})
 
 				It("gets logs from the courier", func() {
@@ -212,7 +213,7 @@ var _ = Describe("Pusher", func() {
 
 						err := pusher.Execute()
 
-						Expect(err).To(MatchError(CloudFoundryGetLogsError{pushErr, logsErr}))
+						Expect(err).To(MatchError(state.CloudFoundryGetLogsError{pushErr, logsErr}))
 					})
 				})
 			})
@@ -314,7 +315,7 @@ var _ = Describe("Pusher", func() {
 					courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
 					err := pusher.Execute()
-					Expect(err).To(MatchError(MapRouteError{[]byte("unable to map route")}))
+					Expect(err).To(MatchError(state.MapRouteError{[]byte("unable to map route")}))
 
 					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
 					Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
@@ -341,7 +342,7 @@ var _ = Describe("Pusher", func() {
 				courier.RenameCall.Returns.Error = errors.New("rename error")
 
 				err := pusher.Success()
-				Expect(err).To(MatchError(RenameError{randomAppName + TemporaryNameSuffix + randomUUID, []byte("rename output")}))
+				Expect(err).To(MatchError(state.RenameError{randomAppName + TemporaryNameSuffix + randomUUID, []byte("rename output")}))
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
 				Expect(courier.RenameCall.Received.AppNameVenerable).To(Equal(randomAppName))
@@ -405,7 +406,7 @@ var _ = Describe("Pusher", func() {
 					courier.UnmapRouteCall.Returns.Error = errors.New("Unmap Error")
 
 					err := pusher.Success()
-					Expect(err).To(MatchError(UnmapRouteError{randomAppName, []byte("unmap output")}))
+					Expect(err).To(MatchError(state.UnmapRouteError{randomAppName, []byte("unmap output")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not unmap %s", randomAppName)))
 				})
@@ -418,7 +419,7 @@ var _ = Describe("Pusher", func() {
 					courier.DeleteCall.Returns.Error = errors.New("delete error")
 
 					err := pusher.Success()
-					Expect(err).To(MatchError(DeleteApplicationError{randomAppName, []byte("delete output")}))
+					Expect(err).To(MatchError(state.DeleteApplicationError{randomAppName, []byte("delete output")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not delete %s", randomAppName)))
 				})
@@ -466,7 +467,7 @@ var _ = Describe("Pusher", func() {
 					courier.DeleteCall.Returns.Error = errors.New("delete error")
 
 					err := pusher.Undo()
-					Expect(err).To(MatchError(DeleteApplicationError{tempAppWithUUID, []byte("delete call output")}))
+					Expect(err).To(MatchError(state.DeleteApplicationError{tempAppWithUUID, []byte("delete call output")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not delete %s", tempAppWithUUID)))
 				})
@@ -489,7 +490,7 @@ var _ = Describe("Pusher", func() {
 					courier.RenameCall.Returns.Output = []byte("rename error")
 
 					err := pusher.Undo()
-					Expect(err).To(MatchError(RenameError{tempAppWithUUID, []byte("rename error")}))
+					Expect(err).To(MatchError(state.RenameError{tempAppWithUUID, []byte("rename error")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not rename %s to %s", tempAppWithUUID, randomAppName)))
 				})

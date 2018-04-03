@@ -1,4 +1,4 @@
-package actioncreator_test
+package push_test
 
 import (
 	"testing"

@@ -5,9 +5,15 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 )
 
+type Binding interface {
+	Accepts(event interface{}) bool
+	Emit(event interface{}) error
+}
+
 // EventManager has handlers for each registered event type.
 type EventManager struct {
 	handlers map[string][]I.Handler
+	Bindings []Binding
 	Log      I.Logger
 }
 
@@ -16,6 +22,7 @@ func NewEventManager(log I.Logger) *EventManager {
 	return &EventManager{
 		handlers: make(map[string][]I.Handler),
 		Log:      log,
+		Bindings: make([]Binding, 0),
 	}
 }
 
@@ -37,6 +44,22 @@ func (e *EventManager) Emit(event I.Event) error {
 			return err
 		}
 		e.Log.Debugf("a %s event has been emitted", event.Type)
+	}
+	return nil
+}
+
+func (e *EventManager) AddBinding(binding Binding) {
+	e.Bindings = append(e.Bindings, binding)
+}
+
+func (e EventManager) EmitEvent(event interface{}) error {
+	for _, binding := range e.Bindings {
+		if binding.Accepts(event) {
+			err := binding.Emit(event)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

@@ -24,7 +24,7 @@ var _ = Describe("Bluegreen", func() {
 		appPath        string
 		pushOutput     string
 		loginOutput    string
-		pusherCreator  *mocks.PusherCreator
+		pusherCreator  *mocks.PushManager
 		pushers        []*mocks.Pusher
 		log            I.Logger
 		blueGreen      BlueGreen
@@ -52,7 +52,7 @@ var _ = Describe("Bluegreen", func() {
 
 		deploymentInfo = S.DeploymentInfo{AppName: appName}
 
-		pusherCreator = &mocks.PusherCreator{}
+		pusherCreator = &mocks.PushManager{}
 
 		pushers = nil
 		for range environment.Foundations {
@@ -67,7 +67,7 @@ var _ = Describe("Bluegreen", func() {
 
 	Context("when pusher factory fails", func() {
 		It("returns an error", func() {
-			pusherCreator = &mocks.PusherCreator{}
+			pusherCreator = &mocks.PushManager{}
 			blueGreen = BlueGreen{Log: log}
 
 			for i := range environment.Foundations {
@@ -126,7 +126,7 @@ var _ = Describe("Bluegreen", func() {
 			var (
 				foundationURL = "foundationURL-" + randomizer.StringRunes(10)
 				pusher        = &mocks.Pusher{Response: response}
-				pusherCreator = &mocks.PusherCreator{}
+				pusherCreator = &mocks.PushManager{}
 			)
 
 			environment.Foundations = []string{foundationURL}
@@ -171,7 +171,7 @@ var _ = Describe("Bluegreen", func() {
 				var (
 					foundationURL = "foundationURL-" + randomizer.StringRunes(10)
 					pusher        = &mocks.Pusher{Response: response}
-					pusherCreator = &mocks.PusherCreator{}
+					pusherCreator = &mocks.PushManager{}
 				)
 
 				environment.Foundations = []string{foundationURL}
@@ -200,7 +200,7 @@ var _ = Describe("Bluegreen", func() {
 				var (
 					foundationURL = "foundationURL-" + randomizer.StringRunes(10)
 					pusher        = &mocks.Pusher{Response: response}
-					pusherCreator = &mocks.PusherCreator{}
+					pusherCreator = &mocks.PushManager{}
 				)
 
 				environment.Foundations = []string{foundationURL}
@@ -303,7 +303,7 @@ var _ = Describe("Bluegreen", func() {
 	Describe("Stop", func() {
 		Context("when called", func() {
 			It("creates a stopper for each foundation", func() {
-				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory := &mocks.StopManager{}
 
 				for range environment.Foundations {
 					stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, &mocks.StartStopper{})
@@ -321,7 +321,7 @@ var _ = Describe("Bluegreen", func() {
 			})
 
 			It("returns an error when we fail to create a stopper", func() {
-				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory := &mocks.StopManager{}
 				stopperFactory.CreateStopperCall.Returns.Stoppers = append(stopperFactory.CreateStopperCall.Returns.Stoppers, &mocks.StartStopper{})
 				stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, errors.New("stop creator failed"))
 
@@ -332,7 +332,7 @@ var _ = Describe("Bluegreen", func() {
 			})
 
 			It("logs in to all foundations", func() {
-				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory := &mocks.StopManager{}
 
 				var stoppers []*mocks.StartStopper
 				for i := range environment.Foundations {
@@ -350,7 +350,7 @@ var _ = Describe("Bluegreen", func() {
 			})
 
 			It("does not execute Stop when any login fails", func() {
-				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory := &mocks.StopManager{}
 
 				var stoppers []*mocks.StartStopper
 				for i := range environment.Foundations {
@@ -367,7 +367,7 @@ var _ = Describe("Bluegreen", func() {
 			})
 
 			It("does not execute Stop when multiple logins fail", func() {
-				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory := &mocks.StopManager{}
 
 				var stoppers []*mocks.StartStopper
 				for i := range environment.Foundations {
@@ -385,7 +385,7 @@ var _ = Describe("Bluegreen", func() {
 			})
 
 			It("calls Stop for each foundation", func() {
-				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory := &mocks.StopManager{}
 
 				var stoppers []*mocks.StartStopper
 				for i := range environment.Foundations {
@@ -403,7 +403,7 @@ var _ = Describe("Bluegreen", func() {
 			})
 
 			It("returns an error if any Stop fails", func() {
-				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory := &mocks.StopManager{}
 
 				var stoppers []*mocks.StartStopper
 				for i := range environment.Foundations {
@@ -421,7 +421,7 @@ var _ = Describe("Bluegreen", func() {
 			})
 
 			It("returns all errors when multiple Stops fail", func() {
-				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory := &mocks.StopManager{}
 
 				var stoppers []*mocks.StartStopper
 				for i := range environment.Foundations {
@@ -439,7 +439,7 @@ var _ = Describe("Bluegreen", func() {
 			})
 
 			It("rolls back all Stops if any Stop fails", func() {
-				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory := &mocks.StopManager{}
 
 				var stoppers []*mocks.StartStopper
 				for i := range environment.Foundations {
@@ -458,7 +458,7 @@ var _ = Describe("Bluegreen", func() {
 			})
 
 			It("returns an error if attemped roll back fails", func() {
-				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory := &mocks.StopManager{}
 
 				var stoppers []*mocks.StartStopper
 				for i := range environment.Foundations {
@@ -479,7 +479,7 @@ var _ = Describe("Bluegreen", func() {
 			It("writes responses to output", func() {
 				out := NewBuffer()
 
-				stopperFactory := &mocks.StopperCreator{}
+				stopperFactory := &mocks.StopManager{}
 
 				var stoppers []*mocks.StartStopper
 				for i := range environment.Foundations {

@@ -1,13 +1,20 @@
 package stop
 
 import (
+	"fmt"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/state"
 	S "github.com/compozed/deployadactyl/structs"
 	"io"
+	"net/http"
+	"regexp"
 )
+
+const successfulStop = `Your stop was successful! (^_^)b
+
+`
 
 type courierCreator interface {
 	CreateCourier() (I.Courier, error)
@@ -29,7 +36,24 @@ func (a StopManager) OnStart() error {
 }
 
 func (a StopManager) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
-	return I.DeployResponse{}
+	if err != nil {
+		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
+			return I.DeployResponse{
+				StatusCode: http.StatusBadRequest,
+				Error:      err,
+			}
+		}
+
+		return I.DeployResponse{
+			StatusCode: http.StatusInternalServerError,
+			Error:      err,
+		}
+	}
+
+	a.Logger.Infof("successfully stopped application %s", a.DeployEventData.DeploymentInfo.AppName)
+	fmt.Fprintf(response, "\n%s", successfulStop)
+
+	return I.DeployResponse{StatusCode: http.StatusOK}
 }
 
 func (a StopManager) CleanUp() {}

@@ -1,7 +1,6 @@
 package stop_test
 
 import (
-	"bytes"
 	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/compozed/deployadactyl/structs"
 	. "github.com/onsi/ginkgo"
@@ -16,6 +15,8 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"reflect"
 )
 
@@ -24,9 +25,10 @@ var _ = Describe("Stopmanager", func() {
 		response    io.ReadWriter
 		stopManager interfaces.ActionCreator
 		creator     *mocks.Creator
+		logBuffer   *gbytes.Buffer
 	)
 	BeforeEach(func() {
-		logBuffer := bytes.NewBuffer([]byte{})
+		logBuffer = gbytes.NewBuffer()
 		log := logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
 		response = gbytes.NewBuffer()
 		creator = &mocks.Creator{}
@@ -84,6 +86,42 @@ var _ = Describe("Stopmanager", func() {
 				Expect(err).ShouldNot(BeNil())
 				Expect(err.Error()).Should(ContainSubstring("a test error"))
 
+			})
+		})
+	})
+	Describe("OnFinish", func() {
+		Context("when no error occurs", func() {
+			It("returns http status OK", func() {
+				deployResponse := stopManager.OnFinish(structs.Environment{}, response, nil)
+
+				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
+			})
+			It("logs successful stop", func() {
+				stopManager.(stop.StopManager).DeployEventData.DeploymentInfo.AppName = "Conveyor"
+				stopManager.OnFinish(structs.Environment{}, response, nil)
+
+				Eventually(logBuffer).Should(gbytes.Say("successfully stopped application %s", "Conveyor"))
+			})
+			It("records success in the response", func() {
+				stopManager.OnFinish(structs.Environment{}, response, nil)
+
+				bytes, _ := ioutil.ReadAll(response)
+				Eventually(string(bytes)).Should(ContainSubstring("Your stop was successful!"))
+			})
+		})
+
+		Context("when an error occurs", func() {
+			Context("and it is a log in error", func() {
+				It("returns a http status bad request", func() {
+					deployResponse := stopManager.OnFinish(structs.Environment{}, response, errors.New("login failed"))
+
+					Expect(deployResponse.StatusCode).To(Equal(http.StatusBadRequest))
+				})
+			})
+			It("returns a internal server error", func() {
+				deployResponse := stopManager.OnFinish(structs.Environment{}, response, errors.New("a test error"))
+
+				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
 			})
 		})
 	})

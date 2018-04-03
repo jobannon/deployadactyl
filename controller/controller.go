@@ -29,8 +29,8 @@ type pusherCreatorFactory interface {
 	PusherCreator(deployEventData structs.DeployEventData) I.ActionCreator
 }
 
-type stopManagerFactory interface {
-	StopManager(deployEventData structs.DeployEventData) I.ActionCreator
+type stopController interface {
+	StopDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse)
 }
 
 // Controller is used to determine the type of request and process it accordingly.
@@ -39,10 +39,15 @@ type Controller struct {
 	SilentDeployer     I.Deployer
 	Log                I.Logger
 	PushManagerFactory pusherCreatorFactory
-	StopManagerFactory stopManagerFactory
+	StopController     stopController
 	Config             config.Config
 	EventManager       I.EventManager
 	ErrorFinder        I.ErrorFinder
+}
+
+type PutRequest struct {
+	State string                 `json:"state"`
+	Data  map[string]interface{} `json:"data"`
 }
 
 // PUSH specific
@@ -154,75 +159,6 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 	return deployResponse
 }
 
-func (c *Controller) StopDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
-	auth := &I.Authorization{}
-	environment := &structs.Environment{}
-
-	cf := deployment.CFContext
-
-	deploymentInfo := &structs.DeploymentInfo{
-		Org:         cf.Organization,
-		Space:       cf.Space,
-		AppName:     cf.Application,
-		Environment: cf.Environment,
-		UUID:        cf.UUID,
-	}
-	if deploymentInfo.UUID == "" {
-		deploymentInfo.UUID = randomizer.StringRunes(10)
-		cf.UUID = deploymentInfo.UUID
-	}
-	deploymentLogger := logger.DeploymentLogger{c.Log, deploymentInfo.UUID}
-	deploymentLogger.Debugf("Preparing to stop %s with UUID %s", cf.Application, deploymentInfo.UUID)
-
-	event := stop.StopStartedEvent{CFContext: cf, Data: data}
-	defer c.emitStopFinish(response, deploymentLogger, cf, auth, environment, data, &deployResponse)
-	defer c.emitStopSuccessOrFailure(response, deploymentLogger, cf, auth, environment, data, &deployResponse)
-
-	err := c.EventManager.EmitEvent(event)
-	if err != nil {
-		deploymentLogger.Error(err)
-		err = &bluegreen.InitializationError{err}
-		return I.DeployResponse{
-			StatusCode:     http.StatusInternalServerError,
-			Error:          deployer.EventError{Type: "StopStartedEvent", Err: err},
-			DeploymentInfo: deploymentInfo,
-		}
-	}
-
-	*environment, err = c.resolveEnvironment(cf.Environment)
-	if err != nil {
-		fmt.Fprintln(response, err.Error())
-		return I.DeployResponse{
-			StatusCode: http.StatusInternalServerError,
-			Error:      err,
-		}
-	}
-	*auth, err = c.resolveAuthorization(deployment.Authorization, *environment, deploymentLogger)
-	if err != nil {
-		return I.DeployResponse{
-			StatusCode: http.StatusUnauthorized,
-			Error:      err,
-		}
-	}
-	deploymentInfo.Domain = environment.Domain
-	deploymentInfo.SkipSSL = environment.SkipSSL
-	deploymentInfo.CustomParams = environment.CustomParams
-	deploymentInfo.Username = auth.Username
-	deploymentInfo.Password = auth.Password
-
-	if data != nil {
-		deploymentInfo.Data = data
-	} else {
-		deploymentInfo.Data = make(map[string]interface{})
-	}
-
-	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo}
-
-	manager := c.StopManagerFactory.StopManager(deployEventData)
-	deployResponse = *c.Deployer.Deploy(deploymentInfo, *environment, manager, response)
-	return deployResponse
-}
-
 // RunDeploymentViaHttp checks the request content type and passes it to the Deployer.
 func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	c.Log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
@@ -266,6 +202,43 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	}
 
 	g.Writer.WriteHeader(deployResponse.StatusCode)
+}
+
+func (c *Controller) PutRequestHandler(g *gin.Context) {
+	c.Log.Debugf("PUT Request originated from: %+v", g.Request.RemoteAddr)
+
+	cfContext := I.CFContext{
+		Environment:  g.Param("environment"),
+		Organization: g.Param("org"),
+		Space:        g.Param("space"),
+		Application:  g.Param("appName"),
+	}
+
+	user, pwd, _ := g.Request.BasicAuth()
+	authorization := I.Authorization{
+		Username: user,
+		Password: pwd,
+	}
+	response := &bytes.Buffer{}
+
+	deployment := I.Deployment{
+		Authorization: authorization,
+		CFContext:     cfContext,
+	}
+
+	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
+	g.Request.Body.Close()
+
+	putRequest := &PutRequest{}
+	json.Unmarshal(bodyBuffer, putRequest)
+
+	if putRequest.State == "stopped" {
+		c.StopController.StopDeployment(&deployment, putRequest.Data, response)
+	}
+
+	defer io.Copy(g.Writer, response)
+
+	g.Writer.WriteHeader(http.StatusOK)
 }
 
 func isZip(contentType string) bool {

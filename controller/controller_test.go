@@ -21,7 +21,6 @@ import (
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
-	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
@@ -37,9 +36,9 @@ var _ = Describe("Controller", func() {
 		deployer           *mocks.Deployer
 		silentDeployer     *mocks.Deployer
 		pushManagerFactory *mocks.PushManagerFactory
-		stopManagerFactory *mocks.StopManagerFactory
 		eventManager       *mocks.EventManager
 		errorFinder        *mocks.ErrorFinder
+		stopController     *mocks.StopController
 		controller         *Controller
 		deployment         I.Deployment
 		logBuffer          *Buffer
@@ -64,19 +63,20 @@ var _ = Describe("Controller", func() {
 		deployer = &mocks.Deployer{}
 		silentDeployer = &mocks.Deployer{}
 		pushManagerFactory = &mocks.PushManagerFactory{}
+		stopController = &mocks.StopController{}
 
-		stopManagerFactory = &mocks.StopManagerFactory{}
 		errorFinder = &mocks.ErrorFinder{}
 		controller = &Controller{
 			Deployer:           deployer,
 			SilentDeployer:     silentDeployer,
 			Log:                logger.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
 			PushManagerFactory: pushManagerFactory,
-			StopManagerFactory: stopManagerFactory,
+			StopController:     stopController,
 			EventManager:       eventManager,
 			Config:             config.Config{},
 			ErrorFinder:        errorFinder,
 		}
+
 		environments := map[string]structs.Environment{}
 		environments[environment] = structs.Environment{}
 		controller.Config.Environments = environments
@@ -199,6 +199,147 @@ var _ = Describe("Controller", func() {
 				Eventually(resp.Body).Should(ContainSubstring("deploy success"))
 			})
 		})
+	})
+
+	Describe("PutRequestHandler", func() {
+		var (
+			router     *gin.Engine
+			resp       *httptest.ResponseRecorder
+			jsonBuffer *bytes.Buffer
+		)
+		BeforeEach(func() {
+			router = gin.New()
+			resp = httptest.NewRecorder()
+			jsonBuffer = &bytes.Buffer{}
+
+			router.PUT("/v2/deploy/:environment/:org/:space/:appName", controller.PutRequestHandler)
+
+			server = httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				byteBody, _ = ioutil.ReadAll(req.Body)
+				req.Body.Close()
+			}))
+		})
+		AfterEach(func() {
+			server.Close()
+		})
+
+		Context("when stop succeeds", func() {
+			It("returns http status.OK", func() {
+				foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				router.ServeHTTP(resp, req)
+
+				Eventually(resp.Code).Should(Equal(http.StatusOK))
+			})
+		})
+		It("logs request origination address", func() {
+			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+			jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+			req, _ := http.NewRequest("PUT", foundationURL, jsonBuffer)
+			req.Header.Set("Content-Type", "application/json")
+
+			router.ServeHTTP(resp, req)
+
+			Eventually(logBuffer).Should(Say("PUT Request originated from"))
+		})
+		It("calls StopDeployment with a Deployment", func() {
+			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+			jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+			req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+			req.Header.Set("Content-Type", "application/json")
+
+			Expect(err).ToNot(HaveOccurred())
+
+			router.ServeHTTP(resp, req)
+
+			Expect(stopController.StopDeploymentCall.Received.Deployment).ToNot(BeNil())
+		})
+		It("calls StopDeployment with correct CFContext", func() {
+			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+			jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+			req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+			req.Header.Set("Content-Type", "application/json")
+
+			Expect(err).ToNot(HaveOccurred())
+
+			router.ServeHTTP(resp, req)
+
+			cfContext := stopController.StopDeploymentCall.Received.Deployment.CFContext
+			Expect(cfContext.Environment).To(Equal(environment))
+			Expect(cfContext.Space).To(Equal(space))
+			Expect(cfContext.Organization).To(Equal(org))
+			Expect(cfContext.Application).To(Equal(appName))
+		})
+		It("calls StopDeployment with correct authorization", func() {
+			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+			jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+			req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Basic bXlVc2VyOm15UGFzc3dvcmQ=")
+
+			Expect(err).ToNot(HaveOccurred())
+
+			router.ServeHTTP(resp, req)
+
+			auth := stopController.StopDeploymentCall.Received.Deployment.Authorization
+			Expect(auth.Username).To(Equal("myUser"))
+			Expect(auth.Password).To(Equal("myPassword"))
+		})
+		It("writes the process output to the response", func() {
+			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+			jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+			req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+			req.Header.Set("Content-Type", "application/json")
+
+			Expect(err).ToNot(HaveOccurred())
+
+			stopController.StopDeploymentCall.Writes = "this is the process output"
+			router.ServeHTTP(resp, req)
+
+			bytes, _ := ioutil.ReadAll(resp.Body)
+			Expect(string(bytes)).To(ContainSubstring("this is the process output"))
+		})
+		It("passes the data in the request body", func() {
+			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+			jsonBuffer = bytes.NewBufferString(`{"state": "stopped", "data": {"user_id": "jhodo", "group": "XP_IS_CHG" }}`)
+
+			req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+			req.Header.Set("Content-Type", "application/json")
+
+			Expect(err).ToNot(HaveOccurred())
+
+			router.ServeHTTP(resp, req)
+
+			Expect(stopController.StopDeploymentCall.Received.Data["user_id"]).To(Equal("jhodo"))
+			Expect(stopController.StopDeploymentCall.Received.Data["group"]).To(Equal("XP_IS_CHG"))
+		})
+		Context("if requested state is not 'stop'", func() {
+			It("does not call StopDeployment", func() {
+				foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "started"}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				router.ServeHTTP(resp, req)
+
+				Expect(stopController.StopDeploymentCall.Called).To(Equal(false))
+			})
+		})
+
 	})
 
 	Describe("RunDeployment", func() {
@@ -881,484 +1022,6 @@ var _ = Describe("Controller", func() {
 
 		})
 
-	})
-	Describe("StopDeployment", func() {
-		Context("When UUID is not provided", func() {
-			It("Should populate UUID", func() {
-
-				deployment := &I.Deployment{
-					CFContext: I.CFContext{
-						Environment: environment,
-					}}
-				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StopDeployment(deployment, nil, response)
-
-				Expect(deploymentResponse.DeploymentInfo.UUID).ShouldNot(BeEmpty())
-			})
-		})
-		Context("When UUID is provided", func() {
-			It("Should return UUID", func() {
-
-				deployment := &I.Deployment{
-					CFContext: I.CFContext{
-						UUID:        "myUUID",
-						Environment: environment,
-					},
-				}
-				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StopDeployment(deployment, nil, response)
-
-				Expect(deploymentResponse.DeploymentInfo.UUID).ShouldNot(BeEmpty())
-				Expect(deploymentResponse.DeploymentInfo.UUID).Should(Equal("myUUID"))
-
-			})
-		})
-		It("Should return org, space, appname, and environment when provided", func() {
-
-			deployment := &I.Deployment{
-				CFContext: I.CFContext{
-					Organization: "myOrg",
-					Space:        "mySpace",
-					Application:  "myApp",
-					Environment:  environment,
-				},
-			}
-			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StopDeployment(deployment, nil, response)
-
-			Expect(deploymentResponse.DeploymentInfo.Org).Should(Equal("myOrg"))
-			Expect(deploymentResponse.DeploymentInfo.Environment).Should(Equal(environment))
-			Expect(deploymentResponse.DeploymentInfo.Space).Should(Equal("mySpace"))
-			Expect(deploymentResponse.DeploymentInfo.AppName).Should(Equal("myApp"))
-
-		})
-
-		It("Should log start of process", func() {
-
-			deployment := &I.Deployment{
-				CFContext: I.CFContext{
-					Application: "myApp",
-					Environment: environment,
-				},
-			}
-
-			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StopDeployment(deployment, nil, response)
-
-			Expect(logBuffer).Should(Say(fmt.Sprintf("Preparing to stop %s with UUID %s", "myApp", deploymentResponse.DeploymentInfo.UUID)))
-
-		})
-		Context("When StopStartEvent succeeds", func() {
-			It("should emit a StopStarteEvent", func() {
-				deployment := &I.Deployment{
-					CFContext: I.CFContext{
-						Organization: "myOrg",
-						Space:        "mySpace",
-						Application:  "myApp",
-						Environment:  environment,
-						UUID:         "myUUID",
-					},
-				}
-				data := make(map[string]interface{})
-				data["mykey"] = "first value"
-				controller.StopDeployment(deployment, data, response)
-
-				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(stop.StopStartedEvent{})))
-				stopEvent := eventManager.EmitEventCall.Received.Events[0].(stop.StopStartedEvent)
-				Expect(stopEvent.CFContext.UUID).Should(Equal("myUUID"))
-				Expect(stopEvent.CFContext.Space).Should(Equal("mySpace"))
-				Expect(stopEvent.CFContext.Application).Should(Equal("myApp"))
-				Expect(stopEvent.CFContext.Environment).Should(Equal(environment))
-				Expect(stopEvent.CFContext.Organization).Should(Equal("myOrg"))
-				Expect(stopEvent.Data).Should(Equal(data))
-
-			})
-		})
-		Context("When StopStartEvent fails", func() {
-			It("should return error", func() {
-				eventManager.EmitEventCall.Returns.Error = append(eventManager.EmitEventCall.Returns.Error, errors.New("anything"))
-
-				deployment := &I.Deployment{}
-				deployResponse := controller.StopDeployment(deployment, nil, response)
-
-				Expect(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))
-				Expect(reflect.TypeOf(deployResponse.Error)).Should(Equal(reflect.TypeOf(D.EventError{})))
-
-			})
-		})
-
-		Context("When environment does not exist", func() {
-			It("Should return error", func() {
-
-				deployment := &I.Deployment{
-					CFContext: I.CFContext{
-						Environment: "bad environment",
-					}}
-				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StopDeployment(deployment, nil, response)
-
-				Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.EnvironmentNotFoundError{})))
-			})
-		})
-		Context("When environment exists", func() {
-			It("Should return SkipSSL, CustomParams, and Domain", func() {
-
-				controller.Config.Environments[environment] = structs.Environment{
-					SkipSSL:      true,
-					Domain:       "myDomain",
-					CustomParams: make(map[string]interface{}),
-				}
-				controller.Config.Environments[environment].CustomParams["customName"] = "customParams"
-
-				deployment := &I.Deployment{
-					CFContext: I.CFContext{
-						Environment: environment,
-					}}
-
-				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StopDeployment(deployment, nil, response)
-				Expect(deploymentResponse.DeploymentInfo.Domain).Should(Equal("myDomain"))
-				Expect(deploymentResponse.DeploymentInfo.SkipSSL).Should(Equal(true))
-				Expect(deploymentResponse.DeploymentInfo.CustomParams["customName"]).Should(Equal("customParams"))
-			})
-		})
-		Context("When auth does not exist", func() {
-			Context("When environment authenticate is true", func() {
-				It("Should return error", func() {
-					controller.Config.Environments[environment] = structs.Environment{
-						Authenticate: true,
-					}
-					deployment := &I.Deployment{
-						CFContext: I.CFContext{
-							Environment: environment,
-						}}
-					response := bytes.NewBuffer([]byte{})
-					deploymentResponse := controller.StopDeployment(deployment, nil, response)
-
-					Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.BasicAuthError{})))
-				})
-			})
-			Context("When environment authenticate is false", func() {
-				It("Should username and password using the config", func() {
-					controller.Config.Username = "username"
-					controller.Config.Password = "password"
-					controller.Config.Environments[environment] = structs.Environment{
-						Authenticate: false,
-					}
-					deployment := &I.Deployment{
-						CFContext: I.CFContext{
-							Environment: environment,
-						}}
-					response := bytes.NewBuffer([]byte{})
-					deploymentResponse := controller.StopDeployment(deployment, nil, response)
-
-					Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("username"))
-					Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("password"))
-
-				})
-			})
-		})
-		Context("When auth is provided", func() {
-			It("Should populate the deploymentInfo with the username and password", func() {
-				deployment := &I.Deployment{
-					Authorization: I.Authorization{
-						Username: "myUser",
-						Password: "myPassword",
-					},
-					CFContext: I.CFContext{
-						Environment: environment,
-					},
-				}
-				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StopDeployment(deployment, nil, response)
-				Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("myUser"))
-				Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("myPassword"))
-			})
-		})
-		Context("When auth is provided", func() {
-			It("Should populate the deploymentInfo with the username and password", func() {
-				deployment := &I.Deployment{
-					Authorization: I.Authorization{
-						Username: "myUser",
-						Password: "myPassword",
-					},
-					CFContext: I.CFContext{
-						Environment: environment,
-					},
-				}
-				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StopDeployment(deployment, nil, response)
-				Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("myUser"))
-				Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("myPassword"))
-			})
-		})
-
-		Context("When data is provided", func() {
-			It("should return deployment info with proper data", func() {
-				data := map[string]interface{}{
-					"user_id": "myuserid",
-					"group":   "mygroup",
-				}
-				deployment := &I.Deployment{
-					CFContext: I.CFContext{
-						Environment: environment,
-					},
-				}
-				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StopDeployment(deployment, data, response)
-				Expect(deploymentResponse.DeploymentInfo.Data["user_id"]).Should(Equal("myuserid"))
-				Expect(deploymentResponse.DeploymentInfo.Data["group"]).Should(Equal("mygroup"))
-
-			})
-		})
-		It("should create stop manager", func() {
-
-			deployment := &I.Deployment{
-				Authorization: I.Authorization{
-					Username: "myUser",
-				},
-				CFContext: I.CFContext{
-					Environment: environment,
-				},
-			}
-			response := bytes.NewBuffer([]byte{})
-			controller.StopDeployment(deployment, nil, response)
-			Expect(stopManagerFactory.StopManagerCall.Called).Should(Equal(true))
-			Expect(stopManagerFactory.StopManagerCall.Received.DeployEventData.DeploymentInfo.Username).Should(Equal("myUser"))
-		})
-		It("should call deploy with the stop manager ", func() {
-			manager := &mocks.StopManager{}
-			stopManagerFactory.StopManagerCall.Returns.ActionCreater = manager
-			deployment := &I.Deployment{
-				CFContext: I.CFContext{
-					Environment: environment,
-				},
-			}
-			response := bytes.NewBuffer([]byte{})
-			controller.StopDeployment(deployment, nil, response)
-			Expect(deployer.DeployCall.Received.ActionCreator).Should(Equal(manager))
-		})
-
-		It("should call deploy with the stop manager ", func() {
-			deployer.DeployCall.Returns.Error = errors.New("test error")
-			deployer.DeployCall.Returns.StatusCode = http.StatusOK
-
-			deployment := &I.Deployment{
-				CFContext: I.CFContext{
-					Environment: environment,
-				},
-			}
-			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StopDeployment(deployment, nil, response)
-
-			Expect(deploymentResponse.Error.Error()).Should(Equal("test error"))
-			Expect(deploymentResponse.StatusCode).Should(Equal(http.StatusOK))
-
-		})
-
-		Context("when stop succeeds", func() {
-			Context("if StopSuccessEvent succeeds", func() {
-				It("should emit StopSuccessEvent", func() {
-					deployment := &I.Deployment{
-						CFContext: I.CFContext{
-							Organization: "myOrg",
-							Space:        "mySpace",
-							Application:  "myApp",
-							Environment:  environment,
-							UUID:         "myUUID",
-						},
-						Authorization: I.Authorization{
-							Username: "myUser",
-							Password: "myPassword",
-						},
-					}
-					response := bytes.NewBuffer([]byte{})
-					data := make(map[string]interface{})
-					data["mykey"] = "first value"
-					controller.Config.Environments[environment] = structs.Environment{
-						Name:         environment,
-						Authenticate: true,
-					}
-					controller.StopDeployment(deployment, data, response)
-
-					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(stop.StopSuccessEvent{})))
-					stopSuccessEvent := eventManager.EmitEventCall.Received.Events[1].(stop.StopSuccessEvent)
-
-					Expect(stopSuccessEvent.CFContext.UUID).Should(Equal("myUUID"))
-					Expect(stopSuccessEvent.CFContext.Space).Should(Equal("mySpace"))
-					Expect(stopSuccessEvent.CFContext.Application).Should(Equal("myApp"))
-					Expect(stopSuccessEvent.CFContext.Environment).Should(Equal(environment))
-					Expect(stopSuccessEvent.CFContext.Organization).Should(Equal("myOrg"))
-					Expect(stopSuccessEvent.Authorization.Username).Should(Equal("myUser"))
-					Expect(stopSuccessEvent.Authorization.Password).Should(Equal("myPassword"))
-					Expect(stopSuccessEvent.Environment.Name).Should(Equal(environment))
-					Expect(stopSuccessEvent.Data).Should(Equal(data))
-
-				})
-				It("should emit a StopStartedEvent", func() {
-					deployment := &I.Deployment{
-						CFContext: I.CFContext{
-							Organization: "myOrg",
-							Space:        "mySpace",
-							Application:  "myApp",
-							Environment:  environment,
-							UUID:         "myUUID",
-						},
-					}
-					data := make(map[string]interface{})
-					data["mykey"] = "first value"
-					controller.StopDeployment(deployment, data, response)
-
-					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(stop.StopStartedEvent{})))
-					stopEvent := eventManager.EmitEventCall.Received.Events[0].(stop.StopStartedEvent)
-					Expect(stopEvent.CFContext.UUID).Should(Equal("myUUID"))
-					Expect(stopEvent.CFContext.Space).Should(Equal("mySpace"))
-					Expect(stopEvent.CFContext.Application).Should(Equal("myApp"))
-					Expect(stopEvent.CFContext.Environment).Should(Equal(environment))
-					Expect(stopEvent.CFContext.Organization).Should(Equal("myOrg"))
-					Expect(stopEvent.Data).Should(Equal(data))
-
-				})
-			})
-			Context("if StopSuccessEvent fails", func() {
-				It("should log the error", func() {
-					eventManager.EmitEventCall.Returns.Error = []error{nil, errors.New("errors")}
-					deployment := &I.Deployment{
-						CFContext: I.CFContext{
-							Environment: environment,
-						},
-					}
-					response := bytes.NewBuffer([]byte{})
-					controller.StopDeployment(deployment, nil, response)
-
-					Eventually(logBuffer).Should(Say("an error occurred when emitting a StopSuccessEvent event: errors"))
-				})
-			})
-
-		})
-		Context("when stop fails", func() {
-			It("print errors", func() {
-				deployment := &I.Deployment{
-					CFContext: I.CFContext{
-						Environment: environment,
-					},
-				}
-				deployer.DeployCall.Returns.Error = errors.New("deploy error")
-				errorFinder.FindErrorsCall.Returns.Errors = []I.LogMatchedError{error_finder.CreateLogMatchedError("a test error", []string{"error 1", "error 2", "error 3"}, "error solution", "test code")}
-				response := bytes.NewBuffer([]byte{})
-				controller.StopDeployment(deployment, nil, response)
-				Eventually(response).Should(ContainSubstring("Potential solution"))
-			})
-			It("should emit StopFailureEvent", func() {
-
-				deployment := &I.Deployment{
-					CFContext: I.CFContext{
-						Organization: "myOrg",
-						Space:        "mySpace",
-						Application:  "myApp",
-						Environment:  environment,
-						UUID:         "myUUID",
-					},
-					Authorization: I.Authorization{
-						Username: "myUser",
-						Password: "myPassword",
-					},
-				}
-				response := bytes.NewBuffer([]byte{})
-				data := make(map[string]interface{})
-				data["mykey"] = "first value"
-				controller.Config.Environments[environment] = structs.Environment{
-					Name:         environment,
-					Authenticate: true,
-				}
-				deployer.DeployCall.Returns.Error = errors.New("deploy error")
-				controller.StopDeployment(deployment, data, response)
-
-				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(stop.StopFailureEvent{})))
-				event := eventManager.EmitEventCall.Received.Events[1].(stop.StopFailureEvent)
-
-				Expect(event.CFContext.UUID).Should(Equal("myUUID"))
-				Expect(event.CFContext.Space).Should(Equal("mySpace"))
-				Expect(event.CFContext.Application).Should(Equal("myApp"))
-				Expect(event.CFContext.Environment).Should(Equal(environment))
-				Expect(event.CFContext.Organization).Should(Equal("myOrg"))
-				Expect(event.Authorization.Username).Should(Equal("myUser"))
-				Expect(event.Authorization.Password).Should(Equal("myPassword"))
-				Expect(event.Environment.Name).Should(Equal(environment))
-				Expect(event.Data).Should(Equal(data))
-				Expect(event.Error.Error()).Should(Equal("deploy error"))
-
-			})
-			Context("if StopFailureEvent fails", func() {
-				It("should log the error", func() {
-					eventManager.EmitEventCall.Returns.Error = []error{nil, errors.New("errors")}
-					deployment := &I.Deployment{
-						CFContext: I.CFContext{
-							Environment: environment,
-						},
-					}
-					deployer.DeployCall.Returns.Error = errors.New("deploy error")
-
-					response := bytes.NewBuffer([]byte{})
-					controller.StopDeployment(deployment, nil, response)
-
-					Eventually(logBuffer).Should(Say("an error occurred when emitting a StopFailureEvent event: errors"))
-				})
-			})
-
-		})
-		Context("when stop finishes", func() {
-			It("should log an emit StopFinish event", func() {
-				deployment := &I.Deployment{
-					CFContext: I.CFContext{
-						Environment: environment,
-					},
-				}
-
-				response := bytes.NewBuffer([]byte{})
-				controller.StopDeployment(deployment, nil, response)
-
-				Eventually(logBuffer).Should(Say("emitting a StopFinishedEvent"))
-			})
-			It("should emit StopFinishedEvent", func() {
-
-				deployment := &I.Deployment{
-					CFContext: I.CFContext{
-						Organization: "myOrg",
-						Space:        "mySpace",
-						Application:  "myApp",
-						Environment:  environment,
-						UUID:         "myUUID",
-					},
-					Authorization: I.Authorization{
-						Username: "myUser",
-						Password: "myPassword",
-					},
-				}
-				response := bytes.NewBuffer([]byte{})
-				data := make(map[string]interface{})
-				data["mykey"] = "first value"
-				controller.Config.Environments[environment] = structs.Environment{
-					Name:         environment,
-					Authenticate: true,
-				}
-				controller.StopDeployment(deployment, data, response)
-
-				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[2])).To(Equal(reflect.TypeOf(stop.StopFinishedEvent{})))
-				event := eventManager.EmitEventCall.Received.Events[2].(stop.StopFinishedEvent)
-
-				Expect(event.CFContext.UUID).Should(Equal("myUUID"))
-				Expect(event.CFContext.Space).Should(Equal("mySpace"))
-				Expect(event.CFContext.Application).Should(Equal("myApp"))
-				Expect(event.CFContext.Environment).Should(Equal(environment))
-				Expect(event.CFContext.Organization).Should(Equal("myOrg"))
-				Expect(event.Authorization.Username).Should(Equal("myUser"))
-				Expect(event.Authorization.Password).Should(Equal("myPassword"))
-				Expect(event.Environment.Name).Should(Equal(environment))
-				Expect(event.Data).Should(Equal(data))
-
-			})
-		})
 	})
 
 })

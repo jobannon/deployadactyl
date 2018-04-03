@@ -1,10 +1,9 @@
-package courier_test
+package courier
 
 import (
 	"fmt"
 	"math/rand"
 
-	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"

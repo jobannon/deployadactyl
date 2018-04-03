@@ -12,8 +12,8 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/state/push"
 
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/pusher/courier/executor"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/courier"
+	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/courier/executor"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	"github.com/compozed/deployadactyl/controller/deployer/prechecker"
 	"github.com/compozed/deployadactyl/eventmanager"

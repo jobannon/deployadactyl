@@ -1,4 +1,4 @@
-package courier_test
+package courier
 
 import (
 	. "github.com/onsi/ginkgo"

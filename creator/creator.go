@@ -78,6 +78,7 @@ func (c Creator) CreateControllerHandler(controller I.Controller) *gin.Engine {
 	r.Use(gin.ErrorLogger())
 
 	r.POST(ENDPOINT, controller.RunDeploymentViaHttp)
+	r.PUT(ENDPOINT, controller.PutRequestHandler)
 
 	return r
 }
@@ -144,9 +145,21 @@ func (c Creator) CreateController() I.Controller {
 		SilentDeployer:     c.createSilentDeployer(),
 		Log:                c.CreateLogger(),
 		PushManagerFactory: c,
+		StopController:     c.CreateStopController(),
 		Config:             c.CreateConfig(),
 		EventManager:       c.CreateEventManager(),
 		ErrorFinder:        c.createErrorFinder(),
+	}
+}
+
+func (c Creator) CreateStopController() I.StopController {
+	return &stop.StopController{
+		Deployer:           c.createDeployer(),
+		Log:                c.CreateLogger(),
+		Config:             c.CreateConfig(),
+		EventManager:       c.CreateEventManager(),
+		ErrorFinder:        c.createErrorFinder(),
+		StopManagerFactory: c,
 	}
 }
 
@@ -174,7 +187,7 @@ func (c Creator) PusherCreator(deployEventData structs.DeployEventData) I.Action
 	}
 }
 
-func (c Creator) StopperCreator(deployEventData structs.DeployEventData) I.ActionCreator {
+func (c Creator) StopManager(deployEventData structs.DeployEventData) I.ActionCreator {
 	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
 	return stop.StopManager{
 		CourierCreator: c,

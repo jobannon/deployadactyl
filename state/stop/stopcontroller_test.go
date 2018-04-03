@@ -24,7 +24,6 @@ import (
 var _ = Describe("StopDeployment", func() {
 	var (
 		deployer           *mocks.Deployer
-		silentDeployer     *mocks.Deployer
 		pushManagerFactory *mocks.PushManagerFactory
 		stopManagerFactory *mocks.StopManagerFactory
 		eventManager       *mocks.EventManager
@@ -49,14 +48,12 @@ var _ = Describe("StopDeployment", func() {
 
 		eventManager = &mocks.EventManager{}
 		deployer = &mocks.Deployer{}
-		silentDeployer = &mocks.Deployer{}
 		pushManagerFactory = &mocks.PushManagerFactory{}
 
 		stopManagerFactory = &mocks.StopManagerFactory{}
 		errorFinder = &mocks.ErrorFinder{}
 		controller = &StopController{
 			Deployer:           deployer,
-			SilentDeployer:     silentDeployer,
 			Log:                logger.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
 			StopManagerFactory: stopManagerFactory,
 			EventManager:       eventManager,

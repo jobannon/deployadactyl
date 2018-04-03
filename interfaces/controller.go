@@ -36,4 +36,6 @@ type Controller interface {
 	RunDeployment(deployment *Deployment, response *bytes.Buffer) DeployResponse
 
 	RunDeploymentViaHttp(g *gin.Context)
+
+	PutRequestHandler(g *gin.Context)
 }

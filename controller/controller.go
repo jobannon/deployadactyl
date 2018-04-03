@@ -29,17 +29,13 @@ type pusherCreatorFactory interface {
 	PusherCreator(deployEventData structs.DeployEventData) I.ActionCreator
 }
 
-type stopController interface {
-	StopDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse)
-}
-
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
 	Deployer           I.Deployer
 	SilentDeployer     I.Deployer
 	Log                I.Logger
 	PushManagerFactory pusherCreatorFactory
-	StopController     stopController
+	StopController     I.StopController
 	Config             config.Config
 	EventManager       I.EventManager
 	ErrorFinder        I.ErrorFinder

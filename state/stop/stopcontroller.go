@@ -14,15 +14,10 @@ import (
 	"net/http"
 )
 
-type stopManagerFactory interface {
-	StopManager(deployEventData structs.DeployEventData) I.ActionCreator
-}
-
 type StopController struct {
 	Deployer           I.Deployer
-	SilentDeployer     I.Deployer
 	Log                I.Logger
-	StopManagerFactory stopManagerFactory
+	StopManagerFactory I.StopManagerFactory
 	Config             config.Config
 	EventManager       I.EventManager
 	ErrorFinder        I.ErrorFinder

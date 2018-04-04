@@ -124,6 +124,7 @@ func (c StopController) emitStopSuccessOrFailure(response io.ReadWriter, deploym
 			Data:          data,
 		}
 	}
+	deploymentLogger.Debugf("emitting a %s event", event.Type())
 	eventErr := c.EventManager.EmitEvent(event)
 	if eventErr != nil {
 		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", event.Type(), eventErr)

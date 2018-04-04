@@ -19,6 +19,7 @@ type BlueGreen struct {
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
 // If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
 func (bg BlueGreen) Execute(actionCreator I.ActionCreator, environment S.Environment, response io.ReadWriter) error {
+
 	actors := make([]actor, len(environment.Foundations))
 	buffers := make([]*bytes.Buffer, len(environment.Foundations))
 
@@ -57,6 +58,7 @@ func (bg BlueGreen) Execute(actionCreator I.ActionCreator, environment S.Environ
 	})
 
 	if len(actionErrors) != 0 {
+		bg.Log.Errorf("failed to execute action against all foundations - rolling back action")
 		rollbackErrors := bg.commands(actors, func(action I.Action) error {
 			return action.Undo()
 		})

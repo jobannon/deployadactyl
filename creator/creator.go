@@ -192,7 +192,7 @@ func (c Creator) StopManager(deployEventData structs.DeployEventData) I.ActionCr
 	return stop.StopManager{
 		CourierCreator:  c,
 		EventManager:    c.CreateEventManager(),
-		Logger:          deploymentLogger,
+		Log:             deploymentLogger,
 		DeployEventData: deployEventData,
 	}
 }

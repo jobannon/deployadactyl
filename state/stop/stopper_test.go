@@ -210,11 +210,11 @@ var _ = Describe("Stopper", func() {
 
 	Describe("Undo", func() {
 		Context("when the app does not exist", func() {
-			It("returns an error", func() {
+			It("return without error", func() {
 				courier.ExistsCall.Returns.Bool = false
 				err := stopper.Undo()
 
-				Expect(err).To(MatchError(state.ExistsError{ApplicationName: randomAppName}))
+				Expect(err).To(BeNil())
 			})
 		})
 

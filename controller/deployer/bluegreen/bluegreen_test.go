@@ -414,7 +414,7 @@ var _ = Describe("Bluegreen", func() {
 				}
 				stoppers[0].ExecuteCall.Returns.Error = errors.New("stop failed")
 
-				blueGreen = BlueGreen{}
+				blueGreen = BlueGreen{Log: log}
 
 				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
 				Expect(err).To(MatchError(StopError{[]error{errors.New("stop failed")}}))
@@ -432,7 +432,7 @@ var _ = Describe("Bluegreen", func() {
 					stopperFactory.CreateStopperCall.Returns.Error = append(stopperFactory.CreateStopperCall.Returns.Error, nil)
 				}
 
-				blueGreen = BlueGreen{}
+				blueGreen = BlueGreen{Log: log}
 
 				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
 				Expect(err.Error()).To(Equal("stop failed: stop failed: stop failed"))
@@ -450,14 +450,14 @@ var _ = Describe("Bluegreen", func() {
 				}
 				stoppers[0].ExecuteCall.Returns.Error = errors.New("an error occurred")
 
-				blueGreen = BlueGreen{}
+				blueGreen = BlueGreen{Log: log}
 
 				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("stop failed: an error occurred"))
 			})
 
-			It("returns an error if attemped roll back fails", func() {
+			It("returns an error if attempted roll back fails", func() {
 				stopperFactory := &mocks.StopManager{}
 
 				var stoppers []*mocks.StartStopper
@@ -469,7 +469,9 @@ var _ = Describe("Bluegreen", func() {
 				}
 				stoppers[0].ExecuteCall.Returns.Error = errors.New("an error occurred")
 				stoppers[0].UndoCall.Returns.Error = errors.New("an error occurred while attempting undo")
-				blueGreen = BlueGreen{}
+				blueGreen = BlueGreen{
+					Log: log,
+				}
 
 				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
 				Expect(err).To(HaveOccurred())

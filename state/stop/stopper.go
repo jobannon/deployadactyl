@@ -63,6 +63,7 @@ func (s Stopper) Initially() error {
 func (s Stopper) Execute() error {
 
 	if s.Courier.Exists(s.AppName) != true {
+		s.Log.Errorf("failed to stop app on foundation %s: application doesn't exist", s.FoundationURL)
 		return state.ExistsError{ApplicationName: s.AppName}
 	}
 
@@ -70,6 +71,7 @@ func (s Stopper) Execute() error {
 
 	output, err := s.Courier.Stop(s.AppName)
 	if err != nil {
+		s.Log.Errorf("failed to stop app on foundation %s: %s", s.FoundationURL, err.Error())
 		return state.StopError{ApplicationName: s.AppName, Out: output}
 	}
 	s.Response.Write(output)
@@ -92,7 +94,7 @@ func (s Stopper) Execute() error {
 func (s Stopper) Undo() error {
 
 	if s.Courier.Exists(s.AppName) != true {
-		return state.ExistsError{ApplicationName: s.AppName}
+		return nil
 	}
 
 	s.Log.Infof("starting app %s", s.AppName)

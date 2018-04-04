@@ -34,7 +34,7 @@ var _ = Describe("Stopmanager", func() {
 		creator = &mocks.Creator{}
 		stopManager = stop.StopManager{
 			CourierCreator: creator,
-			Logger:         logger.DeploymentLogger{log, randomizer.StringRunes(10)},
+			Log:            logger.DeploymentLogger{log, randomizer.StringRunes(10)},
 			DeployEventData: structs.DeployEventData{
 				DeploymentInfo: &structs.DeploymentInfo{},
 				Response:       response,

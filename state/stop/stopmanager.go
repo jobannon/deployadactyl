@@ -23,8 +23,12 @@ type courierCreator interface {
 type StopManager struct {
 	CourierCreator  courierCreator
 	EventManager    I.EventManager
-	Logger          logger.DeploymentLogger
+	Log             logger.DeploymentLogger
 	DeployEventData S.DeployEventData
+}
+
+func (a StopManager) Logger() logger.DeploymentLogger {
+	return a.Log
 }
 
 func (a StopManager) SetUp(environment S.Environment) error {
@@ -37,6 +41,7 @@ func (a StopManager) OnStart() error {
 
 func (a StopManager) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
 	if err != nil {
+		fmt.Fprintf(response, "\nYour application was not successfully stopped on all foundations: %s\n\n", err.Error())
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
 			return I.DeployResponse{
 				StatusCode: http.StatusBadRequest,
@@ -50,7 +55,7 @@ func (a StopManager) OnFinish(env S.Environment, response io.ReadWriter, err err
 		}
 	}
 
-	a.Logger.Infof("successfully stopped application %s", a.DeployEventData.DeploymentInfo.AppName)
+	a.Log.Infof("successfully stopped application %s", a.DeployEventData.DeploymentInfo.AppName)
 	fmt.Fprintf(response, "\n%s", successfulStop)
 
 	return I.DeployResponse{StatusCode: http.StatusOK}
@@ -61,7 +66,7 @@ func (a StopManager) CleanUp() {}
 func (a StopManager) Create(environment S.Environment, response io.ReadWriter, foundationURL string) (I.Action, error) {
 	courier, err := a.CourierCreator.CreateCourier()
 	if err != nil {
-		a.Logger.Error(err)
+		a.Log.Error(err)
 		return &Stopper{}, state.CourierCreationError{Err: err}
 	}
 	p := &Stopper{
@@ -80,7 +85,7 @@ func (a StopManager) Create(environment S.Environment, response io.ReadWriter, f
 		},
 		EventManager:  a.EventManager,
 		Response:      response,
-		Log:           a.Logger,
+		Log:           a.Log,
 		FoundationURL: foundationURL,
 		AppName:       a.DeployEventData.DeploymentInfo.AppName,
 	}

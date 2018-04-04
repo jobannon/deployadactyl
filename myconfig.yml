@@ -1,0 +1,205 @@
+---
+environments:
+  - name: sandbox
+    service_now_endpoint: https://allstateuat.service-now.com
+    domain: platformtest.allstate.com
+    authenticate: false
+    skip_ssl: true
+    instances: 1
+    rollback_enabled: true
+    foundations:
+    - https://api.cf.sandbox-mpn.ro98.allstate.com
+    - https://api.cf.sandbox-mpn.ro99.allstate.com
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+  - name: ro10
+    service_now_endpoint: https://allstateuat.service-now.com
+    authenticate: false
+    skip_ssl: true
+    instances: 1
+    rollback_enabled: true
+    foundations:
+    - https://api.cf.nonprod-mpn.ro10.allstate.com
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+  - name: ro11
+    service_now_endpoint: https://allstateuat.service-now.com
+    authenticate: false
+    skip_ssl: true
+    instances: 1
+    rollback_enabled: true
+    foundations:
+    - https://api.cf.nonprod-mpn.ro11.allstate.com
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+  - name: non-prod
+    service_now_endpoint: https://allstateuat.service-now.com
+    domain: platform-test.allstate.com
+    authenticate: false
+    skip_ssl: true
+    instances: 1
+    rollback_enabled: true
+    foundations:
+    - https://api.cf.nonprod-mpn.ro11.allstate.com
+    - https://api.cf.nonprod-mpn.ro10.allstate.com
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+  - name: prod-mpn
+    service_now_endpoint: https://allstate.service-now.com
+    domain: platform.allstate.com
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_enabled: true
+    foundations:
+    - https://api.cf.prod-mpn.ro1.allstate.com
+    - https://api.cf.prod-mpn.ro2.allstate.com
+    - https://api.cf.prod-mpn.gl1.allstate.com
+    - https://api.cf.prod-mpn.gl2.allstate.com
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+  - name: prod-dmz
+    service_now_endpoint: https://allstate.service-now.com
+    domain: cws.allstate.com
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_enabled: true
+    foundations:
+    - https://api.cf.prod-dmz.ro1.allstate.com
+    - https://api.cf.prod-dmz.ro2.allstate.com
+    - https://api.cf.prod-dmz.gl1.allstate.com
+    - https://api.cf.prod-dmz.gl2.allstate.com
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+  - name: prod-infra
+    service_now_endpoint: https://allstate.service-now.com
+    domain: mgmt.allstate.com
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_enabled: true
+    foundations:
+    - https://api.cf.prod-infra.ro1.allstate.com
+    - https://api.cf.prod-infra.ro2.allstate.com
+    - https://api.cf.prod-infra.gl1.allstate.com
+    - https://api.cf.prod-infra.gl2.allstate.com
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+  - name: arity-non-prod
+    service_now_endpoint: https://allstateuat.service-now.com
+    domain: apps.us-east-1.nonprod.cf.arityplatform.io
+    authenticate: true
+    skip_ssl: true
+    instances: 1
+    rollback_enabled: true
+    foundations:
+    - https://api.sys.us-east-1.nonprod.cf.arityplatform.io
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+  - name: arity-non-prod-internal
+    service_now_endpoint: https://allstateuat.service-now.com
+    domain: apps.us-east-1.nonprod.cf.arityplatform.io
+    authenticate: true
+    skip_ssl: true
+    instances: 1
+    foundations:
+    - https://api.sys.us-east-1.nonprod.cf.arityplatform.io
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+  - name: arity-prod-internal
+    service_now_endpoint: https://allstate.service-now.com
+    domain: apps.arityplatform.io
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_enabled: true
+    foundations:
+    - https://api.sys.us-east-1.prod.cf.arityplatform.io
+    - https://api.sys.us-west-2.prod.cf.arityplatform.io
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+  - name: arity-prod-public
+    service_now_endpoint: https://allstate.service-now.com
+    domain: apps.arity.cloud
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_enabled: true
+    foundations:
+    - https://api.sys.us-east-1.prod.cf.arityplatform.io
+    - https://api.sys.us-west-2.prod.cf.arityplatform.io
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+  - name: non-prod-aws
+    service_now_endpoint: https://allstateuat.service-now.com
+    authenticate: true
+    skip_ssl: true
+    instances: 1
+    rollback_enabled: false
+    foundations:
+    - https://api.cf.nonprod.us-east-1.allstate.com
+    custom_params:
+      service_now_table_name: change_request
+      service_now_column_name: type
+
+error_matchers:
+  - description: NPM deployment error
+    pattern: '(?i)npm ERR!\s*[^\n]*'
+    solution: "Ensure that all node_modules listed in your package.json are either already in your node_modules directory or are available from the Allstate Artifactory NPM registry."
+    code: NPM_ERR
+  - description: Expired authentication error
+    pattern: '(?i){1,200}\s*FAILED\nAuthentication has expired\. Please log back in to re-authenticate\.'
+    code: EXPIRED_AUTH
+  - description: Incorrect authentication error
+    pattern: '(?i)FAILED\s*\n\s*Unable to authenticate.'
+    solution: "Ensure that the credentials you are using to deploy are valid."
+    code: INVALID_AUTH
+  - description: NPM version error
+    pattern: '(?i)Unable to install node[^\n]*'
+    solution: "Check the 'engines'->'node' version specified in your package.json file and ensure that it is a supported version."
+    code: NPM_VERSION_ERR
+  - description: Spring bean error
+    pattern: 'org\.springframework\.beans\.factory\.BeanCreationException[^\n]{1,200}'
+    code: SPRING_BEAN_ERR
+  - description: TrustStore certificate error
+    pattern: '(?i)Creating TrustStore with container certificates\nFAILED'
+    code: TRUST_STORE_ERR
+  - description: Rejected credentials error
+    pattern: '(?i)Credentials were rejected, please try again.'
+    solution: "Ensure that the credentials you are using to deploy are valid."
+    code: REJECTED_AUTH
+  - description: Insufficient resources
+    pattern: '(?i)Disk quota exceeded'
+    solution: "Check the resources allocated for this application - you may need to increase the 'applications'->'disk_quota' value specified in your CF manifest.yml."
+    code: OUT_OF_SPACE
+  - description: Missing service
+    pattern: '(?i)Could not find service [^\s]* to bind to'
+    solution: "Ensure that the services that your application requires are available and provisioned within the deployment space before deploying."
+    code: MISSING_SERVICE
+  - description: This is a test error matcher and should never be encountered other than in conveyor tests
+    pattern: "This app doesn't start intentionally"
+    code: TEST_FAILURE_CODE
+

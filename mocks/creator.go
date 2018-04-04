@@ -79,13 +79,13 @@ func (c Creator) CreateControllerHandler() *gin.Engine {
 
 func (c Creator) CreateController() controller.Controller {
 	return controller.Controller{
-		Deployer:           c.CreateDeployer(),
-		SilentDeployer:     c.CreateSilentDeployer(),
-		Log:                c.CreateLogger(),
-		PushManagerFactory: c,
-		Config:             c.CreateConfig(),
-		EventManager:       c.CreateEventManager(),
-		ErrorFinder:        c.createErrorFinder(),
+		Deployer:       c.CreateDeployer(),
+		SilentDeployer: c.CreateSilentDeployer(),
+		Log:            c.CreateLogger(),
+		PushController: c.CreatePushController(),
+		Config:         c.CreateConfig(),
+		EventManager:   c.CreateEventManager(),
+		ErrorFinder:    c.createErrorFinder(),
 	}
 }
 
@@ -120,7 +120,19 @@ func (c Creator) CreateCourier() (I.Courier, error) {
 
 	return courier, nil
 }
-func (c Creator) PusherCreator(deployEventData S.DeployEventData) I.ActionCreator {
+
+func (c Creator) CreatePushController() I.PushController {
+	return &push.PushController{
+		Deployer:           c.CreateDeployer(),
+		Log:                c.CreateLogger(),
+		Config:             c.CreateConfig(),
+		EventManager:       c.CreateEventManager(),
+		ErrorFinder:        c.createErrorFinder(),
+		PushManagerFactory: c,
+	}
+}
+
+func (c Creator) PushManager(deployEventData S.DeployEventData) I.ActionCreator {
 	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
 	return &push.PushManager{
 		CourierCreator:    c,

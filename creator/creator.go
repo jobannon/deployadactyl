@@ -142,15 +142,26 @@ func (c Creator) CreateHTTPClient() *http.Client {
 
 func (c Creator) CreateController() I.Controller {
 	return &controller.Controller{
+		Deployer:        c.createDeployer(),
+		SilentDeployer:  c.createSilentDeployer(),
+		Log:             c.CreateLogger(),
+		PushController:  c.CreatePushController(),
+		StopController:  c.CreateStopController(),
+		StartController: c.CreateStartController(),
+		Config:          c.CreateConfig(),
+		EventManager:    c.CreateEventManager(),
+		ErrorFinder:     c.createErrorFinder(),
+	}
+}
+
+func (c Creator) CreatePushController() I.PushController {
+	return &push.PushController{
 		Deployer:           c.createDeployer(),
-		SilentDeployer:     c.createSilentDeployer(),
 		Log:                c.CreateLogger(),
-		PushManagerFactory: c,
-		StopController:     c.CreateStopController(),
-		StartController:    c.CreateStartController(),
 		Config:             c.CreateConfig(),
 		EventManager:       c.CreateEventManager(),
 		ErrorFinder:        c.createErrorFinder(),
+		PushManagerFactory: c,
 	}
 }
 
@@ -188,7 +199,7 @@ func (c Creator) createDeployer() I.Deployer {
 	}
 }
 
-func (c Creator) PusherCreator(deployEventData structs.DeployEventData) I.ActionCreator {
+func (c Creator) PushManager(deployEventData structs.DeployEventData) I.ActionCreator {
 	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
 	return &push.PushManager{
 		CourierCreator:    c,

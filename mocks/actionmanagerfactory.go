@@ -7,7 +7,7 @@ import (
 
 // PushManager handmade mock for tests.
 type PushManagerFactory struct {
-	PusherCreatorCall struct {
+	PushManagerCall struct {
 		Called   bool
 		Received struct {
 			DeployEventData structs.DeployEventData
@@ -20,11 +20,11 @@ type PushManagerFactory struct {
 
 // CreatePusher mock method.
 
-func (p *PushManagerFactory) PusherCreator(deployEventData structs.DeployEventData) interfaces.ActionCreator {
-	p.PusherCreatorCall.Called = true
-	p.PusherCreatorCall.Received.DeployEventData = deployEventData
+func (p *PushManagerFactory) PushManager(deployEventData structs.DeployEventData) interfaces.ActionCreator {
+	p.PushManagerCall.Called = true
+	p.PushManagerCall.Received.DeployEventData = deployEventData
 
-	return p.PusherCreatorCall.Returns.ActionCreator
+	return p.PushManagerCall.Returns.ActionCreator
 }
 
 type StopManagerFactory struct {

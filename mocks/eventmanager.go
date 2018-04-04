@@ -27,7 +27,7 @@ type EventManager struct {
 	EmitEventCall struct {
 		TimesCalled int
 		Received    struct {
-			Events []interface{}
+			Events []I.IEvent
 		}
 		Returns struct {
 			Error []error
@@ -56,7 +56,7 @@ func (e *EventManager) Emit(event I.Event) error {
 	return nil
 }
 
-func (e *EventManager) EmitEvent(event interface{}) error {
+func (e *EventManager) EmitEvent(event I.IEvent) error {
 	defer func() { e.EmitEventCall.TimesCalled++ }()
 
 	e.EmitEventCall.Received.Events = append(e.EmitEventCall.Received.Events, event)
@@ -67,3 +67,5 @@ func (e *EventManager) EmitEvent(event interface{}) error {
 	return nil
 
 }
+
+func (e *EventManager) AddBinding(binding I.Binding) {}

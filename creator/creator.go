@@ -20,6 +20,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
@@ -31,7 +32,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"github.com/compozed/deployadactyl/state/start"
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
@@ -167,11 +167,11 @@ func (c Creator) CreateStopController() I.StopController {
 
 func (c Creator) CreateStartController() I.StartController {
 	return &start.StartController{
-		Deployer:           c.createDeployer(),
-		Log:                c.CreateLogger(),
-		Config:             c.CreateConfig(),
-		EventManager:       c.CreateEventManager(),
-		ErrorFinder:        c.createErrorFinder(),
+		Deployer:            c.createDeployer(),
+		Log:                 c.CreateLogger(),
+		Config:              c.CreateConfig(),
+		EventManager:        c.CreateEventManager(),
+		ErrorFinder:         c.createErrorFinder(),
 		StartManagerFactory: c,
 	}
 }

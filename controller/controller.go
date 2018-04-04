@@ -19,6 +19,7 @@ import (
 	"github.com/compozed/deployadactyl/geterrors"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state/push"
 	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
@@ -66,7 +67,6 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 	deploymentLogger.Debug("building deploymentInfo")
 
 	body := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
-	//bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 	if deployment.Type.JSON {
 		deploymentLogger.Debug("deploying from json request")
 
@@ -130,8 +130,26 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 			Error:          deployer.EventError{Type: constants.DeployStartEvent, Err: err},
 			DeploymentInfo: deploymentInfo,
 		}
-
 	}
+
+	err = c.EventManager.EmitEvent(push.DeployStartedEvent{
+		CFContext:   cf,
+		Auth:        auth,
+		Body:        body,
+		ContentType: deploymentInfo.ContentType,
+		Environment: environment,
+		Response:    response,
+	})
+	if err != nil {
+		deploymentLogger.Error(err)
+		err = &bluegreen.InitializationError{err}
+		return I.DeployResponse{
+			StatusCode:     http.StatusInternalServerError,
+			Error:          deployer.EventError{Type: constants.DeployStartEvent, Err: err},
+			DeploymentInfo: deploymentInfo,
+		}
+	}
+
 	pusherCreator := c.PushManagerFactory.PusherCreator(deployEventData)
 
 	reqChannel1 := make(chan *I.DeployResponse)
@@ -323,18 +341,18 @@ func (c Controller) emitDeploySuccessOrFailure(deployEventData *structs.DeployEv
 	}
 }
 func (c Controller) emitStopFinish(response io.ReadWriter, deploymentLogger logger.DeploymentLogger, cfContext I.CFContext, auth *I.Authorization, environment *structs.Environment, data map[string]interface{}, deployResponse *I.DeployResponse) {
-	var event stop.IEvent
+	var event I.IEvent
 	event = stop.StopFinishedEvent{
 		CFContext:     cfContext,
 		Authorization: *auth,
 		Environment:   *environment,
 		Data:          data,
 	}
-	deploymentLogger.Debugf("emitting a %s event", event.Type())
+	deploymentLogger.Debugf("emitting a %s event", event.Name())
 	c.EventManager.EmitEvent(event)
 }
 func (c Controller) emitStopSuccessOrFailure(response io.ReadWriter, deploymentLogger logger.DeploymentLogger, cfContext I.CFContext, auth *I.Authorization, environment *structs.Environment, data map[string]interface{}, deployResponse *I.DeployResponse) {
-	var event stop.IEvent
+	var event I.IEvent
 
 	if deployResponse.Error != nil {
 		c.printErrors(response, &deployResponse.Error)
@@ -356,7 +374,7 @@ func (c Controller) emitStopSuccessOrFailure(response io.ReadWriter, deploymentL
 	}
 	eventErr := c.EventManager.EmitEvent(event)
 	if eventErr != nil {
-		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", event.Type(), eventErr)
+		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", event.Name(), eventErr)
 		fmt.Fprintln(response, eventErr)
 	}
 }

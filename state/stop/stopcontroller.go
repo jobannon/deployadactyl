@@ -92,19 +92,19 @@ func (c *StopController) StopDeployment(deployment *I.Deployment, data map[strin
 }
 
 func (c StopController) emitStopFinish(response io.ReadWriter, deploymentLogger logger.DeploymentLogger, cfContext I.CFContext, auth *I.Authorization, environment *structs.Environment, data map[string]interface{}, deployResponse *I.DeployResponse) {
-	var event IEvent
+	var event I.IEvent
 	event = StopFinishedEvent{
 		CFContext:     cfContext,
 		Authorization: *auth,
 		Environment:   *environment,
 		Data:          data,
 	}
-	deploymentLogger.Debugf("emitting a %s event", event.Type())
+	deploymentLogger.Debugf("emitting a %s event", event.Name())
 	c.EventManager.EmitEvent(event)
 }
 
 func (c StopController) emitStopSuccessOrFailure(response io.ReadWriter, deploymentLogger logger.DeploymentLogger, cfContext I.CFContext, auth *I.Authorization, environment *structs.Environment, data map[string]interface{}, deployResponse *I.DeployResponse) {
-	var event IEvent
+	var event I.IEvent
 
 	if deployResponse.Error != nil {
 		c.printErrors(response, &deployResponse.Error)
@@ -124,10 +124,10 @@ func (c StopController) emitStopSuccessOrFailure(response io.ReadWriter, deploym
 			Data:          data,
 		}
 	}
-	deploymentLogger.Debugf("emitting a %s event", event.Type())
+	deploymentLogger.Debugf("emitting a %s event", event.Name())
 	eventErr := c.EventManager.EmitEvent(event)
 	if eventErr != nil {
-		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", event.Type(), eventErr)
+		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", event.Name(), eventErr)
 		fmt.Fprintln(response, eventErr)
 	}
 }

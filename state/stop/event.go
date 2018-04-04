@@ -8,14 +8,6 @@ import (
 	"reflect"
 )
 
-type IEvent interface {
-	Type() string
-}
-
-type InvalidEventType struct {
-	error
-}
-
 type eventBinding struct {
 	etype   reflect.Type
 	handler func(event interface{}) error
@@ -37,11 +29,11 @@ type StopFailureEvent struct {
 	Error         error
 }
 
-func (e StopFailureEvent) Type() string {
+func (e StopFailureEvent) Name() string {
 	return "StopFailureEvent"
 }
 
-func NewStopFailureEventBinding(handler func(event StopFailureEvent) error) eventmanager.Binding {
+func NewStopFailureEventBinding(handler func(event StopFailureEvent) error) interfaces.Binding {
 	return eventBinding{
 		etype: reflect.TypeOf(StopFailureEvent{}),
 		handler: func(gevent interface{}) error {
@@ -49,7 +41,7 @@ func NewStopFailureEventBinding(handler func(event StopFailureEvent) error) even
 			if ok {
 				return handler(event)
 			} else {
-				return InvalidEventType{errors.New("invalid event type")}
+				return eventmanager.InvalidEventType{errors.New("invalid event type")}
 			}
 		},
 	}
@@ -62,11 +54,11 @@ type StopSuccessEvent struct {
 	Environment   structs.Environment
 }
 
-func (e StopSuccessEvent) Type() string {
+func (e StopSuccessEvent) Name() string {
 	return "StopSuccessEvent"
 }
 
-func NewStopSuccessEventBinding(handler func(event StopSuccessEvent) error) eventmanager.Binding {
+func NewStopSuccessEventBinding(handler func(event StopSuccessEvent) error) interfaces.Binding {
 	return eventBinding{
 		etype: reflect.TypeOf(StopSuccessEvent{}),
 		handler: func(gevent interface{}) error {
@@ -74,7 +66,7 @@ func NewStopSuccessEventBinding(handler func(event StopSuccessEvent) error) even
 			if ok {
 				return handler(event)
 			} else {
-				return InvalidEventType{errors.New("invalid event type")}
+				return eventmanager.InvalidEventType{errors.New("invalid event type")}
 			}
 		},
 	}
@@ -85,11 +77,11 @@ type StopStartedEvent struct {
 	Data      map[string]interface{}
 }
 
-func (e StopStartedEvent) Type() string {
+func (e StopStartedEvent) Name() string {
 	return "StopStartedEvent"
 }
 
-func NewStopStartedEventBinding(handler func(event StopStartedEvent) error) eventmanager.Binding {
+func NewStopStartedEventBinding(handler func(event StopStartedEvent) error) interfaces.Binding {
 	return eventBinding{
 		etype: reflect.TypeOf(StopStartedEvent{}),
 		handler: func(gevent interface{}) error {
@@ -97,7 +89,7 @@ func NewStopStartedEventBinding(handler func(event StopStartedEvent) error) even
 			if ok {
 				return handler(event)
 			} else {
-				return InvalidEventType{errors.New("invalid event type")}
+				return eventmanager.InvalidEventType{errors.New("invalid event type")}
 			}
 		},
 	}
@@ -110,11 +102,11 @@ type StopFinishedEvent struct {
 	Environment   structs.Environment
 }
 
-func (e StopFinishedEvent) Type() string {
+func (e StopFinishedEvent) Name() string {
 	return "StopFinishedEvent"
 }
 
-func NewStopFinishedEventBinding(handler func(event StopFinishedEvent) error) eventmanager.Binding {
+func NewStopFinishedEventBinding(handler func(event StopFinishedEvent) error) interfaces.Binding {
 	return eventBinding{
 		etype: reflect.TypeOf(StopFinishedEvent{}),
 		handler: func(gevent interface{}) error {
@@ -122,7 +114,7 @@ func NewStopFinishedEventBinding(handler func(event StopFinishedEvent) error) ev
 			if ok {
 				return handler(event)
 			} else {
-				return InvalidEventType{errors.New("invalid event type")}
+				return eventmanager.InvalidEventType{errors.New("invalid event type")}
 			}
 		},
 	}

@@ -9,14 +9,6 @@ import (
 	"github.com/go-errors/errors"
 )
 
-type IEvent interface {
-	Type() string
-}
-
-type InvalidEventType struct {
-	error
-}
-
 type eventBinding struct {
 	etype   reflect.Type
 	handler func(event interface{}) error
@@ -38,11 +30,11 @@ type StartFailureEvent struct {
 	Error         error
 }
 
-func (e StartFailureEvent) Type() string {
+func (e StartFailureEvent) Name() string {
 	return "StartFailureEvent"
 }
 
-func NewStartFailureEventBinding(handler func(event StartFailureEvent) error) eventmanager.Binding {
+func NewStartFailureEventBinding(handler func(event StartFailureEvent) error) interfaces.Binding {
 	return eventBinding{
 		etype: reflect.TypeOf(StartFailureEvent{}),
 		handler: func(gevent interface{}) error {
@@ -50,7 +42,7 @@ func NewStartFailureEventBinding(handler func(event StartFailureEvent) error) ev
 			if ok {
 				return handler(event)
 			} else {
-				return InvalidEventType{errors.New("invalid event type")}
+				return eventmanager.InvalidEventType{Err: errors.New("invalid event type")}
 			}
 		},
 	}
@@ -63,11 +55,11 @@ type StartSuccessEvent struct {
 	Environment   structs.Environment
 }
 
-func (e StartSuccessEvent) Type() string {
+func (e StartSuccessEvent) Name() string {
 	return "StartSuccessEvent"
 }
 
-func NewStartSuccessEventBinding(handler func(event StartSuccessEvent) error) eventmanager.Binding {
+func NewStartSuccessEventBinding(handler func(event StartSuccessEvent) error) interfaces.Binding {
 	return eventBinding{
 		etype: reflect.TypeOf(StartSuccessEvent{}),
 		handler: func(gevent interface{}) error {
@@ -75,7 +67,7 @@ func NewStartSuccessEventBinding(handler func(event StartSuccessEvent) error) ev
 			if ok {
 				return handler(event)
 			} else {
-				return InvalidEventType{errors.New("invalid event type")}
+				return eventmanager.InvalidEventType{Err: errors.New("invalid event type")}
 			}
 		},
 	}
@@ -86,11 +78,11 @@ type StartStartedEvent struct {
 	Data      map[string]interface{}
 }
 
-func (e StartStartedEvent) Type() string {
+func (e StartStartedEvent) Name() string {
 	return "StartStartedEvent"
 }
 
-func NewStartStartedEventBinding(handler func(event StartStartedEvent) error) eventmanager.Binding {
+func NewStartStartedEventBinding(handler func(event StartStartedEvent) error) interfaces.Binding {
 	return eventBinding{
 		etype: reflect.TypeOf(StartStartedEvent{}),
 		handler: func(gevent interface{}) error {
@@ -98,7 +90,7 @@ func NewStartStartedEventBinding(handler func(event StartStartedEvent) error) ev
 			if ok {
 				return handler(event)
 			} else {
-				return InvalidEventType{errors.New("invalid event type")}
+				return eventmanager.InvalidEventType{Err: errors.New("invalid event type")}
 			}
 		},
 	}
@@ -111,11 +103,11 @@ type StartFinishedEvent struct {
 	Environment   structs.Environment
 }
 
-func (e StartFinishedEvent) Type() string {
+func (e StartFinishedEvent) Name() string {
 	return "StartFinishedEvent"
 }
 
-func NewStartFinishedEventBinding(handler func(event StartFinishedEvent) error) eventmanager.Binding {
+func NewStartFinishedEventBinding(handler func(event StartFinishedEvent) error) interfaces.Binding {
 	return eventBinding{
 		etype: reflect.TypeOf(StartFinishedEvent{}),
 		handler: func(gevent interface{}) error {
@@ -123,7 +115,7 @@ func NewStartFinishedEventBinding(handler func(event StartFinishedEvent) error) 
 			if ok {
 				return handler(event)
 			} else {
-				return InvalidEventType{errors.New("invalid event type")}
+				return eventmanager.InvalidEventType{Err: errors.New("invalid event type")}
 			}
 		},
 	}

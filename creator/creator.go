@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"github.com/compozed/deployadactyl/state/start"
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
@@ -146,6 +147,7 @@ func (c Creator) CreateController() I.Controller {
 		Log:                c.CreateLogger(),
 		PushManagerFactory: c,
 		StopController:     c.CreateStopController(),
+		StartController:    c.CreateStartController(),
 		Config:             c.CreateConfig(),
 		EventManager:       c.CreateEventManager(),
 		ErrorFinder:        c.createErrorFinder(),
@@ -160,6 +162,17 @@ func (c Creator) CreateStopController() I.StopController {
 		EventManager:       c.CreateEventManager(),
 		ErrorFinder:        c.createErrorFinder(),
 		StopManagerFactory: c,
+	}
+}
+
+func (c Creator) CreateStartController() I.StartController {
+	return &start.StartController{
+		Deployer:           c.createDeployer(),
+		Log:                c.CreateLogger(),
+		Config:             c.CreateConfig(),
+		EventManager:       c.CreateEventManager(),
+		ErrorFinder:        c.createErrorFinder(),
+		StartManagerFactory: c,
 	}
 }
 
@@ -193,6 +206,16 @@ func (c Creator) StopManager(deployEventData structs.DeployEventData) I.ActionCr
 		CourierCreator:  c,
 		EventManager:    c.CreateEventManager(),
 		Log:             deploymentLogger,
+		DeployEventData: deployEventData,
+	}
+}
+
+func (c Creator) StartManager(deployEventData structs.DeployEventData) I.ActionCreator {
+	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
+	return start.StartManager{
+		CourierCreator:  c,
+		EventManager:    c.CreateEventManager(),
+		Logger:          deploymentLogger,
 		DeployEventData: deployEventData,
 	}
 }

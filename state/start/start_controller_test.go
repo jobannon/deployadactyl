@@ -28,7 +28,7 @@ var _ = Describe("StartDeployment", func() {
 		startManagerFactory *mocks.StartManagerFactory
 		eventManager        *mocks.EventManager
 		errorFinder         *mocks.ErrorFinder
-		controller          *Controller
+		controller          *StartController
 		deployment          I.Deployment
 		logBuffer           *Buffer
 		deployer            *mocks.Deployer
@@ -53,7 +53,7 @@ var _ = Describe("StartDeployment", func() {
 		startManagerFactory = &mocks.StartManagerFactory{}
 		errorFinder = &mocks.ErrorFinder{}
 
-		controller = &Controller{
+		controller = &StartController{
 			Log:                 logger.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
 			Deployer:            deployer,
 			StartManagerFactory: startManagerFactory,

@@ -16,21 +16,17 @@ import (
 	"github.com/compozed/deployadactyl/structs"
 )
 
-type startManagerFactory interface {
-	StartManager(deployEventData structs.DeployEventData) I.ActionCreator
-}
-
-// Controller is used to determine the type of request and process it accordingly.
-type Controller struct {
+// StartController is used to determine the type of request and process it accordingly.
+type StartController struct {
 	Log                 I.Logger
-	StartManagerFactory startManagerFactory
+	StartManagerFactory I.StartManagerFactory
 	Deployer            I.Deployer
 	Config              config.Config
 	EventManager        I.EventManager
 	ErrorFinder         I.ErrorFinder
 }
 
-func (c *Controller) StartDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *StartController) StartDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	auth := &I.Authorization{}
 	environment := &structs.Environment{}
 
@@ -99,7 +95,7 @@ func (c *Controller) StartDeployment(deployment *I.Deployment, data map[string]i
 	return deployResponse
 }
 
-func (c *Controller) resolveAuthorization(auth I.Authorization, envs structs.Environment, deploymentLogger logger.DeploymentLogger) (I.Authorization, error) {
+func (c *StartController) resolveAuthorization(auth I.Authorization, envs structs.Environment, deploymentLogger logger.DeploymentLogger) (I.Authorization, error) {
 	config := c.Config
 	deploymentLogger.Debug("checking for basic auth")
 	if auth.Username == "" && auth.Password == "" {
@@ -114,7 +110,7 @@ func (c *Controller) resolveAuthorization(auth I.Authorization, envs structs.Env
 	return auth, nil
 }
 
-func (c *Controller) resolveEnvironment(env string) (structs.Environment, error) {
+func (c *StartController) resolveEnvironment(env string) (structs.Environment, error) {
 	config := c.Config
 	environment, ok := config.Environments[env]
 	if !ok {
@@ -123,7 +119,7 @@ func (c *Controller) resolveEnvironment(env string) (structs.Environment, error)
 	return environment, nil
 }
 
-func (c Controller) emitStartFinish(response io.ReadWriter, deploymentLogger logger.DeploymentLogger, cfContext I.CFContext, auth *I.Authorization, environment *structs.Environment, data map[string]interface{}, deployResponse *I.DeployResponse) {
+func (c StartController) emitStartFinish(response io.ReadWriter, deploymentLogger logger.DeploymentLogger, cfContext I.CFContext, auth *I.Authorization, environment *structs.Environment, data map[string]interface{}, deployResponse *I.DeployResponse) {
 	var event IEvent
 	event = StartFinishedEvent{
 		CFContext:     cfContext,
@@ -135,7 +131,7 @@ func (c Controller) emitStartFinish(response io.ReadWriter, deploymentLogger log
 	c.EventManager.EmitEvent(event)
 }
 
-func (c Controller) emitStartSuccessOrFailure(response io.ReadWriter, deploymentLogger logger.DeploymentLogger, cfContext I.CFContext, auth *I.Authorization, environment *structs.Environment, data map[string]interface{}, deployResponse *I.DeployResponse) {
+func (c StartController) emitStartSuccessOrFailure(response io.ReadWriter, deploymentLogger logger.DeploymentLogger, cfContext I.CFContext, auth *I.Authorization, environment *structs.Environment, data map[string]interface{}, deployResponse *I.DeployResponse) {
 	var event IEvent
 
 	if deployResponse.Error != nil {
@@ -163,7 +159,7 @@ func (c Controller) emitStartSuccessOrFailure(response io.ReadWriter, deployment
 	}
 }
 
-func (c Controller) printErrors(response io.ReadWriter, err *error) {
+func (c StartController) printErrors(response io.ReadWriter, err *error) {
 	tempBuffer := bytes.Buffer{}
 	tempBuffer.ReadFrom(response)
 	fmt.Fprint(response, tempBuffer.String())

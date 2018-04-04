@@ -36,6 +36,7 @@ type Controller struct {
 	Log                I.Logger
 	PushManagerFactory pusherCreatorFactory
 	StopController     I.StopController
+	StartController    I.StartController
 	Config             config.Config
 	EventManager       I.EventManager
 	ErrorFinder        I.ErrorFinder
@@ -230,6 +231,8 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 
 	if putRequest.State == "stopped" {
 		c.StopController.StopDeployment(&deployment, putRequest.Data, response)
+	} else if putRequest.State == "started" {
+		c.StartController.StartDeployment(&deployment, putRequest.Data, response)
 	}
 
 	defer io.Copy(g.Writer, response)

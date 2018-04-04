@@ -39,6 +39,7 @@ var _ = Describe("Controller", func() {
 		eventManager       *mocks.EventManager
 		errorFinder        *mocks.ErrorFinder
 		stopController     *mocks.StopController
+		startController     *mocks.StartController
 		controller         *Controller
 		deployment         I.Deployment
 		logBuffer          *Buffer
@@ -64,6 +65,7 @@ var _ = Describe("Controller", func() {
 		silentDeployer = &mocks.Deployer{}
 		pushManagerFactory = &mocks.PushManagerFactory{}
 		stopController = &mocks.StopController{}
+		startController = &mocks.StartController{}
 
 		errorFinder = &mocks.ErrorFinder{}
 		controller = &Controller{
@@ -72,6 +74,7 @@ var _ = Describe("Controller", func() {
 			Log:                logger.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
 			PushManagerFactory: pushManagerFactory,
 			StopController:     stopController,
+			StartController:    startController,
 			EventManager:       eventManager,
 			Config:             config.Config{},
 			ErrorFinder:        errorFinder,
@@ -207,6 +210,7 @@ var _ = Describe("Controller", func() {
 			resp       *httptest.ResponseRecorder
 			jsonBuffer *bytes.Buffer
 		)
+
 		BeforeEach(func() {
 			router = gin.New()
 			resp = httptest.NewRecorder()
@@ -219,12 +223,41 @@ var _ = Describe("Controller", func() {
 				req.Body.Close()
 			}))
 		})
+
 		AfterEach(func() {
 			server.Close()
 		})
 
-		Context("when stop succeeds", func() {
-			It("returns http status.OK", func() {
+		Context("when state is set to stopped", func() {
+			Context("when stop succeeds", func() {
+				It("returns http status.OK", func() {
+					foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+					jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+					req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+					req.Header.Set("Content-Type", "application/json")
+
+					Expect(err).ToNot(HaveOccurred())
+
+					router.ServeHTTP(resp, req)
+
+					Eventually(resp.Code).Should(Equal(http.StatusOK))
+				})
+			})
+
+			It("logs request origination address", func() {
+				foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+				req, _ := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				router.ServeHTTP(resp, req)
+
+				Eventually(logBuffer).Should(Say("PUT Request originated from"))
+			})
+
+			It("calls StopDeployment with a Deployment", func() {
 				foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
 				jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
 
@@ -235,97 +268,94 @@ var _ = Describe("Controller", func() {
 
 				router.ServeHTTP(resp, req)
 
-				Eventually(resp.Code).Should(Equal(http.StatusOK))
+				Expect(stopController.StopDeploymentCall.Received.Deployment).ToNot(BeNil())
+			})
+
+			It("calls StopDeployment with correct CFContext", func() {
+				foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				router.ServeHTTP(resp, req)
+
+				cfContext := stopController.StopDeploymentCall.Received.Deployment.CFContext
+				Expect(cfContext.Environment).To(Equal(environment))
+				Expect(cfContext.Space).To(Equal(space))
+				Expect(cfContext.Organization).To(Equal(org))
+				Expect(cfContext.Application).To(Equal(appName))
+			})
+
+			It("calls StopDeployment with correct authorization", func() {
+				foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Authorization", "Basic bXlVc2VyOm15UGFzc3dvcmQ=")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				router.ServeHTTP(resp, req)
+
+				auth := stopController.StopDeploymentCall.Received.Deployment.Authorization
+				Expect(auth.Username).To(Equal("myUser"))
+				Expect(auth.Password).To(Equal("myPassword"))
+			})
+
+			It("writes the process output to the response", func() {
+				foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				stopController.StopDeploymentCall.Writes = "this is the process output"
+				router.ServeHTTP(resp, req)
+
+				bytes, _ := ioutil.ReadAll(resp.Body)
+				Expect(string(bytes)).To(ContainSubstring("this is the process output"))
+			})
+
+			It("passes the data in the request body", func() {
+				foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped", "data": {"user_id": "jhodo", "group": "XP_IS_CHG" }}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				router.ServeHTTP(resp, req)
+
+				Expect(stopController.StopDeploymentCall.Received.Data["user_id"]).To(Equal("jhodo"))
+				Expect(stopController.StopDeploymentCall.Received.Data["group"]).To(Equal("XP_IS_CHG"))
+			})
+
+			Context("if requested state is not 'stop'", func() {
+				It("does not call StopDeployment", func() {
+					foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+					jsonBuffer = bytes.NewBufferString(`{"state": "started"}`)
+
+					req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+					req.Header.Set("Content-Type", "application/json")
+
+					Expect(err).ToNot(HaveOccurred())
+
+					router.ServeHTTP(resp, req)
+
+					Expect(stopController.StopDeploymentCall.Called).To(Equal(false))
+				})
 			})
 		})
-		It("logs request origination address", func() {
-			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
-			jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
 
-			req, _ := http.NewRequest("PUT", foundationURL, jsonBuffer)
-			req.Header.Set("Content-Type", "application/json")
-
-			router.ServeHTTP(resp, req)
-
-			Eventually(logBuffer).Should(Say("PUT Request originated from"))
-		})
-		It("calls StopDeployment with a Deployment", func() {
-			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
-			jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
-
-			req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
-			req.Header.Set("Content-Type", "application/json")
-
-			Expect(err).ToNot(HaveOccurred())
-
-			router.ServeHTTP(resp, req)
-
-			Expect(stopController.StopDeploymentCall.Received.Deployment).ToNot(BeNil())
-		})
-		It("calls StopDeployment with correct CFContext", func() {
-			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
-			jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
-
-			req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
-			req.Header.Set("Content-Type", "application/json")
-
-			Expect(err).ToNot(HaveOccurred())
-
-			router.ServeHTTP(resp, req)
-
-			cfContext := stopController.StopDeploymentCall.Received.Deployment.CFContext
-			Expect(cfContext.Environment).To(Equal(environment))
-			Expect(cfContext.Space).To(Equal(space))
-			Expect(cfContext.Organization).To(Equal(org))
-			Expect(cfContext.Application).To(Equal(appName))
-		})
-		It("calls StopDeployment with correct authorization", func() {
-			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
-			jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
-
-			req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", "Basic bXlVc2VyOm15UGFzc3dvcmQ=")
-
-			Expect(err).ToNot(HaveOccurred())
-
-			router.ServeHTTP(resp, req)
-
-			auth := stopController.StopDeploymentCall.Received.Deployment.Authorization
-			Expect(auth.Username).To(Equal("myUser"))
-			Expect(auth.Password).To(Equal("myPassword"))
-		})
-		It("writes the process output to the response", func() {
-			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
-			jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
-
-			req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
-			req.Header.Set("Content-Type", "application/json")
-
-			Expect(err).ToNot(HaveOccurred())
-
-			stopController.StopDeploymentCall.Writes = "this is the process output"
-			router.ServeHTTP(resp, req)
-
-			bytes, _ := ioutil.ReadAll(resp.Body)
-			Expect(string(bytes)).To(ContainSubstring("this is the process output"))
-		})
-		It("passes the data in the request body", func() {
-			foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
-			jsonBuffer = bytes.NewBufferString(`{"state": "stopped", "data": {"user_id": "jhodo", "group": "XP_IS_CHG" }}`)
-
-			req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
-			req.Header.Set("Content-Type", "application/json")
-
-			Expect(err).ToNot(HaveOccurred())
-
-			router.ServeHTTP(resp, req)
-
-			Expect(stopController.StopDeploymentCall.Received.Data["user_id"]).To(Equal("jhodo"))
-			Expect(stopController.StopDeploymentCall.Received.Data["group"]).To(Equal("XP_IS_CHG"))
-		})
-		Context("if requested state is not 'stop'", func() {
-			It("does not call StopDeployment", func() {
+		Context("when state is set to started", func() {
+			It("calls StartDeployment with a Deployment", func() {
 				foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
 				jsonBuffer = bytes.NewBufferString(`{"state": "started"}`)
 
@@ -336,10 +366,60 @@ var _ = Describe("Controller", func() {
 
 				router.ServeHTTP(resp, req)
 
-				Expect(stopController.StopDeploymentCall.Called).To(Equal(false))
+				Expect(startController.StartDeploymentCall.Received.Deployment).ToNot(BeNil())
+			})
+
+			It("calls StartDeployment with correct CFContext", func() {
+				foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "started"}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				router.ServeHTTP(resp, req)
+
+				cfContext := startController.StartDeploymentCall.Received.Deployment.CFContext
+				Expect(cfContext.Environment).To(Equal(environment))
+				Expect(cfContext.Space).To(Equal(space))
+				Expect(cfContext.Organization).To(Equal(org))
+				Expect(cfContext.Application).To(Equal(appName))
+			})
+
+			It("calls StartDeployment with correct authorization", func() {
+				foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "started"}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Authorization", "Basic bXlVc2VyOm15UGFzc3dvcmQ=")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				router.ServeHTTP(resp, req)
+
+				auth := startController.StartDeploymentCall.Received.Deployment.Authorization
+				Expect(auth.Username).To(Equal("myUser"))
+				Expect(auth.Password).To(Equal("myPassword"))
+			})
+
+			Context("if requested state is not 'start'", func() {
+				It("does not call StartDeployment", func() {
+					foundationURL := fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+					jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+					req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+					req.Header.Set("Content-Type", "application/json")
+
+					Expect(err).ToNot(HaveOccurred())
+
+					router.ServeHTTP(resp, req)
+
+					Expect(startController.StartDeploymentCall.Called).To(Equal(false))
+				})
 			})
 		})
-
 	})
 
 	Describe("RunDeployment", func() {

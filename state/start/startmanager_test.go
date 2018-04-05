@@ -41,6 +41,7 @@ var _ = Describe("Startmanager", func() {
 			},
 		}
 	})
+
 	Describe("Create", func() {
 		Context("when courier build succeeds", func() {
 			It("should return a Starter object", func() {
@@ -90,6 +91,7 @@ var _ = Describe("Startmanager", func() {
 			})
 		})
 	})
+
 	Describe("InitiallyError", func() {
 		It("should return LoginErrors", func() {
 			errors := []error{errors.New("first error")}
@@ -98,6 +100,7 @@ var _ = Describe("Startmanager", func() {
 			Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(bluegreen.LoginError{})))
 		})
 	})
+
 	Describe("ExecuteError", func() {
 		It("should return StartError", func() {
 			errs := []error{errors.New("first error")}
@@ -106,6 +109,7 @@ var _ = Describe("Startmanager", func() {
 			Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(bluegreen.StartError{})))
 		})
 	})
+
 	Describe("UndoError", func() {
 		It("should return RollbackStartError", func() {
 			errs := []error{errors.New("first error")}
@@ -116,12 +120,27 @@ var _ = Describe("Startmanager", func() {
 			Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(bluegreen.RollbackStartError{})))
 		})
 	})
+
 	Describe("SuccessError", func() {
 		It("should return FinishStartError", func() {
 			errors := []error{errors.New("first error")}
 			err := startManager.SuccessError(errors)
 
 			Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(bluegreen.FinishStartError{})))
+		})
+	})
+
+	Describe("OnFinish", func() {
+		Context("when errors", func() {
+			It("returns a StatusInternalServerError", func() {
+				env := structs.Environment{}
+				err := errors.New("you done messed up")
+
+				deploymentResponse := startManager.OnFinish(env, response, err)
+
+				Expect(deploymentResponse.StatusCode).To(Equal(500))
+				Expect(deploymentResponse.Error.Error()).To(Equal("you done messed up"))
+			})
 		})
 	})
 })

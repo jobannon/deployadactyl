@@ -8,6 +8,7 @@ import (
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/state"
 	S "github.com/compozed/deployadactyl/structs"
+	"net/http"
 )
 
 type courierCreator interface {
@@ -30,7 +31,11 @@ func (a StartManager) OnStart() error {
 }
 
 func (a StartManager) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
-	return I.DeployResponse{}
+	if err != nil{
+		return I.DeployResponse{Error:err, StatusCode: http.StatusInternalServerError}
+	}
+
+	return I.DeployResponse{StatusCode: http.StatusOK}
 }
 
 func (a StartManager) CleanUp() {}

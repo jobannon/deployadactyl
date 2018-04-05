@@ -51,6 +51,9 @@ var _ = Describe("Actioncreator", func() {
 				Response:       response,
 			},
 			FileSystemCleaner: fileSystemCleaner,
+			CFContext:         interfaces.CFContext{},
+			Auth:              interfaces.Authorization{},
+			Environment:       structs.Environment{},
 		}
 	})
 	Describe("Setup", func() {
@@ -125,86 +128,236 @@ applications:
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.Instances).To(Equal(uint16(2)))
 			})
-			It("should emit artifact retrieval events", func() {
-				environment := structs.Environment{Instances: 0}
+			Context("ArtifactRetrievalStartEvent", func() {
+				It("calls EmitEvent", func() {
+					environment := structs.Environment{Instances: 0}
 
-				deploymentInfo := structs.DeploymentInfo{
-					Manifest:    encodedManifest,
-					ArtifactURL: "https://artifacturl.com",
-					ContentType: "JSON",
-				}
+					pusherCreator.SetUp(environment)
 
-				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
+					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).To(Equal(reflect.TypeOf(ArtifactRetrievalStartEvent{})))
+				})
+				It("passes the CFContext", func() {
+					environment := structs.Environment{Instances: 0}
 
-				pusherCreator.SetUp(environment)
+					pusherCreator.CFContext = interfaces.CFContext{
+						Environment:  randomizer.StringRunes(10),
+						Space:        randomizer.StringRunes(10),
+						Organization: randomizer.StringRunes(10),
+						Application:  randomizer.StringRunes(10),
+					}
 
-				Expect(eventManager.EmitCall.Received.Events[0].Type).Should(Equal(constants.ArtifactRetrievalStart))
-				Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.ArtifactRetrievalSuccess))
+					pusherCreator.SetUp(environment)
+
+					Expect(eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent).CFContext).To(Equal(pusherCreator.CFContext))
+				})
+				It("passes the Authorization", func() {
+					environment := structs.Environment{Instances: 0}
+
+					pusherCreator.Auth = interfaces.Authorization{
+						Username: randomizer.StringRunes(10),
+						Password: randomizer.StringRunes(10),
+					}
+
+					pusherCreator.SetUp(environment)
+
+					Expect(eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent).Auth).To(Equal(pusherCreator.Auth))
+				})
+				It("passes the environment, response, and data", func() {
+					environment := structs.Environment{Instances: 0}
+
+					pusherCreator.Environment = environment
+					pusherCreator.DeployEventData.Response = response
+					pusherCreator.DeployEventData.DeploymentInfo.Data = make(map[string]interface{})
+
+					pusherCreator.SetUp(environment)
+
+					event := eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent)
+					Expect(event.Environment).To(Equal(pusherCreator.Environment))
+					Expect(event.Response).To(Equal(pusherCreator.DeployEventData.Response))
+					Expect(event.Data).To(Equal(pusherCreator.DeployEventData.DeploymentInfo.Data))
+				})
+				It("passes the manifest and artifactURL", func() {
+					environment := structs.Environment{Instances: 0}
+
+					pusherCreator.DeployEventData.DeploymentInfo.Manifest = encodedManifest
+					pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL = "theArtifactURL"
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "JSON"
+
+					pusherCreator.SetUp(environment)
+
+					event := eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent)
+					Expect(event.Manifest).To(Equal(manifest))
+					Expect(event.ArtifactURL).To(Equal(pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL))
+				})
+				Context("if error is returned", func() {
+					It("returns an error", func() {
+						environment := structs.Environment{Instances: 0}
+
+						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error")}
+
+						err := pusherCreator.SetUp(environment)
+
+						Expect(err).To(HaveOccurred())
+						Expect(reflect.TypeOf(err)).To(Equal(reflect.TypeOf(deployer.EventError{})))
+					})
+				})
 
 			})
-			It("should log an artifact retrieval event", func() {
-				environment := structs.Environment{Instances: 0}
 
-				deploymentInfo := structs.DeploymentInfo{
-					Manifest:    encodedManifest,
-					ArtifactURL: "https://artifacturl.com",
-					ContentType: "JSON",
-				}
-				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
+			Context("ArtifactRetrievalSuccessEvent", func() {
+				It("calls EmitEvent", func() {
+					environment := structs.Environment{Instances: 0}
 
-				pusherCreator.SetUp(environment)
+					pusherCreator.SetUp(environment)
 
-				logBytes, _ := ioutil.ReadAll(logBuffer)
-				Eventually(string(logBytes)).Should(ContainSubstring("emitting a artifact.retrieval.start event"))
+					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(ArtifactRetrievalSuccessEvent{})))
+				})
+				It("passes the CFContext", func() {
+					environment := structs.Environment{Instances: 0}
+
+					pusherCreator.CFContext = interfaces.CFContext{
+						Environment:  randomizer.StringRunes(10),
+						Space:        randomizer.StringRunes(10),
+						Organization: randomizer.StringRunes(10),
+						Application:  randomizer.StringRunes(10),
+					}
+
+					pusherCreator.SetUp(environment)
+
+					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent).CFContext).To(Equal(pusherCreator.CFContext))
+				})
+				It("passes the Authorization", func() {
+					environment := structs.Environment{Instances: 0}
+
+					pusherCreator.Auth = interfaces.Authorization{
+						Username: randomizer.StringRunes(10),
+						Password: randomizer.StringRunes(10),
+					}
+
+					pusherCreator.SetUp(environment)
+
+					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent).Auth).To(Equal(pusherCreator.Auth))
+				})
+				It("passes the environment, response, and data", func() {
+					environment := structs.Environment{Instances: 0}
+
+					pusherCreator.Environment = environment
+					pusherCreator.DeployEventData.Response = response
+					pusherCreator.DeployEventData.DeploymentInfo.Data = make(map[string]interface{})
+
+					pusherCreator.SetUp(environment)
+
+					event := eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent)
+					Expect(event.Environment).To(Equal(pusherCreator.Environment))
+					Expect(event.Response).To(Equal(pusherCreator.DeployEventData.Response))
+					Expect(event.Data).To(Equal(pusherCreator.DeployEventData.DeploymentInfo.Data))
+				})
+				It("passes the manifest, artifactURL, and appPath", func() {
+					environment := structs.Environment{Instances: 0}
+
+					pusherCreator.DeployEventData.DeploymentInfo.Manifest = encodedManifest
+					pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL = "theArtifactURL"
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "JSON"
+
+					fetcher.FetchCall.Returns.AppPath = "new app path"
+
+					pusherCreator.SetUp(environment)
+
+					event := eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent)
+					Expect(event.Manifest).To(Equal(manifest))
+					Expect(event.ArtifactURL).To(Equal(pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL))
+					Expect(event.AppPath).To(Equal("new app path"))
+				})
+				Context("if error is returned", func() {
+					It("returns an error", func() {
+						environment := structs.Environment{Instances: 0}
+
+						eventManager.EmitEventCall.Returns.Error = []error{nil, errors.New("a test error")}
+
+						err := pusherCreator.SetUp(environment)
+
+						Expect(err).To(HaveOccurred())
+						Expect(reflect.TypeOf(err)).To(Equal(reflect.TypeOf(deployer.EventError{})))
+						Expect(err.(deployer.EventError).Type).To(Equal(ArtifactRetrievalSuccessEvent{}.Name()))
+					})
+				})
+
 			})
-			It("should return error if start emit fails", func() {
-				eventManager.EmitCall.Returns.Error = []error{errors.New("error")}
-				environment := structs.Environment{Instances: 0}
 
-				deploymentInfo := structs.DeploymentInfo{
-					Manifest:    encodedManifest,
-					ArtifactURL: "https://artifacturl.com",
-					ContentType: "JSON",
-				}
-				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
+			Context("ArtifactRetrievalFailureEvent", func() {
+				It("calls EmitEvent", func() {
+					environment := structs.Environment{Instances: 0}
 
-				err := pusherCreator.SetUp(environment)
+					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
 
-				Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(deployer.EventError{})))
+					pusherCreator.SetUp(environment)
 
-			})
-			It("should return error if emit success fails", func() {
-				eventManager.EmitCall.Returns.Error = []error{nil, errors.New("error")}
-				environment := structs.Environment{Instances: 0}
+					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(ArtifactRetrievalFailureEvent{})))
+				})
+				It("passes the CFContext", func() {
+					environment := structs.Environment{Instances: 0}
 
-				deploymentInfo := structs.DeploymentInfo{
-					Manifest:    encodedManifest,
-					ArtifactURL: "https://artifacturl.com",
-					ContentType: "JSON",
-				}
-				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
+					pusherCreator.CFContext = interfaces.CFContext{
+						Environment:  randomizer.StringRunes(10),
+						Space:        randomizer.StringRunes(10),
+						Organization: randomizer.StringRunes(10),
+						Application:  randomizer.StringRunes(10),
+					}
+					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
 
-				err := pusherCreator.SetUp(environment)
+					pusherCreator.SetUp(environment)
 
-				Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(deployer.EventError{})))
+					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalFailureEvent).CFContext).To(Equal(pusherCreator.CFContext))
+				})
+				It("passes the Authorization", func() {
+					environment := structs.Environment{Instances: 0}
 
-			})
-			It("should emit failure if fetch fails", func() {
-				fetcher.FetchCall.Returns.Error = errors.New("a test error")
-				environment := structs.Environment{Instances: 0}
+					pusherCreator.Auth = interfaces.Authorization{
+						Username: randomizer.StringRunes(10),
+						Password: randomizer.StringRunes(10),
+					}
+					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
 
-				eventManager.EmitCall.Returns.Error = []error{nil, errors.New("error")}
+					pusherCreator.SetUp(environment)
 
-				deploymentInfo := structs.DeploymentInfo{
-					Manifest:    encodedManifest,
-					ArtifactURL: "https://artifacturl.com",
-					ContentType: "JSON",
-				}
-				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
+					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalFailureEvent).Auth).To(Equal(pusherCreator.Auth))
+				})
+				It("passes the environment, response, and data", func() {
+					environment := structs.Environment{Instances: 0}
 
-				pusherCreator.SetUp(environment)
+					pusherCreator.Environment = environment
+					pusherCreator.DeployEventData.Response = response
+					pusherCreator.DeployEventData.DeploymentInfo.Data = make(map[string]interface{})
 
-				Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.ArtifactRetrievalFailure))
+					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
+
+					pusherCreator.SetUp(environment)
+
+					event := eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalFailureEvent)
+					Expect(event.Environment).To(Equal(pusherCreator.Environment))
+					Expect(event.Response).To(Equal(pusherCreator.DeployEventData.Response))
+					Expect(event.Data).To(Equal(pusherCreator.DeployEventData.DeploymentInfo.Data))
+				})
+				It("passes the manifest and artifactURL", func() {
+					environment := structs.Environment{Instances: 0}
+
+					pusherCreator.DeployEventData.DeploymentInfo.Manifest = encodedManifest
+					pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL = "theArtifactURL"
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "JSON"
+
+					fetcher.FetchCall.Returns.Error = errors.New("a test error")
+
+					pusherCreator.SetUp(environment)
+
+					event := eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalFailureEvent)
+					Expect(event.Manifest).To(Equal(manifest))
+					Expect(event.ArtifactURL).To(Equal(pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL))
+				})
+
 			})
 		})
 
@@ -264,65 +417,138 @@ applications:
 	})
 
 	Describe("OnStart", func() {
-		It("emits a push started event", func() {
-			pusherCreator.OnStart()
+		Context("push.started Emit", func() {
+			It("emits a push.started event", func() {
+				pusherCreator.OnStart()
 
-			Expect(eventManager.EmitCall.Received.Events[0].Type).Should(Equal(constants.PushStartedEvent))
-		})
-		It("logs the parameters", func() {
-			deployInfo := pusherCreator.DeployEventData.DeploymentInfo
-			deployInfo.ArtifactURL = randomizer.StringRunes(10)
-			deployInfo.Username = randomizer.StringRunes(10)
-			deployInfo.Environment = randomizer.StringRunes(10)
-			deployInfo.Org = randomizer.StringRunes(10)
-			deployInfo.Space = randomizer.StringRunes(10)
-			deployInfo.AppName = randomizer.StringRunes(10)
-
-			pusherCreator.OnStart()
-
-			logBytes, _ := ioutil.ReadAll(logBuffer)
-			Eventually(string(logBytes)).Should(ContainSubstring("Artifact URL: " + pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL))
-			Eventually(string(logBytes)).Should(ContainSubstring("Username:     " + pusherCreator.DeployEventData.DeploymentInfo.Username))
-			Eventually(string(logBytes)).Should(ContainSubstring("Environment:  " + pusherCreator.DeployEventData.DeploymentInfo.Environment))
-			Eventually(string(logBytes)).Should(ContainSubstring("Org:          " + pusherCreator.DeployEventData.DeploymentInfo.Org))
-			Eventually(string(logBytes)).Should(ContainSubstring("Space:        " + pusherCreator.DeployEventData.DeploymentInfo.Space))
-			Eventually(string(logBytes)).Should(ContainSubstring("AppName:      " + pusherCreator.DeployEventData.DeploymentInfo.AppName))
-		})
-		It("prints the parameters to the response", func() {
-			deployInfo := pusherCreator.DeployEventData.DeploymentInfo
-			deployInfo.ArtifactURL = randomizer.StringRunes(10)
-			deployInfo.Username = randomizer.StringRunes(10)
-			deployInfo.Environment = randomizer.StringRunes(10)
-			deployInfo.Org = randomizer.StringRunes(10)
-			deployInfo.Space = randomizer.StringRunes(10)
-			deployInfo.AppName = randomizer.StringRunes(10)
-
-			pusherCreator.OnStart()
-
-			Eventually(response).Should(Say("Artifact URL: " + pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL))
-			Eventually(response).Should(Say("Username:     " + pusherCreator.DeployEventData.DeploymentInfo.Username))
-			Eventually(response).Should(Say("Environment:  " + pusherCreator.DeployEventData.DeploymentInfo.Environment))
-			Eventually(response).Should(Say("Org:          " + pusherCreator.DeployEventData.DeploymentInfo.Org))
-			Eventually(response).Should(Say("Space:        " + pusherCreator.DeployEventData.DeploymentInfo.Space))
-			Eventually(response).Should(Say("AppName:      " + pusherCreator.DeployEventData.DeploymentInfo.AppName))
-		})
-		Context("if push started event fails", func() {
-			It("returns an error", func() {
-				eventManager.EmitCall.Returns.Error = []error{errors.New("a test error")}
-
-				err := pusherCreator.OnStart()
-
-				Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(deployer.EventError{})))
+				Expect(eventManager.EmitCall.Received.Events[0].Type).Should(Equal(constants.PushStartedEvent))
 			})
-			It("logs the error", func() {
-				eventManager.EmitCall.Returns.Error = []error{errors.New("a test error")}
+			It("logs the parameters", func() {
+				deployInfo := pusherCreator.DeployEventData.DeploymentInfo
+				deployInfo.ArtifactURL = randomizer.StringRunes(10)
+				deployInfo.Username = randomizer.StringRunes(10)
+				deployInfo.Environment = randomizer.StringRunes(10)
+				deployInfo.Org = randomizer.StringRunes(10)
+				deployInfo.Space = randomizer.StringRunes(10)
+				deployInfo.AppName = randomizer.StringRunes(10)
 
 				pusherCreator.OnStart()
 
 				logBytes, _ := ioutil.ReadAll(logBuffer)
-				Eventually(string(logBytes)).Should(ContainSubstring("a test error"))
+				Eventually(string(logBytes)).Should(ContainSubstring("Artifact URL: " + pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL))
+				Eventually(string(logBytes)).Should(ContainSubstring("Username:     " + pusherCreator.DeployEventData.DeploymentInfo.Username))
+				Eventually(string(logBytes)).Should(ContainSubstring("Environment:  " + pusherCreator.DeployEventData.DeploymentInfo.Environment))
+				Eventually(string(logBytes)).Should(ContainSubstring("Org:          " + pusherCreator.DeployEventData.DeploymentInfo.Org))
+				Eventually(string(logBytes)).Should(ContainSubstring("Space:        " + pusherCreator.DeployEventData.DeploymentInfo.Space))
+				Eventually(string(logBytes)).Should(ContainSubstring("AppName:      " + pusherCreator.DeployEventData.DeploymentInfo.AppName))
+			})
+			It("prints the parameters to the response", func() {
+				deployInfo := pusherCreator.DeployEventData.DeploymentInfo
+				deployInfo.ArtifactURL = randomizer.StringRunes(10)
+				deployInfo.Username = randomizer.StringRunes(10)
+				deployInfo.Environment = randomizer.StringRunes(10)
+				deployInfo.Org = randomizer.StringRunes(10)
+				deployInfo.Space = randomizer.StringRunes(10)
+				deployInfo.AppName = randomizer.StringRunes(10)
+
+				pusherCreator.OnStart()
+
+				Eventually(response).Should(Say("Artifact URL: " + pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL))
+				Eventually(response).Should(Say("Username:     " + pusherCreator.DeployEventData.DeploymentInfo.Username))
+				Eventually(response).Should(Say("Environment:  " + pusherCreator.DeployEventData.DeploymentInfo.Environment))
+				Eventually(response).Should(Say("Org:          " + pusherCreator.DeployEventData.DeploymentInfo.Org))
+				Eventually(response).Should(Say("Space:        " + pusherCreator.DeployEventData.DeploymentInfo.Space))
+				Eventually(response).Should(Say("AppName:      " + pusherCreator.DeployEventData.DeploymentInfo.AppName))
+			})
+			Context("if Emit fails", func() {
+				It("returns an error", func() {
+					eventManager.EmitCall.Returns.Error = []error{errors.New("a test error")}
+
+					err := pusherCreator.OnStart()
+
+					Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(deployer.EventError{})))
+				})
+				It("logs the error", func() {
+					eventManager.EmitCall.Returns.Error = []error{errors.New("a test error")}
+
+					pusherCreator.OnStart()
+
+					logBytes, _ := ioutil.ReadAll(logBuffer)
+					Eventually(string(logBytes)).Should(ContainSubstring("a test error"))
+				})
 			})
 		})
+		Context("calls EmitEvent", func() {
+			It("emits a PushStartedEvent", func() {
+				pusherCreator.OnStart()
+
+				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(PushStartedEvent{})))
+			})
+			It("passes CFContext", func() {
+				pusherCreator.CFContext = interfaces.CFContext{
+					Environment:  randomizer.StringRunes(10),
+					Organization: randomizer.StringRunes(10),
+					Space:        randomizer.StringRunes(10),
+					Application:  randomizer.StringRunes(10),
+				}
+
+				pusherCreator.OnStart()
+
+				event := eventManager.EmitEventCall.Received.Events[0].(PushStartedEvent)
+				Expect(event.CFContext).To(Equal(pusherCreator.CFContext))
+			})
+			It("passes Authorization", func() {
+				pusherCreator.Auth = interfaces.Authorization{
+					Username: randomizer.StringRunes(10),
+					Password: randomizer.StringRunes(10),
+				}
+
+				pusherCreator.OnStart()
+
+				event := eventManager.EmitEventCall.Received.Events[0].(PushStartedEvent)
+				Expect(event.Auth).To(Equal(pusherCreator.Auth))
+			})
+			It("passes Environment", func() {
+				pusherCreator.Environment = structs.Environment{
+					Name: randomizer.StringRunes(10),
+				}
+
+				pusherCreator.OnStart()
+
+				event := eventManager.EmitEventCall.Received.Events[0].(PushStartedEvent)
+				Expect(event.Environment).To(Equal(pusherCreator.Environment))
+			})
+			It("passes other params", func() {
+				pusherCreator.DeployEventData.Response = response
+				pusherCreator.DeployEventData.DeploymentInfo.Body = bytes.NewBuffer([]byte{})
+				pusherCreator.DeployEventData.DeploymentInfo.ContentType = "content-type"
+
+				pusherCreator.OnStart()
+
+				event := eventManager.EmitEventCall.Received.Events[0].(PushStartedEvent)
+				Expect(event.Response).To(Equal(pusherCreator.DeployEventData.Response))
+				Expect(event.Body).To(Equal(pusherCreator.DeployEventData.DeploymentInfo.Body))
+				Expect(event.ContentType).To(Equal("content-type"))
+			})
+			Context("if EmitEvent fails", func() {
+				It("returns an error", func() {
+					eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error")}
+
+					err := pusherCreator.OnStart()
+
+					Expect(reflect.TypeOf(err)).Should(Equal(reflect.TypeOf(deployer.EventError{})))
+				})
+				It("logs the error", func() {
+					eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error")}
+
+					pusherCreator.OnStart()
+
+					logBytes, _ := ioutil.ReadAll(logBuffer)
+					Eventually(string(logBytes)).Should(ContainSubstring("a test error"))
+				})
+			})
+		})
+
 	})
 
 	Describe("CleanUp", func() {

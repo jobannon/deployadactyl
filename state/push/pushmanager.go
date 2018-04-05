@@ -46,6 +46,9 @@ type PushManager struct {
 	Fetcher           I.Fetcher
 	DeployEventData   S.DeployEventData
 	FileSystemCleaner fileSystemCleaner
+	CFContext         I.CFContext
+	Auth              I.Authorization
+	Environment       S.Environment
 }
 
 func (a *PushManager) SetUp(environment S.Environment) error {
@@ -95,29 +98,57 @@ func (a *PushManager) SetUp(environment S.Environment) error {
 		}
 	}
 
-	deployEventData := a.DeployEventData
+	var event I.IEvent
+	event = ArtifactRetrievalStartEvent{
+		CFContext:   a.CFContext,
+		Auth:        a.Auth,
+		Environment: a.Environment,
+		Response:    a.DeployEventData.Response,
+		Data:        a.DeployEventData.DeploymentInfo.Data,
+		Manifest:    manifestString,
+		ArtifactURL: a.DeployEventData.DeploymentInfo.ArtifactURL,
+	}
+	a.Logger.Debugf("emitting a %s event", event.Name())
 
-	a.Logger.Debugf("emitting a %s event", constants.ArtifactRetrievalStart)
-	err = a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalStart, Data: &deployEventData})
+	err = a.EventManager.EmitEvent(event)
 	if err != nil {
 		a.Logger.Error(err)
 		err = &bluegreen.InitializationError{err}
-		return deployer.EventError{Type: constants.ArtifactRetrievalStart, Err: err}
+		return deployer.EventError{Type: event.Name(), Err: err}
 	}
 
 	appPath, err = fetchFn()
 	if err != nil {
 		a.Logger.Error(err)
-		a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalFailure, Data: &deployEventData})
+		event = ArtifactRetrievalFailureEvent{
+			CFContext:   a.CFContext,
+			Auth:        a.Auth,
+			Environment: a.Environment,
+			Response:    a.DeployEventData.Response,
+			Data:        a.DeployEventData.DeploymentInfo.Data,
+			Manifest:    manifestString,
+			ArtifactURL: a.DeployEventData.DeploymentInfo.ArtifactURL,
+		}
+		a.EventManager.EmitEvent(event)
 		return err
 	}
 
-	a.Logger.Debugf("emitting a %s event", constants.ArtifactRetrievalSuccess)
-	err = a.EventManager.Emit(I.Event{Type: constants.ArtifactRetrievalSuccess, Data: &deployEventData})
+	event = ArtifactRetrievalSuccessEvent{
+		CFContext:   a.CFContext,
+		Auth:        a.Auth,
+		Environment: a.Environment,
+		Response:    a.DeployEventData.Response,
+		Data:        a.DeployEventData.DeploymentInfo.Data,
+		Manifest:    manifestString,
+		ArtifactURL: a.DeployEventData.DeploymentInfo.ArtifactURL,
+		AppPath:     appPath,
+	}
+	a.Logger.Debugf("emitting a %s event", event.Name())
+	err = a.EventManager.EmitEvent(event)
 	if err != nil {
 		a.Logger.Error(err)
 		err = &bluegreen.InitializationError{err}
-		return deployer.EventError{Type: constants.ArtifactRetrievalSuccess, Err: err}
+		return deployer.EventError{Type: event.Name(), Err: err}
 	}
 
 	a.DeployEventData.DeploymentInfo.Manifest = manifestString
@@ -139,6 +170,22 @@ func (a PushManager) OnStart() error {
 		a.Logger.Error(err)
 		err = &bluegreen.InitializationError{err}
 		return deployer.EventError{Type: constants.PushStartedEvent, Err: err}
+	}
+
+	event := PushStartedEvent{
+		CFContext:   a.CFContext,
+		Auth:        a.Auth,
+		Environment: a.Environment,
+		Body:        info.Body,
+		Response:    a.DeployEventData.Response,
+		ContentType: info.ContentType,
+		Data:        info.Data,
+	}
+	err = a.EventManager.EmitEvent(event)
+	if err != nil {
+		a.Logger.Error(err)
+		err = &bluegreen.InitializationError{err}
+		return deployer.EventError{Type: event.Name(), Err: err}
 	}
 	return nil
 }
@@ -193,6 +240,8 @@ func (a PushManager) Create(environment S.Environment, response io.ReadWriter, f
 		AppPath:        a.DeployEventData.DeploymentInfo.AppPath,
 		Environment:    environment,
 		Fetcher:        a.Fetcher,
+		CFContext:      a.CFContext,
+		Auth:           a.Auth,
 	}
 
 	return p, nil

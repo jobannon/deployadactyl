@@ -5,7 +5,6 @@ import (
 	//"fmt"
 	"math/rand"
 
-	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
@@ -176,13 +175,6 @@ var _ = Describe("Stopper", func() {
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("stopping app %s", randomAppName)))
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully stopped app %s", randomAppName)))
 			})
-
-			It("emits a StopFinished event", func() {
-				courier.ExistsCall.Returns.Bool = true
-
-				Expect(stopper.Execute()).To(Succeed())
-				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.StopFinishedEvent))
-			})
 		})
 
 		Context("when the stop fails", func() {
@@ -240,14 +232,7 @@ var _ = Describe("Stopper", func() {
 
 				Eventually(response).Should(Say("start succeeded"))
 				Eventually(logBuffer).Should(Say(fmt.Sprintf("starting app %s", randomAppName)))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully started app %s", randomAppName)))
-			})
-
-			It("emits a StartFinished event", func() {
-				courier.ExistsCall.Returns.Bool = true
-
-				Expect(stopper.Undo()).To(Succeed())
-				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.StartFinishedEvent))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully restarted app %s", randomAppName)))
 			})
 		})
 	})

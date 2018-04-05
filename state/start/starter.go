@@ -3,7 +3,6 @@ package start
 import (
 	"io"
 
-	C "github.com/compozed/deployadactyl/constants"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
 )
@@ -17,6 +16,7 @@ type Starter struct {
 	Log           I.Logger
 	FoundationURL string
 	AppName       string
+	Data          map[string]interface{}
 }
 
 func (s Starter) Verify() error {
@@ -75,16 +75,6 @@ func (s Starter) Execute() error {
 	}
 	s.Response.Write(output)
 
-	s.Log.Debugf("emitting a %s event", C.StartFinishedEvent)
-	startData := I.StartStopEventData{
-		FoundationURL: s.FoundationURL,
-		Context:       s.CFContext,
-		Courier:       s.Courier,
-		Response:      s.Response,
-	}
-
-	err = s.EventManager.Emit(I.Event{Type: C.StartFinishedEvent, Data: startData})
-
 	s.Log.Infof("successfully started app %s", s.AppName)
 
 	return nil
@@ -104,17 +94,7 @@ func (s Starter) Undo() error {
 	}
 	s.Response.Write(output)
 
-	s.Log.Debugf("emitting a %s event", C.StopFinishedEvent)
-	startData := I.StartStopEventData{
-		FoundationURL: s.FoundationURL,
-		Context:       s.CFContext,
-		Courier:       s.Courier,
-		Response:      s.Response,
-	}
-
-	err = s.EventManager.Emit(I.Event{Type: C.StopFinishedEvent, Data: startData})
-
-	s.Log.Infof("successfully stopped app %s", s.AppName)
+	s.Log.Infof("successfully restopped app %s", s.AppName)
 
 	return nil
 }

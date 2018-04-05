@@ -27,6 +27,8 @@ type Pusher struct {
 	AppPath        string
 	Environment    S.Environment
 	Fetcher        I.Fetcher
+	CFContext      I.CFContext
+	Auth           I.Authorization
 }
 
 // Login will login to a Cloud Foundry instance.
@@ -104,6 +106,21 @@ func (p Pusher) Execute() error {
 		return err
 	}
 	p.Log.Infof("emitted a %s event", C.PushFinishedEvent)
+
+	event := PushFinishedEvent{
+		CFContext:       p.CFContext,
+		Auth:            p.Auth,
+		Response:        p.Response,
+		AppPath:         p.AppPath,
+		FoundationURL:   p.FoundationURL,
+		TempAppWithUUID: tempAppWithUUID,
+		Data:            p.DeploymentInfo.Data,
+	}
+	err = p.EventManager.EmitEvent(event)
+	if err != nil {
+		return err
+	}
+	p.Log.Infof("emitted a %s event", event.Name())
 
 	return nil
 }

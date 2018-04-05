@@ -132,7 +132,7 @@ func (c Creator) CreatePushController() I.PushController {
 	}
 }
 
-func (c Creator) PushManager(deployEventData S.DeployEventData) I.ActionCreator {
+func (c Creator) PushManager(deployEventData S.DeployEventData, cf I.CFContext, auth I.Authorization, env S.Environment) I.ActionCreator {
 	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
 	return &push.PushManager{
 		CourierCreator:    c,
@@ -141,6 +141,9 @@ func (c Creator) PushManager(deployEventData S.DeployEventData) I.ActionCreator 
 		Fetcher:           c.CreateFetcher(),
 		DeployEventData:   deployEventData,
 		FileSystemCleaner: c.CreateFileSystem(),
+		CFContext:         cf,
+		Auth:              auth,
+		Environment:       env,
 	}
 }
 

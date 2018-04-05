@@ -97,8 +97,8 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 	}
 
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: body}
-	defer c.emitDeployFinish(&deployEventData, response, &deployResponse, deploymentLogger)
-	defer c.emitDeploySuccessOrFailure(&deployEventData, response, &deployResponse, deploymentLogger)
+	defer c.emitDeployFinish(&deployEventData, response, cf, auth, environment, &deployResponse, deploymentLogger)
+	defer c.emitDeploySuccessOrFailure(&deployEventData, response, cf, auth, environment, &deployResponse, deploymentLogger)
 
 	deploymentLogger.Debugf("emitting a %s event", constants.DeployStartEvent)
 
@@ -120,6 +120,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 		ContentType: deploymentInfo.ContentType,
 		Environment: environment,
 		Response:    response,
+		Data:        deploymentInfo.Data,
 	})
 	if err != nil {
 		deploymentLogger.Error(err)
@@ -131,7 +132,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 		}
 	}
 
-	pusherCreator := c.PushManagerFactory.PushManager(deployEventData)
+	pusherCreator := c.PushManagerFactory.PushManager(deployEventData, cf, auth, environment)
 
 	reqChannel1 := make(chan *I.DeployResponse)
 	reqChannel2 := make(chan *I.DeployResponse)
@@ -153,14 +154,6 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 	deployResponse = *<-reqChannel1
 
 	return deployResponse
-}
-
-func isZip(contentType string) bool {
-	return contentType == "application/zip"
-}
-
-func isJSON(contentType string) bool {
-	return contentType == "application/json"
 }
 
 func (c *PushController) getDeploymentInfo(body *[]byte, deploymentInfo *structs.DeploymentInfo) (*structs.DeploymentInfo, error) {
@@ -210,7 +203,7 @@ func (c *PushController) resolveEnvironment(env string) (structs.Environment, er
 	return environment, nil
 }
 
-func (c *PushController) emitDeployFinish(deployEventData *structs.DeployEventData, response io.ReadWriter, deployResponse *I.DeployResponse, deploymentLogger logger.DeploymentLogger) {
+func (c *PushController) emitDeployFinish(deployEventData *structs.DeployEventData, response io.ReadWriter, cf I.CFContext, auth I.Authorization, environment structs.Environment, deployResponse *I.DeployResponse, deploymentLogger logger.DeploymentLogger) {
 	deploymentLogger.Debugf("emitting a %s event", constants.DeployFinishEvent)
 	finishErr := c.EventManager.Emit(I.Event{Type: constants.DeployFinishEvent, Data: deployEventData})
 	if finishErr != nil {
@@ -219,9 +212,28 @@ func (c *PushController) emitDeployFinish(deployEventData *structs.DeployEventDa
 		deployResponse.Error = err
 		deployResponse.StatusCode = http.StatusInternalServerError
 	}
+
+	finishErr = c.EventManager.EmitEvent(DeployFinishedEvent{
+		CFContext:   cf,
+		Auth:        auth,
+		Body:        deployEventData.RequestBody,
+		ContentType: deployEventData.DeploymentInfo.ContentType,
+		Environment: environment,
+		Response:    deployEventData.Response,
+		Data:        deployEventData.DeploymentInfo.Data,
+	})
+	if finishErr != nil {
+		fmt.Fprintln(response, finishErr)
+		if finishErr != nil {
+			fmt.Fprintln(response, finishErr)
+			err := bluegreen.FinishDeployError{Err: fmt.Errorf("%s: %s", deployResponse.Error, deployer.EventError{constants.DeployFinishEvent, finishErr})}
+			deployResponse.Error = err
+			deployResponse.StatusCode = http.StatusInternalServerError
+		}
+	}
 }
 
-func (c PushController) emitDeploySuccessOrFailure(deployEventData *structs.DeployEventData, response io.ReadWriter, deployResponse *I.DeployResponse, deploymentLogger logger.DeploymentLogger) {
+func (c PushController) emitDeploySuccessOrFailure(deployEventData *structs.DeployEventData, response io.ReadWriter, cf I.CFContext, auth I.Authorization, environment structs.Environment, deployResponse *I.DeployResponse, deploymentLogger logger.DeploymentLogger) {
 	deployEvent := I.Event{Type: constants.DeploySuccessEvent, Data: deployEventData}
 	if deployResponse.Error != nil {
 		c.printErrors(response, &deployResponse.Error)
@@ -229,13 +241,43 @@ func (c PushController) emitDeploySuccessOrFailure(deployEventData *structs.Depl
 		deployEvent.Type = constants.DeployFailureEvent
 		deployEvent.Error = deployResponse.Error
 	}
-
-	deploymentLogger.Debug(fmt.Sprintf("emitting a %s event", deployEvent.Type))
+	deploymentLogger.Debug(fmt.Sprintf("emitting a %s event", deployEvent.Name()))
 	eventErr := c.EventManager.Emit(deployEvent)
 	if eventErr != nil {
-		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", deployEvent.Type, eventErr)
+		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", deployEvent.Name(), eventErr)
+		fmt.Fprintln(response, eventErr)
+		return
+	}
+
+	var event I.IEvent
+	if deployResponse.Error != nil {
+		event = DeployFailureEvent{
+			CFContext:   cf,
+			Auth:        auth,
+			Body:        deployEventData.RequestBody,
+			ContentType: deployEventData.DeploymentInfo.ContentType,
+			Environment: environment,
+			Response:    deployEventData.Response,
+			Data:        deployEventData.DeploymentInfo.Data,
+		}
+	} else {
+		event = DeploySuccessEvent{
+			CFContext:   cf,
+			Auth:        auth,
+			Body:        deployEventData.RequestBody,
+			ContentType: deployEventData.DeploymentInfo.ContentType,
+			Environment: environment,
+			Response:    deployEventData.Response,
+			Data:        deployEventData.DeploymentInfo.Data,
+		}
+	}
+	deploymentLogger.Debug(fmt.Sprintf("emitting a %s event", event.Name()))
+	eventErr = c.EventManager.EmitEvent(event)
+	if eventErr != nil {
+		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", event.Name(), eventErr)
 		fmt.Fprintln(response, eventErr)
 	}
+
 }
 
 func (c PushController) printErrors(response io.ReadWriter, err *error) {

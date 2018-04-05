@@ -7,6 +7,7 @@ import (
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/go-errors/errors"
+	"io"
 )
 
 type eventBinding struct {
@@ -100,6 +101,7 @@ type StartFinishedEvent struct {
 	CFContext     interfaces.CFContext
 	Data          map[string]interface{}
 	Authorization interfaces.Authorization
+	Response      io.ReadWriter
 	Environment   structs.Environment
 }
 

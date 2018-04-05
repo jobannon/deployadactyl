@@ -6,7 +6,7 @@ import (
 )
 
 type PushManagerFactory interface {
-	PushManager(deployEventData structs.DeployEventData) ActionCreator
+	PushManager(deployEventData structs.DeployEventData, cfContext CFContext, auth Authorization, env structs.Environment) ActionCreator
 }
 
 type PushController interface {

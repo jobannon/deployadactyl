@@ -60,6 +60,7 @@ func (a StartManager) Create(environment S.Environment, response io.ReadWriter, 
 		Log:           a.Logger,
 		FoundationURL: foundationURL,
 		AppName:       a.DeployEventData.DeploymentInfo.AppName,
+		Data:          a.DeployEventData.DeploymentInfo.Data,
 	}
 
 	return p, nil

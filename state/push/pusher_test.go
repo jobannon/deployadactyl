@@ -15,10 +15,12 @@ import (
 
 	"encoding/base64"
 
+	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
+	"reflect"
 )
 
 var _ = Describe("Pusher", func() {
@@ -100,6 +102,8 @@ var _ = Describe("Pusher", func() {
 			AppPath:        randomAppPath,
 			Environment:    S.Environment{EnableRollback: true},
 			Fetcher:        fetcher,
+			CFContext:      interfaces.CFContext{},
+			Auth:           interfaces.Authorization{},
 		}
 	})
 
@@ -324,6 +328,91 @@ var _ = Describe("Pusher", func() {
 				})
 			})
 		})
+
+		Context("push.finished event", func() {
+			It("calls Emit", func() {
+				pusher.Execute()
+
+				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal("push.finished"))
+			})
+			It("does not return an error", func() {
+				fetcher.FetchCall.Returns.AppPath = randomAppPath
+				Expect(pusher.Execute()).To(Succeed())
+
+				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.PushFinishedEvent))
+			})
+
+			It("has the temporary app name on the event", func() {
+				fetcher.FetchCall.Returns.AppPath = randomAppPath
+				Expect(pusher.Execute()).To(Succeed())
+
+				Expect(eventManager.EmitCall.Received.Events[0].Data.(S.PushEventData).TempAppWithUUID).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
+			})
+			Context("when Emit fails", func() {
+				It("returns an error", func() {
+					fetcher.FetchCall.Returns.AppPath = randomAppPath
+					eventManager.EmitCall.Returns.Error[0] = errors.New("event manager error")
+
+					err := pusher.Execute()
+					Expect(err).To(MatchError("event manager error"))
+				})
+			})
+		})
+
+		Context("PushFinishedEvent", func() {
+			It("calls EmitEvent", func() {
+				pusher.Execute()
+
+				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).To(Equal(reflect.TypeOf(PushFinishedEvent{})))
+			})
+			It("provides CFContext", func() {
+				pusher.CFContext = interfaces.CFContext{
+					Organization: randomizer.StringRunes(10),
+					Space:        randomizer.StringRunes(10),
+					Application:  randomizer.StringRunes(10),
+					Environment:  randomizer.StringRunes(10),
+				}
+
+				pusher.Execute()
+
+				event := eventManager.EmitEventCall.Received.Events[0].(PushFinishedEvent)
+				Expect(event.CFContext).To(Equal(pusher.CFContext))
+			})
+			It("provides Auth", func() {
+				pusher.Auth = interfaces.Authorization{
+					Username: randomizer.StringRunes(10),
+					Password: randomizer.StringRunes(10),
+				}
+
+				pusher.Execute()
+
+				event := eventManager.EmitEventCall.Received.Events[0].(PushFinishedEvent)
+				Expect(event.Auth).To(Equal(pusher.Auth))
+			})
+			It("provides other info", func() {
+				pusher.Response = response
+				pusher.AppPath = randomAppName
+				pusher.FoundationURL = randomFoundationURL
+
+				pusher.Execute()
+
+				event := eventManager.EmitEventCall.Received.Events[0].(PushFinishedEvent)
+
+				Expect(event.Response).To(Equal(pusher.Response))
+				Expect(event.AppPath).To(Equal(pusher.AppPath))
+				Expect(event.FoundationURL).To(Equal(pusher.FoundationURL))
+				Expect(event.TempAppWithUUID).ToNot(BeNil())
+			})
+			Context("when Emit fails", func() {
+				It("returns an error", func() {
+					fetcher.FetchCall.Returns.AppPath = randomAppPath
+					eventManager.EmitEventCall.Returns.Error = []error{errors.New("event manager error")}
+
+					err := pusher.Execute()
+					Expect(err).To(MatchError("event manager error"))
+				})
+			})
+		})
 	})
 
 	Describe("Success", func() {
@@ -509,36 +598,6 @@ var _ = Describe("Pusher", func() {
 	Describe("Verify", func() {
 		It("returns nil", func() {
 			Expect(pusher.Verify()).To(BeNil())
-		})
-	})
-
-	Describe("event handling", func() {
-		Context("when a PushFinishedEvent is emitted", func() {
-			It("does not return an error", func() {
-				fetcher.FetchCall.Returns.AppPath = randomAppPath
-				Expect(pusher.Execute()).To(Succeed())
-
-				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.PushFinishedEvent))
-			})
-
-			It("has the temporary app name on the event", func() {
-				fetcher.FetchCall.Returns.AppPath = randomAppPath
-				Expect(pusher.Execute()).To(Succeed())
-
-				Expect(eventManager.EmitCall.Received.Events[0].Data.(S.PushEventData).TempAppWithUUID).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-			})
-		})
-
-		Context("when an event fails", func() {
-			It("returns an error", func() {
-				fetcher.FetchCall.Returns.AppPath = randomAppPath
-				eventManager.EmitCall.Returns.Error[0] = errors.New("event manager error")
-
-				err := pusher.Execute()
-				Expect(err).To(MatchError("event manager error"))
-
-				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.PushFinishedEvent))
-			})
 		})
 	})
 })

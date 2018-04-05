@@ -124,8 +124,8 @@ func (c StartController) emitStartFinish(response io.ReadWriter, deploymentLogge
 	event = StartFinishedEvent{
 		CFContext:     cfContext,
 		Authorization: *auth,
-		Environment:   *environment,
 		Data:          data,
+		Environment:   *environment,
 	}
 	deploymentLogger.Debugf("emitting a %s event", event.Name())
 	c.EventManager.EmitEvent(event)

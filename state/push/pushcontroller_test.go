@@ -570,15 +570,18 @@ var _ = Describe("RunDeployment", func() {
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.CustomParams["param2"]).Should(Equal("value2"))
 
 				})
-				It("is passed to the pusher creator", func() {
+				It("creates a PushManager", func() {
 					deployment.CFContext.Environment = environment
+					deployment.Authorization.Username = randomizer.StringRunes(10)
 					deployment.Type.ZIP = true
 
 					controller.RunDeployment(&deployment, response)
 
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo).ShouldNot(BeNil())
+					Eventually(pushManagerFactory.PushManagerCall.Received.CFContext.Environment).Should(Equal(environment))
+					Eventually(pushManagerFactory.PushManagerCall.Received.Auth.Username).Should(Equal(deployment.Authorization.Username))
+					Expect(pushManagerFactory.PushManagerCall.Received.Environment).ToNot(BeNil())
 				})
-
 				It("correctly extracts artifact url from body", func() {
 					artifactURL := "artifactURL-" + randomizer.StringRunes(10)
 					bodyByte := []byte(fmt.Sprintf(`{"artifact_url": "%s"}`, artifactURL))
@@ -718,10 +721,6 @@ var _ = Describe("RunDeployment", func() {
 					})
 					It("passes other info to EmitEvent", func() {
 						deployment.CFContext.Environment = environment
-						deployment.Authorization = I.Authorization{
-							Username: "myuser",
-							Password: "mypassword",
-						}
 
 						controller.Config.Environments[environment] = structs.Environment{
 							Name: environment,
@@ -738,59 +737,346 @@ var _ = Describe("RunDeployment", func() {
 						Expect(event.Response).ToNot(BeNil())
 					})
 				})
-				It("emits a finished event", func() {
-					deployment.CFContext.Environment = environment
-					deployment.Type.ZIP = true
+				Context("deploy.finish event", func() {
 
-					controller.RunDeployment(&deployment, response)
-					Expect(eventManager.EmitCall.Received.Events[2].Type).Should(Equal(constants.DeployFinishEvent))
-				})
-				Context("when finished emit fails", func() {
-					It("returns error", func() {
+					It("calls Emit", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type.ZIP = true
-
-						eventManager.EmitCall.Returns.Error = []error{nil, nil, errors.New("a test error")}
-
-						deploymentResponse := controller.RunDeployment(&deployment, response)
-
-						Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(bluegreen.FinishDeployError{})))
-					})
-				})
-				It("emits a success event", func() {
-					deployment.CFContext.Environment = environment
-					deployment.Type.ZIP = true
-
-					controller.RunDeployment(&deployment, response)
-					Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.DeploySuccessEvent))
-				})
-				Context("when emit successOrFailure fails", func() {
-					It("logs an error", func() {
-						deployment.CFContext.Environment = environment
-						deployment.Type.ZIP = true
-
-						eventManager.EmitCall.Returns.Error = []error{nil, errors.New("a test error"), nil}
 
 						controller.RunDeployment(&deployment, response)
-						Eventually(logBuffer).Should(Say("an error occurred when emitting a deploy.success event"))
+						Expect(eventManager.EmitCall.Received.Events[2].Type).Should(Equal(constants.DeployFinishEvent))
+					})
+					It("calls EmitEvent", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						Expect(eventManager.EmitEventCall.Received.Events[2].Name()).To(Equal(push.DeployFinishedEvent{}.Name()))
+					})
+					It("passes CFContext to Emit", func() {
+						deployment.CFContext.Environment = environment
+						deployment.CFContext.Application = appName
+						deployment.CFContext.Space = space
+						deployment.CFContext.Organization = org
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						deploymentInfo := eventManager.EmitCall.Received.Events[2].Data.(*structs.DeployEventData).DeploymentInfo
+						Expect(deploymentInfo.AppName).To(Equal(appName))
+						Expect(deploymentInfo.Org).To(Equal(org))
+						Expect(deploymentInfo.Space).To(Equal(space))
+						Expect(deploymentInfo.UUID).ToNot(BeNil())
+					})
+					It("passes CFContext to EmitEvent in the event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.CFContext.Application = appName
+						deployment.CFContext.Space = space
+						deployment.CFContext.Organization = org
+						deployment.CFContext.UUID = uuid
+
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						event := eventManager.EmitEventCall.Received.Events[2].(push.DeployFinishedEvent)
+						Expect(event.CFContext.Environment).To(Equal(environment))
+						Expect(event.CFContext.Application).To(Equal(appName))
+						Expect(event.CFContext.Space).To(Equal(space))
+						Expect(event.CFContext.Organization).To(Equal(org))
+						Expect(event.CFContext.UUID).To(Equal(uuid))
+					})
+					It("passes Auth to EmitEvent in the event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Authorization = I.Authorization{
+							Username: "myuser",
+							Password: "mypassword",
+						}
+
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						event := eventManager.EmitEventCall.Received.Events[2].(push.DeployFinishedEvent)
+						Expect(event.Auth.Username).To(Equal("myuser"))
+						Expect(event.Auth.Password).To(Equal("mypassword"))
+					})
+					It("passes other info to EmitEvent", func() {
+						deployment.CFContext.Environment = environment
+
+						controller.Config.Environments[environment] = structs.Environment{
+							Name: environment,
+						}
+
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						event := eventManager.EmitEventCall.Received.Events[2].(push.DeployFinishedEvent)
+						Expect(event.Body).ToNot(BeNil())
+						Expect(event.ContentType).To(Equal("ZIP"))
+						Expect(event.Environment.Name).To(Equal(environment))
+						Expect(event.Response).ToNot(BeNil())
+					})
+					Context("when Emit fails", func() {
+						It("returns error", func() {
+							deployment.CFContext.Environment = environment
+							deployment.Type.ZIP = true
+
+							eventManager.EmitCall.Returns.Error = []error{nil, nil, errors.New("a test error")}
+
+							deploymentResponse := controller.RunDeployment(&deployment, response)
+
+							Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(bluegreen.FinishDeployError{})))
+						})
+					})
+					Context("when EmitEvent fails", func() {
+						It("returns error", func() {
+							deployment.CFContext.Environment = environment
+							deployment.Type.ZIP = true
+
+							eventManager.EmitEventCall.Returns.Error = []error{nil, nil, errors.New("a test error")}
+
+							deploymentResponse := controller.RunDeployment(&deployment, response)
+
+							Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(bluegreen.FinishDeployError{})))
+						})
 					})
 				})
-				It("emits a failure event", func() {
-					deployment.CFContext.Environment = environment
-					deployment.Type.ZIP = true
+				Context("deploy.success event", func() {
+					It("call Emit", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
 
-					eventManager.EmitCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
+						controller.RunDeployment(&deployment, response)
+						Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.DeploySuccessEvent))
+					})
+					It("calls EmitEvent", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
 
-					controller.RunDeployment(&deployment, response)
-					Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.DeployFailureEvent))
+						controller.RunDeployment(&deployment, response)
+
+						Expect(eventManager.EmitEventCall.Received.Events[1].Name()).To(Equal(push.DeploySuccessEvent{}.Name()))
+					})
+					It("passes CFContext to Emit", func() {
+						deployment.CFContext.Environment = environment
+						deployment.CFContext.Application = appName
+						deployment.CFContext.Space = space
+						deployment.CFContext.Organization = org
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						deploymentInfo := eventManager.EmitCall.Received.Events[1].Data.(*structs.DeployEventData).DeploymentInfo
+						Expect(deploymentInfo.AppName).To(Equal(appName))
+						Expect(deploymentInfo.Org).To(Equal(org))
+						Expect(deploymentInfo.Space).To(Equal(space))
+						Expect(deploymentInfo.UUID).ToNot(BeNil())
+					})
+					It("passes CFContext to EmitEvent in the event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.CFContext.Application = appName
+						deployment.CFContext.Space = space
+						deployment.CFContext.Organization = org
+						deployment.CFContext.UUID = uuid
+
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						event := eventManager.EmitEventCall.Received.Events[1].(push.DeploySuccessEvent)
+						Expect(event.CFContext.Environment).To(Equal(environment))
+						Expect(event.CFContext.Application).To(Equal(appName))
+						Expect(event.CFContext.Space).To(Equal(space))
+						Expect(event.CFContext.Organization).To(Equal(org))
+						Expect(event.CFContext.UUID).To(Equal(uuid))
+					})
+					It("passes Auth to EmitEvent in the event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Authorization = I.Authorization{
+							Username: "myuser",
+							Password: "mypassword",
+						}
+
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						event := eventManager.EmitEventCall.Received.Events[1].(push.DeploySuccessEvent)
+						Expect(event.Auth.Username).To(Equal("myuser"))
+						Expect(event.Auth.Password).To(Equal("mypassword"))
+					})
+					It("passes other info to EmitEvent", func() {
+						deployment.CFContext.Environment = environment
+
+						controller.Config.Environments[environment] = structs.Environment{
+							Name: environment,
+						}
+
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						event := eventManager.EmitEventCall.Received.Events[1].(push.DeploySuccessEvent)
+						Expect(event.Body).ToNot(BeNil())
+						Expect(event.ContentType).To(Equal("ZIP"))
+						Expect(event.Environment.Name).To(Equal(environment))
+						Expect(event.Response).ToNot(BeNil())
+					})
+					It("logs emitting an event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+						Eventually(logBuffer).Should(Say("emitting a deploy.success event"))
+					})
+					Context("when Emit fails", func() {
+						It("logs an error", func() {
+							deployment.CFContext.Environment = environment
+							deployment.Type.ZIP = true
+
+							eventManager.EmitCall.Returns.Error = []error{nil, errors.New("a test error"), nil}
+
+							controller.RunDeployment(&deployment, response)
+							Eventually(logBuffer).Should(Say("an error occurred when emitting a deploy.success event"))
+						})
+					})
+					Context("when EmitEvent fails", func() {
+						It("returns error", func() {
+							deployment.CFContext.Environment = environment
+							deployment.Type.ZIP = true
+
+							eventManager.EmitEventCall.Returns.Error = []error{nil, errors.New("a test error")}
+
+							controller.RunDeployment(&deployment, response)
+
+							Eventually(logBuffer).Should(Say("an error occurred when emitting a DeploySuccessEvent"))
+						})
+					})
 				})
-				It("logs emitting an event", func() {
-					deployment.CFContext.Environment = environment
-					deployment.Type.ZIP = true
+				Context("Deploy.failure event", func() {
+					It("call emit", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
 
-					controller.RunDeployment(&deployment, response)
-					Eventually(logBuffer).Should(Say("emitting a deploy.success event"))
+						eventManager.EmitCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
+
+						controller.RunDeployment(&deployment, response)
+						Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.DeployFailureEvent))
+					})
+					It("calls EmitEvent", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
+
+						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
+
+						controller.RunDeployment(&deployment, response)
+
+						Expect(eventManager.EmitEventCall.Received.Events[1].Name()).To(Equal(push.DeployFailureEvent{}.Name()))
+					})
+					It("passes CFContext to Emit", func() {
+						deployment.CFContext.Environment = environment
+						deployment.CFContext.Application = appName
+						deployment.CFContext.Space = space
+						deployment.CFContext.Organization = org
+						deployment.Type.ZIP = true
+
+						controller.RunDeployment(&deployment, response)
+
+						deploymentInfo := eventManager.EmitCall.Received.Events[1].Data.(*structs.DeployEventData).DeploymentInfo
+						Expect(deploymentInfo.AppName).To(Equal(appName))
+						Expect(deploymentInfo.Org).To(Equal(org))
+						Expect(deploymentInfo.Space).To(Equal(space))
+						Expect(deploymentInfo.UUID).ToNot(BeNil())
+					})
+					It("passes CFContext to EmitEvent in the event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.CFContext.Application = appName
+						deployment.CFContext.Space = space
+						deployment.CFContext.Organization = org
+						deployment.CFContext.UUID = uuid
+						deployment.Type.ZIP = true
+
+						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
+
+						controller.RunDeployment(&deployment, response)
+
+						event := eventManager.EmitEventCall.Received.Events[1].(push.DeployFailureEvent)
+						Expect(event.CFContext.Environment).To(Equal(environment))
+						Expect(event.CFContext.Application).To(Equal(appName))
+						Expect(event.CFContext.Space).To(Equal(space))
+						Expect(event.CFContext.Organization).To(Equal(org))
+						Expect(event.CFContext.UUID).To(Equal(uuid))
+					})
+					It("passes Auth to EmitEvent in the event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Authorization = I.Authorization{
+							Username: "myuser",
+							Password: "mypassword",
+						}
+						deployment.Type.ZIP = true
+
+						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
+
+						controller.RunDeployment(&deployment, response)
+
+						event := eventManager.EmitEventCall.Received.Events[1].(push.DeployFailureEvent)
+						Expect(event.Auth.Username).To(Equal("myuser"))
+						Expect(event.Auth.Password).To(Equal("mypassword"))
+					})
+					It("passes other info to EmitEvent", func() {
+						deployment.CFContext.Environment = environment
+						controller.Config.Environments[environment] = structs.Environment{
+							Name: environment,
+						}
+						deployment.Type.ZIP = true
+
+						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
+
+						controller.RunDeployment(&deployment, response)
+
+						event := eventManager.EmitEventCall.Received.Events[1].(push.DeployFailureEvent)
+						Expect(event.Body).ToNot(BeNil())
+						Expect(event.ContentType).To(Equal("ZIP"))
+						Expect(event.Environment.Name).To(Equal(environment))
+						Expect(event.Response).ToNot(BeNil())
+					})
+					It("logs emitting an event", func() {
+						deployment.CFContext.Environment = environment
+						deployment.Type.ZIP = true
+
+						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
+
+						controller.RunDeployment(&deployment, response)
+						Eventually(logBuffer).Should(Say("emitting a deploy.failure event"))
+					})
+					Context("when Emit fails", func() {
+						It("logs an error", func() {
+							deployment.CFContext.Environment = environment
+							deployment.Type.ZIP = true
+
+							eventManager.EmitCall.Returns.Error = []error{errors.New("a test error"), errors.New("a test error"), nil}
+
+							controller.RunDeployment(&deployment, response)
+							Eventually(logBuffer).Should(Say("an error occurred when emitting a deploy.failure event"))
+						})
+					})
+					Context("when EmitEvent fails", func() {
+						It("returns error", func() {
+							deployment.CFContext.Environment = environment
+							deployment.Type.ZIP = true
+
+							eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), errors.New("a test error"), nil}
+
+							controller.RunDeployment(&deployment, response)
+
+							Eventually(logBuffer).Should(Say("an error occurred when emitting a DeployFailureEvent"))
+						})
+					})
 				})
+
 				It("prints found errors to the response", func() {
 					deployment.CFContext.Environment = environment
 					deployment.Type.ZIP = true
@@ -805,36 +1091,6 @@ var _ = Describe("RunDeployment", func() {
 					Eventually(string(responseBytes)).Should(ContainSubstring("The following error was found in the above logs: a description"))
 					Eventually(string(responseBytes)).Should(ContainSubstring("Error: some details"))
 					Eventually(string(responseBytes)).Should(ContainSubstring("Potential solution: a solution"))
-				})
-				It("passes populated deploymentInfo to DeploySuccessEvent event", func() {
-					deployment.CFContext.Environment = environment
-					deployment.CFContext.Application = appName
-					deployment.CFContext.Space = space
-					deployment.CFContext.Organization = org
-					deployment.Type.ZIP = true
-
-					controller.RunDeployment(&deployment, response)
-
-					deploymentInfo := eventManager.EmitCall.Received.Events[1].Data.(*structs.DeployEventData).DeploymentInfo
-					Expect(deploymentInfo.AppName).To(Equal(appName))
-					Expect(deploymentInfo.Org).To(Equal(org))
-					Expect(deploymentInfo.Space).To(Equal(space))
-					Expect(deploymentInfo.UUID).ToNot(BeNil())
-				})
-				It("passes populated deploymentInfo to DeployFinishEvent event", func() {
-					deployment.CFContext.Environment = environment
-					deployment.CFContext.Application = appName
-					deployment.CFContext.Space = space
-					deployment.CFContext.Organization = org
-					deployment.Type.ZIP = true
-
-					controller.RunDeployment(&deployment, response)
-
-					deploymentInfo := eventManager.EmitCall.Received.Events[2].Data.(*structs.DeployEventData).DeploymentInfo
-					Expect(deploymentInfo.AppName).To(Equal(appName))
-					Expect(deploymentInfo.Org).To(Equal(org))
-					Expect(deploymentInfo.Space).To(Equal(space))
-					Expect(deploymentInfo.UUID).ToNot(BeNil())
 				})
 			})
 		})

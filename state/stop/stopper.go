@@ -1,7 +1,6 @@
 package stop
 
 import (
-	C "github.com/compozed/deployadactyl/constants"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
 	"io"
@@ -76,16 +75,6 @@ func (s Stopper) Execute() error {
 	}
 	s.Response.Write(output)
 
-	s.Log.Debugf("emitting a %s event", C.StopFinishedEvent)
-	stopData := I.StartStopEventData{
-		FoundationURL: s.FoundationURL,
-		Context:       s.CFContext,
-		Courier:       s.Courier,
-		Response:      s.Response,
-	}
-
-	err = s.EventManager.Emit(I.Event{Type: C.StopFinishedEvent, Data: stopData})
-
 	s.Log.Infof("successfully stopped app %s", s.AppName)
 
 	return nil
@@ -105,17 +94,7 @@ func (s Stopper) Undo() error {
 	}
 	s.Response.Write(output)
 
-	s.Log.Debugf("emitting a %s event", C.StartFinishedEvent)
-	startData := I.StartStopEventData{
-		FoundationURL: s.FoundationURL,
-		Context:       s.CFContext,
-		Courier:       s.Courier,
-		Response:      s.Response,
-	}
-
-	err = s.EventManager.Emit(I.Event{Type: C.StartFinishedEvent, Data: startData})
-
-	s.Log.Infof("successfully started app %s", s.AppName)
+	s.Log.Infof("successfully restarted app %s", s.AppName)
 
 	return nil
 }

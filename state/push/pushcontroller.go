@@ -262,13 +262,14 @@ func (c PushController) emitDeploySuccessOrFailure(deployEventData *structs.Depl
 		}
 	} else {
 		event = DeploySuccessEvent{
-			CFContext:   cf,
-			Auth:        auth,
-			Body:        deployEventData.RequestBody,
-			ContentType: deployEventData.DeploymentInfo.ContentType,
-			Environment: environment,
-			Response:    deployEventData.Response,
-			Data:        deployEventData.DeploymentInfo.Data,
+			CFContext:           cf,
+			Auth:                auth,
+			Body:                deployEventData.RequestBody,
+			ContentType:         deployEventData.DeploymentInfo.ContentType,
+			Environment:         environment,
+			Response:            deployEventData.Response,
+			Data:                deployEventData.DeploymentInfo.Data,
+			HealthCheckEndpoint: deployEventData.DeploymentInfo.HealthCheckEndpoint,
 		}
 	}
 	deploymentLogger.Debug(fmt.Sprintf("emitting a %s event", event.Name()))

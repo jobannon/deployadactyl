@@ -79,13 +79,14 @@ func NewDeployFinishedEventBinding(handler func(event DeployFinishedEvent) error
 }
 
 type DeploySuccessEvent struct {
-	CFContext   interfaces.CFContext
-	Body        io.Reader
-	ContentType string
-	Environment structs.Environment
-	Auth        interfaces.Authorization
-	Response    io.ReadWriter
-	Data        map[string]interface{}
+	CFContext           interfaces.CFContext
+	Body                io.Reader
+	ContentType         string
+	Environment         structs.Environment
+	Auth                interfaces.Authorization
+	Response            io.ReadWriter
+	Data                map[string]interface{}
+	HealthCheckEndpoint string
 }
 
 func (d DeploySuccessEvent) Name() string {

@@ -51,7 +51,7 @@ type PushManager struct {
 	Environment       S.Environment
 }
 
-func (a *PushManager) SetUp(environment S.Environment) error {
+func (a *PushManager) SetUp() error {
 	var (
 		manifestString string
 		instances      *uint16
@@ -73,7 +73,7 @@ func (a *PushManager) SetUp(environment S.Environment) error {
 
 		instances = manifestro.GetInstances(manifestString)
 		if instances == nil {
-			instances = &environment.Instances
+			instances = &a.Environment.Instances
 		}
 
 		fetchFn = func() (string, error) {

@@ -31,7 +31,7 @@ func (a StopManager) Logger() logger.DeploymentLogger {
 	return a.Log
 }
 
-func (a StopManager) SetUp(environment S.Environment) error {
+func (a StopManager) SetUp() error {
 	return nil
 }
 

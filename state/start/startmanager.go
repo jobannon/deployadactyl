@@ -21,7 +21,7 @@ type StartManager struct {
 	DeployEventData S.DeployEventData
 }
 
-func (a StartManager) SetUp(environment S.Environment) error {
+func (a StartManager) SetUp() error {
 	return nil
 }
 

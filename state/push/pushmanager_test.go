@@ -53,7 +53,7 @@ var _ = Describe("Actioncreator", func() {
 			FileSystemCleaner: fileSystemCleaner,
 			CFContext:         interfaces.CFContext{},
 			Auth:              interfaces.Authorization{},
-			Environment:       structs.Environment{},
+			Environment:       structs.Environment{Instances: 0},
 		}
 	})
 	Describe("Setup", func() {
@@ -66,7 +66,6 @@ applications:
 
 			It("should extract manifest from the request", func() {
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
-				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -74,7 +73,7 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(environment)
+				pusherCreator.SetUp()
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.Manifest).To(Equal(manifest))
 				logBytes, _ := ioutil.ReadAll(logBuffer)
@@ -82,7 +81,6 @@ applications:
 			})
 			It("should fetch and return app path", func() {
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
-				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -91,7 +89,7 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(environment)
+				pusherCreator.SetUp()
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.AppPath).To(Equal("newAppPath"))
 				Expect(fetcher.FetchCall.Received.ArtifactURL).To(Equal(deploymentInfo.ArtifactURL))
@@ -100,7 +98,6 @@ applications:
 			})
 			It("should error when artifact cannot be fetched", func() {
 				fetcher.FetchCall.Returns.Error = errors.New("fetch error")
-				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -109,14 +106,13 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				err := pusherCreator.SetUp(environment)
+				err := pusherCreator.SetUp()
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("unzipped app path failed: fetch error"))
 			})
 			It("should retrieve instances from manifest", func() {
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
-				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
@@ -124,20 +120,18 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(environment)
+				pusherCreator.SetUp()
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.Instances).To(Equal(uint16(2)))
 			})
 			Context("ArtifactRetrievalStartEvent", func() {
 				It("calls EmitEvent", func() {
-					environment := structs.Environment{Instances: 0}
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).To(Equal(reflect.TypeOf(ArtifactRetrievalStartEvent{})))
 				})
 				It("passes the CFContext", func() {
-					environment := structs.Environment{Instances: 0}
 
 					pusherCreator.CFContext = interfaces.CFContext{
 						Environment:  randomizer.StringRunes(10),
@@ -146,19 +140,18 @@ applications:
 						Application:  randomizer.StringRunes(10),
 					}
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					Expect(eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent).CFContext).To(Equal(pusherCreator.CFContext))
 				})
 				It("passes the Authorization", func() {
-					environment := structs.Environment{Instances: 0}
 
 					pusherCreator.Auth = interfaces.Authorization{
 						Username: randomizer.StringRunes(10),
 						Password: randomizer.StringRunes(10),
 					}
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					Expect(eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent).Auth).To(Equal(pusherCreator.Auth))
 				})
@@ -169,7 +162,7 @@ applications:
 					pusherCreator.DeployEventData.Response = response
 					pusherCreator.DeployEventData.DeploymentInfo.Data = make(map[string]interface{})
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					event := eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent)
 					Expect(event.Environment).To(Equal(pusherCreator.Environment))
@@ -177,13 +170,12 @@ applications:
 					Expect(event.Data).To(Equal(pusherCreator.DeployEventData.DeploymentInfo.Data))
 				})
 				It("passes the manifest and artifactURL", func() {
-					environment := structs.Environment{Instances: 0}
 
 					pusherCreator.DeployEventData.DeploymentInfo.Manifest = encodedManifest
 					pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL = "theArtifactURL"
 					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "JSON"
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					event := eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent)
 					Expect(event.Manifest).To(Equal(manifest))
@@ -191,11 +183,10 @@ applications:
 				})
 				Context("if error is returned", func() {
 					It("returns an error", func() {
-						environment := structs.Environment{Instances: 0}
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error")}
 
-						err := pusherCreator.SetUp(environment)
+						err := pusherCreator.SetUp()
 
 						Expect(err).To(HaveOccurred())
 						Expect(reflect.TypeOf(err)).To(Equal(reflect.TypeOf(deployer.EventError{})))
@@ -206,14 +197,12 @@ applications:
 
 			Context("ArtifactRetrievalSuccessEvent", func() {
 				It("calls EmitEvent", func() {
-					environment := structs.Environment{Instances: 0}
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(ArtifactRetrievalSuccessEvent{})))
 				})
 				It("passes the CFContext", func() {
-					environment := structs.Environment{Instances: 0}
 
 					pusherCreator.CFContext = interfaces.CFContext{
 						Environment:  randomizer.StringRunes(10),
@@ -222,19 +211,18 @@ applications:
 						Application:  randomizer.StringRunes(10),
 					}
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent).CFContext).To(Equal(pusherCreator.CFContext))
 				})
 				It("passes the Authorization", func() {
-					environment := structs.Environment{Instances: 0}
 
 					pusherCreator.Auth = interfaces.Authorization{
 						Username: randomizer.StringRunes(10),
 						Password: randomizer.StringRunes(10),
 					}
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent).Auth).To(Equal(pusherCreator.Auth))
 				})
@@ -245,7 +233,7 @@ applications:
 					pusherCreator.DeployEventData.Response = response
 					pusherCreator.DeployEventData.DeploymentInfo.Data = make(map[string]interface{})
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					event := eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent)
 					Expect(event.Environment).To(Equal(pusherCreator.Environment))
@@ -253,7 +241,6 @@ applications:
 					Expect(event.Data).To(Equal(pusherCreator.DeployEventData.DeploymentInfo.Data))
 				})
 				It("passes the manifest, artifactURL, and appPath", func() {
-					environment := structs.Environment{Instances: 0}
 
 					pusherCreator.DeployEventData.DeploymentInfo.Manifest = encodedManifest
 					pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL = "theArtifactURL"
@@ -261,7 +248,7 @@ applications:
 
 					fetcher.FetchCall.Returns.AppPath = "new app path"
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					event := eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent)
 					Expect(event.Manifest).To(Equal(manifest))
@@ -270,11 +257,10 @@ applications:
 				})
 				Context("if error is returned", func() {
 					It("returns an error", func() {
-						environment := structs.Environment{Instances: 0}
 
 						eventManager.EmitEventCall.Returns.Error = []error{nil, errors.New("a test error")}
 
-						err := pusherCreator.SetUp(environment)
+						err := pusherCreator.SetUp()
 
 						Expect(err).To(HaveOccurred())
 						Expect(reflect.TypeOf(err)).To(Equal(reflect.TypeOf(deployer.EventError{})))
@@ -286,17 +272,15 @@ applications:
 
 			Context("ArtifactRetrievalFailureEvent", func() {
 				It("calls EmitEvent", func() {
-					environment := structs.Environment{Instances: 0}
 
 					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
 					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(ArtifactRetrievalFailureEvent{})))
 				})
 				It("passes the CFContext", func() {
-					environment := structs.Environment{Instances: 0}
 
 					pusherCreator.CFContext = interfaces.CFContext{
 						Environment:  randomizer.StringRunes(10),
@@ -307,12 +291,11 @@ applications:
 					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
 					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalFailureEvent).CFContext).To(Equal(pusherCreator.CFContext))
 				})
 				It("passes the Authorization", func() {
-					environment := structs.Environment{Instances: 0}
 
 					pusherCreator.Auth = interfaces.Authorization{
 						Username: randomizer.StringRunes(10),
@@ -321,7 +304,7 @@ applications:
 					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
 					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalFailureEvent).Auth).To(Equal(pusherCreator.Auth))
 				})
@@ -335,7 +318,7 @@ applications:
 					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
 					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					event := eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalFailureEvent)
 					Expect(event.Environment).To(Equal(pusherCreator.Environment))
@@ -343,7 +326,6 @@ applications:
 					Expect(event.Data).To(Equal(pusherCreator.DeployEventData.DeploymentInfo.Data))
 				})
 				It("passes the manifest and artifactURL", func() {
-					environment := structs.Environment{Instances: 0}
 
 					pusherCreator.DeployEventData.DeploymentInfo.Manifest = encodedManifest
 					pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL = "theArtifactURL"
@@ -351,7 +333,7 @@ applications:
 
 					fetcher.FetchCall.Returns.Error = errors.New("a test error")
 
-					pusherCreator.SetUp(environment)
+					pusherCreator.SetUp()
 
 					event := eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalFailureEvent)
 					Expect(event.Manifest).To(Equal(manifest))
@@ -367,8 +349,7 @@ applications:
 applications:
 - name: long-running-spring-app`
 				encodedManifest := base64.StdEncoding.EncodeToString([]byte(manifest))
-				environment := structs.Environment{Instances: 22}
-
+				pusherCreator.Environment = structs.Environment{Instances: 22}
 				fetcher.FetchCall.Returns.AppPath = "newAppPath"
 
 				deploymentInfo := structs.DeploymentInfo{
@@ -378,7 +359,7 @@ applications:
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(environment)
+				pusherCreator.SetUp()
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.Instances).To(Equal(uint16(22)))
 			})
@@ -388,12 +369,11 @@ applications:
 
 			It("should extract manifest from the zip file", func() {
 				fetcher.FetchFromZipCall.Returns.AppPath = "newAppPath"
-				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{ContentType: "ZIP"}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				pusherCreator.SetUp(environment)
+				pusherCreator.SetUp()
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.AppPath).To(Equal("newAppPath"))
 				logBytes, _ := ioutil.ReadAll(logBuffer)
@@ -401,14 +381,13 @@ applications:
 			})
 			It("should error when artifact cannot be fetched", func() {
 				fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
-				environment := structs.Environment{Instances: 0}
 
 				deploymentInfo := structs.DeploymentInfo{
 					ContentType: "ZIP",
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
-				err := pusherCreator.SetUp(environment)
+				err := pusherCreator.SetUp()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("unzipping request body error: a test error"))
 			})

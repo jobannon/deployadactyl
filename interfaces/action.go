@@ -15,7 +15,7 @@ type Action interface {
 }
 
 type ActionCreator interface {
-	SetUp(environment S.Environment) error
+	SetUp() error
 	CleanUp()
 	OnStart() error
 	OnFinish(environment S.Environment, response io.ReadWriter, err error) DeployResponse

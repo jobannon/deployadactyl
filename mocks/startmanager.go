@@ -20,7 +20,7 @@ type StartManager struct {
 	}
 }
 
-func (s *StartManager) SetUp(environment S.Environment) error {
+func (s *StartManager) SetUp() error {
 	return nil
 }
 

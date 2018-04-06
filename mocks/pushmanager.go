@@ -11,10 +11,7 @@ import (
 // PushManager handmade mock for tests.
 type PushManager struct {
 	SetUpCall struct {
-		Called   bool
-		Received struct {
-			Environment S.Environment
-		}
+		Called  bool
 		Returns struct {
 			Err error
 		}
@@ -70,9 +67,7 @@ func (p *FileSystemCleaner) RemoveAll(path string) error {
 	return p.RemoveAllCall.Returns.Error
 }
 
-func (p *PushManager) SetUp(environment S.Environment) error {
-	p.SetUpCall.Received.Environment = environment
-
+func (p *PushManager) SetUp() error {
 	p.SetUpCall.Called = true
 	return p.SetUpCall.Returns.Err
 }

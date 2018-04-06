@@ -488,7 +488,6 @@ var _ = Describe("Deployer", func() {
 				deployer.Deploy(&deploymentInfo, S.Environment{}, pusherCreatorMock, response)
 
 				Expect(pusherCreatorMock.SetUpCall.Called).To(Equal(true))
-				Expect(pusherCreatorMock.SetUpCall.Received.Environment).ToNot(BeNil())
 			})
 		})
 

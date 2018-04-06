@@ -97,7 +97,7 @@ func (d Deployer) Deploy(deploymentInfo *S.DeploymentInfo, env S.Environment, ac
 	}
 
 	defer func() { actionCreator.CleanUp() }()
-	err = actionCreator.SetUp(env)
+	err = actionCreator.SetUp()
 	if err != nil {
 		deployResponse.StatusCode = http.StatusInternalServerError
 		deployResponse.Error = err

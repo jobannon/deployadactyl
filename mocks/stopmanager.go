@@ -24,7 +24,7 @@ type StopManager struct {
 	}
 }
 
-func (s *StopManager) SetUp(environment S.Environment) error {
+func (s *StopManager) SetUp() error {
 	return nil
 }
 

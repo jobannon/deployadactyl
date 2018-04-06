@@ -145,6 +145,7 @@ type PushStartedEvent struct {
 	Auth        interfaces.Authorization
 	Response    io.ReadWriter
 	Data        map[string]interface{}
+	Instances   uint16
 }
 
 func (d PushStartedEvent) Name() string {

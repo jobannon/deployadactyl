@@ -180,6 +180,7 @@ func (a PushManager) OnStart() error {
 		Response:    a.DeployEventData.Response,
 		ContentType: info.ContentType,
 		Data:        info.Data,
+		Instances:   info.Instances,
 	}
 	err = a.EventManager.EmitEvent(event)
 	if err != nil {

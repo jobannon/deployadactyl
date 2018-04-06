@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"bytes"
 	"github.com/gin-gonic/gin"
 )
 
@@ -31,7 +32,7 @@ type CFContext struct {
 }
 
 type Controller interface {
-	//RunDeployment(deployment *Deployment, response *bytes.Buffer) DeployResponse
+	RunDeployment(deployment *Deployment, response *bytes.Buffer) DeployResponse
 
 	RunDeploymentViaHttp(g *gin.Context)
 

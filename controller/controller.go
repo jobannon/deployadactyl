@@ -33,6 +33,10 @@ type PutRequest struct {
 	Data  map[string]interface{} `json:"data"`
 }
 
+func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
+	return c.PushController.RunDeployment(deployment, response)
+}
+
 // RunDeploymentViaHttp checks the request content type and passes it to the Deployer.
 func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	c.Log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)

@@ -87,6 +87,7 @@ type DeploySuccessEvent struct {
 	Response            io.ReadWriter
 	Data                map[string]interface{}
 	HealthCheckEndpoint string
+	ArtifactURL         string
 }
 
 func (d DeploySuccessEvent) Name() string {

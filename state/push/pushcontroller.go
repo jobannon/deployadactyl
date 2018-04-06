@@ -271,6 +271,7 @@ func (c PushController) emitDeploySuccessOrFailure(deployEventData *structs.Depl
 			Response:            deployEventData.Response,
 			Data:                deployEventData.DeploymentInfo.Data,
 			HealthCheckEndpoint: deployEventData.DeploymentInfo.HealthCheckEndpoint,
+			ArtifactURL:         deployEventData.DeploymentInfo.ArtifactURL,
 		}
 	}
 	deploymentLogger.Debug(fmt.Sprintf("emitting a %s event", event.Name()))

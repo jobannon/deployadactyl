@@ -115,6 +115,7 @@ type DeployFailureEvent struct {
 	Auth        interfaces.Authorization
 	Response    io.ReadWriter
 	Data        map[string]interface{}
+	Error       error
 }
 
 func (d DeployFailureEvent) Name() string {

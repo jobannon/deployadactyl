@@ -259,6 +259,7 @@ func (c PushController) emitDeploySuccessOrFailure(deployEventData *structs.Depl
 			Environment: environment,
 			Response:    deployEventData.Response,
 			Data:        deployEventData.DeploymentInfo.Data,
+			Error:       deployResponse.Error,
 		}
 	} else {
 		event = DeploySuccessEvent{

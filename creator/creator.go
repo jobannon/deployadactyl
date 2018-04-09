@@ -199,18 +199,19 @@ func (c Creator) createDeployer() I.Deployer {
 	}
 }
 
-func (c Creator) PushManager(deployEventData structs.DeployEventData, cf I.CFContext, auth I.Authorization, env structs.Environment) I.ActionCreator {
+func (c Creator) PushManager(deployEventData structs.DeployEventData, cf I.CFContext, auth I.Authorization, env structs.Environment, envVars map[string]string) I.ActionCreator {
 	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
 	return &push.PushManager{
-		CourierCreator:    c,
-		EventManager:      c.CreateEventManager(),
-		Logger:            deploymentLogger,
-		Fetcher:           c.createFetcher(),
-		DeployEventData:   deployEventData,
-		FileSystemCleaner: c.CreateFileSystem(),
-		CFContext:         cf,
-		Auth:              auth,
-		Environment:       env,
+		CourierCreator:       c,
+		EventManager:         c.CreateEventManager(),
+		Logger:               deploymentLogger,
+		Fetcher:              c.createFetcher(),
+		DeployEventData:      deployEventData,
+		FileSystemCleaner:    c.CreateFileSystem(),
+		CFContext:            cf,
+		Auth:                 auth,
+		Environment:          env,
+		EnvironmentVariables: envVars,
 	}
 }
 

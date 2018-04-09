@@ -138,14 +138,16 @@ func NewDeployFailureEventBinding(handler func(event DeployFailureEvent) error) 
 }
 
 type PushStartedEvent struct {
-	CFContext   interfaces.CFContext
-	Body        io.Reader
-	ContentType string
-	Environment structs.Environment
-	Auth        interfaces.Authorization
-	Response    io.ReadWriter
-	Data        map[string]interface{}
-	Instances   uint16
+	CFContext            interfaces.CFContext
+	Body                 io.Reader
+	ContentType          string
+	Environment          structs.Environment
+	Auth                 interfaces.Authorization
+	Response             io.ReadWriter
+	Data                 map[string]interface{}
+	Instances            uint16
+	EnvironmentVariables map[string]string
+	Manifest             string
 }
 
 func (d PushStartedEvent) Name() string {
@@ -167,13 +169,16 @@ func NewPushStartedEventBinding(handler func(event PushStartedEvent) error) inte
 }
 
 type PushFinishedEvent struct {
-	CFContext       interfaces.CFContext
-	Auth            interfaces.Authorization
-	Response        io.ReadWriter
-	AppPath         string
-	FoundationURL   string
-	TempAppWithUUID string
-	Data            map[string]interface{}
+	CFContext           interfaces.CFContext
+	Auth                interfaces.Authorization
+	Response            io.ReadWriter
+	AppPath             string
+	FoundationURL       string
+	TempAppWithUUID     string
+	Manifest            string
+	Data                map[string]interface{}
+	Courier             interfaces.Courier
+	HealthCheckEndpoint string
 }
 
 func (d PushFinishedEvent) Name() string {
@@ -251,14 +256,15 @@ func NewArtifactRetrievalFailureEventBinding(handler func(event ArtifactRetrieva
 }
 
 type ArtifactRetrievalSuccessEvent struct {
-	CFContext   interfaces.CFContext
-	Auth        interfaces.Authorization
-	Environment structs.Environment
-	Response    io.ReadWriter
-	Data        map[string]interface{}
-	Manifest    string
-	ArtifactURL string
-	AppPath     string
+	CFContext            interfaces.CFContext
+	Auth                 interfaces.Authorization
+	Environment          structs.Environment
+	Response             io.ReadWriter
+	Data                 map[string]interface{}
+	Manifest             string
+	ArtifactURL          string
+	AppPath              string
+	EnvironmentVariables map[string]string
 }
 
 func (d ArtifactRetrievalSuccessEvent) Name() string {

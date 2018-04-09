@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/afero"
 
 	I "github.com/compozed/deployadactyl/interfaces"
-	S "github.com/compozed/deployadactyl/structs"
+	"github.com/compozed/deployadactyl/state/push"
 )
 
 type Envvarhandler struct {
@@ -12,18 +12,16 @@ type Envvarhandler struct {
 	FileSystem *afero.Afero
 }
 
-func (handler Envvarhandler) OnEvent(event I.Event) error {
+func (handler Envvarhandler) ArtifactRetrievalSuccessEventHandler(event push.ArtifactRetrievalSuccessEvent) error {
 
 	handler.Logger.Debugf("Environment Variable Handler Processing Event => %+v", event)
 
-	info := event.Data.(S.DeployEventData)
-
-	if info.DeploymentInfo == nil || !deploymentInfoHasEnvironmentVariables(info.DeploymentInfo) {
+	if event.EnvironmentVariables == nil || len(event.EnvironmentVariables) == 0 {
 		handler.Logger.Info("No Deployment Info or Environment Variables to process!")
 		return nil
 	}
 
-	m, err := CreateManifest(info.DeploymentInfo.AppName, info.DeploymentInfo.Manifest, handler.FileSystem, handler.Logger)
+	m, err := CreateManifest(event.CFContext.Application, event.Manifest, handler.FileSystem, handler.Logger)
 
 	if err != nil {
 		handler.Logger.Errorf("Error Parsing Manifest! Details: %v", err)
@@ -31,7 +29,7 @@ func (handler Envvarhandler) OnEvent(event I.Event) error {
 	}
 
 	//Add any Environment variables
-	addEnvResult, _ := m.AddEnvironmentVariables(info.DeploymentInfo.EnvironmentVariables)
+	addEnvResult, _ := m.AddEnvironmentVariables(event.EnvironmentVariables)
 
 	if m.Content.Applications[0].Path != "" || addEnvResult {
 
@@ -39,12 +37,8 @@ func (handler Envvarhandler) OnEvent(event I.Event) error {
 		m.Content.Applications[0].Path = ""
 
 		//Re-Write the m
-		m.WriteManifest(info.DeploymentInfo.AppPath, true)
+		m.WriteManifest(event.AppPath, true)
 	}
 
 	return nil
-}
-
-func deploymentInfoHasEnvironmentVariables(info *S.DeploymentInfo) bool {
-	return info.EnvironmentVariables != nil && len(info.EnvironmentVariables) > 0
 }

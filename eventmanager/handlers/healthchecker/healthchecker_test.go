@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	C "github.com/compozed/deployadactyl/constants"
 	. "github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
-	S "github.com/compozed/deployadactyl/structs"
 	logging "github.com/op/go-logging"
 
 	. "github.com/onsi/ginkgo"
@@ -18,6 +16,7 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/state/push"
 )
 
 var _ = Describe("Healthchecker", func() {
@@ -34,7 +33,7 @@ var _ = Describe("Healthchecker", func() {
 		randomHostname      string
 		randomEnvironment   string
 
-		event         I.Event
+		ievent        push.PushFinishedEvent
 		healthchecker HealthChecker
 		client        *mocks.Client
 		courier       *mocks.Courier
@@ -61,20 +60,19 @@ var _ = Describe("Healthchecker", func() {
 		courier = &mocks.Courier{}
 		client = &mocks.Client{}
 
-		event = I.Event{
-			Type: C.PushFinishedEvent,
-			Data: S.PushEventData{
-				TempAppWithUUID: randomAppName,
-				FoundationURL:   randomFoundationURL,
-				Courier:         courier,
-				DeploymentInfo: &S.DeploymentInfo{
-					HealthCheckEndpoint: randomEndpoint,
-					Username:            randomUsername,
-					Password:            randomPassword,
-					Org:                 randomOrg,
-					Space:               randomSpace,
-					Environment:         randomEnvironment,
-				},
+		ievent = push.PushFinishedEvent{
+			TempAppWithUUID:     randomAppName,
+			FoundationURL:       randomFoundationURL,
+			Courier:             courier,
+			HealthCheckEndpoint: randomEndpoint,
+			Auth: I.Authorization{
+				Username: randomUsername,
+				Password: randomPassword,
+			},
+			CFContext: I.CFContext{
+				Organization: randomOrg,
+				Space:        randomSpace,
+				Environment:  randomEnvironment,
 			},
 		}
 
@@ -100,13 +98,13 @@ var _ = Describe("Healthchecker", func() {
 				It("does not return an error", func() {
 					client.GetCall.Returns.Response = http.Response{StatusCode: http.StatusOK}
 
-					err := healthchecker.OnEvent(event)
+					err := healthchecker.PushFinishedEventHandler(ievent)
 
 					Expect(err).ToNot(HaveOccurred())
 				})
 
 				It("maps a new temporary route", func() {
-					healthchecker.OnEvent(event)
+					healthchecker.PushFinishedEventHandler(ievent)
 
 					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName))
 					Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
@@ -114,13 +112,13 @@ var _ = Describe("Healthchecker", func() {
 				})
 
 				It("formats the foundation url", func() {
-					healthchecker.OnEvent(event)
+					healthchecker.PushFinishedEventHandler(ievent)
 
 					Expect(client.GetCall.Received.URL).To(Equal(fmt.Sprintf("https://%s.%s%s", randomAppName, randomDomain, randomEndpoint)))
 				})
 
 				It("unmaps the temporary route", func() {
-					healthchecker.OnEvent(event)
+					healthchecker.PushFinishedEventHandler(ievent)
 
 					Expect(courier.UnmapRouteCall.Received.AppName).To(Equal(randomAppName))
 					Expect(courier.UnmapRouteCall.Received.Domain).To(Equal(randomDomain))
@@ -128,14 +126,14 @@ var _ = Describe("Healthchecker", func() {
 				})
 
 				It("deletes the temporary routes", func() {
-					healthchecker.OnEvent(event)
+					healthchecker.PushFinishedEventHandler(ievent)
 
 					Expect(courier.DeleteRouteCall.Received.Domain).To(Equal(randomDomain))
 					Expect(courier.DeleteRouteCall.Received.Hostname).To(Equal(randomHostname))
 				})
 
 				It("unmaps the temporary route before deleting it", func() {
-					healthchecker.OnEvent(event)
+					healthchecker.PushFinishedEventHandler(ievent)
 
 					Expect(courier.UnmapRouteCall.OrderCalled < courier.DeleteRouteCall.OrderCalled).To(Equal(true))
 				})
@@ -143,7 +141,7 @@ var _ = Describe("Healthchecker", func() {
 				It("prints success logs to the console", func() {
 					client.GetCall.Returns.Response = http.Response{StatusCode: http.StatusOK}
 
-					healthchecker.OnEvent(event)
+					healthchecker.PushFinishedEventHandler(ievent)
 
 					Eventually(logBuffer).Should(Say("starting health check"))
 					Eventually(logBuffer).Should(Say("mapping temporary route %s.%s", randomAppName, randomDomain))
@@ -165,7 +163,7 @@ var _ = Describe("Healthchecker", func() {
 						Log:                     logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
 					}
 
-					healthchecker.OnEvent(event)
+					healthchecker.PushFinishedEventHandler(ievent)
 
 					Expect(courier.MapRouteCall.Received.Domain[0]).To(ContainSubstring("silentapps"))
 					Eventually(logBuffer).Should(Say("finished health check"))
@@ -191,13 +189,13 @@ var _ = Describe("Healthchecker", func() {
 						Body:       buf,
 					}
 
-					err := healthchecker.OnEvent(event)
+					err := healthchecker.PushFinishedEventHandler(ievent)
 
 					Expect(err).To(MatchError(HealthCheckError{http.StatusNotFound, randomEndpoint, body}))
 				})
 
 				It("prints the endpoint error to the console", func() {
-					healthchecker.OnEvent(event)
+					healthchecker.PushFinishedEventHandler(ievent)
 
 					Eventually(logBuffer).Should(Say("starting health check"))
 					Eventually(logBuffer).Should(Say("mapping temporary route %s.%s", randomAppName, randomDomain))
@@ -216,7 +214,7 @@ var _ = Describe("Healthchecker", func() {
 					Body:       NewBuffer(),
 				}
 
-				err := healthchecker.OnEvent(event)
+				err := healthchecker.PushFinishedEventHandler(ievent)
 				Expect(err).To(MatchError(HealthCheckError{http.StatusNotFound, randomEndpoint, []byte{}}))
 			})
 		})
@@ -226,7 +224,7 @@ var _ = Describe("Healthchecker", func() {
 				courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("map route output"))
 				courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
-				healthchecker.OnEvent(event)
+				healthchecker.PushFinishedEventHandler(ievent)
 
 				Eventually(logBuffer).Should(Say("mapping temporary route"))
 				Eventually(logBuffer).Should(Say("failed to map temporary route"))
@@ -238,7 +236,7 @@ var _ = Describe("Healthchecker", func() {
 			It("returns an error", func() {
 				client.GetCall.Returns.Error = errors.New("client GET error")
 
-				err := healthchecker.OnEvent(event)
+				err := healthchecker.PushFinishedEventHandler(ievent)
 
 				Expect(err).To(MatchError(ClientError{errors.New("client GET error")}))
 			})
@@ -246,7 +244,7 @@ var _ = Describe("Healthchecker", func() {
 			It("prints the error to the logs", func() {
 				client.GetCall.Returns.Error = errors.New("client GET error")
 
-				healthchecker.OnEvent(event)
+				healthchecker.PushFinishedEventHandler(ievent)
 
 				Eventually(logBuffer).Should(Say("checking route"))
 				Eventually(logBuffer).Should(Say("client GET error"))
@@ -255,31 +253,16 @@ var _ = Describe("Healthchecker", func() {
 
 		Context("when a health check endpoint is not provided", func() {
 			It("returns nil", func() {
-				event = I.Event{
-					Type: C.PushFinishedEvent,
-					Data: S.PushEventData{
-						Courier:         courier,
-						TempAppWithUUID: randomAppName,
-						FoundationURL:   randomFoundationURL,
-						DeploymentInfo: &S.DeploymentInfo{
-							HealthCheckEndpoint: "",
-						},
-					},
+				ievent = push.PushFinishedEvent{
+					Courier:             courier,
+					TempAppWithUUID:     randomAppName,
+					FoundationURL:       randomFoundationURL,
+					HealthCheckEndpoint: "",
 				}
 
-				err := healthchecker.OnEvent(event)
+				err := healthchecker.PushFinishedEventHandler(ievent)
 
 				Expect(err).To(BeNil())
-			})
-		})
-
-		Context("when the healthchecker receives the wrong event type", func() {
-			It("returns an error", func() {
-				event = I.Event{Type: "wrong.type"}
-
-				err := healthchecker.OnEvent(event)
-
-				Expect(err).To(MatchError(WrongEventTypeError{event.Type}))
 			})
 		})
 
@@ -288,7 +271,7 @@ var _ = Describe("Healthchecker", func() {
 				courier.UnmapRouteCall.Returns.Output = []byte("unmap route output")
 				courier.UnmapRouteCall.Returns.Error = errors.New("unmap route error")
 
-				healthchecker.OnEvent(event)
+				healthchecker.PushFinishedEventHandler(ievent)
 
 				Eventually(logBuffer).Should(Say("unmapping temporary route"))
 				Eventually(logBuffer).Should(Say("failed to unmap temporary route"))

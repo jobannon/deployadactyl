@@ -108,13 +108,16 @@ func (p Pusher) Execute() error {
 	p.Log.Infof("emitted a %s event", C.PushFinishedEvent)
 
 	event := PushFinishedEvent{
-		CFContext:       p.CFContext,
-		Auth:            p.Auth,
-		Response:        p.Response,
-		AppPath:         p.AppPath,
-		FoundationURL:   p.FoundationURL,
-		TempAppWithUUID: tempAppWithUUID,
-		Data:            p.DeploymentInfo.Data,
+		CFContext:           p.CFContext,
+		Auth:                p.Auth,
+		Response:            p.Response,
+		AppPath:             p.AppPath,
+		FoundationURL:       p.FoundationURL,
+		TempAppWithUUID:     tempAppWithUUID,
+		Data:                p.DeploymentInfo.Data,
+		Courier:             p.Courier,
+		Manifest:            p.DeploymentInfo.Manifest,
+		HealthCheckEndpoint: p.DeploymentInfo.HealthCheckEndpoint,
 	}
 	err = p.EventManager.EmitEvent(event)
 	if err != nil {

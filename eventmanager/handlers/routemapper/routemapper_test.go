@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/afero"
 
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/state/push"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
@@ -91,7 +92,10 @@ var _ = Describe("Routemapper", func() {
 
 	Context("when routes in the manifest include hostnames", func() {
 
-		var routes []string
+		var (
+			routes []string
+			ievent push.PushFinishedEvent
+		)
 
 		BeforeEach(func() {
 			routes = []string{
@@ -100,7 +104,13 @@ var _ = Describe("Routemapper", func() {
 				fmt.Sprintf("%s2.%s2", randomHostName, randomDomain),
 			}
 
-			deploymentInfo.Manifest = fmt.Sprintf(`
+			ievent = push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
+
+			ievent.Manifest = fmt.Sprintf(`
 ---
 applications:
 - name: example
@@ -120,13 +130,13 @@ applications:
 		})
 
 		It("returns nil", func() {
-			err := routemapper.OnEvent(event)
+			err := routemapper.PushFinishedEventHandler(ievent)
 
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("calls map-route for the number of routes", func() {
-			routemapper.OnEvent(event)
+			routemapper.PushFinishedEventHandler(ievent)
 
 			for i := 0; i < len(routes); i++ {
 				Expect(courier.MapRouteCall.Received.AppName[i]).To(Equal(randomTemporaryAppName))
@@ -136,7 +146,7 @@ applications:
 		})
 
 		It("prints information to the logs", func() {
-			routemapper.OnEvent(event)
+			routemapper.PushFinishedEventHandler(ievent)
 
 			Eventually(logBuffer).Should(Say("starting route mapper"))
 			Eventually(logBuffer).Should(Say("looking for routes in the manifest"))
@@ -155,7 +165,7 @@ applications:
 				courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("map route output"))
 				courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
-				err := routemapper.OnEvent(event)
+				err := routemapper.PushFinishedEventHandler(ievent)
 
 				Expect(err).To(MatchError(MapRouteError{routes[0], []byte("map route output")}))
 			})
@@ -167,7 +177,7 @@ applications:
 			courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("map route output"))
 			courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
-			routemapper.OnEvent(event)
+			routemapper.PushFinishedEventHandler(ievent)
 
 			Expect(logBuffer).To(Say("mapping routes"))
 			Expect(logBuffer).To(Say("failed to map route"))
@@ -176,7 +186,10 @@ applications:
 	})
 
 	Context("when a route in the manifest inclues a path", func() {
-		var routes []string
+		var (
+			routes []string
+			ievent push.PushFinishedEvent
+		)
 
 		BeforeEach(func() {
 			routes = []string{
@@ -185,7 +198,13 @@ applications:
 				fmt.Sprintf("%s2.%s2/%s2", randomHostName, randomDomain, randomPath),
 			}
 
-			deploymentInfo.Manifest = fmt.Sprintf(`
+			ievent = push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
+
+			ievent.Manifest = fmt.Sprintf(`
 ---
 applications:
 - name: example
@@ -202,13 +221,13 @@ applications:
 		})
 
 		It("returns nil", func() {
-			err := routemapper.OnEvent(event)
+			err := routemapper.PushFinishedEventHandler(ievent)
 
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("calls map-route for the number of routes with a path arguement", func() {
-			routemapper.OnEvent(event)
+			routemapper.PushFinishedEventHandler(ievent)
 
 			for i := 0; i < len(routes); i++ {
 				Expect(courier.MapRouteWithPathCall.Received.Hostname[i]).To(Equal(randomHostName + strconv.Itoa(i)))
@@ -219,7 +238,10 @@ applications:
 	})
 
 	Context("when routes in the manifest do not include hostnames", func() {
-		var routes []string
+		var (
+			routes []string
+			ievent push.PushFinishedEvent
+		)
 
 		BeforeEach(func() {
 			routes = []string{
@@ -228,7 +250,16 @@ applications:
 				fmt.Sprintf("%s2", randomDomain),
 			}
 
-			deploymentInfo.Manifest = fmt.Sprintf(`
+			ievent = push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+				CFContext: I.CFContext{
+					Application: randomAppName,
+				},
+			}
+
+			ievent.Manifest = fmt.Sprintf(`
 ---
 applications:
 - name: example
@@ -246,7 +277,7 @@ applications:
 		It("calls map-route for the number of routes", func() {
 			courier.DomainsCall.Returns.Domains = []string{randomDomain + "0", randomDomain + "1", randomDomain + "2"}
 
-			routemapper.OnEvent(event)
+			routemapper.PushFinishedEventHandler(ievent)
 
 			for i := 0; i < len(routes); i++ {
 				Expect(courier.MapRouteCall.Received.AppName[i]).To(Equal(randomTemporaryAppName))
@@ -262,7 +293,7 @@ applications:
 				courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("map route output"))
 				courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
-				err := routemapper.OnEvent(event)
+				err := routemapper.PushFinishedEventHandler(ievent)
 
 				Expect(err).To(MatchError(MapRouteError{routes[0], []byte("map route output")}))
 			})
@@ -273,7 +304,7 @@ applications:
 				courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("map route output"))
 				courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
-				routemapper.OnEvent(event)
+				routemapper.PushFinishedEventHandler(ievent)
 
 				Expect(logBuffer).To(Say("mapping routes"))
 				Expect(logBuffer).To(Say("failed to map route"))
@@ -284,12 +315,18 @@ applications:
 
 	Context("when routes are not provided in the manifest", func() {
 		It("returns nil and prints no routes to map", func() {
-			deploymentInfo.Manifest = fmt.Sprintf(`
+			ievent := push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
+
+			ievent.Manifest = fmt.Sprintf(`
 ---
 applications:
 - name: example`)
 
-			err := routemapper.OnEvent(event)
+			err := routemapper.PushFinishedEventHandler(ievent)
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(logBuffer).Should(Say("starting route mapper"))
@@ -306,7 +343,13 @@ applications:
 				fmt.Sprintf("%s2.%s2", randomHostName, randomDomain),
 			}
 
-			deploymentInfo.Manifest = fmt.Sprintf(`
+			ievent := push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
+
+			ievent.Manifest = fmt.Sprintf(`
 ---
 applications:
   - name: example
@@ -319,7 +362,7 @@ applications:
 				routes[2],
 			)
 
-			err := routemapper.OnEvent(event)
+			err := routemapper.PushFinishedEventHandler(ievent)
 
 			Expect(err.Error()).To(ContainSubstring("while parsing a block mapping"))
 			Expect(err.Error()).To(ContainSubstring("did not find expected key"))
@@ -332,7 +375,13 @@ applications:
 				fmt.Sprintf("%s2.%s2", randomHostName, randomDomain),
 			}
 
-			deploymentInfo.Manifest = fmt.Sprintf(`
+			ievent := push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
+
+			ievent.Manifest = fmt.Sprintf(`
 ---
 applications:
   - name: example
@@ -345,7 +394,7 @@ applications:
 				routes[2],
 			)
 
-			routemapper.OnEvent(event)
+			routemapper.PushFinishedEventHandler(ievent)
 
 			Eventually(logBuffer).Should(Say("starting route mapper"))
 			Eventually(logBuffer).Should(Say("failed to parse manifest"))
@@ -355,7 +404,13 @@ applications:
 
 	Context("when a manifest is not provided in the request or application folder", func() {
 		It("does not return an error", func() {
-			err := routemapper.OnEvent(event)
+			ievent := push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
+
+			err := routemapper.PushFinishedEventHandler(ievent)
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(logBuffer).Should(Say("starting route mapper"))
@@ -365,7 +420,13 @@ applications:
 
 	Context("when the domain is not found", func() {
 		It("returns an error", func() {
-			deploymentInfo.Manifest = fmt.Sprintf(`
+			ievent := push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
+
+			ievent.Manifest = fmt.Sprintf(`
 ---
 applications:
 - name: example
@@ -375,7 +436,7 @@ applications:
 
 			courier.DomainsCall.Returns.Domains = []string{randomDomain}
 
-			err := routemapper.OnEvent(event)
+			err := routemapper.PushFinishedEventHandler(ievent)
 
 			Expect(err).To(MatchError(InvalidRouteError{"test.example.com"}))
 		})
@@ -384,7 +445,13 @@ applications:
 	Context("When the domain is not found and the route is not formatted correctly", func() {
 		It("returns an error", func() {
 
-			deploymentInfo.Manifest = fmt.Sprintf(`
+			ievent := push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
+
+			ievent.Manifest = fmt.Sprintf(`
 ---
 applications:
 - name: example
@@ -394,7 +461,7 @@ applications:
 
 			courier.DomainsCall.Returns.Domains = []string{randomDomain}
 
-			err := routemapper.OnEvent(event)
+			err := routemapper.PushFinishedEventHandler(ievent)
 
 			Expect(err).To(MatchError(InvalidRouteError{"example"}))
 		})
@@ -413,9 +480,16 @@ applications:
 
 			manifestPath, _ := af.TempDir("", "")
 			af.WriteFile(manifestPath+"/manifest.yml", manifest, 0644)
-			deploymentInfo.AppPath = manifestPath
 
-			routemapper.OnEvent(event)
+			ievent := push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
+
+			ievent.AppPath = manifestPath
+
+			routemapper.PushFinishedEventHandler(ievent)
 
 			Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomTemporaryAppName))
 			Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
@@ -425,17 +499,29 @@ applications:
 
 	Context("when reading the manifest file fails", func() {
 		It("returns an error", func() {
-			deploymentInfo.AppPath = "manifest.yml"
+			ievent := push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
 
-			err := routemapper.OnEvent(event)
+			ievent.AppPath = "manifest.yml"
+
+			err := routemapper.PushFinishedEventHandler(ievent)
 
 			Expect(err.Error()).To(ContainSubstring("file does not exist"))
 		})
 
 		It("prints errors to the log", func() {
-			deploymentInfo.AppPath = "manifest.yml"
+			ievent := push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
 
-			routemapper.OnEvent(event)
+			ievent.AppPath = "manifest.yml"
+
+			routemapper.PushFinishedEventHandler(ievent)
 
 			Eventually(logBuffer).Should(Say("starting route mapper"))
 			Eventually(logBuffer).Should(Say("file does not exist"))
@@ -444,10 +530,16 @@ applications:
 
 	Context("when yaml is provided that is not a cloud foundry manifest", func() {
 		It("returns nil and prints no routes to map", func() {
-			deploymentInfo.Manifest = fmt.Sprintf(`---
+			ievent := push.PushFinishedEvent{
+				TempAppWithUUID: randomTemporaryAppName,
+				FoundationURL:   randomFoundationURL,
+				Courier:         courier,
+			}
+
+			ievent.Manifest = fmt.Sprintf(`---
 name: hey`)
 
-			err := routemapper.OnEvent(event)
+			err := routemapper.PushFinishedEventHandler(ievent)
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(logBuffer).Should(Say("no routes to map"))

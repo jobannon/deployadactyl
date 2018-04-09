@@ -132,7 +132,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 		}
 	}
 
-	pusherCreator := c.PushManagerFactory.PushManager(deployEventData, cf, auth, environment)
+	pusherCreator := c.PushManagerFactory.PushManager(deployEventData, cf, auth, environment, deploymentInfo.EnvironmentVariables)
 
 	reqChannel1 := make(chan *I.DeployResponse)
 	reqChannel2 := make(chan *I.DeployResponse)

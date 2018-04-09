@@ -14,6 +14,7 @@ type PushManagerFactory struct {
 			CFContext       interfaces.CFContext
 			Auth            interfaces.Authorization
 			Environment     structs.Environment
+			EnvVars         map[string]string
 		}
 		Returns struct {
 			ActionCreator interfaces.ActionCreator
@@ -23,12 +24,13 @@ type PushManagerFactory struct {
 
 // CreatePusher mock method.
 
-func (p *PushManagerFactory) PushManager(deployEventData structs.DeployEventData, cf interfaces.CFContext, auth interfaces.Authorization, env structs.Environment) interfaces.ActionCreator {
+func (p *PushManagerFactory) PushManager(deployEventData structs.DeployEventData, cf interfaces.CFContext, auth interfaces.Authorization, env structs.Environment, envVars map[string]string) interfaces.ActionCreator {
 	p.PushManagerCall.Called = true
 	p.PushManagerCall.Received.DeployEventData = deployEventData
 	p.PushManagerCall.Received.CFContext = cf
 	p.PushManagerCall.Received.Auth = auth
 	p.PushManagerCall.Received.Environment = env
+	p.PushManagerCall.Received.EnvVars = envVars
 
 	return p.PushManagerCall.Returns.ActionCreator
 }

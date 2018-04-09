@@ -40,15 +40,16 @@ type fileSystemCleaner interface {
 }
 
 type PushManager struct {
-	CourierCreator    courierCreator
-	EventManager      I.EventManager
-	Logger            logger.DeploymentLogger
-	Fetcher           I.Fetcher
-	DeployEventData   S.DeployEventData
-	FileSystemCleaner fileSystemCleaner
-	CFContext         I.CFContext
-	Auth              I.Authorization
-	Environment       S.Environment
+	CourierCreator       courierCreator
+	EventManager         I.EventManager
+	Logger               logger.DeploymentLogger
+	Fetcher              I.Fetcher
+	DeployEventData      S.DeployEventData
+	FileSystemCleaner    fileSystemCleaner
+	CFContext            I.CFContext
+	Auth                 I.Authorization
+	Environment          S.Environment
+	EnvironmentVariables map[string]string
 }
 
 func (a *PushManager) SetUp() error {
@@ -134,14 +135,15 @@ func (a *PushManager) SetUp() error {
 	}
 
 	event = ArtifactRetrievalSuccessEvent{
-		CFContext:   a.CFContext,
-		Auth:        a.Auth,
-		Environment: a.Environment,
-		Response:    a.DeployEventData.Response,
-		Data:        a.DeployEventData.DeploymentInfo.Data,
-		Manifest:    manifestString,
-		ArtifactURL: a.DeployEventData.DeploymentInfo.ArtifactURL,
-		AppPath:     appPath,
+		CFContext:            a.CFContext,
+		Auth:                 a.Auth,
+		Environment:          a.Environment,
+		Response:             a.DeployEventData.Response,
+		Data:                 a.DeployEventData.DeploymentInfo.Data,
+		Manifest:             manifestString,
+		ArtifactURL:          a.DeployEventData.DeploymentInfo.ArtifactURL,
+		AppPath:              appPath,
+		EnvironmentVariables: a.EnvironmentVariables,
 	}
 	a.Logger.Debugf("emitting a %s event", event.Name())
 	err = a.EventManager.EmitEvent(event)

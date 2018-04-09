@@ -2,6 +2,7 @@ package push
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/constants"
@@ -12,7 +13,6 @@ import (
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/structs"
-	"github.com/gin-gonic/gin/json"
 	"io"
 	"io/ioutil"
 	"net/http"

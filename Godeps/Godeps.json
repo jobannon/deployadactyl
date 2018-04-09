@@ -22,11 +22,6 @@
 			"Rev": "2fbb97117cda046278ad34bd7bac35cbc38c68d5"
 		},
 		{
-			"ImportPath": "github.com/gin-gonic/gin/json",
-			"Comment": "v1.2-142-g2fbb971",
-			"Rev": "2fbb97117cda046278ad34bd7bac35cbc38c68d5"
-		},
-		{
 			"ImportPath": "github.com/gin-gonic/gin/render",
 			"Comment": "v1.2-142-g2fbb971",
 			"Rev": "2fbb97117cda046278ad34bd7bac35cbc38c68d5"

@@ -33,7 +33,7 @@ type FoundationsUnavailableEvent struct {
 }
 
 func (d FoundationsUnavailableEvent) Name() string {
-	return "ArtifactRetrievalSuccessEvent"
+	return "FoundationsUnavailableEvent"
 }
 
 func NewFoundationsUnavailableEventBinding(handler func(event FoundationsUnavailableEvent) error) I.Binding {

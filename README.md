@@ -188,21 +188,78 @@ curl -X POST \
 
 With Deployadactyl you can optionally register event handlers to perform any additional actions your deployment flow may require. For example, you may want to do an additional health check before the new application overwrites the old application.
 
-### Available Events
+***NOTE*** The event handling framework for Deployadactyl has been reworked in version 3 to allow for strongly typed binding between event handler functions and the events on which those functions operate.  See more info below.
 
-|**Event Type**|**Returned Struct**|**Emitted**|
+### Application Events
+
+|**Event Type**|**Emitted**|**Binding Constructor**|
 |---|---|---|
-|`deploy.start`|[DeployEventData](structs/deploy_event_data.go)|Before deployment starts
-|`deploy.success`|[DeployEventData](structs/deploy_event_data.go)|When a deployment succeeds
-|`deploy.failure`|[DeployEventData](structs/deploy_event_data.go)|When a deployment fails
-|`deploy.error`|[DeployEventData](structs/deploy_event_data.go)|When a deployment throws an error
-|`deploy.finish`|[DeployEventData](structs/deploy_event_data.go)|When a deployment finishes, regardless of success or failure
-|`push.finished`|[PushEventData](structs/push_event_data.go)| Happens before a push finishes. If it receives an error, it will stop the deployment and trigger an undo push
-|`validate.foundationsUnavailable`|[PrecheckerEventData](structs/prechecker_event_data.go)|When a foundation you're deploying to is not running
+|[FoundationsUnavailableEvent](/controller/deployer/prechecker/prechecker.go)|If there are no foundations configured or they are unavailable|[NewFoundationsUnavailableEventBinding](/controller/deployer/prechecker/prechecker.go)
+
+
+### Push Events   [[ref](state/push/event.go)]
+
+|**Event Type**|**Emitted**|**Binding Constructor**|
+|---|---|---|
+|DeployStartedEvent|Upon start of process|NewDeployStartedEventBinding
+|DeploySuccessEvent|At end of process upon successful deployment|NewDeploySuccessEventBinding
+|DeployFailureEvent|At end of process upon failed deployment|NewDeployFailureEventBinding
+|DeployFinishedEvent|At end of process, regardless of outcome|NewDeployFinishedEventBinding
+|PushStartedEvent|Just prior to `cf push`|NewPushStartedEventBinding
+|PushFinishedEvent|Immediately after `cf push` returns|NewPushFinishedEventBinding
+|ArtifactRetrievalStartEvent|Just prior to retrieving the artifact from remote host or request body|NewArtifactRetrievalStartEventBinding
+|ArtifactRetrievalSuccessEvent|After retrieving the artifact successfully|NewArtifactRetrievalSuccessEventBinding
+|ArtifactRetrievalFailureEvent|After failing to retrieve the artifact|NewArtifactRetrievalFailureEventBinding
+
+### Start Events   [[ref](state/start/event.go)]
+
+|**Event Type**|**Emitted**|**Binding Constructor**|
+|---|---|---|
+|StartStartedEvent|Upon start of process|NewStartStartedEventBinding
+|StartSuccessEvent|At end of process upon successful execution|NewStartSuccessEventBinding
+|StartFailureEvent|At end of process upon failed execution|NewStartFailureEventBinding
+|StartFinishedEvent|At end of process, regardless of outcome|NewStartFinishedEventBinding
+
+### Stop Events   [[ref](state/stop/event.go)]
+
+|**Event Type**|**Emitted**|**Binding Constructor**|
+|---|---|---|
+|StopStartedEvent|Upon start of process|NewStopStartedEventBinding
+|StopSuccessEvent|At end of process upon successful execution|NewStopSuccessEventBinding
+|StopFailureEvent|At end of process upon failed execution|NewStopFailureEventBinding
+|StopFinishedEvent|At end of process, regardless of outcome|NewStopFinishedEventBinding
 
 ### Event Handler Example
 
-See the [Health Checker](eventmanager/handlers/healthchecker/healthchecker.go) for an example of how to write an event handler.
+Attach an event handler to a specific event by creating a binding between the desired event and your handler function and add it to the [EventManager](/eventmanager/eventmanager.go):
+
+```
+myHandler := func(event PushStartedEvent) error {
+   ...
+}
+
+eventManager.AddBinding(NewPushStartedEventBinding(myHandler))
+```
+
+Custom events can be created by implementing the [Binding](/interfaces/eventmanager.go) and [IEvent](/interfaces/eventmanager.go) interfaces.
+
+### Deprecated Event Handling
+
+Prior to version 3, events were registered the following way:
+
+```
+type Handler struct {...}
+
+func (h Handler) OnEvent(event interfaces.Event) error {
+   if event.Type == "push.started" {
+
+   } else ...
+}
+
+eventManager.AddHandler(Handler{...}, "push.started")
+```
+
+This method of event handling is still supported for push related events and creating custom events, but is deprecated and can be expected to be removed in the future.
 
 ## Contributing
 

@@ -5,8 +5,7 @@ build:
 
 dependencies:
 	go get -u github.com/tools/godep
-	rm -rf Godeps
-	godep save ./...
+	godep restore
 
 doc:
 	godoc -http=:6060

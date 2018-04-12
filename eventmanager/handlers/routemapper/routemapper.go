@@ -38,7 +38,6 @@ func (r RouteMapper) PushFinishedEventHandler(event push.PushFinishedEvent) erro
 	if err != nil || manifestBytes == nil {
 		return err
 	}
-
 	m := &manifest{}
 
 	r.Log.Debugf("looking for routes in the manifest")

@@ -5,6 +5,7 @@ import (
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/go-errors/errors"
+	"io"
 	"reflect"
 )
 
@@ -73,8 +74,11 @@ func NewStopSuccessEventBinding(handler func(event StopSuccessEvent) error) inte
 }
 
 type StopStartedEvent struct {
-	CFContext interfaces.CFContext
-	Data      map[string]interface{}
+	CFContext   interfaces.CFContext
+	Data        map[string]interface{}
+	Environment structs.Environment
+	Auth        interfaces.Authorization
+	Response    io.ReadWriter
 }
 
 func (e StopStartedEvent) Name() string {

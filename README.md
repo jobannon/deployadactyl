@@ -29,9 +29,11 @@ Check out our stories on [Pivotal Tracker](https://www.pivotaltracker.com/n/proj
 	- [API](#api)
 		- [Example Curl](#example-curl)
 - [Event Handling](#event-handling)
-	- [Available Emitted Event Types](#available-emitted-event-types)
+	- [Push Event Types](#push-events)
+	- [Start Event Types](#start-events)
+	- [Stop Event Types](#stop-events)
 	- [Event Handler Example](#event-handler-example)
-	- [Event Handling Example](#event-handling-example)
+	- [Deprecated Event Handling](#deprecated-event-handling)
 - [Contributing](#contributing)
 
 <!-- /TOC -->

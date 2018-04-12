@@ -168,9 +168,13 @@ var _ = Describe("StopDeployment", func() {
 	})
 	Context("When StopStartEvent fails", func() {
 		It("should return error", func() {
-			eventManager.EmitEventCall.Returns.Error = append(eventManager.EmitEventCall.Returns.Error, errors.New("anything"))
+			eventManager.EmitEventCall.Returns.Error = []error{errors.New("anything")}
 
-			deployment := &I.Deployment{}
+			deployment := &I.Deployment{
+				CFContext: I.CFContext{
+					Environment: environment,
+				},
+			}
 			deployResponse := controller.StopDeployment(deployment, nil, response)
 
 			Expect(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))

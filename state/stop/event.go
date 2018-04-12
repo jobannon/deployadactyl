@@ -28,6 +28,7 @@ type StopFailureEvent struct {
 	Authorization interfaces.Authorization
 	Environment   structs.Environment
 	Error         error
+	Response      io.ReadWriter
 }
 
 func (e StopFailureEvent) Name() string {
@@ -53,6 +54,7 @@ type StopSuccessEvent struct {
 	Data          map[string]interface{}
 	Authorization interfaces.Authorization
 	Environment   structs.Environment
+	Response      io.ReadWriter
 }
 
 func (e StopSuccessEvent) Name() string {
@@ -74,11 +76,11 @@ func NewStopSuccessEventBinding(handler func(event StopSuccessEvent) error) inte
 }
 
 type StopStartedEvent struct {
-	CFContext   interfaces.CFContext
-	Data        map[string]interface{}
-	Environment structs.Environment
-	Auth        interfaces.Authorization
-	Response    io.ReadWriter
+	CFContext     interfaces.CFContext
+	Data          map[string]interface{}
+	Environment   structs.Environment
+	Authorization interfaces.Authorization
+	Response      io.ReadWriter
 }
 
 func (e StopStartedEvent) Name() string {
@@ -104,6 +106,7 @@ type StopFinishedEvent struct {
 	Data          map[string]interface{}
 	Authorization interfaces.Authorization
 	Environment   structs.Environment
+	Response      io.ReadWriter
 }
 
 func (e StopFinishedEvent) Name() string {

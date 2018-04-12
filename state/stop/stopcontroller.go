@@ -69,11 +69,11 @@ func (c *StopController) StopDeployment(deployment *I.Deployment, data map[strin
 	defer c.emitStopSuccessOrFailure(response, deploymentLogger, cf, &auth, &environment, data, &deployResponse)
 
 	err = c.EventManager.EmitEvent(StopStartedEvent{
-		CFContext:   cf,
-		Data:        data,
-		Environment: environment,
-		Auth:        auth,
-		Response:    response,
+		CFContext:     cf,
+		Data:          data,
+		Environment:   environment,
+		Authorization: auth,
+		Response:      response,
 	})
 	if err != nil {
 		deploymentLogger.Error(err)
@@ -98,6 +98,7 @@ func (c StopController) emitStopFinish(response io.ReadWriter, deploymentLogger 
 		Authorization: *auth,
 		Environment:   *environment,
 		Data:          data,
+		Response:      response,
 	}
 	deploymentLogger.Debugf("emitting a %s event", event.Name())
 	c.EventManager.EmitEvent(event)
@@ -114,6 +115,7 @@ func (c StopController) emitStopSuccessOrFailure(response io.ReadWriter, deploym
 			Environment:   *environment,
 			Data:          data,
 			Error:         deployResponse.Error,
+			Response:      response,
 		}
 
 	} else {
@@ -122,6 +124,7 @@ func (c StopController) emitStopSuccessOrFailure(response io.ReadWriter, deploym
 			Authorization: *auth,
 			Environment:   *environment,
 			Data:          data,
+			Response:      response,
 		}
 	}
 	deploymentLogger.Debugf("emitting a %s event", event.Name())

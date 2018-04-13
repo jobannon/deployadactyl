@@ -26,8 +26,9 @@ func (b eventBinding) Emit(event interface{}) error {
 type StartFailureEvent struct {
 	CFContext     interfaces.CFContext
 	Data          map[string]interface{}
-	Authorization interfaces.Authorization
 	Environment   structs.Environment
+	Authorization interfaces.Authorization
+	Response      io.ReadWriter
 	Error         error
 }
 
@@ -52,8 +53,9 @@ func NewStartFailureEventBinding(handler func(event StartFailureEvent) error) in
 type StartSuccessEvent struct {
 	CFContext     interfaces.CFContext
 	Data          map[string]interface{}
-	Authorization interfaces.Authorization
 	Environment   structs.Environment
+	Authorization interfaces.Authorization
+	Response      io.ReadWriter
 }
 
 func (e StartSuccessEvent) Name() string {
@@ -75,8 +77,11 @@ func NewStartSuccessEventBinding(handler func(event StartSuccessEvent) error) in
 }
 
 type StartStartedEvent struct {
-	CFContext interfaces.CFContext
-	Data      map[string]interface{}
+	CFContext     interfaces.CFContext
+	Data          map[string]interface{}
+	Environment   structs.Environment
+	Authorization interfaces.Authorization
+	Response      io.ReadWriter
 }
 
 func (e StartStartedEvent) Name() string {

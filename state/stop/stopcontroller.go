@@ -164,7 +164,6 @@ func (c *StopController) resolveAuthorization(auth I.Authorization, envs structs
 	if auth.Username == "" && auth.Password == "" {
 		if envs.Authenticate {
 			return I.Authorization{}, deployer.BasicAuthError{}
-
 		}
 		auth.Username = config.Username
 		auth.Password = config.Password

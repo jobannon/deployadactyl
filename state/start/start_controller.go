@@ -27,30 +27,57 @@ type StartController struct {
 }
 
 func (c *StartController) StartDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
-	auth := &I.Authorization{}
-	environment := &structs.Environment{}
-
 	cf := deployment.CFContext
+	if cf.UUID == "" {
+		cf.UUID = randomizer.StringRunes(10)
+	}
+	deploymentLogger := logger.DeploymentLogger{c.Log, cf.UUID}
+	deploymentLogger.Debugf("Preparing to start %s with UUID %s", cf.Application, cf.UUID)
+
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+
+	environment, err := c.resolveEnvironment(cf.Environment)
+	if err != nil {
+		fmt.Fprintln(response, err.Error())
+		return I.DeployResponse{
+			StatusCode: http.StatusInternalServerError,
+			Error:      err,
+		}
+	}
+	auth, err := c.resolveAuthorization(deployment.Authorization, environment, deploymentLogger)
+	if err != nil {
+		return I.DeployResponse{
+			StatusCode: http.StatusUnauthorized,
+			Error:      err,
+		}
+	}
 
 	deploymentInfo := &structs.DeploymentInfo{
-		Org:         cf.Organization,
-		Space:       cf.Space,
-		AppName:     cf.Application,
-		Environment: cf.Environment,
-		UUID:        cf.UUID,
+		Org:          cf.Organization,
+		Space:        cf.Space,
+		AppName:      cf.Application,
+		Environment:  cf.Environment,
+		UUID:         cf.UUID,
+		Domain:       environment.Domain,
+		SkipSSL:      environment.SkipSSL,
+		CustomParams: environment.CustomParams,
+		Username:     auth.Username,
+		Password:     auth.Password,
+		Data:         data,
 	}
-	if deploymentInfo.UUID == "" {
-		deploymentInfo.UUID = randomizer.StringRunes(10)
-		cf.UUID = deploymentInfo.UUID
-	}
-	deploymentLogger := logger.DeploymentLogger{c.Log, deploymentInfo.UUID}
-	deploymentLogger.Debugf("Preparing to start %s with UUID %s", cf.Application, deploymentInfo.UUID)
 
-	event := StartStartedEvent{CFContext: cf, Data: data}
-	defer c.emitStartFinish(response, deploymentLogger, cf, auth, environment, data, &deployResponse)
-	defer c.emitStartSuccessOrFailure(response, deploymentLogger, cf, auth, environment, data, &deployResponse)
+	defer c.emitStartFinish(response, deploymentLogger, cf, &auth, &environment, data, &deployResponse)
+	defer c.emitStartSuccessOrFailure(response, deploymentLogger, cf, &auth, &environment, data, &deployResponse)
 
-	err := c.EventManager.EmitEvent(event)
+	err = c.EventManager.EmitEvent(StartStartedEvent{
+		CFContext:     cf,
+		Authorization: auth,
+		Environment:   environment,
+		Data:          data,
+		Response:      response,
+	})
 	if err != nil {
 		deploymentLogger.Error(err)
 		err = &bluegreen.InitializationError{err}
@@ -61,37 +88,10 @@ func (c *StartController) StartDeployment(deployment *I.Deployment, data map[str
 		}
 	}
 
-	*environment, err = c.resolveEnvironment(cf.Environment)
-	if err != nil {
-		fmt.Fprintln(response, err.Error())
-		return I.DeployResponse{
-			StatusCode: http.StatusInternalServerError,
-			Error:      err,
-		}
-	}
-	*auth, err = c.resolveAuthorization(deployment.Authorization, *environment, deploymentLogger)
-	if err != nil {
-		return I.DeployResponse{
-			StatusCode: http.StatusUnauthorized,
-			Error:      err,
-		}
-	}
-	deploymentInfo.Domain = environment.Domain
-	deploymentInfo.SkipSSL = environment.SkipSSL
-	deploymentInfo.CustomParams = environment.CustomParams
-	deploymentInfo.Username = auth.Username
-	deploymentInfo.Password = auth.Password
-
-	if data != nil {
-		deploymentInfo.Data = data
-	} else {
-		deploymentInfo.Data = make(map[string]interface{})
-	}
-
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo}
 
 	manager := c.StartManagerFactory.StartManager(deployEventData)
-	deployResponse = *c.Deployer.Deploy(deploymentInfo, *environment, manager, response)
+	deployResponse = *c.Deployer.Deploy(deploymentInfo, environment, manager, response)
 	return deployResponse
 }
 
@@ -141,6 +141,7 @@ func (c StartController) emitStartSuccessOrFailure(response io.ReadWriter, deplo
 			Authorization: *auth,
 			Environment:   *environment,
 			Data:          data,
+			Response:      response,
 			Error:         deployResponse.Error,
 		}
 
@@ -150,6 +151,7 @@ func (c StartController) emitStartSuccessOrFailure(response io.ReadWriter, deplo
 			Authorization: *auth,
 			Environment:   *environment,
 			Data:          data,
+			Response:      response,
 		}
 	}
 	eventErr := c.EventManager.EmitEvent(event)

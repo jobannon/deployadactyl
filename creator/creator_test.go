@@ -8,7 +8,7 @@ import (
 	"runtime"
 )
 
-var _ = FDescribe("Custom creator", func() {
+var _ = Describe("Custom creator", func() {
 
 	var path string
 
@@ -30,7 +30,7 @@ var _ = FDescribe("Custom creator", func() {
 		os.Setenv("PATH", path)
 	})
 
-	FIt("creates the creator from the provided yaml configuration", func() {
+	It("creates the creator from the provided yaml configuration", func() {
 
 		os.Setenv("CF_USERNAME", "test user")
 		os.Setenv("CF_PASSWORD", "test pwd")

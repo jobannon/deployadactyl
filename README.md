@@ -175,7 +175,7 @@ $ make push
 
 ## API
 
-A deployment can be executed or modified by hitting the API using `curl` or other means. For more information on using the Deployadactyl API visit the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) in the wiki.
+A deployment can be executed or modified by hitting the API using `curl` or other means. For more information on using the Deployadactyl API visit the [API documentation](https://github.com/compozed/deployadactyl/wiki) in the wiki.
 
 ### Example Push Curl
 
@@ -185,7 +185,7 @@ curl -X POST \
      -H "Accept: application/json" \
      -H "Content-Type: application/json" \
      -d '{ "artifact_url": "https://example.com/lib/release/my_artifact.jar", "health_check_endpoint": "/health" }' \
-     https://preproduction.example.com/v2/deploy/environment/org/space/t-rex
+     https://preproduction.example.com/v3/deploy/environment/org/space/t-rex
 ```
 
 ### Example Stop Curl
@@ -196,53 +196,15 @@ curl -X PUT \
      -H "Accept: application/json" \
      -H "Content-Type: application/json" \
      -d '{ "state": "stopped" }' \
-     https://preproduction.example.com/v2/deploy/environment/org/space/t-rex
+     https://preproduction.example.com/v3/deploy/environment/org/space/t-rex
 ```
 
 ## Event Handling
 
 With Deployadactyl you can optionally register event handlers to perform any additional actions your deployment flow may require. For example, you may want to do an additional health check before the new application overwrites the old application.
 
-***NOTE*** The event handling framework for Deployadactyl has been reworked in version 3 to allow for strongly typed binding between event handler functions and the events on which those functions operate.  See more info below.
+***NOTE*** The event handling framework for Deployadactyl has been reworked in version 3 to allow for strongly typed binding between event handler functions and the events on which those functions operate.  See more info below and in the [wiki](https://github.com/compozed/deployadactyl/wiki/API-v3.0.0)
 
-### Application Events
-
-|**Event Type**|**Emitted**|**Binding Constructor**|
-|---|---|---|
-|[FoundationsUnavailableEvent](/controller/deployer/prechecker/prechecker.go)|If there are no foundations configured or they are unavailable|[NewFoundationsUnavailableEventBinding](/controller/deployer/prechecker/prechecker.go)
-
-
-### Push Events   [[ref](state/push/event.go)]
-
-|**Event Type**|**Emitted**|**Binding Constructor**|
-|---|---|---|
-|DeployStartedEvent|Upon start of process|NewDeployStartedEventBinding
-|DeploySuccessEvent|At end of process upon successful deployment|NewDeploySuccessEventBinding
-|DeployFailureEvent|At end of process upon failed deployment|NewDeployFailureEventBinding
-|DeployFinishedEvent|At end of process, regardless of outcome|NewDeployFinishedEventBinding
-|PushStartedEvent|Just prior to `cf push`|NewPushStartedEventBinding
-|PushFinishedEvent|Immediately after `cf push` returns|NewPushFinishedEventBinding
-|ArtifactRetrievalStartEvent|Just prior to retrieving the artifact from remote host or request body|NewArtifactRetrievalStartEventBinding
-|ArtifactRetrievalSuccessEvent|After retrieving the artifact successfully|NewArtifactRetrievalSuccessEventBinding
-|ArtifactRetrievalFailureEvent|After failing to retrieve the artifact|NewArtifactRetrievalFailureEventBinding
-
-### Start Events   [[ref](state/start/event.go)]
-
-|**Event Type**|**Emitted**|**Binding Constructor**|
-|---|---|---|
-|StartStartedEvent|Upon start of process|NewStartStartedEventBinding
-|StartSuccessEvent|At end of process upon successful execution|NewStartSuccessEventBinding
-|StartFailureEvent|At end of process upon failed execution|NewStartFailureEventBinding
-|StartFinishedEvent|At end of process, regardless of outcome|NewStartFinishedEventBinding
-
-### Stop Events   [[ref](state/stop/event.go)]
-
-|**Event Type**|**Emitted**|**Binding Constructor**|
-|---|---|---|
-|StopStartedEvent|Upon start of process|NewStopStartedEventBinding
-|StopSuccessEvent|At end of process upon successful execution|NewStopSuccessEventBinding
-|StopFailureEvent|At end of process upon failed execution|NewStopFailureEventBinding
-|StopFinishedEvent|At end of process, regardless of outcome|NewStopFinishedEventBinding
 
 ### Event Handler Example
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestErrorFinder(t *testing.T) {
+func TestCreator(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Creator Suite")
 }

@@ -5,15 +5,33 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"runtime"
 )
 
 var _ = Describe("Custom creator", func() {
+
+	var path string
+
+	BeforeEach(func() {
+		path = os.Getenv("PATH")
+		var newpath string
+		dir, _ := os.Getwd()
+		if runtime.GOOS == "windows" {
+			newpath = dir + "\\..\\bin;" + path
+		} else {
+			newpath = dir + "/../bin:" + path
+		}
+		os.Setenv("PATH", newpath)
+	})
+
 	AfterEach(func() {
 		os.Unsetenv("CF_USERNAME")
 		os.Unsetenv("CF_PASSWORD")
+		os.Setenv("PATH", path)
 	})
 
 	It("creates the creator from the provided yaml configuration", func() {
+
 		os.Setenv("CF_USERNAME", "test user")
 		os.Setenv("CF_PASSWORD", "test pwd")
 

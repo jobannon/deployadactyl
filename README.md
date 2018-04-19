@@ -122,8 +122,7 @@ We use [Godeps](https://github.com/tools/godep) to vendor our dependencies. To g
 
 ```bash
 $ go get -u github.com/tools/godep
-$ rm -rf Godeps                      # this will clean the repo of it's dependencies
-$ godep save ./...
+$ godep restore
 ```
 
 or

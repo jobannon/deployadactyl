@@ -17,21 +17,23 @@ Check out our stories on [Pivotal Tracker](https://www.pivotaltracker.com/n/proj
 
 - [How It Works](#how-it-works)
 - [Why Use Deployadactyl?](#why-use-deployadactyl)
-- [Usage Requirements](#usage-requirements)
-	- [Dependencies](#dependencies)
-	- [Configuration File](#configuration-file)
-		- [Example Configuration yml](#example-configuration-yml)
-		- [Environment Variables](#environment-variables)
-- [How to Download Dependencies](#how-to-download-dependencies)
-- [How To Run Deployadactyl](#how-to-run-deployadactyl)
-- [How to Push Deployadactyl to Cloud Foundry](#how-to-push-deployadactyl-to-cloud-foundry)
-	- [Available Flags](#available-flags)
-	- [API](#api)
-		- [Example Curl](#example-curl)
+- [Installation Requirements](#installation-requirements)
+    - [Dependencies](#dependencies)
+    - [Configuration File](#configuration-file)
+        - [Example Configuration yml](#example-configuration-yml)
+    - [Environment Variables](#environment-variables)
+- [Installing Deployadactyl](#installing-deployadactyl)
+    - [Local Installation](#local-installation)
+    - [Cloud Foundry Installation](#cloud-foundry-installation)
+    - [Available Flags](#available-flags)
+- [API](#api)
+    - [Example Push Curl](#example-push-curl)
+    - [Example Stop Curl](#example-stop-curl)
 - [Event Handling](#event-handling)
-	- [Push Event Types](#push-events)
-	- [Start Event Types](#start-events)
-	- [Stop Event Types](#stop-events)
+    - [Application Events](#application-events)
+    - [Push Events](#push-events)
+    - [Start Events](#start-events)
+    - [Stop Events](#stop-events)
 	- [Event Handler Example](#event-handler-example)
 	- [Deprecated Event Handling](#deprecated-event-handling)
 - [Contributing](#contributing)
@@ -55,7 +57,7 @@ Deployadactyl makes the process easy and efficient with:
 - Event handlers for third-party services
 
 
-## Usage Requirements
+## Installation Requirements
 
 
 ### Dependencies
@@ -64,6 +66,20 @@ Deployadactyl has the following dependencies within the environment:
 
 - [ CloudFoundry CLI](https://github.com/cloudfoundry/cli)
 - [Go 1.6](https://golang.org/dl/) or later
+
+
+We use [Godeps](https://github.com/tools/godep) to vendor our GO dependencies. To grab the dependencies and save them to the vendor folder, run the following commands:
+
+```bash
+$ go get -u github.com/tools/godep
+$ godep restore
+```
+
+or
+
+```bash
+$ make dependencies
+```
 
 
 ### Configuration File
@@ -107,7 +123,7 @@ environments:
     instances: 4
 ```
 
-#### Environment Variables
+### Environment Variables
 
 Authentication is optional as long as `CF_USERNAME` and `CF_PASSWORD` environment variables are exported. We recommend making a generic user account that is able to push to each Cloud Foundry instance.
 
@@ -118,23 +134,9 @@ $ export CF_PASSWORD=some-password
 
 *Optional:* The log level can be changed by defining `DEPLOYADACTYL_LOGLEVEL`. `DEBUG` is the default log level.
 
-## How to Download Dependencies
+## Installing Deployadactyl
 
-We use [Godeps](https://github.com/tools/godep) to vendor our dependencies. To grab the dependencies and save them to the vendor folder, run the following commands:
-
-```bash
-$ go get -u github.com/tools/godep
-$ godep restore
-```
-
-or
-
-```bash
-$ make dependencies
-```
-
-## How To Run Deployadactyl
-
+### Local Installation
 After a [configuration file](#configuration-file) has been created and environment variables have been set, the server can be run using the following commands:
 
 ```bash
@@ -147,7 +149,7 @@ or
 $ cd ~/go/src/github.com/compozed/deployadactyl && go build && ./deployadactyl
 ```
 
-## How to Push Deployadactyl to Cloud Foundry
+### Cloud Foundry Installation
 
 To push Deployadactyl to Cloud Foundry, edit the `manifest.yml` to include the `CF_USERNAME` and `CF_PASSWORD` environment variables. In addition, be sure to create a `config.yml`. Then you can push to Cloud Foundry like normal:
 
@@ -162,7 +164,7 @@ or
 $ make push
 ```
 
-### Available Flags
+### Available Installation Flags
 
 |**Flag**|**Usage**|
 |---|---|
@@ -171,11 +173,11 @@ $ make push
 |`-health-check`|turns on the health check handler that confirms an application is up and running before finishing a push
 |`-route-mapper`|turns on the route mapper handler that will map additional routes to an application during a deployment. see the Cloud Foundry manifest documentation [here](https://docs.cloudfoundry.org/devguide/deploy-apps/manifest.html#routes) for more information
 
-### API
+## API
 
-A deployment by hitting the API using `curl` or other means. For more information on using the Deployadactyl API visit the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) in the wiki.
+A deployment can be executed or modified by hitting the API using `curl` or other means. For more information on using the Deployadactyl API visit the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) in the wiki.
 
-#### Example Curl
+### Example Push Curl
 
 ```bash
 curl -X POST \
@@ -183,6 +185,17 @@ curl -X POST \
      -H "Accept: application/json" \
      -H "Content-Type: application/json" \
      -d '{ "artifact_url": "https://example.com/lib/release/my_artifact.jar", "health_check_endpoint": "/health" }' \
+     https://preproduction.example.com/v2/deploy/environment/org/space/t-rex
+```
+
+### Example Stop Curl
+
+```bash
+curl -X PUT \
+     -u your_username:your_password \
+     -H "Accept: application/json" \
+     -H "Content-Type: application/json" \
+     -d '{ "state": "stopped" }' \
      https://preproduction.example.com/v2/deploy/environment/org/space/t-rex
 ```
 
@@ -265,4 +278,4 @@ This method of event handling is still supported for push related events and cre
 
 ## Contributing
 
-See our [CONTRUBUTING](CONTRIBUTING.md) section for more information.
+See our [CONTRIBUTING](CONTRIBUTING.md) section for more information.

@@ -35,7 +35,8 @@ import (
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
-const ENDPOINT = "/v2/deploy/:environment/:org/:space/:appName"
+const v2ENDPOINT = "/v2/deploy/:environment/:org/:space/:appName"
+const ENDPOINT = "/v3/deploy/:environment/:org/:space/:appName"
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
 type Creator struct {
@@ -78,6 +79,7 @@ func (c Creator) CreateControllerHandler(controller I.Controller) *gin.Engine {
 	r.Use(gin.LoggerWithWriter(c.createWriter()))
 	r.Use(gin.ErrorLogger())
 
+	r.POST(v2ENDPOINT, controller.RunDeploymentViaHttp)
 	r.POST(ENDPOINT, controller.RunDeploymentViaHttp)
 	r.PUT(ENDPOINT, controller.PutRequestHandler)
 

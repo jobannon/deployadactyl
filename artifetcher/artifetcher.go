@@ -48,7 +48,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", ArtifactoryRequestError{err}
+		return "", FetcherRequestError{err}
 	}
 
 	response, err := client.Do(req)

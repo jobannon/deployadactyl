@@ -122,7 +122,9 @@ We use [Godeps](https://github.com/tools/godep) to vendor our dependencies. To g
 
 ```bash
 $ go get -u github.com/tools/godep
-$ godep restore
+$ godep restore                       // updates local packages to required versions
+$ rm -rf Godeps
+$ godep save ./...                    // creates ./vendor folder with dependencies
 ```
 
 or

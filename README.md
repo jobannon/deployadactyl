@@ -9,7 +9,7 @@
 [![Slack Status](https://deployadactyl-invite.cfapps.io/badge.svg)](https://deployadactyl-invite.cfapps.io)
 [![GoDoc](https://godoc.org/github.com/compozed/deployadactyl?status.svg)](https://godoc.org/github.com/compozed/deployadactyl)
 
-Deployadactyl is a Go library for deploying applications to multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to push an application it will rollback to the previous version. It also utilizes Go channels for concurrent deployments across the multiple Cloud Foundry instances.
+Deployadactyl is a Go library for managing applications across multiple [Cloud Foundry](https://www.cloudfoundry.org/) instances. Deployadactyl utilizes [blue green deployments](https://docs.pivotal.io/pivotalcf/devguide/deploy-apps/blue-green.html) and if it's unable to execute the requested operation it will rollback to the previous state. It also utilizes Go channels for concurrent deployments across the multiple Cloud Foundry instances.
 
 Check out our stories on [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/1912341)!
 
@@ -42,18 +42,18 @@ Check out our stories on [Pivotal Tracker](https://www.pivotaltracker.com/n/proj
 
 ## How It Works
 
-Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to push an application. The general flow is to get a list of Cloud Foundry instances, check that the instances are available, download an artifact, log into each instance, and concurrently call `cf push` in the deploying applications directory. If an application fails to deploy on any instance, Deployadactyl will automatically roll the application back to the previous version.
+Deployadactyl works by utilizing the [Cloud Foundry CLI](http://docs.cloudfoundry.org/cf-cli/) to manage applications. The general flow is to get a list of Cloud Foundry instances, check that the instances are available, log into each instance, and concurrently execute the requested operation on each instance. If the requested operation fails, Deployadactyl will automatically revert the application back to the previous state.  For example, in the case of deploying an application, the specified artifact will be downloaded and `cf push` will be called concurrently in the deploying applications directory on each CF instance.  If the push fails on any instance, the application will be reverted to the version that was previously deployed on all instances.
 
 ## Why Use Deployadactyl?
 
-As an application grows, it will have multiple foundations for each environment. These scaling foundations make deploying an application time consuming and difficult to manage. If any errors occur during a deployment it can greatly increase downtime.
+As an application grows, it will have multiple foundations for each environment. These scaling foundations make managing an application time consuming and difficult to manage. Deployment errors can greatly increase downtime and result in inconsistent state of the application across all foundations..
 
 Deployadactyl makes the process easy and efficient with:
 
 - Management of multiple environment configurations
-- Concurrent deployments across environment foundations
+- Concurrent deployments and running state management across environment foundations
 - Automatic rollbacks for failures or errors
-- Prechecking foundation availablity before deployments
+- Prechecking foundation availablity before managing applicaiton state
 - Event handlers for third-party services
 
 
@@ -86,7 +86,7 @@ $ make dependencies
 
 ### Configuration File
 
-Deployadactyl needs a `yml` configuration file to specify environments to deploy to. Each environment has a name, domain and a list of foundations.
+Deployadactyl needs a `yml` configuration file to specify available environments for managing applications. At a minimum, each environment has a name and a list of foundations.
 
 The configuration file can be placed anywhere within the Deployadactyl directory, or outside, as long as the location is specified when running the server.
 
@@ -95,7 +95,7 @@ The configuration file can be placed anywhere within the Deployadactyl directory
 |`name`|**Required**|`string`| Used in the deploy when the users are sending a request to Deployadactyl to specify which environment from the config they want to use.|
 |`foundations` |**Required**|`[]string`|A list of Cloud Foundry Cloud Controller URLs.|
 |`domain`|*Optional*|`string`| Used to specify a load balanced URL that has previously been created on the Cloud Foundry instances.|
-|`authenticate` |*Optional*|`bool`| Used to specify if basic authentication is required for users. See the [authentication section](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-v1.0.0#authentication) in the [API documentation](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-Versions) for more details|
+|`authenticate` |*Optional*|`bool`| Used to specify if basic authentication is required for users. See the [authentication section](https://github.com/compozed/deployadactyl/wiki/Deployadactyl-API-v1.0.0#authentication) for more details|
 |`skip_ssl` |*Optional*|`bool`| Used to skip SSL verification when Deployadactyl logs into Cloud Foundry.|
 |`instances` |*Optional*|`int`| Used to set the number of instances an application is deployed with. If the number of instances is specified in a Cloud Foundry manifest, that will be used instead. |
 
@@ -214,7 +214,9 @@ Attach an event handler to a specific event by creating a binding between the de
 
 ```
 myHandler := func(event PushStartedEvent) error {
+   mylog.Debug("A push has started with manifest: " + event.Manifest)
    ...
+   return nil
 }
 
 eventManager.AddBinding(NewPushStartedEventBinding(myHandler))
@@ -231,7 +233,10 @@ type Handler struct {...}
 
 func (h Handler) OnEvent(event interfaces.Event) error {
    if event.Type == "push.started" {
-
+      deploymentInfo := event.Data.(*DS.DeployEventData).DeploymentInfo
+      mylog.Debug("A push has started with manifest: " + deploymentInfo.Manifest
+      ...
+      return nil
    } else ...
 }
 

@@ -120,6 +120,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 		ContentType: deploymentInfo.ContentType,
 		Environment: environment,
 		Response:    response,
+		ArtifactURL: deploymentInfo.ArtifactURL,
 		Data:        deploymentInfo.Data,
 	})
 	if err != nil {

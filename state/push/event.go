@@ -24,6 +24,7 @@ func (b eventBinding) Emit(event interface{}) error {
 
 type DeployStartedEvent struct {
 	CFContext   interfaces.CFContext
+	ArtifactURL string
 	Body        io.Reader
 	ContentType string
 	Environment structs.Environment

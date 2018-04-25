@@ -12,7 +12,6 @@ import (
 
 	"github.com/compozed/deployadactyl/config"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 // Controller is used to determine the type of request and process it accordingly.
@@ -110,13 +109,14 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 	putRequest := &PutRequest{}
 	json.Unmarshal(bodyBuffer, putRequest)
 
+	var deployResponse I.DeployResponse
 	if putRequest.State == "stopped" {
-		c.StopController.StopDeployment(&deployment, putRequest.Data, response)
+		deployResponse = c.StopController.StopDeployment(&deployment, putRequest.Data, response)
 	} else if putRequest.State == "started" {
-		c.StartController.StartDeployment(&deployment, putRequest.Data, response)
+		deployResponse = c.StartController.StartDeployment(&deployment, putRequest.Data, response)
 	}
 
 	defer io.Copy(g.Writer, response)
 
-	g.Writer.WriteHeader(http.StatusOK)
+	g.Writer.WriteHeader(deployResponse.StatusCode)
 }

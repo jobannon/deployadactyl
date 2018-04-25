@@ -9,7 +9,13 @@ import (
 	"github.com/compozed/deployadactyl/state"
 	S "github.com/compozed/deployadactyl/structs"
 	"net/http"
+	"fmt"
+	"regexp"
 )
+
+const successfulStart = `Your start was successful! (^_^)b
+
+`
 
 type courierCreator interface {
 	CreateCourier() (I.Courier, error)
@@ -32,8 +38,21 @@ func (a StartManager) OnStart() error {
 
 func (a StartManager) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
 	if err != nil {
-		return I.DeployResponse{Error: err, StatusCode: http.StatusInternalServerError}
+		fmt.Fprintf(response, "\nYour application was not successfully started on all foundations: %s\n\n", err.Error())
+		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
+			return I.DeployResponse{
+				StatusCode: http.StatusBadRequest,
+				Error:      err,
+			}
+		}
+		return I.DeployResponse {
+			Error: err,
+			StatusCode: http.StatusInternalServerError,
+			}
 	}
+
+	a.Logger.Infof("successfully started application %s", a.DeployEventData.DeploymentInfo.AppName)
+	fmt.Fprintf(response, "\n%s", successfulStart)
 
 	return I.DeployResponse{StatusCode: http.StatusOK}
 }

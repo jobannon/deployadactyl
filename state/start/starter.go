@@ -64,6 +64,7 @@ func (s Starter) Initially() error {
 func (s Starter) Execute() error {
 
 	if s.Courier.Exists(s.AppName) != true {
+		s.Log.Errorf("failed to start app on foundation %s: application doesn't exist", s.FoundationURL)
 		return state.ExistsError{ApplicationName: s.AppName}
 	}
 
@@ -71,6 +72,7 @@ func (s Starter) Execute() error {
 
 	output, err := s.Courier.Start(s.AppName)
 	if err != nil {
+		s.Log.Errorf("failed to start app on foundation %s: %s", s.FoundationURL, err.Error())
 		return state.StartError{ApplicationName: s.AppName, Out: output}
 	}
 	s.Response.Write(output)

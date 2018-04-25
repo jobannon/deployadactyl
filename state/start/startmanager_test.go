@@ -1,8 +1,6 @@
 package start_test
 
 import (
-	"bytes"
-
 	"github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/structs"
 	. "github.com/onsi/ginkgo"
@@ -19,6 +17,8 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
+	"net/http"
+	"io/ioutil"
 )
 
 var _ = Describe("Startmanager", func() {
@@ -26,9 +26,10 @@ var _ = Describe("Startmanager", func() {
 		response     io.ReadWriter
 		startManager interfaces.ActionCreator
 		creator      *mocks.Creator
+		logBuffer   *gbytes.Buffer
 	)
 	BeforeEach(func() {
-		logBuffer := bytes.NewBuffer([]byte{})
+		logBuffer = gbytes.NewBuffer()
 		log := logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
 		response = gbytes.NewBuffer()
 		creator = &mocks.Creator{}
@@ -140,6 +141,41 @@ var _ = Describe("Startmanager", func() {
 
 				Expect(deploymentResponse.StatusCode).To(Equal(500))
 				Expect(deploymentResponse.Error.Error()).To(Equal("you done messed up"))
+			})
+		})
+
+		Context("when no error occurs", func() {
+			It("returns http status OK", func() {
+				deployResponse := startManager.OnFinish(structs.Environment{}, response, nil)
+
+				Expect(deployResponse.StatusCode).To(Equal(http.StatusOK))
+			})
+			It("logs successful stop", func() {
+				startManager.(start.StartManager).DeployEventData.DeploymentInfo.AppName = "Conveyor"
+				startManager.OnFinish(structs.Environment{}, response, nil)
+
+				Eventually(logBuffer).Should(gbytes.Say("successfully started application %s", "Conveyor"))
+			})
+			It("records success in the response", func() {
+				startManager.OnFinish(structs.Environment{}, response, nil)
+
+				bytes, _ := ioutil.ReadAll(response)
+				Eventually(string(bytes)).Should(ContainSubstring("Your start was successful!"))
+			})
+		})
+
+		Context("when an error occurs", func() {
+			Context("and it is a log in error", func() {
+				It("returns a http status bad request", func() {
+					deployResponse := startManager.OnFinish(structs.Environment{}, response, errors.New("login failed"))
+
+					Expect(deployResponse.StatusCode).To(Equal(http.StatusBadRequest))
+				})
+			})
+			It("returns a internal server error", func() {
+				deployResponse := startManager.OnFinish(structs.Environment{}, response, errors.New("a test error"))
+
+				Expect(deployResponse.StatusCode).To(Equal(http.StatusInternalServerError))
 			})
 		})
 	})

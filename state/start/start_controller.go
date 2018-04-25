@@ -154,6 +154,7 @@ func (c StartController) emitStartSuccessOrFailure(response io.ReadWriter, deplo
 			Response:      response,
 		}
 	}
+	deploymentLogger.Debugf("emitting a %s event", event.Name())
 	eventErr := c.EventManager.EmitEvent(event)
 	if eventErr != nil {
 		deploymentLogger.Errorf("an error occurred when emitting a %s event: %s", event.Name(), eventErr)

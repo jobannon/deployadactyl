@@ -12,6 +12,7 @@ import (
 
 	"github.com/compozed/deployadactyl/config"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 // Controller is used to determine the type of request and process it accordingly.
@@ -91,12 +92,14 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 		Application:  g.Param("appName"),
 	}
 
+	response := &bytes.Buffer{}
+	defer io.Copy(g.Writer, response)
+
 	user, pwd, _ := g.Request.BasicAuth()
 	authorization := I.Authorization{
 		Username: user,
 		Password: pwd,
 	}
-	response := &bytes.Buffer{}
 
 	deployment := I.Deployment{
 		Authorization: authorization,
@@ -107,16 +110,25 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 	g.Request.Body.Close()
 
 	putRequest := &PutRequest{}
-	json.Unmarshal(bodyBuffer, putRequest)
+	err := json.Unmarshal(bodyBuffer, putRequest)
+	if err != nil {
+		response.Write([]byte("Invalid request body."))
+		g.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	var deployResponse I.DeployResponse
+
 	if putRequest.State == "stopped" {
 		deployResponse = c.StopController.StopDeployment(&deployment, putRequest.Data, response)
 	} else if putRequest.State == "started" {
 		deployResponse = c.StartController.StartDeployment(&deployment, putRequest.Data, response)
+	} else {
+		response.Write([]byte("Unknown requested state: " + putRequest.State))
+		deployResponse = I.DeployResponse{
+			StatusCode: http.StatusBadRequest,
+		}
 	}
-
-	defer io.Copy(g.Writer, response)
 
 	g.Writer.WriteHeader(deployResponse.StatusCode)
 }

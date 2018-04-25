@@ -36,7 +36,7 @@ import (
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
 const v2ENDPOINT = "/v2/deploy/:environment/:org/:space/:appName"
-const ENDPOINT = "/v3/deploy/:environment/:org/:space/:appName"
+const ENDPOINT = "/v3/apps/:environment/:org/:space/:appName"
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
 type Creator struct {

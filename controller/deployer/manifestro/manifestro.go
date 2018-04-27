@@ -1,6 +1,8 @@
 package manifestro
 
-import "github.com/cloudfoundry-incubator/candiedyaml"
+import (
+	"github.com/cloudfoundry-incubator/candiedyaml"
+)
 
 type manifestYaml struct {
 	Applications []struct {

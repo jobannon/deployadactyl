@@ -126,13 +126,19 @@ applications:
 			})
 			Context("ArtifactRetrievalStartEvent", func() {
 				It("calls EmitEvent", func() {
-
-					pusherCreator.SetUp()
+					fetcher.FetchFromZipCall.Returns.Manifest = `---
+applications:
+- name: "blah"
+  instances: 2`
+  					pusherCreator.SetUp()
 
 					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).To(Equal(reflect.TypeOf(ArtifactRetrievalStartEvent{})))
 				})
 				It("passes the CFContext", func() {
-
+					fetcher.FetchFromZipCall.Returns.Manifest = `---
+applications:
+- name: "blah"
+  instances: 2`
 					pusherCreator.CFContext = interfaces.CFContext{
 						Environment:  randomizer.StringRunes(10),
 						Space:        randomizer.StringRunes(10),
@@ -145,7 +151,10 @@ applications:
 					Expect(eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent).CFContext).To(Equal(pusherCreator.CFContext))
 				})
 				It("passes the Authorization", func() {
-
+					fetcher.FetchFromZipCall.Returns.Manifest = `---
+applications:
+- name: "blah"
+  instances: 2`
 					pusherCreator.Auth = interfaces.Authorization{
 						Username: randomizer.StringRunes(10),
 						Password: randomizer.StringRunes(10),
@@ -156,6 +165,10 @@ applications:
 					Expect(eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent).Auth).To(Equal(pusherCreator.Auth))
 				})
 				It("passes the environment, response, and data", func() {
+					fetcher.FetchFromZipCall.Returns.Manifest = `---
+applications:
+- name: "blah"
+  instances: 2`
 					environment := structs.Environment{Instances: 0}
 
 					pusherCreator.Environment = environment
@@ -197,13 +210,19 @@ applications:
 
 			Context("ArtifactRetrievalSuccessEvent", func() {
 				It("calls EmitEvent", func() {
-
+					fetcher.FetchFromZipCall.Returns.Manifest = `---
+applications:
+- name: "blah"
+  instances: 2`
 					pusherCreator.SetUp()
 
 					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(ArtifactRetrievalSuccessEvent{})))
 				})
 				It("passes the CFContext", func() {
-
+					fetcher.FetchFromZipCall.Returns.Manifest = `---
+applications:
+- name: "blah"
+  instances: 2`
 					pusherCreator.CFContext = interfaces.CFContext{
 						Environment:  randomizer.StringRunes(10),
 						Space:        randomizer.StringRunes(10),
@@ -216,7 +235,10 @@ applications:
 					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent).CFContext).To(Equal(pusherCreator.CFContext))
 				})
 				It("passes the Authorization", func() {
-
+					fetcher.FetchFromZipCall.Returns.Manifest = `---
+applications:
+- name: "blah"
+  instances: 2`
 					pusherCreator.Auth = interfaces.Authorization{
 						Username: randomizer.StringRunes(10),
 						Password: randomizer.StringRunes(10),
@@ -227,6 +249,10 @@ applications:
 					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent).Auth).To(Equal(pusherCreator.Auth))
 				})
 				It("passes the environment, response, and data", func() {
+					fetcher.FetchFromZipCall.Returns.Manifest = `---
+applications:
+- name: "blah"
+  instances: 2`
 					environment := structs.Environment{Instances: 0}
 
 					pusherCreator.Environment = environment
@@ -368,6 +394,10 @@ applications:
 		Context("contentType is ZIP", func() {
 
 			It("should extract manifest from the zip file", func() {
+				fetcher.FetchFromZipCall.Returns.Manifest = `---
+applications:
+- name: "blah"
+  instances: 2`
 				fetcher.FetchFromZipCall.Returns.AppPath = "newAppPath"
 
 				deploymentInfo := structs.DeploymentInfo{ContentType: "ZIP"}
@@ -379,6 +409,46 @@ applications:
 				logBytes, _ := ioutil.ReadAll(logBuffer)
 				Eventually(string(logBytes)).Should(ContainSubstring("deploying from zip request"))
 			})
+
+			Context("when instances are listed in the manifest", func() {
+				It("should set the correct number of instances from the manifest", func() {
+					fetcher.FetchFromZipCall.Returns.AppPath = "newAppPath"
+					fetcher.FetchFromZipCall.Returns.Manifest = `---
+applications:
+- name: "blah"
+  instances: 2
+`
+
+					deploymentInfo := structs.DeploymentInfo{ContentType: "ZIP"}
+					pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
+
+					pusherCreator.SetUp()
+
+					Expect(pusherCreator.DeployEventData.DeploymentInfo.Instances).To(Equal(uint16(2)))
+					logBytes, _ := ioutil.ReadAll(logBuffer)
+					Eventually(string(logBytes)).Should(ContainSubstring("deploying from zip request"))
+				})
+			})
+			Context("when no instances are listed in the manifest", func() {
+				It("should set the correct number of instances from the environment", func() {
+					fetcher.FetchFromZipCall.Returns.AppPath = "newAppPath"
+					pusherCreator.Environment.Instances = 7
+					fetcher.FetchFromZipCall.Returns.Manifest = `---
+applications:
+- name: "blah"
+`
+
+					deploymentInfo := structs.DeploymentInfo{ContentType: "ZIP"}
+					pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
+
+					pusherCreator.SetUp()
+
+					Expect(pusherCreator.DeployEventData.DeploymentInfo.Instances).To(Equal(uint16(7)))
+					logBytes, _ := ioutil.ReadAll(logBuffer)
+					Eventually(string(logBytes)).Should(ContainSubstring("deploying from zip request"))
+				})
+			})
+
 			It("should error when artifact cannot be fetched", func() {
 				fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
 

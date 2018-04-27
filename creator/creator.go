@@ -38,6 +38,14 @@ import (
 const v2ENDPOINT = "/v2/deploy/:environment/:org/:space/:appName"
 const ENDPOINT = "/v3/apps/:environment/:org/:space/:appName"
 
+type CreatorModuleProvider struct {
+	NewCourier courier.CourierConstructor
+	NewPrechecker prechecker.PrecheckerConstructor
+	NewFetcher artifetcher.ArtifetcherConstructor
+	NewExtractor extractor.ExtractorConstructor
+	NewEventManager eventmanager.EventManagerConstructor
+}
+
 // Creator has a config, eventManager, logger and writer for creating dependencies.
 type Creator struct {
 	config       config.Config
@@ -45,6 +53,7 @@ type Creator struct {
 	logger       I.Logger
 	writer       io.Writer
 	fileSystem   *afero.Afero
+	provider CreatorModuleProvider
 }
 
 // Default returns a default Creator and an Error.
@@ -53,11 +62,11 @@ func Default() (Creator, error) {
 	if err != nil {
 		return Creator{}, err
 	}
-	return createCreator(logging.DEBUG, cfg)
+	return createCreator(logging.DEBUG, cfg, CreatorModuleProvider{})
 }
 
 // Custom returns a custom Creator with an Error.
-func Custom(level string, configFilename string) (Creator, error) {
+func Custom(level string, configFilename string, provider CreatorModuleProvider) (Creator, error) {
 	l, err := getLevel(level)
 	if err != nil {
 		return Creator{}, err
@@ -67,7 +76,7 @@ func Custom(level string, configFilename string) (Creator, error) {
 	if err != nil {
 		return Creator{}, err
 	}
-	return createCreator(l, cfg)
+	return createCreator(l, cfg, provider)
 }
 
 // CreateControllerHandler returns a gin.Engine that implements http.Handler.
@@ -106,9 +115,11 @@ func (c Creator) CreateCourier() (I.Courier, error) {
 		return nil, err
 	}
 
-	return courier.Courier{
-		Executor: ex,
-	}, nil
+	if c.provider.NewCourier != nil {
+		return c.provider.NewCourier(ex), nil
+	}
+
+	return courier.NewCourier(ex), nil
 }
 
 // CreateLogger returns a Logger.
@@ -241,15 +252,18 @@ func (c Creator) createSilentDeployer() I.Deployer {
 	return deployer.SilentDeployer{}
 }
 
-func (c Creator) createFetcher() I.Fetcher {
-	return &artifetcher.Artifetcher{
-		FileSystem: c.CreateFileSystem(),
-		Extractor: &extractor.Extractor{
-			Log:        c.CreateLogger(),
-			FileSystem: c.CreateFileSystem(),
-		},
-		Log: c.CreateLogger(),
+func (c Creator) createExtractor() I.Extractor {
+	if c.provider.NewExtractor != nil {
+		return c.provider.NewExtractor(c.CreateLogger(), c.CreateFileSystem())
 	}
+	return extractor.NewExtractor(c.CreateLogger(), c.CreateFileSystem())
+}
+
+func (c Creator) createFetcher() I.Fetcher {
+	if c.provider.NewFetcher != nil {
+		return c.provider.NewFetcher(c.CreateFileSystem(), c.createExtractor(), c.CreateLogger())
+	}
+	return artifetcher.NewArtifetcher(c.CreateFileSystem(), c.createExtractor(), c.CreateLogger())
 }
 
 func (c Creator) createRandomizer() I.Randomizer {
@@ -257,9 +271,10 @@ func (c Creator) createRandomizer() I.Randomizer {
 }
 
 func (c Creator) createPrechecker() I.Prechecker {
-	return prechecker.Prechecker{
-		EventManager: c.CreateEventManager(),
+	if c.provider.NewPrechecker != nil {
+		return c.provider.NewPrechecker(c.CreateEventManager())
 	}
+	return prechecker.NewPrechecker(c.CreateEventManager())
 }
 
 func (c Creator) createWriter() io.Writer {
@@ -278,14 +293,19 @@ func (c Creator) createErrorFinder() I.ErrorFinder {
 	}
 }
 
-func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
+func createCreator(l logging.Level, cfg config.Config, provider CreatorModuleProvider) (Creator, error) {
 	err := ensureCLI()
 	if err != nil {
 		return Creator{}, err
 	}
 
 	logger := logger.DefaultLogger(os.Stdout, l, "controller")
-	eventManager := eventmanager.NewEventManager(logger)
+	var eventManager I.EventManager
+	if provider.NewEventManager != nil {
+		eventManager = provider.NewEventManager(logger)
+	} else {
+		eventManager = eventmanager.NewEventManager(logger)
+	}
 
 	return Creator{
 		cfg,
@@ -293,6 +313,7 @@ func createCreator(l logging.Level, cfg config.Config) (Creator, error) {
 		logger,
 		os.Stdout,
 		&afero.Afero{Fs: afero.NewOsFs()},
+		provider,
 	}, nil
 
 }

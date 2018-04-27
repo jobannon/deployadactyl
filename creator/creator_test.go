@@ -38,7 +38,7 @@ var _ = Describe("Custom creator", func() {
 		level := "DEBUG"
 		configPath := "./testconfig.yml"
 
-		creator, err := Custom(level, configPath)
+		creator, err := Custom(level, configPath, CreatorModuleProvider{})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(creator.config).ToNot(BeNil())
@@ -52,7 +52,7 @@ var _ = Describe("Custom creator", func() {
 		level := "DEBUG"
 		configPath := "./testconfig.yml"
 
-		_, err := Custom(level, configPath)
+		_, err := Custom(level, configPath, CreatorModuleProvider{})
 
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("missing environment variables: CF_USERNAME, CF_PASSWORD"))

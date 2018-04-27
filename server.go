@@ -42,7 +42,7 @@ func main() {
 	log := logger.DefaultLogger(os.Stdout, logLevel, "deployadactyl")
 	log.Infof("log level : %s", level)
 
-	c, err := creator.Custom(level, *config)
+	c, err := creator.Custom(level, *config, creator.CreatorModuleProvider{})
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -72,11 +72,6 @@ func (a *PushManager) SetUp() error {
 			manifestString = string(manifest)
 		}
 
-		instances = manifestro.GetInstances(manifestString)
-		if instances == nil {
-			instances = &a.Environment.Instances
-		}
-
 		fetchFn = func() (string, error) {
 			a.Logger.Debug("deploying from json request")
 			appPath, err = a.Fetcher.Fetch(a.DeployEventData.DeploymentInfo.ArtifactURL, manifestString)
@@ -86,15 +81,13 @@ func (a *PushManager) SetUp() error {
 			return appPath, nil
 		}
 	} else {
-		instanceVal := uint16(0)
-		instances = &instanceVal
-
 		fetchFn = func() (string, error) {
 			a.Logger.Debug("deploying from zip request")
-			appPath, err = a.Fetcher.FetchZipFromRequest(a.DeployEventData.DeploymentInfo.Body)
+			appPath, manifestString, err = a.Fetcher.FetchZipFromRequest(a.DeployEventData.DeploymentInfo.Body)
 			if err != nil {
 				return "", state.UnzippingError{Err: err}
 			}
+
 			return appPath, nil
 		}
 	}
@@ -119,6 +112,12 @@ func (a *PushManager) SetUp() error {
 	}
 
 	appPath, err = fetchFn()
+
+	instances = manifestro.GetInstances(manifestString)
+	if instances == nil {
+		instances = &a.Environment.Instances
+	}
+
 	if err != nil {
 		a.Logger.Error(err)
 		event = ArtifactRetrievalFailureEvent{

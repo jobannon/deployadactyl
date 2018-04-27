@@ -23,7 +23,7 @@ var _ = Describe("Events", func() {
 		eventHandler    *mocks.Handler
 		eventHandlerOne *mocks.Handler
 		eventHandlerTwo *mocks.Handler
-		eventManager    *EventManager
+		eventManager    I.EventManager
 		logBuffer       *gbytes.Buffer
 		log             I.Logger
 	)
@@ -123,7 +123,7 @@ var _ = Describe("Events", func() {
 			binding := &mocks.EventBinding{}
 
 			eventManager.AddBinding(binding)
-			Expect(eventManager.Bindings[0]).To(Equal(binding))
+			Expect(eventManager.(*EventManager).Bindings[0]).To(Equal(binding))
 		})
 		It("should emit each event", func() {
 			binding := &mocks.EventBinding{}

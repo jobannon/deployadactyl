@@ -1,2 +1,2 @@
 // Package service is used to run the service tests
-package service
+package stop

@@ -7,5 +7,5 @@ import (
 // Fetcher interface.
 type Fetcher interface {
 	Fetch(url, manifest string) (string, error)
-	FetchZipFromRequest(body io.Reader) (string, error)
+	FetchZipFromRequest(body io.Reader) (string, string, error)
 }

@@ -50,6 +50,14 @@ func NewFoundationsUnavailableEventBinding(handler func(event FoundationsUnavail
 	}
 }
 
+type PrecheckerConstructor func(eventManager I.EventManager) I.Prechecker
+
+func NewPrechecker(eventManager I.EventManager) I.Prechecker {
+	return Prechecker{
+		EventManager: eventManager,
+	}
+}
+
 // Prechecker has an eventmanager used to manage event if prechecks fail.
 type Prechecker struct {
 	EventManager I.EventManager

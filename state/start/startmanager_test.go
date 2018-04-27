@@ -21,18 +21,39 @@ import (
 	"io/ioutil"
 )
 
+type courierCreator struct {
+	CourierCreatorFn func() (interfaces.Courier, error)
+}
+func (c courierCreator) CreateCourier() (interfaces.Courier, error) {
+	if c.CourierCreatorFn != nil {
+		return c.CourierCreatorFn()
+	}
+
+	courier := &mocks.Courier{}
+
+	courier.LoginCall.Returns.Output = []byte("logged in\t")
+	courier.DeleteCall.Returns.Output = []byte("deleted app\t")
+	courier.PushCall.Returns.Output = []byte("pushed app\t")
+	courier.RenameCall.Returns.Output = []byte("renamed app\t")
+	courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route\t"))
+	courier.ExistsCall.Returns.Bool = true
+
+	return courier, nil
+}
+
 var _ = Describe("Startmanager", func() {
 	var (
 		response     io.ReadWriter
 		startManager interfaces.ActionCreator
-		creator      *mocks.Creator
+		creator      *courierCreator
 		logBuffer   *gbytes.Buffer
 	)
 	BeforeEach(func() {
+
 		logBuffer = gbytes.NewBuffer()
 		log := logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
 		response = gbytes.NewBuffer()
-		creator = &mocks.Creator{}
+		creator = &courierCreator{}
 		startManager = start.StartManager{
 			CourierCreator: creator,
 			Logger:         logger.DeploymentLogger{log, randomizer.StringRunes(10)},

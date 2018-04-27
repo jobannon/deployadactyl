@@ -8,6 +8,14 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 )
 
+type CourierConstructor func(executor I.Executor) I.Courier
+
+func NewCourier(executor I.Executor) I.Courier {
+	return Courier{
+		Executor: executor,
+	}
+}
+
 // Courier has an Executor to execute Cloud Foundry commands.
 type Courier struct {
 	Executor I.Executor

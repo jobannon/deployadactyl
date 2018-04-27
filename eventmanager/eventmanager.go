@@ -14,6 +14,8 @@ type InvalidEventType struct {
 	Err
 }
 
+type EventManagerConstructor func(log I.Logger) I.EventManager
+
 // EventManager has handlers for each registered event type.
 type EventManager struct {
 	Bindings []I.Binding
@@ -41,10 +43,9 @@ func (b legacyEventBinding) Emit(event interface{}) error {
 	return b.handler.OnEvent(levent)
 }
 
-// NewEventManager returns an EventManager.
-func NewEventManager(log I.Logger) *EventManager {
+func NewEventManager(log I.Logger) I.EventManager {
 	return &EventManager{
-		Log:      log,
+		Log: log,
 		Bindings: make([]I.Binding, 0),
 	}
 }

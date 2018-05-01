@@ -128,8 +128,7 @@ var _ = Describe("Service", func() {
 	})
 	It("calls courier push with correct info", func() {
 		for _, c := range couriers {
-			Expect(c.PushCall.Received.AppPath).To(ContainSubstring("/var/folders/dx"))
-			Expect(c.PushCall.Received.AppPath).To(ContainSubstring("/T/deployadactyl-"))
+			Expect(c.PushCall.Received.AppPath).To(ContainSubstring("/deployadactyl-"))
 			Expect(c.PushCall.Received.AppName).To(ContainSubstring(appName+"-new-build-"))
 			Expect(c.PushCall.Received.Instances).To(Equal(uint16(1)))
 			Expect(c.PushCall.Received.Hostname).To(Equal(appName))

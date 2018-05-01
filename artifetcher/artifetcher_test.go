@@ -16,6 +16,8 @@ import (
 	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/interfaces"
+	E "github.com/compozed/deployadactyl/artifetcher/extractor"
 )
 
 var _ = Describe("Artifetcher", func() {
@@ -25,13 +27,14 @@ var _ = Describe("Artifetcher", func() {
 		extractor   *mocks.Extractor
 		testserver  *httptest.Server
 		manifest    string
+		log interfaces.Logger
 	)
 
 	BeforeEach(func() {
-		logger := logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "artifetcher_test")
+		log = logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "artifetcher_test")
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
 		extractor = &mocks.Extractor{}
-		artifetcher = &Artifetcher{af, extractor, logger}
+		artifetcher = &Artifetcher{af, extractor, log}
 		manifest = "manifest-" + randomizer.StringRunes(10)
 
 		testserver = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -83,21 +86,22 @@ var _ = Describe("Artifetcher", func() {
 	})
 
 	Describe("fetching a zip file from a request", func() {
-		It("returns the path to the unzipped directory", func() {
-			extractor.UnzipCall.Returns.Error = nil
+		It("returns the path to the unzipped directory and manifest", func() {
+			artifetcher = &Artifetcher{af, E.NewExtractor(log, af), log}
+
+			expectManifest := `---
+applications:
+- name: artifact-with-manifest
+  memory: 512M`
 
 			body, err := os.Open("./fixtures/artifact-with-manifest.jar")
 			Expect(err).ToNot(HaveOccurred())
 
-			// for go 1.7 change this to httptest
-			req, err := http.NewRequest("POST", "https://example.com", body)
-			Expect(err).ToNot(HaveOccurred())
-
-			path, err := artifetcher.FetchZipFromRequest(req)
+			path, manifest, err := artifetcher.FetchZipFromRequest(body)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(path).To(ContainSubstring("deployadactyl-"))
-			Expect(extractor.UnzipCall.Received.Destination).To(Equal(path))
+			Expect(manifest).To(ContainSubstring(expectManifest))
 		})
 
 		Context("when extractor fails", func() {
@@ -108,11 +112,7 @@ var _ = Describe("Artifetcher", func() {
 				body, err := os.Open("./fixtures/artifact-with-manifest.jar")
 				Expect(err).ToNot(HaveOccurred())
 
-				// for go 1.7 change this to httptest
-				req, err := http.NewRequest("POST", "https://example.com", body)
-				Expect(err).ToNot(HaveOccurred())
-
-				path, err := artifetcher.FetchZipFromRequest(req)
+				path, _, err := artifetcher.FetchZipFromRequest(body)
 				Expect(err).To(MatchError(UnzipError{errors.New(errorMessage)}))
 
 				Expect(path).To(BeEmpty())

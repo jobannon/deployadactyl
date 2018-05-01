@@ -5,6 +5,6 @@ const (
 	DeployFinishEvent  = "deploy.finish"
 	DeploySuccessEvent = "deploy.success"
 	DeployFailureEvent = "deploy.failure"
-	DeployErrorEvent   = "deploy.error"
+	PushStartedEvent   = "push.started"
 	PushFinishedEvent  = "push.finished"
 )

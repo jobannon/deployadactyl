@@ -24,6 +24,15 @@ type EventManager struct {
 			Error []error
 		}
 	}
+	EmitEventCall struct {
+		TimesCalled int
+		Received    struct {
+			Events []I.IEvent
+		}
+		Returns struct {
+			Error []error
+		}
+	}
 }
 
 // AddHandler mock method.
@@ -46,3 +55,17 @@ func (e *EventManager) Emit(event I.Event) error {
 
 	return nil
 }
+
+func (e *EventManager) EmitEvent(event I.IEvent) error {
+	defer func() { e.EmitEventCall.TimesCalled++ }()
+
+	e.EmitEventCall.Received.Events = append(e.EmitEventCall.Received.Events, event)
+
+	if len(e.EmitEventCall.Returns.Error) > e.EmitEventCall.TimesCalled {
+		return e.EmitEventCall.Returns.Error[e.EmitEventCall.TimesCalled]
+	}
+	return nil
+
+}
+
+func (e *EventManager) AddBinding(binding I.Binding) {}

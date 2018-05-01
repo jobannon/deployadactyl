@@ -28,6 +28,12 @@ type Controller struct {
 			Context *gin.Context
 		}
 	}
+	PutRequestHandlerCall struct {
+		Called   bool
+		Received struct {
+			Context *gin.Context
+		}
+	}
 }
 
 func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
@@ -46,4 +52,10 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	c.RunDeploymentViaHttpCall.Called = true
 
 	c.RunDeploymentViaHttpCall.Received.Context = g
+}
+
+func (c *Controller) PutRequestHandler(g *gin.Context) {
+	c.PutRequestHandlerCall.Called = true
+
+	c.PutRequestHandlerCall.Received.Context = g
 }

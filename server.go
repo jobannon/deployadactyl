@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"os"
 
-	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/creator"
 	"github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
 	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
 	"github.com/compozed/deployadactyl/eventmanager/handlers/routemapper"
 	"github.com/compozed/deployadactyl/logger"
+	"github.com/compozed/deployadactyl/state/push"
 	"github.com/op/go-logging"
 )
 
@@ -42,7 +42,7 @@ func main() {
 	log := logger.DefaultLogger(os.Stdout, logLevel, "deployadactyl")
 	log.Infof("log level : %s", level)
 
-	c, err := creator.Custom(level, *config)
+	c, err := creator.Custom(level, *config, creator.CreatorModuleProvider{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func main() {
 	if *envVarHandlerEnabled {
 		envVarHandler := envvar.Envvarhandler{Logger: c.CreateLogger(), FileSystem: c.CreateFileSystem()}
 		log.Infof("registering environment variable event handler")
-		em.AddHandler(envVarHandler, C.DeployStartEvent)
+		em.AddBinding(push.NewArtifactRetrievalSuccessEventBinding(envVarHandler.ArtifactRetrievalSuccessEventHandler))
 	}
 
 	healthHandler := healthchecker.HealthChecker{
@@ -62,7 +62,7 @@ func main() {
 		Log:    c.CreateLogger(),
 	}
 	log.Infof("registering health check handler")
-	em.AddHandler(healthHandler, C.PushFinishedEvent)
+	em.AddBinding(push.NewPushFinishedEventBinding(healthHandler.PushFinishedEventHandler))
 
 	if *routeMapperEnabled {
 		routeMapper := routemapper.RouteMapper{
@@ -71,11 +71,13 @@ func main() {
 		}
 
 		log.Infof("registering health check handler")
-		em.AddHandler(routeMapper, C.PushFinishedEvent)
+		em.AddBinding(push.NewPushFinishedEventBinding(routeMapper.PushFinishedEventHandler))
 	}
 
 	l := c.CreateListener()
-	deploy := c.CreateControllerHandler(c.CreateController())
+	controller := c.CreateController()
+
+	deploy := c.CreateControllerHandler(controller)
 
 	log.Infof("Listening on Port %d", c.CreateConfig().Port)
 

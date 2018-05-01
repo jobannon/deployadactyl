@@ -11,6 +11,16 @@ import (
 	"github.com/spf13/afero"
 )
 
+type ArtifetcherConstructor func(fs *afero.Afero, ex I.Extractor, log I.Logger) I.Fetcher
+
+func NewArtifetcher(fs *afero.Afero, ex I.Extractor, log I.Logger) I.Fetcher {
+	return &Artifetcher{
+		FileSystem: fs,
+		Extractor: ex,
+		Log: log,
+	}
+}
+
 // Artifetcher fetches artifacts within a file system with an Extractor.
 type Artifetcher struct {
 	FileSystem *afero.Afero
@@ -34,7 +44,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	defer a.FileSystem.Remove(artifactFile.Name())
 
 	var client = &http.Client{
-		Timeout: 4 * time.Minute,
+		Timeout: 15 * time.Minute,
 		Transport: &http.Transport{
 			Dial: (&net.Dialer{
 				Timeout:   60 * time.Second,
@@ -48,7 +58,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", ArtifactoryRequestError{err}
+		return "", FetcherRequestError{err}
 	}
 
 	response, err := client.Do(req)
@@ -85,31 +95,38 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 // FetchZipFromRequest fetches files from a compressed zip file in the request body.
 //
 // Returns a string to the unzipped application path and an error.
-func (a *Artifetcher) FetchZipFromRequest(req *http.Request) (string, error) {
+func (a *Artifetcher) FetchZipFromRequest(body io.Reader) (string, string, error) {
+
 	zipFile, err := a.FileSystem.TempFile("", "deployadactyl-")
 	if err != nil {
-		return "", CreateTempFileError{err}
+		return "", "", CreateTempFileError{err}
 	}
 	defer zipFile.Close()
 	defer a.FileSystem.Remove(zipFile.Name())
 
 	a.Log.Infof("fetching zip file %s", zipFile.Name())
 
-	if _, err = io.Copy(zipFile, req.Body); err != nil {
-		return "", WriteResponseError{err}
+	_, err = io.Copy(zipFile, body)
+	if err != nil {
+		return "", "", WriteResponseError{err}
 	}
 
 	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-")
 	if err != nil {
-		return "", CreateTempDirectoryError{err}
+		return "", "", CreateTempDirectoryError{err}
 	}
 
 	err = a.Extractor.Unzip(zipFile.Name(), unzippedPath, "")
 	if err != nil {
 		a.FileSystem.RemoveAll(unzippedPath)
-		return "", UnzipError{err}
+		return "", "", UnzipError{err}
+	}
+
+	manifest, err := a.FileSystem.ReadFile(unzippedPath + "/manifest.yml")
+	if err != nil {
+		return "", "", err
 	}
 
 	a.Log.Debugf("fetched and unzipped to tempdir %s", unzippedPath)
-	return unzippedPath, nil
+	return unzippedPath, string(manifest), nil
 }

@@ -12,6 +12,15 @@ import (
 	"github.com/spf13/afero"
 )
 
+type ExtractorConstructor func(log I.Logger, fs *afero.Afero) I.Extractor
+
+func NewExtractor(log I.Logger, fs *afero.Afero) I.Extractor {
+	return &Extractor{
+		Log: log,
+		FileSystem: fs,
+	}
+}
+
 // Extractor has a file system from which files are extracted from.
 type Extractor struct {
 	Log        I.Logger

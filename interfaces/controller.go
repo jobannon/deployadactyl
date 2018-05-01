@@ -2,7 +2,6 @@ package interfaces
 
 import (
 	"bytes"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,10 +28,13 @@ type CFContext struct {
 	Space        string
 	Application  string
 	UUID         string
+	SkipSSL      bool
 }
 
 type Controller interface {
 	RunDeployment(deployment *Deployment, response *bytes.Buffer) DeployResponse
 
 	RunDeploymentViaHttp(g *gin.Context)
+
+	PutRequestHandler(g *gin.Context)
 }

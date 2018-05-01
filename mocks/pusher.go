@@ -9,10 +9,7 @@ import (
 type Pusher struct {
 	Response io.ReadWriter
 
-	LoginCall struct {
-		Received struct {
-			FoundationURL string
-		}
+	InitiallyCall struct {
 		Write struct {
 			Output string
 		}
@@ -21,13 +18,7 @@ type Pusher struct {
 		}
 	}
 
-	PushCall struct {
-		Received struct {
-			AppPath       string
-			FoundationURL string
-			AppExists     bool
-			Out           io.ReadWriter
-		}
+	ExecuteCall struct {
 		Write struct {
 			Output string
 		}
@@ -35,24 +26,25 @@ type Pusher struct {
 			Error error
 		}
 	}
-
-	UndoPushCall struct {
-		Received struct {
-			AppExists         bool
-			UndoPushWasCalled bool
-		}
+	VerifyCall struct {
 		Returns struct {
 			Error error
 		}
 	}
 
-	FinishPushCall struct {
+	UndoCall struct {
 		Returns struct {
 			Error error
 		}
 	}
 
-	CleanUpCall struct {
+	SuccessCall struct {
+		Returns struct {
+			Error error
+		}
+	}
+
+	FinallyCall struct {
 		Returns struct {
 			Error error
 		}
@@ -60,36 +52,36 @@ type Pusher struct {
 }
 
 // Login mock method.
-func (p *Pusher) Login(foundationURL string) error {
-	p.LoginCall.Received.FoundationURL = foundationURL
+func (p *Pusher) Initially() error {
 
-	fmt.Fprint(p.Response, p.LoginCall.Write.Output)
+	fmt.Fprint(p.Response, p.InitiallyCall.Write.Output)
 
-	return p.LoginCall.Returns.Error
+	return p.InitiallyCall.Returns.Error
 }
 
 // Push mock method.
-func (p *Pusher) Push(appPath, foundationURL string) error {
-	p.PushCall.Received.AppPath = appPath
-	p.PushCall.Received.FoundationURL = foundationURL
+func (p *Pusher) Execute() error {
 
-	fmt.Fprint(p.Response, p.PushCall.Write.Output)
+	fmt.Fprint(p.Response, p.ExecuteCall.Write.Output)
 
-	return p.PushCall.Returns.Error
+	return p.ExecuteCall.Returns.Error
+}
+
+func (p *Pusher) Verify() error {
+	return p.VerifyCall.Returns.Error
 }
 
 // FinishPush mock method.
-func (p *Pusher) FinishPush() error {
-	return p.FinishPushCall.Returns.Error
+func (p *Pusher) Success() error {
+	return p.SuccessCall.Returns.Error
 }
 
 // UndoPush mock method.
-func (p *Pusher) UndoPush() error {
-	p.UndoPushCall.Received.UndoPushWasCalled = true
-	return p.UndoPushCall.Returns.Error
+func (p *Pusher) Undo() error {
+	return p.UndoCall.Returns.Error
 }
 
 // CleanUp mock method.
-func (p *Pusher) CleanUp() error {
-	return p.CleanUpCall.Returns.Error
+func (p *Pusher) Finally() error {
+	return p.FinallyCall.Returns.Error
 }

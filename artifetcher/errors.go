@@ -10,12 +10,12 @@ func (e CreateTempFileError) Error() string {
 	return fmt.Sprintf("cannot create temp file: %s", e.Err)
 }
 
-type ArtifactoryRequestError struct {
+type FetcherRequestError struct {
 	Err error
 }
 
-func (e ArtifactoryRequestError) Error() string {
-	return fmt.Sprintf("cannot create artifactory request: %s", e.Err)
+func (e FetcherRequestError) Error() string {
+	return fmt.Sprintf("cannot create artifact fetch request: %s", e.Err)
 }
 
 type GetUrlError struct {

@@ -18,6 +18,26 @@ type Courier struct {
 		}
 	}
 
+	StartCall struct {
+		Received struct {
+			AppName string
+		}
+		Returns struct {
+			Output []byte
+			Error  error
+		}
+	}
+
+	StopCall struct {
+		Received struct {
+			AppName string
+		}
+		Returns struct {
+			Output []byte
+			Error  error
+		}
+	}
+
 	DeleteCall struct {
 		Received struct {
 			AppName string
@@ -173,6 +193,18 @@ func (c *Courier) Login(foundationURL, username, password, org, space string, sk
 	c.LoginCall.Received.SkipSSL = skipSSL
 
 	return c.LoginCall.Returns.Output, c.LoginCall.Returns.Error
+}
+
+func (c *Courier) Start(appName string) ([]byte, error) {
+	c.StartCall.Received.AppName = appName
+
+	return c.StartCall.Returns.Output, c.StartCall.Returns.Error
+}
+
+func (c *Courier) Stop(appName string) ([]byte, error) {
+	c.StopCall.Received.AppName = appName
+
+	return c.StopCall.Returns.Output, c.StopCall.Returns.Error
 }
 
 // Delete mock method.

@@ -4,10 +4,10 @@ build:
 	go build
 
 dependencies:
-    go get -u github.com/tools/godep
-    godep restore
-    rm -rf Godeps
-    godep save ./...
+	go get -u github.com/tools/godep
+	godep restore
+	rm -rf Godeps
+	godep save ./...
 
 doc:
 	godoc -http=:6060

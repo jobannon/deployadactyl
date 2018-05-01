@@ -1,6 +1,8 @@
 package mocks
 
-import "net/http"
+import (
+	"io"
+)
 
 // Fetcher handmade mock for tests.
 type Fetcher struct {
@@ -17,10 +19,11 @@ type Fetcher struct {
 
 	FetchFromZipCall struct {
 		Received struct {
-			Request *http.Request
+			Request io.Reader
 		}
 		Returns struct {
 			AppPath string
+			Manifest string
 			Error   error
 		}
 	}
@@ -35,8 +38,8 @@ func (f *Fetcher) Fetch(url, manifest string) (string, error) {
 }
 
 // FetchZipFromRequest mock method.
-func (f *Fetcher) FetchZipFromRequest(req *http.Request) (string, error) {
-	f.FetchFromZipCall.Received.Request = req
+func (f *Fetcher) FetchZipFromRequest(body io.Reader) (string, string, error) {
+	f.FetchFromZipCall.Received.Request = body
 
-	return f.FetchFromZipCall.Returns.AppPath, f.FetchFromZipCall.Returns.Error
+	return f.FetchFromZipCall.Returns.AppPath, f.FetchFromZipCall.Returns.Manifest, f.FetchFromZipCall.Returns.Error
 }

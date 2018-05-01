@@ -1,9 +1,11 @@
 package interfaces
 
-import "net/http"
+import (
+	"io"
+)
 
 // Fetcher interface.
 type Fetcher interface {
 	Fetch(url, manifest string) (string, error)
-	FetchZipFromRequest(*http.Request) (string, error)
+	FetchZipFromRequest(body io.Reader) (string, string, error)
 }

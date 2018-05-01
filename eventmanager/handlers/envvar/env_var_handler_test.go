@@ -10,7 +10,7 @@ import (
 	. "github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
-	S "github.com/compozed/deployadactyl/structs"
+	"github.com/compozed/deployadactyl/state/push"
 )
 
 var _ = Describe("Env_Var_Handler", func() {
@@ -18,30 +18,30 @@ var _ = Describe("Env_Var_Handler", func() {
 		eventHandler Envvarhandler
 		logBuffer    *gbytes.Buffer
 		log          I.Logger
-		event        I.Event
+		ievent       push.ArtifactRetrievalSuccessEvent
 		filesystem   = &afero.Afero{Fs: afero.NewMemMapFs()}
 	)
 
 	BeforeEach(func() {
 		logBuffer = gbytes.NewBuffer()
 		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")
-		event = I.Event{Type: "test-event", Data: S.DeployEventData{}}
+		ievent = push.ArtifactRetrievalSuccessEvent{}
 		eventHandler = Envvarhandler{Logger: log, FileSystem: filesystem}
 	})
 
 	Context("when an envvarhandler is called with event without deploy info", func() {
-		It("it should be succeed", func() {
+		It("it should succeed", func() {
 
-			Expect(eventHandler.OnEvent(event)).To(Succeed())
+			Expect(eventHandler.ArtifactRetrievalSuccessEventHandler(ievent)).To(Succeed())
 		})
 	})
 
 	Context("when an envvarhandler is called with event without env variables", func() {
 		It("it should be succeed", func() {
 
-			event.Data = S.DeployEventData{DeploymentInfo: &S.DeploymentInfo{}}
+			ievent.EnvironmentVariables = nil
 
-			Expect(eventHandler.OnEvent(event)).To(Succeed())
+			Expect(eventHandler.ArtifactRetrievalSuccessEventHandler(ievent)).To(Succeed())
 		})
 	})
 
@@ -55,16 +55,14 @@ var _ = Describe("Env_Var_Handler", func() {
 			envvars["one"] = "one"
 			envvars["two"] = "two"
 
-			info := S.DeploymentInfo{
-				AppName:              "testApp",
-				AppPath:              path,
-				EnvironmentVariables: envvars,
+			ievent.AppPath = path
+			ievent.EnvironmentVariables = envvars
+			ievent.CFContext = I.CFContext{
+				Application: "testApp",
 			}
 
-			event.Data = S.DeployEventData{DeploymentInfo: &info}
-
 			//Process the event
-			Expect(eventHandler.OnEvent(event)).To(Succeed())
+			Expect(eventHandler.ArtifactRetrievalSuccessEventHandler(ievent)).To(Succeed())
 
 			//Verify manifest was written and matches
 			manifest, err := ReadManifest(path+"/manifest.yml", eventHandler.Logger, eventHandler.FileSystem)
@@ -85,16 +83,14 @@ var _ = Describe("Env_Var_Handler", func() {
 			envvars["one"] = "one"
 			envvars["two"] = "two"
 
-			info := S.DeploymentInfo{
-				AppName:              "testApp",
-				AppPath:              "/tmp",
-				Manifest:             content,
-				EnvironmentVariables: envvars,
+			ievent.AppPath = "/tmp"
+			ievent.Manifest = content
+			ievent.EnvironmentVariables = envvars
+			ievent.CFContext = I.CFContext{
+				Application: "testApp",
 			}
 
-			event.Data = S.DeployEventData{DeploymentInfo: &info}
-
-			err := eventHandler.OnEvent(event)
+			err := eventHandler.ArtifactRetrievalSuccessEventHandler(ievent)
 
 			Expect(err).ToNot(BeNil())
 		})

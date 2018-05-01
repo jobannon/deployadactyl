@@ -7,9 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	C "github.com/compozed/deployadactyl/constants"
 	I "github.com/compozed/deployadactyl/interfaces"
-	S "github.com/compozed/deployadactyl/structs"
+	"github.com/compozed/deployadactyl/state/push"
 )
 
 // HealthChecker will check an endpoint for a http.StatusOK
@@ -32,51 +31,41 @@ type HealthChecker struct {
 	Log     I.Logger
 }
 
-// OnEvent is used for the EventManager to do health checking during deployments.
-// It will create the new application URL by combining the tempAppWithUUID to the
-// domain URL.
-func (h HealthChecker) OnEvent(event I.Event) error {
-
-	if event.Type != C.PushFinishedEvent {
-		return WrongEventTypeError{event.Type}
-	}
+func (h HealthChecker) PushFinishedEventHandler(event push.PushFinishedEvent) error {
 
 	var (
-		tempAppWithUUID  = event.Data.(S.PushEventData).TempAppWithUUID
-		foundationURL    = event.Data.(S.PushEventData).FoundationURL
-		deploymentInfo   = event.Data.(S.PushEventData).DeploymentInfo
 		newFoundationURL string
 		domain           string
 	)
 
-	if deploymentInfo.HealthCheckEndpoint == "" {
+	if event.HealthCheckEndpoint == "" {
 		return nil
 	}
 
-	h.Courier = event.Data.(S.PushEventData).Courier.(I.Courier)
+	h.Courier = event.Courier
 
 	h.Log.Debugf("starting health check")
 
-	if event.Data.(S.PushEventData).DeploymentInfo.Environment != h.SilentDeployEnvironment {
-		newFoundationURL = strings.Replace(foundationURL, h.OldURL, h.NewURL, 1)
+	if event.CFContext.Environment != h.SilentDeployEnvironment {
+		newFoundationURL = strings.Replace(event.FoundationURL, h.OldURL, h.NewURL, 1)
 		domain = regexp.MustCompile(fmt.Sprintf("%s.*", h.NewURL)).FindString(newFoundationURL)
 	} else {
-		newFoundationURL = strings.Replace(foundationURL, h.OldURL, h.SilentDeployURL, 1)
+		newFoundationURL = strings.Replace(event.FoundationURL, h.OldURL, h.SilentDeployURL, 1)
 		domain = regexp.MustCompile(fmt.Sprintf("%s.*", h.SilentDeployURL)).FindString(newFoundationURL)
 	}
 
-	err := h.mapTemporaryRoute(tempAppWithUUID, domain)
+	err := h.mapTemporaryRoute(event.TempAppWithUUID, domain)
 	if err != nil {
 		return err
 	}
 
 	// unmapTemporaryRoute will be called before deleteTemporaryRoute
-	defer h.deleteTemporaryRoute(tempAppWithUUID, domain)
-	defer h.unmapTemporaryRoute(tempAppWithUUID, domain)
+	defer h.deleteTemporaryRoute(event.TempAppWithUUID, domain)
+	defer h.unmapTemporaryRoute(event.TempAppWithUUID, domain)
 
-	newFoundationURL = strings.Replace(newFoundationURL, h.NewURL, fmt.Sprintf("%s.%s", tempAppWithUUID, h.NewURL), 1)
+	newFoundationURL = strings.Replace(newFoundationURL, h.NewURL, fmt.Sprintf("%s.%s", event.TempAppWithUUID, h.NewURL), 1)
 
-	return h.Check(newFoundationURL, deploymentInfo.HealthCheckEndpoint)
+	return h.Check(newFoundationURL, event.HealthCheckEndpoint)
 }
 
 // Check takes a url and endpoint. It does an http.Get to get the response

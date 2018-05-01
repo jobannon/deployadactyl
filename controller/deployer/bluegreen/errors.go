@@ -36,6 +36,11 @@ type RollbackError struct {
 	RollbackErrors []error
 }
 
+type RollbackStopError struct {
+	StopErrors     []error
+	RollbackErrors []error
+}
+
 func (e RollbackError) Error() string {
 	var (
 		pushErrs       = makeErrorString(e.PushErrors)
@@ -43,6 +48,15 @@ func (e RollbackError) Error() string {
 	)
 
 	return fmt.Sprintf("push failed: %s: rollback failed: %s", pushErrs, rollbackErrors)
+}
+
+func (e RollbackStopError) Error() string {
+	var (
+		stopErrs           = makeErrorString(e.StopErrors)
+		rollbackStopErrors = makeErrorString(e.RollbackErrors)
+	)
+
+	return fmt.Sprintf("stop failed: %s: rollback failed: %s", stopErrs, rollbackStopErrors)
 }
 
 func (e RollbackError) Code() string {
@@ -65,6 +79,14 @@ func (e FinishPushError) Code() string {
 	return "FinishPushError"
 }
 
+type StartStopError struct {
+	Err error
+}
+
+func (e StartStopError) Error() string {
+	return e.Err.Error()
+}
+
 type InitializationError struct {
 	Err error
 }
@@ -75,6 +97,29 @@ func (e InitializationError) Error() string {
 
 func (e InitializationError) Code() string {
 	return "InitError"
+}
+
+type FinishStopError struct {
+	FinishStopErrors []error
+}
+
+func (e FinishStopError) Error() string {
+	finishStopErrors := makeErrorString(e.FinishStopErrors)
+
+	return fmt.Sprintf("finish stop failed: %s", finishStopErrors)
+}
+
+type StopError struct {
+	Errors []error
+}
+
+func (e StopError) Error() string {
+	errs := makeErrorString(e.Errors)
+	return fmt.Sprintf("stop failed: %s", errs)
+}
+
+func (e StopError) Code() string {
+	return "StopError"
 }
 
 type FinishDeployError struct {
@@ -102,4 +147,41 @@ func makeErrorString(manyErrors []error) error {
 	}
 
 	return errors.New(result)
+}
+
+type FinishStartError struct {
+	FinishStartErrors []error
+}
+
+func (e FinishStartError) Error() string {
+	finishStartErrors := makeErrorString(e.FinishStartErrors)
+
+	return fmt.Sprintf("finish stop failed: %s", finishStartErrors)
+}
+
+type StartError struct {
+	Errors []error
+}
+
+func (e StartError) Error() string {
+	errs := makeErrorString(e.Errors)
+	return fmt.Sprintf("start failed: %s", errs)
+}
+
+func (e StartError) Code() string {
+	return "StartError"
+}
+
+type RollbackStartError struct {
+	StartErrors    []error
+	RollbackErrors []error
+}
+
+func (e RollbackStartError) Error() string {
+	var (
+		startErrs           = makeErrorString(e.StartErrors)
+		rollbackStartErrors = makeErrorString(e.RollbackErrors)
+	)
+
+	return fmt.Sprintf("start failed: %s: rollback failed: %s", startErrs, rollbackStartErrors)
 }

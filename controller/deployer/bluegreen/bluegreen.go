@@ -8,145 +8,86 @@ import (
 	"strings"
 
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
 )
 
-// BlueGreen has a PusherCreator to creater pushers for blue green deployments.
+// BlueGreen has a PushManager to creater pushers for blue green deployments.
 type BlueGreen struct {
-	PusherCreator I.PusherCreator
-	Log           I.Logger
-	actors        []actor
-	buffers       []*bytes.Buffer
+	Log I.Logger
 }
 
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.
 // If the application fails to start in any of the instances it handles rolling back the application in every instance, unless it is the first deploy.
-func (bg BlueGreen) Push(environment S.Environment, appPath string, deploymentInfo S.DeploymentInfo, response io.ReadWriter) I.DeploymentError {
-	bg.actors = make([]actor, len(environment.Foundations))
-	bg.buffers = make([]*bytes.Buffer, len(environment.Foundations))
+func (bg BlueGreen) Execute(actionCreator I.ActionCreator, environment S.Environment, response io.ReadWriter) error {
 
-	deploymentLogger := logger.DeploymentLogger{Log: bg.Log, UUID: deploymentInfo.UUID}
+	actors := make([]actor, len(environment.Foundations))
+	buffers := make([]*bytes.Buffer, len(environment.Foundations))
 
 	for i, foundationURL := range environment.Foundations {
-		bg.buffers[i] = &bytes.Buffer{}
+		buffers[i] = &bytes.Buffer{}
 
-		pusher, err := bg.PusherCreator.CreatePusher(deploymentInfo, bg.buffers[i])
+		action, err := actionCreator.Create(environment, buffers[i], foundationURL)
 		if err != nil {
 			return InitializationError{err}
 		}
-		defer pusher.CleanUp()
+		defer action.Finally()
 
-		bg.actors[i] = newActor(pusher, foundationURL)
-		defer close(bg.actors[i].commands)
+		actors[i] = NewActor(action)
+		defer close(actors[i].Commands)
 	}
 
 	defer func() {
-		for _, buffer := range bg.buffers {
+		for _, buffer := range buffers {
 			fmt.Fprintf(response, "\n%s Cloud Foundry Output %s\n", strings.Repeat("-", 19), strings.Repeat("-", 19))
-
 			buffer.WriteTo(response)
 		}
 
 		fmt.Fprintf(response, "\n%s End Cloud Foundry Output %s\n", strings.Repeat("-", 17), strings.Repeat("-", 17))
 	}()
 
-	loginErrors := bg.loginAll()
+	loginErrors := bg.commands(actors, func(action I.Action) error {
+		return action.Initially()
+	})
+
 	if len(loginErrors) != 0 {
-		return LoginError{loginErrors}
+		return actionCreator.InitiallyError(loginErrors)
 	}
 
-	pushErrors := bg.pushAll(appPath)
-	if len(pushErrors) != 0 {
-		if !environment.EnableRollback {
-			deploymentLogger.Errorf("Failed to deploy, deployment not rolled back due to EnableRollback=false")
+	actionErrors := bg.commands(actors, func(action I.Action) error {
+		return action.Execute()
+	})
 
-			finishPushErrors := bg.finishPushAll()
-			if len(finishPushErrors) != 0 {
-				return FinishPushError{finishPushErrors}
-			}
+	if len(actionErrors) != 0 {
+		bg.Log.Errorf("failed to execute action against all foundations - rolling back action")
+		rollbackErrors := bg.commands(actors, func(action I.Action) error {
+			return action.Undo()
+		})
 
-			return PushError{pushErrors}
-		} else {
-			rollbackErrors := bg.undoPushAll(deploymentLogger)
-			if len(rollbackErrors) != 0 {
-				return RollbackError{pushErrors, rollbackErrors}
-			}
-
-			return PushError{pushErrors}
+		if len(rollbackErrors) != 0 {
+			return actionCreator.UndoError(actionErrors, rollbackErrors)
 		}
+
+		return actionCreator.ExecuteError(actionErrors)
 	}
 
-	finishPushErrors := bg.finishPushAll()
-	if len(finishPushErrors) != 0 {
-		return FinishPushError{finishPushErrors}
+	finishActionErrors := bg.commands(actors, func(action I.Action) error {
+		return action.Success()
+	})
+	if len(finishActionErrors) != 0 {
+		return actionCreator.SuccessError(finishActionErrors)
 	}
 
 	return nil
 }
 
-func (bg BlueGreen) loginAll() (manyErrors []error) {
-	for _, a := range bg.actors {
-		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.Login(foundationURL)
-		}
+func (bg BlueGreen) commands(actors []actor, doFunc ActorCommand) (manyErrors []error) {
+	for _, a := range actors {
+		a.Commands <- doFunc
 	}
-	for _, a := range bg.actors {
-		if err := <-a.errs; err != nil {
+	for _, a := range actors {
+		if err := <-a.Errs; err != nil {
 			manyErrors = append(manyErrors, err)
 		}
 	}
-
-	return
-}
-
-func (bg BlueGreen) pushAll(appPath string) (manyErrors []error) {
-	for _, a := range bg.actors {
-		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.Push(appPath, foundationURL)
-		}
-	}
-	for _, a := range bg.actors {
-		if err := <-a.errs; err != nil {
-			manyErrors = append(manyErrors, err)
-		}
-	}
-
-	return
-}
-
-func (bg BlueGreen) finishPushAll() (manyErrors []error) {
-	for _, a := range bg.actors {
-		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			return pusher.FinishPush()
-		}
-	}
-
-	for _, a := range bg.actors {
-		if err := <-a.errs; err != nil {
-			manyErrors = append(manyErrors, err)
-		}
-	}
-
-	return
-}
-
-func (bg BlueGreen) undoPushAll(log I.Logger) (manyErrors []error) {
-	for _, a := range bg.actors {
-		a.commands <- func(pusher I.Pusher, foundationURL string) error {
-			err := pusher.UndoPush()
-			if err != nil {
-				log.Errorf("Could not rollback app on foundation %s with error: %s", foundationURL, err.Error())
-			}
-			return err
-		}
-	}
-
-	for _, a := range bg.actors {
-		if err := <-a.errs; err != nil {
-			manyErrors = append(manyErrors, err)
-		}
-	}
-
 	return
 }

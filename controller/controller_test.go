@@ -11,6 +11,7 @@ import (
 
 	"os"
 
+	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/logger"
@@ -19,100 +20,124 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
-)
-
-const (
-	deployerNotEnoughCalls = "deployer didn't have the right number of calls"
 )
 
 var _ = Describe("Controller", func() {
 
 	var (
-		deployer       *mocks.Deployer
-		silentDeployer *mocks.Deployer
-		controller     *Controller
-		router         *gin.Engine
-		resp           *httptest.ResponseRecorder
-		jsonBuffer     *bytes.Buffer
+		deployer        *mocks.Deployer
+		silentDeployer  *mocks.Deployer
+		eventManager    *mocks.EventManager
+		errorFinder     *mocks.ErrorFinder
+		stopController  *mocks.StopController
+		startController *mocks.StartController
+		pushController  *mocks.PushController
+		controller      *Controller
+		logBuffer       *Buffer
 
-		foundationURL string
-		appName       string
-		environment   string
-		org           string
-		space         string
-		contentType   string
-		byteBody      []byte
-		server        *httptest.Server
+		appName     string
+		environment string
+		org         string
+		space       string
+		uuid        string
+		byteBody    []byte
+		server      *httptest.Server
 	)
 
 	BeforeEach(func() {
-		deployer = &mocks.Deployer{}
-		silentDeployer = &mocks.Deployer{}
-
-		controller = &Controller{
-			Deployer:       deployer,
-			SilentDeployer: silentDeployer,
-			Log:            logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "api_test"),
-		}
-
-		router = gin.New()
-		resp = httptest.NewRecorder()
-		jsonBuffer = &bytes.Buffer{}
-
+		logBuffer = NewBuffer()
 		appName = "appName-" + randomizer.StringRunes(10)
 		environment = "environment-" + randomizer.StringRunes(10)
 		org = "org-" + randomizer.StringRunes(10)
 		space = "non-prod"
-		contentType = "application/json"
+		uuid = "uuid-" + randomizer.StringRunes(10)
 
-		router.POST("/v2/deploy/:environment/:org/:space/:appName", controller.RunDeploymentViaHttp)
+		eventManager = &mocks.EventManager{}
+		deployer = &mocks.Deployer{}
+		silentDeployer = &mocks.Deployer{}
+		pushController = &mocks.PushController{}
+		stopController = &mocks.StopController{}
+		startController = &mocks.StartController{}
 
-		server = httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-			byteBody, _ = ioutil.ReadAll(req.Body)
-			req.Body.Close()
-		}))
-
-		silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
-		os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
-	})
-
-	AfterEach(func() {
-		server.Close()
+		errorFinder = &mocks.ErrorFinder{}
+		controller = &Controller{
+			Deployer:        deployer,
+			SilentDeployer:  silentDeployer,
+			Log:             logger.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
+			PushController:  pushController,
+			StopController:  stopController,
+			StartController: startController,
+			EventManager:    eventManager,
+			Config:          config.Config{},
+			ErrorFinder:     errorFinder,
+		}
 	})
 
 	Describe("RunDeploymentViaHttp handler", func() {
+		var (
+			router        *gin.Engine
+			resp          *httptest.ResponseRecorder
+			jsonBuffer    *bytes.Buffer
+			foundationURL string
+		)
+		BeforeEach(func() {
+			router = gin.New()
+			resp = httptest.NewRecorder()
+			jsonBuffer = &bytes.Buffer{}
+
+			router.POST("/v3/apps/:environment/:org/:space/:appName", controller.RunDeploymentViaHttp)
+
+			server = httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				byteBody, _ = ioutil.ReadAll(req.Body)
+				req.Body.Close()
+			}))
+
+			silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
+			os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
+		})
+		AfterEach(func() {
+			server.Close()
+		})
+
 		Context("when deployer succeeds", func() {
 			It("deploys and returns http.StatusOK", func() {
-				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/zip")
+
 				Expect(err).ToNot(HaveOccurred())
 
-				deployer.DeployCall.Returns.Error = nil
-				deployer.DeployCall.Returns.StatusCode = http.StatusOK
-				deployer.DeployCall.Write.Output = "deploy success"
+				pushController.RunDeploymentCall.Returns.DeployResponse = I.DeployResponse{
+					StatusCode: http.StatusOK,
+				}
+				pushController.RunDeploymentCall.Writes = "deploy success"
 
 				router.ServeHTTP(resp, req)
 
 				Eventually(resp.Code).Should(Equal(http.StatusOK))
 				Eventually(resp.Body).Should(ContainSubstring("deploy success"))
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				Eventually(pushController.RunDeploymentCall.Received.Deployment.CFContext.Environment).Should(Equal(environment))
+				Eventually(pushController.RunDeploymentCall.Received.Deployment.CFContext.Organization).Should(Equal(org))
+				Eventually(pushController.RunDeploymentCall.Received.Deployment.CFContext.Space).Should(Equal(space))
+				Eventually(pushController.RunDeploymentCall.Received.Deployment.CFContext.Application).Should(Equal(appName))
 			})
 
 			It("does not run silent deploy when environment other than non-prop", func() {
-				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, "not-non-prod", appName)
+				foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, "not-non-prod", appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/zip")
+
 				Expect(err).ToNot(HaveOccurred())
 
-				deployer.DeployCall.Returns.Error = nil
-				deployer.DeployCall.Returns.StatusCode = http.StatusOK
-				deployer.DeployCall.Write.Output = "deploy success"
+				pushController.RunDeploymentCall.Returns.DeployResponse = I.DeployResponse{
+					StatusCode: http.StatusOK,
+				}
+				pushController.RunDeploymentCall.Writes = "deploy success"
 
 				router.ServeHTTP(resp, req)
 
@@ -125,13 +150,17 @@ var _ = Describe("Controller", func() {
 
 		Context("when deployer fails", func() {
 			It("doesn't deploy and gives http.StatusInternalServerError", func() {
-				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s", environment, org, space, appName)
+				foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/zip")
+
 				Expect(err).ToNot(HaveOccurred())
 
-				deployer.DeployCall.Returns.Error = errors.New("bork")
-				deployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
+				pushController.RunDeploymentCall.Returns.DeployResponse = I.DeployResponse{
+					Error:      errors.New("bork"),
+					StatusCode: http.StatusInternalServerError,
+				}
 
 				router.ServeHTTP(resp, req)
 
@@ -142,9 +171,11 @@ var _ = Describe("Controller", func() {
 
 		Context("when parameters are added to the url", func() {
 			It("does not return an error", func() {
-				foundationURL = fmt.Sprintf("/v2/deploy/%s/%s/%s/%s?broken=false", environment, org, space, appName)
+				foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s?broken=false", environment, org, space, appName)
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/zip")
+
 				Expect(err).ToNot(HaveOccurred())
 
 				deployer.DeployCall.Write.Output = "deploy success"
@@ -153,210 +184,267 @@ var _ = Describe("Controller", func() {
 				router.ServeHTTP(resp, req)
 
 				Eventually(resp.Code).Should(Equal(http.StatusOK))
-				Eventually(resp.Body).Should(ContainSubstring("deploy success"))
+				Expect(pushController.RunDeploymentCall.Received.Deployment).ToNot(BeNil())
 			})
 		})
 	})
 
-	Describe("RunDeployment", func() {
-		Context("when verbose deployer is called", func() {
-			It("channel resolves when no errors occur", func() {
+	Describe("PutRequestHandler", func() {
+		var (
+			router     *gin.Engine
+			resp       *httptest.ResponseRecorder
+			jsonBuffer *bytes.Buffer
+		)
 
-				deployer.DeployCall.Returns.Error = nil
-				deployer.DeployCall.Returns.StatusCode = http.StatusOK
-				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+		BeforeEach(func() {
+			router = gin.New()
+			resp = httptest.NewRecorder()
+			jsonBuffer = &bytes.Buffer{}
 
-				response := &bytes.Buffer{}
+			router.PUT("/v3/apps/:environment/:org/:space/:appName", controller.PutRequestHandler)
 
-				deployment := &I.Deployment{
-					Body: &[]byte{},
-					Type: I.DeploymentType{JSON: true},
-					CFContext: I.CFContext{
-						Environment:  environment,
-						Organization: org,
-						Space:        space,
-						Application:  appName,
-					},
-				}
-				deployResponse := controller.RunDeployment(deployment, response)
+			server = httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				byteBody, _ = ioutil.ReadAll(req.Body)
+				req.Body.Close()
+			}))
+		})
 
-				Eventually(deployer.DeployCall.Called).Should(Equal(1))
-				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
+		AfterEach(func() {
+			server.Close()
+		})
 
-				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
+		Context("when state is set to stopped", func() {
+			Context("when stop succeeds", func() {
+				It("returns http status.OK", func() {
+					foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+					jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+					req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+					req.Header.Set("Content-Type", "application/json")
 
-				ret, _ := ioutil.ReadAll(response)
-				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+					Expect(err).ToNot(HaveOccurred())
+
+					router.ServeHTTP(resp, req)
+
+					Eventually(resp.Code).Should(Equal(http.StatusOK))
+				})
 			})
 
-			It("channel resolves when errors occur", func() {
+			It("logs request origination address", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
 
-				deployer.DeployCall.Returns.Error = errors.New("bork")
-				deployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
-				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+				req, _ := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
 
-				response := &bytes.Buffer{}
+				router.ServeHTTP(resp, req)
 
-				deployment := &I.Deployment{
-					Body: &[]byte{},
-					Type: I.DeploymentType{JSON: true},
-					CFContext: I.CFContext{
-						Environment:  environment,
-						Organization: org,
-						Space:        space,
-						Application:  appName,
-					},
-				}
-				deployResponse := controller.RunDeployment(deployment, response)
-
-				Eventually(deployer.DeployCall.Called).Should(Equal(1))
-				Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
-
-				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))
-				Eventually(deployResponse.Error.Error()).Should(Equal("bork"))
-
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
-
-				ret, _ := ioutil.ReadAll(response)
-				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+				Eventually(logBuffer).Should(Say("PUT Request originated from"))
 			})
 
-			It("does not set the basic auth header if no credentials are passed", func() {
-				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+			It("calls StopDeployment with a Deployment", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
 
-				response := &bytes.Buffer{}
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
 
-				deployment := &I.Deployment{
-					Body: &[]byte{},
-					Type: I.DeploymentType{JSON: true},
-					CFContext: I.CFContext{
-						Environment:  environment,
-						Organization: org,
-						Space:        space,
-						Application:  appName,
-					},
-					Authorization: I.Authorization{
-						Username: "",
-						Password: "",
-					},
-				}
-				controller.RunDeployment(deployment, response)
+				Expect(err).ToNot(HaveOccurred())
 
-				Eventually(deployer.DeployCall.Received.Request.Header.Get("Authorization")).Should(Equal(""))
+				router.ServeHTTP(resp, req)
+
+				Expect(stopController.StopDeploymentCall.Received.Deployment).ToNot(BeNil())
 			})
 
-			It("sets the basic auth header if credentials are passed", func() {
-				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+			It("calls StopDeployment with correct CFContext", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
 
-				response := &bytes.Buffer{}
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
 
-				deployment := &I.Deployment{
-					Body: &[]byte{},
-					Type: I.DeploymentType{JSON: true},
-					CFContext: I.CFContext{
-						Environment:  environment,
-						Organization: org,
-						Space:        space,
-						Application:  appName,
-					},
-					Authorization: I.Authorization{
-						Username: "TestUsername",
-						Password: "TestPassword",
-					},
-				}
-				controller.RunDeployment(deployment, response)
+				Expect(err).ToNot(HaveOccurred())
 
-				Eventually(deployer.DeployCall.Received.Request.Header.Get("Authorization")).Should(Equal("Basic VGVzdFVzZXJuYW1lOlRlc3RQYXNzd29yZA=="))
+				router.ServeHTTP(resp, req)
+
+				cfContext := stopController.StopDeploymentCall.Received.Deployment.CFContext
+				Expect(cfContext.Environment).To(Equal(environment))
+				Expect(cfContext.Space).To(Equal(space))
+				Expect(cfContext.Organization).To(Equal(org))
+				Expect(cfContext.Application).To(Equal(appName))
+			})
+
+			It("calls StopDeployment with correct authorization", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Authorization", "Basic bXlVc2VyOm15UGFzc3dvcmQ=")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				router.ServeHTTP(resp, req)
+
+				auth := stopController.StopDeploymentCall.Received.Deployment.Authorization
+				Expect(auth.Username).To(Equal("myUser"))
+				Expect(auth.Password).To(Equal("myPassword"))
+			})
+
+			It("writes the process output to the response", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				stopController.StopDeploymentCall.Writes = "this is the process output"
+				router.ServeHTTP(resp, req)
+
+				bytes, _ := ioutil.ReadAll(resp.Body)
+				Expect(string(bytes)).To(ContainSubstring("this is the process output"))
+			})
+
+			It("passes the data in the request body", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "stopped", "data": {"user_id": "jhodo", "group": "XP_IS_CHG" }}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				router.ServeHTTP(resp, req)
+
+				Expect(stopController.StopDeploymentCall.Received.Data["user_id"]).To(Equal("jhodo"))
+				Expect(stopController.StopDeploymentCall.Received.Data["group"]).To(Equal("XP_IS_CHG"))
+			})
+
+			Context("if requested state is not 'stop'", func() {
+				It("does not call StopDeployment", func() {
+					foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+					jsonBuffer = bytes.NewBufferString(`{"state": "started"}`)
+
+					req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+					req.Header.Set("Content-Type", "application/json")
+
+					Expect(err).ToNot(HaveOccurred())
+
+					router.ServeHTTP(resp, req)
+
+					Expect(stopController.StopDeploymentCall.Called).To(Equal(false))
+				})
 			})
 		})
 
-		Context("when SILENT_DEPLOY_ENVIRONMENT is true", func() {
-			It("channel resolves true when no errors occur", func() {
+		Context("when state is set to started", func() {
+			It("calls StartDeployment with a Deployment", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "started"}`)
 
-				os.Setenv("SILENT_DEPLOY_ENVIRONMENT", environment)
-				deployer.DeployCall.Returns.Error = nil
-				deployer.DeployCall.Returns.StatusCode = http.StatusOK
-				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
 
-				response := &bytes.Buffer{}
+				Expect(err).ToNot(HaveOccurred())
 
-				deployment := &I.Deployment{
-					Body: &[]byte{},
-					Type: I.DeploymentType{JSON: true},
-					CFContext: I.CFContext{
-						Environment:  environment,
-						Organization: org,
-						Space:        space,
-						Application:  appName,
-					},
-				}
-				deployResponse := controller.RunDeployment(deployment, response)
+				router.ServeHTTP(resp, req)
 
-				Eventually(deployer.DeployCall.Called).Should(Equal(1))
-				Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
-
-				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
-
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
-
-				ret, _ := ioutil.ReadAll(response)
-				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+				Expect(startController.StartDeploymentCall.Received.Deployment).ToNot(BeNil())
 			})
-			It("channel resolves when no errors occur", func() {
 
-				os.Setenv("SILENT_DEPLOY_ENVIRONMENT", environment)
-				deployer.DeployCall.Returns.Error = nil
-				deployer.DeployCall.Returns.StatusCode = http.StatusOK
-				deployer.DeployCall.Write.Output = "little-timmy-env.zip"
+			It("calls StartDeployment with correct CFContext", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "started"}`)
 
-				silentDeployer.DeployCall.Returns.Error = errors.New("bork")
-				silentDeployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
 
-				response := &bytes.Buffer{}
+				Expect(err).ToNot(HaveOccurred())
 
-				silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
-				os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
+				router.ServeHTTP(resp, req)
 
-				deployment := &I.Deployment{
-					Body: &[]byte{},
-					Type: I.DeploymentType{JSON: true},
-					CFContext: I.CFContext{
-						Environment:  environment,
-						Organization: org,
-						Space:        space,
-						Application:  appName,
-					},
-				}
-				deployResponse := controller.RunDeployment(deployment, response)
+				cfContext := startController.StartDeploymentCall.Received.Deployment.CFContext
+				Expect(cfContext.Environment).To(Equal(environment))
+				Expect(cfContext.Space).To(Equal(space))
+				Expect(cfContext.Organization).To(Equal(org))
+				Expect(cfContext.Application).To(Equal(appName))
+			})
 
-				Eventually(deployer.DeployCall.Called).Should(Equal(1))
-				Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
+			It("calls StartDeployment with correct authorization", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "started"}`)
 
-				Eventually(deployResponse.StatusCode).Should(Equal(http.StatusOK))
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Authorization", "Basic bXlVc2VyOm15UGFzc3dvcmQ=")
 
-				Eventually(deployer.DeployCall.Received.Environment).Should(Equal(environment))
-				Eventually(deployer.DeployCall.Received.ContentType).Should(Equal(I.DeploymentType{JSON: true}))
-				Eventually(deployer.DeployCall.Received.Org).Should(Equal(org))
-				Eventually(deployer.DeployCall.Received.Space).Should(Equal(space))
-				Eventually(deployer.DeployCall.Received.AppName).Should(Equal(appName))
+				Expect(err).ToNot(HaveOccurred())
 
-				ret, _ := ioutil.ReadAll(response)
-				Eventually(string(ret)).Should(Equal("little-timmy-env.zip"))
+				router.ServeHTTP(resp, req)
+
+				auth := startController.StartDeploymentCall.Received.Deployment.Authorization
+				Expect(auth.Username).To(Equal("myUser"))
+				Expect(auth.Password).To(Equal("myPassword"))
+			})
+
+			Context("if requested state is not 'start'", func() {
+				It("does not call StartDeployment", func() {
+					foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+					jsonBuffer = bytes.NewBufferString(`{"state": "stopped"}`)
+
+					req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+					req.Header.Set("Content-Type", "application/json")
+
+					Expect(err).ToNot(HaveOccurred())
+
+					router.ServeHTTP(resp, req)
+
+					Expect(startController.StartDeploymentCall.Called).To(Equal(false))
+				})
+			})
+		})
+
+		Context("when requested state is unknown", func() {
+			It("returns a Bad Request error", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{"state": "moosebattle"}`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				router.ServeHTTP(resp, req)
+
+				Expect(startController.StartDeploymentCall.Called).To(Equal(false))
+				Expect(stopController.StopDeploymentCall.Called).To(Equal(false))
+
+				Expect(resp.Code).To(Equal(400))
+				Expect(resp.Body.String()).To(Equal("Unknown requested state: moosebattle"))
+			})
+		})
+
+		Context("when bad request body", func() {
+			It("returns a Bad Request error", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+				jsonBuffer = bytes.NewBufferString(`{`)
+
+				req, err := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				Expect(err).ToNot(HaveOccurred())
+
+				router.ServeHTTP(resp, req)
+
+				Expect(startController.StartDeploymentCall.Called).To(Equal(false))
+				Expect(stopController.StopDeploymentCall.Called).To(Equal(false))
+
+				Expect(resp.Code).To(Equal(400))
+				Expect(resp.Body.String()).To(Equal("Invalid request body."))
 			})
 		})
 	})
+
 })

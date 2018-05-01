@@ -5,66 +5,36 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net/http"
-
 	"io/ioutil"
 
-	"os"
-
-	"encoding/base64"
-
+	"encoding/json"
 	I "github.com/compozed/deployadactyl/interfaces"
 
+	"github.com/compozed/deployadactyl/config"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
-	Deployer       I.Deployer
-	SilentDeployer I.Deployer
-	Log            I.Logger
+	Deployer        I.Deployer
+	SilentDeployer  I.Deployer
+	Log             I.Logger
+	PushController  I.PushController
+	StopController  I.StopController
+	StartController I.StartController
+	Config          config.Config
+	EventManager    I.EventManager
+	ErrorFinder     I.ErrorFinder
+}
+
+type PutRequest struct {
+	State string                 `json:"state"`
+	Data  map[string]interface{} `json:"data"`
 }
 
 func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
-
-	bodyNotSilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
-	bodySilent := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
-
-	headers := http.Header{}
-	if deployment.Authorization.Username != "" && deployment.Authorization.Password != "" {
-		headers["Authorization"] = []string{"Basic " + base64.StdEncoding.EncodeToString([]byte(deployment.Authorization.Username+":"+deployment.Authorization.Password))}
-
-	} else {
-		headers["Authorization"] = []string{}
-	}
-
-	request1 := &http.Request{
-		Header: headers,
-		Body:   bodyNotSilent,
-	}
-
-	request2 := &http.Request{
-		Header: headers,
-		Body:   bodySilent,
-	}
-
-	reqChannel1 := make(chan I.DeployResponse)
-	reqChannel2 := make(chan I.DeployResponse)
-	defer close(reqChannel1)
-	defer close(reqChannel2)
-
-	cf := deployment.CFContext
-	go c.Deployer.Deploy(request1, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, response, reqChannel1)
-
-	silentResponse := &bytes.Buffer{}
-	if cf.Environment == os.Getenv("SILENT_DEPLOY_ENVIRONMENT") {
-		go c.SilentDeployer.Deploy(request2, cf.Environment, cf.Organization, cf.Space, cf.Application, cf.UUID, deployment.Type, silentResponse, reqChannel2)
-		<-reqChannel2
-	}
-
-	deployResponse := <-reqChannel1
-
-	return deployResponse
+	return c.PushController.RunDeployment(deployment, response)
 }
 
 // RunDeploymentViaHttp checks the request content type and passes it to the Deployer.
@@ -85,8 +55,8 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	}
 
 	deploymentType := I.DeploymentType{
-		JSON: isJSON(g.Request.Header.Get("Content-Type")),
-		ZIP:  isZip(g.Request.Header.Get("Content-Type")),
+		JSON: g.Request.Header.Get("Content-Type") == "application/json",
+		ZIP:  g.Request.Header.Get("Content-Type") == "application/zip",
 	}
 	response := &bytes.Buffer{}
 
@@ -99,7 +69,7 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	g.Request.Body.Close()
 	deployment.Body = &bodyBuffer
 
-	deployResponse := c.RunDeployment(&deployment, response)
+	deployResponse := c.PushController.RunDeployment(&deployment, response)
 
 	defer io.Copy(g.Writer, response)
 
@@ -112,10 +82,53 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	g.Writer.WriteHeader(deployResponse.StatusCode)
 }
 
-func isZip(contentType string) bool {
-	return contentType == "application/zip"
-}
+func (c *Controller) PutRequestHandler(g *gin.Context) {
+	c.Log.Debugf("PUT Request originated from: %+v", g.Request.RemoteAddr)
 
-func isJSON(contentType string) bool {
-	return contentType == "application/json"
+	cfContext := I.CFContext{
+		Environment:  g.Param("environment"),
+		Organization: g.Param("org"),
+		Space:        g.Param("space"),
+		Application:  g.Param("appName"),
+	}
+
+	response := &bytes.Buffer{}
+	defer io.Copy(g.Writer, response)
+
+	user, pwd, _ := g.Request.BasicAuth()
+	authorization := I.Authorization{
+		Username: user,
+		Password: pwd,
+	}
+
+	deployment := I.Deployment{
+		Authorization: authorization,
+		CFContext:     cfContext,
+	}
+
+	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
+	g.Request.Body.Close()
+
+	putRequest := &PutRequest{}
+	err := json.Unmarshal(bodyBuffer, putRequest)
+	if err != nil {
+		response.Write([]byte("Invalid request body."))
+		g.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var deployResponse I.DeployResponse
+
+	if putRequest.State == "stopped" {
+		deployResponse = c.StopController.StopDeployment(&deployment, putRequest.Data, response)
+	} else if putRequest.State == "started" {
+		deployResponse = c.StartController.StartDeployment(&deployment, putRequest.Data, response)
+	} else {
+		response.Write([]byte("Unknown requested state: " + putRequest.State))
+		deployResponse = I.DeployResponse{
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	g.Writer.WriteHeader(deployResponse.StatusCode)
 }

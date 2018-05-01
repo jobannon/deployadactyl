@@ -8,11 +8,13 @@ import (
 	. "github.com/onsi/gomega"
 
 	"testing"
+	"runtime"
 )
 
 var (
 	username string
 	password string
+	ospath string
 )
 
 func TestService(t *testing.T) {
@@ -22,9 +24,19 @@ func TestService(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	gin.SetMode(gin.TestMode)
+	ospath = os.Getenv("PATH")
+	var newpath string
+	dir, _ := os.Getwd()
+	if runtime.GOOS == "windows" {
+		newpath = dir + "\\..\\..\\bin;" + ospath
+	} else {
+		newpath = dir + "/../../bin:" + ospath
+	}
+	os.Setenv("PATH", newpath)
 })
 
 var _ = AfterSuite(func() {
 	os.Setenv("CF_USERNAME", username)
 	os.Setenv("CF_PASSWORD", password)
+	os.Setenv("PATH", ospath)
 })

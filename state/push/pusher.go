@@ -22,7 +22,7 @@ type Pusher struct {
 	DeploymentInfo S.DeploymentInfo
 	EventManager   I.EventManager
 	Response       io.ReadWriter
-	Log            I.Logger
+	Log            I.DeploymentLogger
 	FoundationURL  string
 	AppPath        string
 	Environment    S.Environment

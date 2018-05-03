@@ -6,10 +6,8 @@ import (
 	"net/http"
 
 	. "github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
-	logging "github.com/op/go-logging"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,6 +15,7 @@ import (
 
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state/push"
+	"github.com/op/go-logging"
 )
 
 var _ = Describe("Healthchecker", func() {
@@ -60,6 +59,7 @@ var _ = Describe("Healthchecker", func() {
 		courier = &mocks.Courier{}
 		client = &mocks.Client{}
 
+		logBuffer = NewBuffer()
 		ievent = push.PushFinishedEvent{
 			TempAppWithUUID:     randomAppName,
 			FoundationURL:       randomFoundationURL,
@@ -74,16 +74,15 @@ var _ = Describe("Healthchecker", func() {
 				Space:        randomSpace,
 				Environment:  randomEnvironment,
 			},
+			Log: I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test")},
 		}
 
-		logBuffer = NewBuffer()
 		healthchecker = HealthChecker{
 			OldURL:                  "api.cf",
 			NewURL:                  "apps",
 			SilentDeployURL:         "silentapps",
 			SilentDeployEnvironment: "silentenvironment",
 			Client:                  client,
-			Log:                     logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
 		}
 
 		client.GetCall.Returns.Response = http.Response{
@@ -160,7 +159,6 @@ var _ = Describe("Healthchecker", func() {
 						SilentDeployURL:         "silentapps",
 						SilentDeployEnvironment: randomEnvironment,
 						Client:                  client,
-						Log:                     logger.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test"),
 					}
 
 					healthchecker.PushFinishedEventHandler(ievent)
@@ -286,7 +284,7 @@ var _ = Describe("Healthchecker", func() {
 			It("adds the leading '/'", func() {
 				endpoint := "health"
 
-				healthchecker.Check(randomFoundationURL, endpoint)
+				healthchecker.Check(randomFoundationURL, endpoint, I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test")})
 
 				Expect(client.GetCall.Received.URL).To(Equal(fmt.Sprintf("%s/%s", randomFoundationURL, endpoint)))
 			})
@@ -296,7 +294,7 @@ var _ = Describe("Healthchecker", func() {
 			It("does not add the leading '/'", func() {
 				endpoint := "/health"
 
-				healthchecker.Check(randomFoundationURL, endpoint)
+				healthchecker.Check(randomFoundationURL, endpoint, I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test")})
 
 				Expect(client.GetCall.Received.URL).To(Equal(fmt.Sprintf("%s%s", randomFoundationURL, endpoint)))
 			})

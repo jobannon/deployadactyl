@@ -8,7 +8,6 @@ import (
 
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/go-errors/errors"
@@ -49,12 +48,12 @@ var _ = Describe("Stopmanager", func() {
 	)
 	BeforeEach(func() {
 		logBuffer = gbytes.NewBuffer()
-		log := logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
+		log := interfaces.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
 		response = gbytes.NewBuffer()
 		creator = &courierCreator{}
 		stopManager = stop.StopManager{
 			CourierCreator: creator,
-			Log:            logger.DeploymentLogger{log, randomizer.StringRunes(10)},
+			Log:            interfaces.DeploymentLogger{log, randomizer.StringRunes(10)},
 			DeployEventData: structs.DeployEventData{
 				DeploymentInfo: &structs.DeploymentInfo{},
 				Response:       response,

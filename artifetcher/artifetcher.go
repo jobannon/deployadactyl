@@ -11,13 +11,13 @@ import (
 	"github.com/spf13/afero"
 )
 
-type ArtifetcherConstructor func(fs *afero.Afero, ex I.Extractor, log I.Logger) I.Fetcher
+type ArtifetcherConstructor func(fs *afero.Afero, ex I.Extractor, log I.DeploymentLogger) I.Fetcher
 
-func NewArtifetcher(fs *afero.Afero, ex I.Extractor, log I.Logger) I.Fetcher {
+func NewArtifetcher(fs *afero.Afero, ex I.Extractor, log I.DeploymentLogger) I.Fetcher {
 	return &Artifetcher{
 		FileSystem: fs,
-		Extractor: ex,
-		Log: log,
+		Extractor:  ex,
+		Log:        log,
 	}
 }
 
@@ -25,7 +25,7 @@ func NewArtifetcher(fs *afero.Afero, ex I.Extractor, log I.Logger) I.Fetcher {
 type Artifetcher struct {
 	FileSystem *afero.Afero
 	Extractor  I.Extractor
-	Log        I.Logger
+	Log        I.DeploymentLogger
 }
 
 // Fetch downloads an artifact located at URL.

@@ -13,7 +13,6 @@ import (
 	"github.com/op/go-logging"
 
 	. "github.com/compozed/deployadactyl/artifetcher"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/interfaces"
@@ -27,11 +26,11 @@ var _ = Describe("Artifetcher", func() {
 		extractor   *mocks.Extractor
 		testserver  *httptest.Server
 		manifest    string
-		log interfaces.Logger
+		log interfaces.DeploymentLogger
 	)
 
 	BeforeEach(func() {
-		log = logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "artifetcher_test")
+		log = interfaces.DeploymentLogger{Log: interfaces.DefaultLogger(GinkgoWriter, logging.DEBUG, "artifetcher_test")}
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
 		extractor = &mocks.Extractor{}
 		artifetcher = &Artifetcher{af, extractor, log}

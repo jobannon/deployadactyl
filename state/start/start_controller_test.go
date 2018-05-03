@@ -12,7 +12,6 @@ import (
 	D "github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	. "github.com/compozed/deployadactyl/state/start"
@@ -32,6 +31,7 @@ var _ = Describe("StartDeployment", func() {
 		deployment          I.Deployment
 		logBuffer           *Buffer
 		deployer            *mocks.Deployer
+		uuid string
 
 		appName     string
 		environment string
@@ -46,6 +46,7 @@ var _ = Describe("StartDeployment", func() {
 		environment = "environment-" + randomizer.StringRunes(10)
 		org = "org-" + randomizer.StringRunes(10)
 		space = "non-prod"
+		uuid = "uuid-" + randomizer.StringRunes(10)
 
 		eventManager = &mocks.EventManager{}
 		deployer = &mocks.Deployer{}
@@ -54,7 +55,7 @@ var _ = Describe("StartDeployment", func() {
 		errorFinder = &mocks.ErrorFinder{}
 
 		controller = &StartController{
-			Log:                 logger.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
+			Log:                 I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"), UUID: uuid},
 			Deployer:            deployer,
 			StartManagerFactory: startManagerFactory,
 			EventManager:        eventManager,

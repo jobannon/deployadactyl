@@ -44,7 +44,7 @@ type Manifest struct {
 	Name       string
 	Yaml       string
 	parsed     bool
-	Log        I.Logger
+	Log        I.DeploymentLogger
 	FileSystem *afero.Afero
 	Content    manifestYaml
 }
@@ -57,7 +57,7 @@ func (e ManifestError) Error() string {
 	return fmt.Sprintf("cannot open or write m file: %s", e.Err)
 }
 
-func CreateManifest(appName string, content string, filesystem *afero.Afero, logger I.Logger) (manifest *Manifest, err error) {
+func CreateManifest(appName string, content string, filesystem *afero.Afero, logger I.DeploymentLogger) (manifest *Manifest, err error) {
 	manifest = &Manifest{Name: appName, Yaml: content, FileSystem: filesystem, Log: logger}
 	_, err = manifest.UnMarshal()
 

@@ -13,16 +13,15 @@ import (
 	"github.com/compozed/deployadactyl/config"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"github.com/compozed/deployadactyl/randomizer"
 )
 
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
-	Deployer        I.Deployer
-	SilentDeployer  I.Deployer
 	Log             I.Logger
-	PushController  I.PushController
-	StopController  I.StopController
-	StartController I.StartController
+	PushControllerFactory func(log I.DeploymentLogger) I.PushController
+	StartControllerFactory func(log I.DeploymentLogger) I.StartController
+	StopControllerFactory  func(log I.DeploymentLogger) I.StopController
 	Config          config.Config
 	EventManager    I.EventManager
 	ErrorFinder     I.ErrorFinder
@@ -34,18 +33,25 @@ type PutRequest struct {
 }
 
 func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
-	return c.PushController.RunDeployment(deployment, response)
+	if deployment.CFContext.UUID == "" {
+		deployment.CFContext.UUID = randomizer.StringRunes(10)
+	}
+	log := I.DeploymentLogger{Log: c.Log, UUID: deployment.CFContext.UUID}
+	return c.PushControllerFactory(log).RunDeployment(deployment, response)
 }
 
 // RunDeploymentViaHttp checks the request content type and passes it to the Deployer.
 func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
-	c.Log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
+	uuid := randomizer.StringRunes(10)
+	log := I.DeploymentLogger{Log: c.Log, UUID: uuid}
+	log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
 
 	cfContext := I.CFContext{
 		Environment:  g.Param("environment"),
 		Organization: g.Param("org"),
 		Space:        g.Param("space"),
 		Application:  g.Param("appName"),
+		UUID: uuid,
 	}
 
 	user, pwd, _ := g.Request.BasicAuth()
@@ -69,7 +75,7 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	g.Request.Body.Close()
 	deployment.Body = &bodyBuffer
 
-	deployResponse := c.PushController.RunDeployment(&deployment, response)
+	deployResponse := c.PushControllerFactory(log).RunDeployment(&deployment, response)
 
 	defer io.Copy(g.Writer, response)
 
@@ -83,13 +89,16 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 }
 
 func (c *Controller) PutRequestHandler(g *gin.Context) {
-	c.Log.Debugf("PUT Request originated from: %+v", g.Request.RemoteAddr)
+	uuid := randomizer.StringRunes(10)
+	log := I.DeploymentLogger{Log: c.Log, UUID: uuid}
+	log.Debugf("PUT Request originated from: %+v", g.Request.RemoteAddr)
 
 	cfContext := I.CFContext{
 		Environment:  g.Param("environment"),
 		Organization: g.Param("org"),
 		Space:        g.Param("space"),
 		Application:  g.Param("appName"),
+		UUID: uuid,
 	}
 
 	response := &bytes.Buffer{}
@@ -120,9 +129,9 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 	var deployResponse I.DeployResponse
 
 	if putRequest.State == "stopped" {
-		deployResponse = c.StopController.StopDeployment(&deployment, putRequest.Data, response)
+		deployResponse = c.StopControllerFactory(log).StopDeployment(&deployment, putRequest.Data, response)
 	} else if putRequest.State == "started" {
-		deployResponse = c.StartController.StartDeployment(&deployment, putRequest.Data, response)
+		deployResponse = c.StartControllerFactory(log).StartDeployment(&deployment, putRequest.Data, response)
 	} else {
 		response.Write([]byte("Unknown requested state: " + putRequest.State))
 		deployResponse = I.DeployResponse{

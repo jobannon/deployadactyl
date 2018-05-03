@@ -7,12 +7,9 @@ import (
 	"os"
 
 	"github.com/compozed/deployadactyl/creator"
-	"github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
-	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
-	"github.com/compozed/deployadactyl/eventmanager/handlers/routemapper"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/state/push"
 	"github.com/op/go-logging"
+	"github.com/compozed/deployadactyl/interfaces"
 )
 
 const (
@@ -39,7 +36,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log := logger.DefaultLogger(os.Stdout, logLevel, "deployadactyl")
+	log := interfaces.DefaultLogger(os.Stdout, logLevel, "deployadactyl")
 	log.Infof("log level : %s", level)
 
 	c, err := creator.Custom(level, *config, creator.CreatorModuleProvider{})
@@ -50,25 +47,17 @@ func main() {
 	em := c.CreateEventManager()
 
 	if *envVarHandlerEnabled {
-		envVarHandler := envvar.Envvarhandler{Logger: c.CreateLogger(), FileSystem: c.CreateFileSystem()}
+		envVarHandler := c.CreateEnvVarHandler()
 		log.Infof("registering environment variable event handler")
 		em.AddBinding(push.NewArtifactRetrievalSuccessEventBinding(envVarHandler.ArtifactRetrievalSuccessEventHandler))
 	}
 
-	healthHandler := healthchecker.HealthChecker{
-		OldURL: "api.cf",
-		NewURL: "apps",
-		Client: c.CreateHTTPClient(),
-		Log:    c.CreateLogger(),
-	}
+	healthHandler := c.CreateHealthChecker()
 	log.Infof("registering health check handler")
 	em.AddBinding(push.NewPushFinishedEventBinding(healthHandler.PushFinishedEventHandler))
 
 	if *routeMapperEnabled {
-		routeMapper := routemapper.RouteMapper{
-			FileSystem: c.CreateFileSystem(),
-			Log:        c.CreateLogger(),
-		}
+		routeMapper := c.CreateRouteMapper()
 
 		log.Infof("registering health check handler")
 		em.AddBinding(push.NewPushFinishedEventBinding(routeMapper.PushFinishedEventHandler))

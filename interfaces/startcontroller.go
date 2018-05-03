@@ -6,7 +6,7 @@ import (
 )
 
 type StartManagerFactory interface {
-	StartManager(deployEventData structs.DeployEventData) ActionCreator
+	StartManager(log DeploymentLogger, deployEventData structs.DeployEventData) ActionCreator
 }
 
 type StartController interface {

@@ -3,28 +3,27 @@ package envvar
 import (
 	"github.com/spf13/afero"
 
-	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state/push"
 )
 
 type Envvarhandler struct {
-	Logger     I.Logger
+	//Logger     I.Logger
 	FileSystem *afero.Afero
 }
 
 func (handler Envvarhandler) ArtifactRetrievalSuccessEventHandler(event push.ArtifactRetrievalSuccessEvent) error {
 
-	handler.Logger.Debugf("Environment Variable Handler Processing Event => %+v", event)
+	event.Log.Debugf("Environment Variable Handler Processing Event => %+v", event)
 
 	if event.EnvironmentVariables == nil || len(event.EnvironmentVariables) == 0 {
-		handler.Logger.Info("No Deployment Info or Environment Variables to process!")
+		event.Log.Info("No Deployment Info or Environment Variables to process!")
 		return nil
 	}
 
-	m, err := CreateManifest(event.CFContext.Application, event.Manifest, handler.FileSystem, handler.Logger)
+	m, err := CreateManifest(event.CFContext.Application, event.Manifest, handler.FileSystem, event.Log)
 
 	if err != nil {
-		handler.Logger.Errorf("Error Parsing Manifest! Details: %v", err)
+		event.Log.Errorf("Error Parsing Manifest! Details: %v", err)
 		return err
 	}
 

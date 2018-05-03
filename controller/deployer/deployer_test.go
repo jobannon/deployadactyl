@@ -17,7 +17,6 @@ import (
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/state/stop"
@@ -61,7 +60,7 @@ var _ = Describe("Deployer", func() {
 		testManifestLocation         string
 		response                     *bytes.Buffer
 		logBuffer                    *Buffer
-		log                          interfaces.Logger
+		log                          interfaces.DeploymentLogger
 		deploymentInfo               S.DeploymentInfo
 		deploymentInfoNoCustomParams S.DeploymentInfo
 		foundations                  []string
@@ -169,7 +168,7 @@ var _ = Describe("Deployer", func() {
 			Environments: environments,
 		}
 		logBuffer = NewBuffer()
-		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
+		log = interfaces.DeploymentLogger{Log: interfaces.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")}
 		pusherCreator = &mocks.PushManager{}
 		stopperCreator = stop.StopManager{}
 

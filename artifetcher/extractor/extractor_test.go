@@ -11,8 +11,8 @@ import (
 	"github.com/op/go-logging"
 
 	. "github.com/compozed/deployadactyl/artifetcher/extractor"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/interfaces"
 )
 
 const deployadactylManifest = `---
@@ -34,7 +34,7 @@ var _ = Describe("Extracting", func() {
 		file = "/artifact.jar"
 		destination = "../fixtures/deployadactyl-fixture"
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
-		extractor = Extractor{logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "extractor_test"), af}
+		extractor = Extractor{interfaces.DeploymentLogger{Log: interfaces.DefaultLogger(GinkgoWriter, logging.DEBUG, "extractor_test")}, af}
 
 		fileBytes, err := ioutil.ReadFile("../fixtures/deployadactyl-fixture.jar")
 		Expect(err).ToNot(HaveOccurred())
@@ -83,7 +83,7 @@ var _ = Describe("Extracting", func() {
 		destination = "../fixtures/bad-deployadactyl-fixture"
 		af = &afero.Afero{Fs: afero.NewMemMapFs()}
 
-		extractor := Extractor{logger.DefaultLogger(GinkgoWriter, logging.DEBUG, "extractor_test"), af}
+		extractor := Extractor{interfaces.DeploymentLogger{Log: interfaces.DefaultLogger(GinkgoWriter, logging.DEBUG, "extractor_test")}, af}
 
 		Expect(extractor.Unzip(file, destination, "")).ToNot(Succeed())
 	})

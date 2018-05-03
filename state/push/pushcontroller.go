@@ -10,7 +10,6 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/structs"
 	"io"
@@ -19,10 +18,24 @@ import (
 	"os"
 )
 
+type PushControllerConstructor func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory) I.PushController
+
+func NewPushController(l I.DeploymentLogger, d, sd I.Deployer, c config.Config, em I.EventManager, ef I.ErrorFinder, pmf I.PushManagerFactory) I.PushController {
+	return &PushController{
+		Deployer:           d,
+		SilentDeployer:     sd,
+		Config:             c,
+		EventManager:       em,
+		ErrorFinder:        ef,
+		PushManagerFactory: pmf,
+		Log:                l,
+	}
+}
+
 type PushController struct {
 	Deployer           I.Deployer
 	SilentDeployer     I.Deployer
-	Log                I.Logger
+	Log                I.DeploymentLogger
 	Config             config.Config
 	EventManager       I.EventManager
 	ErrorFinder        I.ErrorFinder
@@ -32,6 +45,9 @@ type PushController struct {
 // PUSH specific
 func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
+	if cf.UUID == "" {
+		cf.UUID = randomizer.StringRunes(10)
+	}
 
 	deploymentInfo := &structs.DeploymentInfo{
 		Org:         cf.Organization,
@@ -40,20 +56,17 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 		Environment: cf.Environment,
 		UUID:        cf.UUID,
 	}
-	if deploymentInfo.UUID == "" {
-		deploymentInfo.UUID = randomizer.StringRunes(10)
-	}
-	deploymentLogger := logger.DeploymentLogger{c.Log, deploymentInfo.UUID}
-	deploymentLogger.Debugf("Starting deploy of %s with UUID %s", cf.Application, deploymentInfo.UUID)
-	deploymentLogger.Debug("building deploymentInfo")
+
+	c.Log.Debugf("Starting deploy of %s with UUID %s", cf.Application, deploymentInfo.UUID)
+	c.Log.Debug("building deploymentInfo")
 
 	body := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
 	if deployment.Type.JSON {
-		deploymentLogger.Debug("deploying from json request")
+		c.Log.Debug("deploying from json request")
 
 		deploymentInfo.ContentType = "JSON"
 	} else if deployment.Type.ZIP {
-		deploymentLogger.Debug("deploying from zip request")
+		c.Log.Debug("deploying from zip request")
 		deploymentInfo.Body = body
 		deploymentInfo.ContentType = "ZIP"
 	} else {
@@ -70,7 +83,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 			Error:      err,
 		}
 	}
-	auth, err := c.resolveAuthorization(deployment.Authorization, environment, deploymentLogger)
+	auth, err := c.resolveAuthorization(deployment.Authorization, environment, c.Log)
 	if err != nil {
 		return I.DeployResponse{
 			StatusCode: http.StatusUnauthorized,
@@ -87,7 +100,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 	if deployment.Type.JSON {
 		deploymentInfo, err = c.getDeploymentInfo(deployment.Body, deploymentInfo)
 		if err != nil {
-			deploymentLogger.Error(err)
+			c.Log.Error(err)
 			return I.DeployResponse{
 				StatusCode:     http.StatusInternalServerError,
 				Error:          err,
@@ -97,14 +110,14 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 	}
 
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: body}
-	defer c.emitDeployFinish(&deployEventData, response, cf, auth, environment, &deployResponse, deploymentLogger)
-	defer c.emitDeploySuccessOrFailure(&deployEventData, response, cf, auth, environment, &deployResponse, deploymentLogger)
+	defer c.emitDeployFinish(&deployEventData, response, cf, auth, environment, &deployResponse, c.Log)
+	defer c.emitDeploySuccessOrFailure(&deployEventData, response, cf, auth, environment, &deployResponse, c.Log)
 
-	deploymentLogger.Debugf("emitting a %s event", constants.DeployStartEvent)
+	c.Log.Debugf("emitting a %s event", constants.DeployStartEvent)
 
 	err = c.EventManager.Emit(I.Event{Type: constants.DeployStartEvent, Data: &deployEventData})
 	if err != nil {
-		deploymentLogger.Error(err)
+		c.Log.Error(err)
 		err = &bluegreen.InitializationError{err}
 		return I.DeployResponse{
 			StatusCode:     http.StatusInternalServerError,
@@ -122,9 +135,10 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 		Response:    response,
 		ArtifactURL: deploymentInfo.ArtifactURL,
 		Data:        deploymentInfo.Data,
+		Log:         c.Log,
 	})
 	if err != nil {
-		deploymentLogger.Error(err)
+		c.Log.Error(err)
 		err = &bluegreen.InitializationError{err}
 		return I.DeployResponse{
 			StatusCode:     http.StatusInternalServerError,
@@ -133,7 +147,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 		}
 	}
 
-	pusherCreator := c.PushManagerFactory.PushManager(deployEventData, cf, auth, environment, deploymentInfo.EnvironmentVariables)
+	pusherCreator := c.PushManagerFactory.PushManager(c.Log, deployEventData, cf, auth, environment, deploymentInfo.EnvironmentVariables)
 
 	reqChannel1 := make(chan *I.DeployResponse)
 	reqChannel2 := make(chan *I.DeployResponse)
@@ -180,7 +194,7 @@ func (c *PushController) getDeploymentInfo(body *[]byte, deploymentInfo *structs
 	return deploymentInfo, nil
 }
 
-func (c *PushController) resolveAuthorization(auth I.Authorization, envs structs.Environment, deploymentLogger logger.DeploymentLogger) (I.Authorization, error) {
+func (c *PushController) resolveAuthorization(auth I.Authorization, envs structs.Environment, deploymentLogger I.DeploymentLogger) (I.Authorization, error) {
 	config := c.Config
 	deploymentLogger.Debug("checking for basic auth")
 	if auth.Username == "" && auth.Password == "" {
@@ -204,7 +218,7 @@ func (c *PushController) resolveEnvironment(env string) (structs.Environment, er
 	return environment, nil
 }
 
-func (c *PushController) emitDeployFinish(deployEventData *structs.DeployEventData, response io.ReadWriter, cf I.CFContext, auth I.Authorization, environment structs.Environment, deployResponse *I.DeployResponse, deploymentLogger logger.DeploymentLogger) {
+func (c *PushController) emitDeployFinish(deployEventData *structs.DeployEventData, response io.ReadWriter, cf I.CFContext, auth I.Authorization, environment structs.Environment, deployResponse *I.DeployResponse, deploymentLogger I.DeploymentLogger) {
 	deploymentLogger.Debugf("emitting a %s event", constants.DeployFinishEvent)
 	finishErr := c.EventManager.Emit(I.Event{Type: constants.DeployFinishEvent, Data: deployEventData})
 	if finishErr != nil {
@@ -222,6 +236,7 @@ func (c *PushController) emitDeployFinish(deployEventData *structs.DeployEventDa
 		Environment: environment,
 		Response:    deployEventData.Response,
 		Data:        deployEventData.DeploymentInfo.Data,
+		Log:         c.Log,
 	})
 	if finishErr != nil {
 		fmt.Fprintln(response, finishErr)
@@ -234,7 +249,7 @@ func (c *PushController) emitDeployFinish(deployEventData *structs.DeployEventDa
 	}
 }
 
-func (c PushController) emitDeploySuccessOrFailure(deployEventData *structs.DeployEventData, response io.ReadWriter, cf I.CFContext, auth I.Authorization, environment structs.Environment, deployResponse *I.DeployResponse, deploymentLogger logger.DeploymentLogger) {
+func (c PushController) emitDeploySuccessOrFailure(deployEventData *structs.DeployEventData, response io.ReadWriter, cf I.CFContext, auth I.Authorization, environment structs.Environment, deployResponse *I.DeployResponse, deploymentLogger I.DeploymentLogger) {
 	deployEvent := I.Event{Type: constants.DeploySuccessEvent, Data: deployEventData}
 	if deployResponse.Error != nil {
 		c.printErrors(response, &deployResponse.Error)
@@ -261,6 +276,7 @@ func (c PushController) emitDeploySuccessOrFailure(deployEventData *structs.Depl
 			Response:    deployEventData.Response,
 			Data:        deployEventData.DeploymentInfo.Data,
 			Error:       deployResponse.Error,
+			Log:         c.Log,
 		}
 	} else {
 		event = DeploySuccessEvent{
@@ -273,6 +289,7 @@ func (c PushController) emitDeploySuccessOrFailure(deployEventData *structs.Depl
 			Data:                deployEventData.DeploymentInfo.Data,
 			HealthCheckEndpoint: deployEventData.DeploymentInfo.HealthCheckEndpoint,
 			ArtifactURL:         deployEventData.DeploymentInfo.ArtifactURL,
+			Log:                 c.Log,
 		}
 	}
 	deploymentLogger.Debug(fmt.Sprintf("emitting a %s event", event.Name()))

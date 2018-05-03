@@ -31,6 +31,7 @@ type DeployStartedEvent struct {
 	Auth        interfaces.Authorization
 	Response    io.ReadWriter
 	Data        map[string]interface{}
+	Log         interfaces.DeploymentLogger
 }
 
 func (d DeployStartedEvent) Name() string {
@@ -59,6 +60,7 @@ type DeployFinishedEvent struct {
 	Auth        interfaces.Authorization
 	Response    io.ReadWriter
 	Data        map[string]interface{}
+	Log         interfaces.DeploymentLogger
 }
 
 func (d DeployFinishedEvent) Name() string {
@@ -89,6 +91,7 @@ type DeploySuccessEvent struct {
 	Data                map[string]interface{}
 	HealthCheckEndpoint string
 	ArtifactURL         string
+	Log                 interfaces.DeploymentLogger
 }
 
 func (d DeploySuccessEvent) Name() string {
@@ -118,6 +121,7 @@ type DeployFailureEvent struct {
 	Response    io.ReadWriter
 	Data        map[string]interface{}
 	Error       error
+	Log         interfaces.DeploymentLogger
 }
 
 func (d DeployFailureEvent) Name() string {
@@ -149,6 +153,7 @@ type PushStartedEvent struct {
 	Instances            uint16
 	EnvironmentVariables map[string]string
 	Manifest             string
+	Log                  interfaces.DeploymentLogger
 }
 
 func (d PushStartedEvent) Name() string {
@@ -180,6 +185,7 @@ type PushFinishedEvent struct {
 	Data                map[string]interface{}
 	Courier             interfaces.Courier
 	HealthCheckEndpoint string
+	Log                 interfaces.DeploymentLogger
 }
 
 func (d PushFinishedEvent) Name() string {
@@ -208,6 +214,7 @@ type ArtifactRetrievalStartEvent struct {
 	Data        map[string]interface{}
 	Manifest    string
 	ArtifactURL string
+	Log         interfaces.DeploymentLogger
 }
 
 func (d ArtifactRetrievalStartEvent) Name() string {
@@ -236,6 +243,7 @@ type ArtifactRetrievalFailureEvent struct {
 	Data        map[string]interface{}
 	Manifest    string
 	ArtifactURL string
+	Log         interfaces.DeploymentLogger
 }
 
 func (d ArtifactRetrievalFailureEvent) Name() string {
@@ -266,6 +274,7 @@ type ArtifactRetrievalSuccessEvent struct {
 	ArtifactURL          string
 	AppPath              string
 	EnvironmentVariables map[string]string
+	Log                  interfaces.DeploymentLogger
 }
 
 func (d ArtifactRetrievalSuccessEvent) Name() string {

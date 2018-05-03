@@ -8,7 +8,6 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/state"
 	S "github.com/compozed/deployadactyl/structs"
 	"io"
@@ -42,7 +41,7 @@ type fileSystemCleaner interface {
 type PushManager struct {
 	CourierCreator       courierCreator
 	EventManager         I.EventManager
-	Logger               logger.DeploymentLogger
+	Logger               I.DeploymentLogger
 	Fetcher              I.Fetcher
 	DeployEventData      S.DeployEventData
 	FileSystemCleaner    fileSystemCleaner
@@ -182,6 +181,7 @@ func (a PushManager) OnStart() error {
 		ContentType: info.ContentType,
 		Data:        info.Data,
 		Instances:   info.Instances,
+		Log:         a.Logger,
 	}
 	err = a.EventManager.EmitEvent(event)
 	if err != nil {

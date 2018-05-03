@@ -13,7 +13,7 @@ import (
 
 // BlueGreen has a PushManager to creater pushers for blue green deployments.
 type BlueGreen struct {
-	Log I.Logger
+	Log I.DeploymentLogger
 }
 
 // Push will login to all the Cloud Foundry instances provided in the Config and then push the application to all the instances concurrently.

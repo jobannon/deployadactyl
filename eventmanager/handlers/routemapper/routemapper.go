@@ -14,7 +14,7 @@ import (
 type RouteMapper struct {
 	Courier    I.Courier
 	FileSystem *afero.Afero
-	Log        I.Logger
+	//Log        I.Logger
 }
 
 type manifest struct {
@@ -30,34 +30,34 @@ type route struct {
 }
 
 func (r RouteMapper) PushFinishedEventHandler(event push.PushFinishedEvent) error {
-	r.Log.Debugf("starting route mapper")
+	event.Log.Debugf("starting route mapper")
 
 	r.Courier = event.Courier
 
-	manifestBytes, err := r.readManifest(event.Manifest, event.AppPath)
+	manifestBytes, err := r.readManifest(event.Manifest, event.AppPath, event.Log)
 	if err != nil || manifestBytes == nil {
 		return err
 	}
 	m := &manifest{}
 
-	r.Log.Debugf("looking for routes in the manifest")
+	event.Log.Debugf("looking for routes in the manifest")
 	err = candiedyaml.Unmarshal(manifestBytes, m)
 	if err != nil {
-		r.Log.Errorf("failed to parse manifest: %s", err.Error())
+		event.Log.Errorf("failed to parse manifest: %s", err.Error())
 		return err
 	}
 
 	if m.Applications == nil || len(m.Applications[0].CustomRoutes) == 0 {
-		r.Log.Info("finished mapping routes: no routes to map")
+		event.Log.Info("finished mapping routes: no routes to map")
 		return nil
 	}
 
-	r.Log.Infof("found %d routes in the manifest", len(m.Applications[0].CustomRoutes))
+	event.Log.Infof("found %d routes in the manifest", len(m.Applications[0].CustomRoutes))
 
 	domains, _ := r.Courier.Domains()
 
-	r.Log.Debugf("mapping routes to %s", event.TempAppWithUUID)
-	return r.routeMapper(m, event.TempAppWithUUID, domains, event.CFContext.Application)
+	event.Log.Debugf("mapping routes to %s", event.TempAppWithUUID)
+	return r.routeMapper(m, event.TempAppWithUUID, domains, event.CFContext.Application, event.Log)
 }
 
 func isRouteADomainInTheFoundation(route string, domains []string) bool {
@@ -69,7 +69,7 @@ func isRouteADomainInTheFoundation(route string, domains []string) bool {
 	return false
 }
 
-func (r RouteMapper) readManifest(manifest, appPath string) ([]byte, error) {
+func (r RouteMapper) readManifest(manifest, appPath string, log I.DeploymentLogger) ([]byte, error) {
 	var (
 		manifestBytes []byte
 		err           error
@@ -80,12 +80,12 @@ func (r RouteMapper) readManifest(manifest, appPath string) ([]byte, error) {
 	} else if appPath != "" {
 		manifestBytes, err = r.FileSystem.ReadFile(appPath + "/manifest.yml")
 		if err != nil {
-			r.Log.Errorf("failed to read manifest file: %s", err.Error())
+			log.Errorf("failed to read manifest file: %s", err.Error())
 			return nil, ReadFileError{err}
 		}
 		return manifestBytes, nil
 	} else {
-		r.Log.Info("finished mapping routes: no manifest found")
+		log.Info("finished mapping routes: no manifest found")
 		return nil, nil
 	}
 }
@@ -94,7 +94,7 @@ func (r RouteMapper) readManifest(manifest, appPath string) ([]byte, error) {
 // if the route does not include appname or path it will map the given domain to the given application by default
 // if the route has an app name it will remove the app name so it can map it with the given domain
 // if the route has an app name and a path it will remove the app name so it can map it with the given domain and the path as well
-func (r RouteMapper) routeMapper(manifest *manifest, tempAppWithUUID string, domains []string, appName string) error {
+func (r RouteMapper) routeMapper(manifest *manifest, tempAppWithUUID string, domains []string, appName string, log I.DeploymentLogger) error {
 
 	for _, route := range manifest.Applications[0].CustomRoutes {
 		var domainAndPath []string
@@ -108,28 +108,28 @@ func (r RouteMapper) routeMapper(manifest *manifest, tempAppWithUUID string, dom
 		if isRouteADomainInTheFoundation(route.Route, domains) {
 			output, err := r.Courier.MapRoute(tempAppWithUUID, route.Route, appName)
 			if err != nil {
-				r.Log.Errorf("failed to map route: %s: %s", route.Route, string(output))
+				log.Errorf("failed to map route: %s: %s", route.Route, string(output))
 				return MapRouteError{route.Route, output}
 			}
 		} else if len(appNameAndDomain) >= 2 && isRouteADomainInTheFoundation(appNameAndDomain[1], domains) {
 			output, err := r.Courier.MapRoute(tempAppWithUUID, appNameAndDomain[1], appNameAndDomain[0])
 			if err != nil {
-				r.Log.Errorf("failed to map route: %s: %s", route.Route, string(output))
+				log.Errorf("failed to map route: %s: %s", route.Route, string(output))
 				return MapRouteError{route.Route, output}
 			}
 		} else if domainAndPath != nil && isRouteADomainInTheFoundation(domainAndPath[0], domains) {
 			output, err := r.Courier.MapRouteWithPath(tempAppWithUUID, domainAndPath[0], appNameAndDomain[0], domainAndPath[1])
 			if err != nil {
-				r.Log.Error(MapRouteError{route.Route, output})
+				log.Error(MapRouteError{route.Route, output})
 				return MapRouteError{route.Route, output}
 			}
 		} else {
 			return InvalidRouteError{route.Route}
 		}
 
-		r.Log.Infof("mapped route %s to %s", route.Route, tempAppWithUUID)
+		log.Infof("mapped route %s to %s", route.Route, tempAppWithUUID)
 	}
 
-	r.Log.Info("route mapping successful: finished mapping routes")
+	log.Info("route mapping successful: finished mapping routes")
 	return nil
 }

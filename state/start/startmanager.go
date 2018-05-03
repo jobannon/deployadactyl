@@ -5,7 +5,6 @@ import (
 
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/state"
 	S "github.com/compozed/deployadactyl/structs"
 	"net/http"
@@ -24,7 +23,7 @@ type courierCreator interface {
 type StartManager struct {
 	CourierCreator  courierCreator
 	EventManager    I.EventManager
-	Logger          logger.DeploymentLogger
+	Logger          I.DeploymentLogger
 	DeployEventData S.DeployEventData
 }
 

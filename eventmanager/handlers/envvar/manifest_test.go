@@ -6,24 +6,23 @@ import (
 	"github.com/spf13/afero"
 
 	. "github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
-	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/compozed/deployadactyl/interfaces"
 )
 
 var _ = Describe("Manifest Tests", func() {
 
 	var (
 		logBuffer  *gbytes.Buffer
-		log        I.Logger
+		log        interfaces.DeploymentLogger
 		filesystem *afero.Afero
 	)
 
 	BeforeEach(func() {
 		filesystem = &afero.Afero{Fs: afero.NewMemMapFs()}
 		logBuffer = gbytes.NewBuffer()
-		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")
+		log = interfaces.DeploymentLogger{Log: interfaces.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")}
 	})
 
 	Context("when manifest is empty", func() {
@@ -368,7 +367,7 @@ applications:
 
 })
 
-func ReadManifest(path string, logger I.Logger, filesystem *afero.Afero) (manifest *Manifest, err error) {
+func ReadManifest(path string, logger interfaces.DeploymentLogger, filesystem *afero.Afero) (manifest *Manifest, err error) {
 
 	file, err := filesystem.ReadFile(path)
 	if err != nil {

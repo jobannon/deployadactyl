@@ -6,7 +6,6 @@ import (
 	"github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	. "github.com/compozed/deployadactyl/state/push"
@@ -35,7 +34,7 @@ var _ = Describe("Actioncreator", func() {
 	)
 	BeforeEach(func() {
 		logBuffer = bytes.NewBuffer([]byte{})
-		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
+		log = interfaces.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
 
 		fetcher = &mocks.Fetcher{}
 		eventManager = &mocks.EventManager{}
@@ -44,7 +43,7 @@ var _ = Describe("Actioncreator", func() {
 		response = NewBuffer()
 		pusherCreator = &PushManager{
 			Fetcher:      fetcher,
-			Logger:       logger.DeploymentLogger{log, randomizer.StringRunes(10)},
+			Logger:       interfaces.DeploymentLogger{log, randomizer.StringRunes(10)},
 			EventManager: eventManager,
 			DeployEventData: structs.DeployEventData{
 				DeploymentInfo: &structs.DeploymentInfo{},

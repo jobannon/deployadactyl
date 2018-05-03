@@ -7,11 +7,9 @@ import (
 
 	C "github.com/compozed/deployadactyl/constants"
 	. "github.com/compozed/deployadactyl/eventmanager/handlers/routemapper"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"
-	logging "github.com/op/go-logging"
 	"github.com/spf13/afero"
 
 	I "github.com/compozed/deployadactyl/interfaces"
@@ -19,6 +17,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
+	"github.com/op/go-logging"
 )
 
 var _ = Describe("Routemapper", func() {
@@ -86,7 +85,6 @@ var _ = Describe("Routemapper", func() {
 
 		routemapper = RouteMapper{
 			FileSystem: af,
-			Log:        logger.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test"),
 		}
 	})
 
@@ -108,6 +106,7 @@ var _ = Describe("Routemapper", func() {
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.Manifest = fmt.Sprintf(`
@@ -202,6 +201,7 @@ applications:
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.Manifest = fmt.Sprintf(`
@@ -257,6 +257,7 @@ applications:
 				CFContext: I.CFContext{
 					Application: randomAppName,
 				},
+				Log: I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.Manifest = fmt.Sprintf(`
@@ -319,6 +320,7 @@ applications:
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.Manifest = fmt.Sprintf(`
@@ -347,6 +349,7 @@ applications:
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.Manifest = fmt.Sprintf(`
@@ -379,6 +382,7 @@ applications:
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.Manifest = fmt.Sprintf(`
@@ -408,6 +412,7 @@ applications:
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			err := routemapper.PushFinishedEventHandler(ievent)
@@ -424,6 +429,7 @@ applications:
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.Manifest = fmt.Sprintf(`
@@ -449,6 +455,7 @@ applications:
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.Manifest = fmt.Sprintf(`
@@ -485,6 +492,7 @@ applications:
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.AppPath = manifestPath
@@ -503,6 +511,7 @@ applications:
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.AppPath = "manifest.yml"
@@ -517,6 +526,7 @@ applications:
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.AppPath = "manifest.yml"
@@ -534,6 +544,7 @@ applications:
 				TempAppWithUUID: randomTemporaryAppName,
 				FoundationURL:   randomFoundationURL,
 				Courier:         courier,
+				Log:             I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "routemapper_test")},
 			}
 
 			ievent.Manifest = fmt.Sprintf(`---

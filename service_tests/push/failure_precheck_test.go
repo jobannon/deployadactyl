@@ -92,7 +92,7 @@ applications:
 
 				return courier
 			},
-			NewFetcher: func(fs *afero.Afero, ex interfaces.Extractor, log interfaces.Logger) interfaces.Fetcher {
+			NewFetcher: func(fs *afero.Afero, ex interfaces.Extractor, log interfaces.DeploymentLogger) interfaces.Fetcher {
 				wd, _ := os.Getwd()
 
 				dstf, _ := fs.TempDir("", "service-failure-test-")

@@ -17,8 +17,10 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	"github.com/compozed/deployadactyl/controller/deployer/prechecker"
 	"github.com/compozed/deployadactyl/eventmanager"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/routemapper"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/state/stop"
@@ -39,11 +41,14 @@ const v2ENDPOINT = "/v2/deploy/:environment/:org/:space/:appName"
 const ENDPOINT = "/v3/apps/:environment/:org/:space/:appName"
 
 type CreatorModuleProvider struct {
-	NewCourier courier.CourierConstructor
-	NewPrechecker prechecker.PrecheckerConstructor
-	NewFetcher artifetcher.ArtifetcherConstructor
-	NewExtractor extractor.ExtractorConstructor
-	NewEventManager eventmanager.EventManagerConstructor
+	NewCourier         courier.CourierConstructor
+	NewPrechecker      prechecker.PrecheckerConstructor
+	NewFetcher         artifetcher.ArtifetcherConstructor
+	NewExtractor       extractor.ExtractorConstructor
+	NewEventManager    eventmanager.EventManagerConstructor
+	NewPushController  push.PushControllerConstructor
+	NewStartController start.StartControllerConstructor
+	NewStopController  stop.StopControllerConstructor
 }
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
@@ -53,7 +58,7 @@ type Creator struct {
 	logger       I.Logger
 	writer       io.Writer
 	fileSystem   *afero.Afero
-	provider CreatorModuleProvider
+	provider     CreatorModuleProvider
 }
 
 // Default returns a default Creator and an Error.
@@ -122,11 +127,6 @@ func (c Creator) CreateCourier() (I.Courier, error) {
 	return courier.NewCourier(ex), nil
 }
 
-// CreateLogger returns a Logger.
-func (c Creator) CreateLogger() I.Logger {
-	return c.logger
-}
-
 // CreateConfig returns a Config.
 func (c Creator) CreateConfig() config.Config {
 	return c.config
@@ -155,70 +155,55 @@ func (c Creator) CreateHTTPClient() *http.Client {
 
 func (c Creator) CreateController() I.Controller {
 	return &controller.Controller{
-		Deployer:        c.createDeployer(),
-		SilentDeployer:  c.createSilentDeployer(),
-		Log:             c.CreateLogger(),
-		PushController:  c.CreatePushController(),
-		StopController:  c.CreateStopController(),
-		StartController: c.CreateStartController(),
-		Config:          c.CreateConfig(),
-		EventManager:    c.CreateEventManager(),
-		ErrorFinder:     c.createErrorFinder(),
+		Log: c.logger,
+		PushControllerFactory:  c.CreatePushController,
+		StopControllerFactory:  c.CreateStopController,
+		StartControllerFactory: c.CreateStartController,
+		Config:                 c.CreateConfig(),
+		EventManager:           c.CreateEventManager(),
+		ErrorFinder:            c.createErrorFinder(),
 	}
 }
 
-func (c Creator) CreatePushController() I.PushController {
-	return &push.PushController{
-		Deployer:           c.createDeployer(),
-		Log:                c.CreateLogger(),
-		Config:             c.CreateConfig(),
-		EventManager:       c.CreateEventManager(),
-		ErrorFinder:        c.createErrorFinder(),
-		PushManagerFactory: c,
+func (c Creator) CreatePushController(log I.DeploymentLogger) I.PushController {
+	if c.provider.NewPushController != nil {
+		return c.provider.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
 	}
+	return push.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
 }
 
-func (c Creator) CreateStopController() I.StopController {
-	return &stop.StopController{
-		Deployer:           c.createDeployer(),
-		Log:                c.CreateLogger(),
-		Config:             c.CreateConfig(),
-		EventManager:       c.CreateEventManager(),
-		ErrorFinder:        c.createErrorFinder(),
-		StopManagerFactory: c,
+func (c Creator) CreateStopController(log I.DeploymentLogger) I.StopController {
+	if c.provider.NewStopController != nil {
+		return c.provider.NewStopController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
 	}
+	return stop.NewStopController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
 }
 
-func (c Creator) CreateStartController() I.StartController {
-	return &start.StartController{
-		Deployer:            c.createDeployer(),
-		Log:                 c.CreateLogger(),
-		Config:              c.CreateConfig(),
-		EventManager:        c.CreateEventManager(),
-		ErrorFinder:         c.createErrorFinder(),
-		StartManagerFactory: c,
+func (c Creator) CreateStartController(log I.DeploymentLogger) I.StartController {
+	if c.provider.NewStartController != nil {
+		return c.provider.NewStartController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
 	}
+	return start.NewStartController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
 }
 
-func (c Creator) createDeployer() I.Deployer {
+func (c Creator) createDeployer(log I.DeploymentLogger) I.Deployer {
 	return deployer.Deployer{
 		Config:       c.CreateConfig(),
-		BlueGreener:  c.createBlueGreener(),
+		BlueGreener:  c.createBlueGreener(log),
 		Prechecker:   c.createPrechecker(),
 		EventManager: c.CreateEventManager(),
 		Randomizer:   c.createRandomizer(),
 		ErrorFinder:  c.createErrorFinder(),
-		Log:          c.CreateLogger(),
+		Log:          log,
 	}
 }
 
-func (c Creator) PushManager(deployEventData structs.DeployEventData, cf I.CFContext, auth I.Authorization, env structs.Environment, envVars map[string]string) I.ActionCreator {
-	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
+func (c Creator) PushManager(log I.DeploymentLogger, deployEventData structs.DeployEventData, cf I.CFContext, auth I.Authorization, env structs.Environment, envVars map[string]string) I.ActionCreator {
 	return &push.PushManager{
 		CourierCreator:       c,
 		EventManager:         c.CreateEventManager(),
-		Logger:               deploymentLogger,
-		Fetcher:              c.createFetcher(),
+		Logger:               log,
+		Fetcher:              c.createFetcher(log),
 		DeployEventData:      deployEventData,
 		FileSystemCleaner:    c.CreateFileSystem(),
 		CFContext:            cf,
@@ -228,23 +213,40 @@ func (c Creator) PushManager(deployEventData structs.DeployEventData, cf I.CFCon
 	}
 }
 
-func (c Creator) StopManager(deployEventData structs.DeployEventData) I.ActionCreator {
-	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
+func (c Creator) StopManager(log I.DeploymentLogger, deployEventData structs.DeployEventData) I.ActionCreator {
 	return stop.StopManager{
 		CourierCreator:  c,
 		EventManager:    c.CreateEventManager(),
-		Log:             deploymentLogger,
+		Log:             log,
 		DeployEventData: deployEventData,
 	}
 }
 
-func (c Creator) StartManager(deployEventData structs.DeployEventData) I.ActionCreator {
-	deploymentLogger := logger.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
+func (c Creator) StartManager(log I.DeploymentLogger, deployEventData structs.DeployEventData) I.ActionCreator {
+	//deploymentLogger := I.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
 	return start.StartManager{
 		CourierCreator:  c,
 		EventManager:    c.CreateEventManager(),
-		Logger:          deploymentLogger,
+		Logger:          log,
 		DeployEventData: deployEventData,
+	}
+}
+
+func (c Creator) CreateEnvVarHandler() envvar.Envvarhandler {
+	return envvar.Envvarhandler{FileSystem: c.CreateFileSystem()}
+}
+
+func (c Creator) CreateHealthChecker() healthchecker.HealthChecker {
+	return healthchecker.HealthChecker{
+		OldURL: "api.cf",
+		NewURL: "apps",
+		Client: c.CreateHTTPClient(),
+	}
+}
+
+func (c Creator) CreateRouteMapper() routemapper.RouteMapper {
+	return routemapper.RouteMapper{
+		FileSystem: c.CreateFileSystem(),
 	}
 }
 
@@ -252,18 +254,18 @@ func (c Creator) createSilentDeployer() I.Deployer {
 	return deployer.SilentDeployer{}
 }
 
-func (c Creator) createExtractor() I.Extractor {
+func (c Creator) createExtractor(log I.DeploymentLogger) I.Extractor {
 	if c.provider.NewExtractor != nil {
-		return c.provider.NewExtractor(c.CreateLogger(), c.CreateFileSystem())
+		return c.provider.NewExtractor(log, c.CreateFileSystem())
 	}
-	return extractor.NewExtractor(c.CreateLogger(), c.CreateFileSystem())
+	return extractor.NewExtractor(log, c.CreateFileSystem())
 }
 
-func (c Creator) createFetcher() I.Fetcher {
+func (c Creator) createFetcher(log I.DeploymentLogger) I.Fetcher {
 	if c.provider.NewFetcher != nil {
-		return c.provider.NewFetcher(c.CreateFileSystem(), c.createExtractor(), c.CreateLogger())
+		return c.provider.NewFetcher(c.CreateFileSystem(), c.createExtractor(log), log)
 	}
-	return artifetcher.NewArtifetcher(c.CreateFileSystem(), c.createExtractor(), c.CreateLogger())
+	return artifetcher.NewArtifetcher(c.CreateFileSystem(), c.createExtractor(log), log)
 }
 
 func (c Creator) createRandomizer() I.Randomizer {
@@ -281,9 +283,9 @@ func (c Creator) createWriter() io.Writer {
 	return c.writer
 }
 
-func (c Creator) createBlueGreener() I.BlueGreener {
+func (c Creator) createBlueGreener(log I.DeploymentLogger) I.BlueGreener {
 	return bluegreen.BlueGreen{
-		Log: c.CreateLogger(),
+		Log: log,
 	}
 }
 
@@ -299,7 +301,7 @@ func createCreator(l logging.Level, cfg config.Config, provider CreatorModulePro
 		return Creator{}, err
 	}
 
-	logger := logger.DefaultLogger(os.Stdout, l, "controller")
+	logger := I.DefaultLogger(os.Stdout, l, "controller")
 	var eventManager I.EventManager
 	if provider.NewEventManager != nil {
 		eventManager = provider.NewEventManager(logger)

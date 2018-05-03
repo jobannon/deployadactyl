@@ -9,7 +9,6 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/state/push"
@@ -63,7 +62,7 @@ var _ = Describe("RunDeployment", func() {
 		controller = &push.PushController{
 			Deployer:           deployer,
 			SilentDeployer:     silentDeployer,
-			Log:                logger.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
+			Log:                I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"), UUID: uuid},
 			PushManagerFactory: pushManagerFactory,
 			EventManager:       eventManager,
 			Config:             config.Config{},

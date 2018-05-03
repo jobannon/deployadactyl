@@ -13,7 +13,7 @@ type Starter struct {
 	Authorization I.Authorization
 	EventManager  I.EventManager
 	Response      io.ReadWriter
-	Log           I.Logger
+	Log           I.DeploymentLogger
 	FoundationURL string
 	AppName       string
 	Data          map[string]interface{}

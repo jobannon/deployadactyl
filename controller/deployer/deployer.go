@@ -13,7 +13,6 @@ import (
 	"encoding/base64"
 	"github.com/compozed/deployadactyl/config"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	S "github.com/compozed/deployadactyl/structs"
 )
 
@@ -76,12 +75,12 @@ type Deployer struct {
 	EventManager I.EventManager
 	Randomizer   I.Randomizer
 	ErrorFinder  I.ErrorFinder
-	Log          I.Logger
+	Log          I.DeploymentLogger
 }
 
 func (d Deployer) Deploy(deploymentInfo *S.DeploymentInfo, env S.Environment, actionCreator I.ActionCreator, response io.ReadWriter) *I.DeployResponse {
 
-	deploymentLogger := logger.DeploymentLogger{d.Log, deploymentInfo.UUID}
+	deploymentLogger := I.DeploymentLogger{d.Log, deploymentInfo.UUID}
 
 	deployResponse := &I.DeployResponse{
 		DeploymentInfo: deploymentInfo,

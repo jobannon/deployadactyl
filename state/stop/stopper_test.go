@@ -5,7 +5,6 @@ import (
 	//"fmt"
 	"math/rand"
 
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	. "github.com/compozed/deployadactyl/state/push"
@@ -101,7 +100,7 @@ var _ = Describe("Stopper", func() {
 			Authorization: auth,
 			EventManager:  eventManager,
 			Response:      response,
-			Log:           logger.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test"),
+			Log:           interfaces.DeploymentLogger{Log: interfaces.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test")},
 			FoundationURL: randomFoundationURL,
 			AppName:       randomAppName,
 		}

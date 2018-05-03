@@ -45,7 +45,7 @@ func (b legacyEventBinding) Emit(event interface{}) error {
 
 func NewEventManager(log I.Logger) I.EventManager {
 	return &EventManager{
-		Log: log,
+		Log:      log,
 		Bindings: make([]I.Binding, 0),
 	}
 }
@@ -79,7 +79,6 @@ func (e EventManager) EmitEvent(event I.IEvent) error {
 			if err != nil {
 				return err
 			}
-			e.Log.Debugf("a %s event has been emitted", event.Name())
 		}
 	}
 	return nil

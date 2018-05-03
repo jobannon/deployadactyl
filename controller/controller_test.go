@@ -14,7 +14,6 @@ import (
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
@@ -34,6 +33,7 @@ var _ = Describe("Controller", func() {
 		stopController  *mocks.StopController
 		startController *mocks.StartController
 		pushController  *mocks.PushController
+
 		controller      *Controller
 		logBuffer       *Buffer
 
@@ -63,12 +63,16 @@ var _ = Describe("Controller", func() {
 
 		errorFinder = &mocks.ErrorFinder{}
 		controller = &Controller{
-			Deployer:        deployer,
-			SilentDeployer:  silentDeployer,
-			Log:             logger.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
-			PushController:  pushController,
-			StopController:  stopController,
-			StartController: startController,
+			Log:             I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
+			StopControllerFactory:  func(log I.DeploymentLogger) I.StopController {
+				return stopController
+			},
+			StartControllerFactory: func(log I.DeploymentLogger) I.StartController {
+				return startController
+			},
+			PushControllerFactory: func(log I.DeploymentLogger) I.PushController {
+				return pushController
+			},
 			EventManager:    eventManager,
 			Config:          config.Config{},
 			ErrorFinder:     errorFinder,

@@ -9,7 +9,6 @@ import (
 
 	. "github.com/compozed/deployadactyl/eventmanager/handlers/envvar"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/state/push"
 )
 
@@ -17,16 +16,18 @@ var _ = Describe("Env_Var_Handler", func() {
 	var (
 		eventHandler Envvarhandler
 		logBuffer    *gbytes.Buffer
-		log          I.Logger
+		log          I.DeploymentLogger
 		ievent       push.ArtifactRetrievalSuccessEvent
 		filesystem   = &afero.Afero{Fs: afero.NewMemMapFs()}
 	)
 
 	BeforeEach(func() {
 		logBuffer = gbytes.NewBuffer()
-		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")
-		ievent = push.ArtifactRetrievalSuccessEvent{}
-		eventHandler = Envvarhandler{Logger: log, FileSystem: filesystem}
+		log = I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "evn_var_handler_test")}
+		ievent = push.ArtifactRetrievalSuccessEvent{
+			Log: log,
+		}
+		eventHandler = Envvarhandler{FileSystem: filesystem}
 	})
 
 	Context("when an envvarhandler is called with event without deploy info", func() {
@@ -65,7 +66,7 @@ var _ = Describe("Env_Var_Handler", func() {
 			Expect(eventHandler.ArtifactRetrievalSuccessEventHandler(ievent)).To(Succeed())
 
 			//Verify manifest was written and matches
-			manifest, err := ReadManifest(path+"/manifest.yml", eventHandler.Logger, eventHandler.FileSystem)
+			manifest, err := ReadManifest(path+"/manifest.yml", log, eventHandler.FileSystem)
 
 			Expect(manifest).NotTo(BeNil())
 			Expect(err).To(BeNil())

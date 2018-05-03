@@ -4,8 +4,6 @@ import (
 	"errors"
 
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen"
-	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	S "github.com/compozed/deployadactyl/structs"
@@ -15,6 +13,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
+	"github.com/compozed/deployadactyl/interfaces"
 )
 
 var _ = Describe("Bluegreen", func() {
@@ -26,7 +25,7 @@ var _ = Describe("Bluegreen", func() {
 		loginOutput    string
 		pusherCreator  *mocks.PushManager
 		pushers        []*mocks.Pusher
-		log            I.Logger
+		log            interfaces.DeploymentLogger
 		blueGreen      BlueGreen
 		environment    S.Environment
 		deploymentInfo S.DeploymentInfo
@@ -44,7 +43,7 @@ var _ = Describe("Bluegreen", func() {
 		response = NewBuffer()
 		logBuffer = NewBuffer()
 
-		log = logger.DefaultLogger(logBuffer, logging.DEBUG, "test")
+		log = interfaces.DeploymentLogger{Log: interfaces.DefaultLogger(logBuffer, logging.DEBUG, "test"), UUID: randomizer.StringRunes(10)}
 
 		environment = S.Environment{Name: randomizer.StringRunes(10)}
 		environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}

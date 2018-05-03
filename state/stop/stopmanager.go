@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/logger"
 	"github.com/compozed/deployadactyl/state"
 	S "github.com/compozed/deployadactyl/structs"
 	"io"
@@ -23,11 +22,11 @@ type courierCreator interface {
 type StopManager struct {
 	CourierCreator  courierCreator
 	EventManager    I.EventManager
-	Log             logger.DeploymentLogger
+	Log             I.DeploymentLogger
 	DeployEventData S.DeployEventData
 }
 
-func (a StopManager) Logger() logger.DeploymentLogger {
+func (a StopManager) Logger() I.DeploymentLogger {
 	return a.Log
 }
 

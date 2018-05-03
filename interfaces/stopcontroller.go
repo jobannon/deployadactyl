@@ -6,7 +6,7 @@ import (
 )
 
 type StopManagerFactory interface {
-	StopManager(deployEventData structs.DeployEventData) ActionCreator
+	StopManager(log DeploymentLogger, deployEventData structs.DeployEventData) ActionCreator
 }
 
 type StopController interface {

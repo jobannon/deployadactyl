@@ -127,6 +127,10 @@ func (c Creator) CreateCourier() (I.Courier, error) {
 	return courier.NewCourier(ex), nil
 }
 
+func (c Creator) GetLogger() I.Logger {
+	return c.logger
+}
+
 // CreateConfig returns a Config.
 func (c Creator) CreateConfig() config.Config {
 	return c.config

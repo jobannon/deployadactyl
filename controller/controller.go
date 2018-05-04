@@ -16,12 +16,16 @@ import (
 	"net/http"
 )
 
+type PushControllerFactory func(log I.DeploymentLogger) I.PushController
+type StartControllerFactory func(log I.DeploymentLogger) I.StartController
+type StopControllerFactory func(log I.DeploymentLogger) I.StopController
+
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
 	Log                    I.Logger
-	PushControllerFactory  func(log I.DeploymentLogger) I.PushController
-	StartControllerFactory func(log I.DeploymentLogger) I.StartController
-	StopControllerFactory  func(log I.DeploymentLogger) I.StopController
+	PushControllerFactory  PushControllerFactory
+	StartControllerFactory StartControllerFactory
+	StopControllerFactory  StopControllerFactory
 	Config                 config.Config
 	EventManager           I.EventManager
 	ErrorFinder            I.ErrorFinder

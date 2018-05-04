@@ -100,6 +100,7 @@ func (a *PushManager) SetUp() error {
 		Data:        a.DeployEventData.DeploymentInfo.Data,
 		Manifest:    manifestString,
 		ArtifactURL: a.DeployEventData.DeploymentInfo.ArtifactURL,
+		Log:         a.Logger,
 	}
 	a.Logger.Debugf("emitting a %s event", event.Name())
 
@@ -127,6 +128,7 @@ func (a *PushManager) SetUp() error {
 			Data:        a.DeployEventData.DeploymentInfo.Data,
 			Manifest:    manifestString,
 			ArtifactURL: a.DeployEventData.DeploymentInfo.ArtifactURL,
+			Log:         a.Logger,
 		}
 		a.EventManager.EmitEvent(event)
 		return err
@@ -142,6 +144,7 @@ func (a *PushManager) SetUp() error {
 		ArtifactURL:          a.DeployEventData.DeploymentInfo.ArtifactURL,
 		AppPath:              appPath,
 		EnvironmentVariables: a.EnvironmentVariables,
+		Log:                  a.Logger,
 	}
 	a.Logger.Debugf("emitting a %s event", event.Name())
 	err = a.EventManager.EmitEvent(event)

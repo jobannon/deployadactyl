@@ -9,23 +9,21 @@ import (
 	"net/http/httptest"
 	"os"
 
+	"encoding/base64"
+	"errors"
+	"github.com/compozed/deployadactyl/creator"
+	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state/push"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/compozed/deployadactyl/creator"
-	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/spf13/afero"
-	"encoding/base64"
-	"reflect"
-	"github.com/compozed/deployadactyl/state/push"
-	"errors"
-	"path"
 	"io"
+	"path"
+	"reflect"
 )
-
-
 
 var _ = Describe("Service", func() {
 
@@ -52,17 +50,17 @@ applications:
 
 	var (
 		deployadactylServer *httptest.Server
-		prechecker *mocks.Prechecker
-		fetcher *mocks.Fetcher
-		eventManager *mocks.EventManager
-		provider creator.CreatorModuleProvider
+		prechecker          *mocks.Prechecker
+		fetcher             *mocks.Fetcher
+		eventManager        *mocks.EventManager
+		provider            creator.CreatorModuleProvider
 
-		couriers []*mocks.Courier
+		couriers     []*mocks.Courier
 		responseBody []byte
-		response *http.Response
-		org = randomizer.StringRunes(10)
-		space = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
-		appName = randomizer.StringRunes(10)
+		response     *http.Response
+		org          = randomizer.StringRunes(10)
+		space        = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
+		appName      = randomizer.StringRunes(10)
 	)
 
 	BeforeEach(func() {
@@ -119,7 +117,7 @@ applications:
 		j, err := json.Marshal(gin.H{
 			"artifact_url":          "the artifact url",
 			"health_check_endpoint": "/health",
-			"manifest": base64.StdEncoding.EncodeToString([]byte(manifest)),
+			"manifest":              base64.StdEncoding.EncodeToString([]byte(manifest)),
 		})
 		Expect(err).ToNot(HaveOccurred())
 		jsonBuffer := bytes.NewBuffer(j)
@@ -163,7 +161,7 @@ applications:
 	It("calls courier push with correct info", func() {
 		for _, c := range couriers {
 			Expect(c.PushCall.Received.AppPath).To(ContainSubstring("service-failure-test"))
-			Expect(c.PushCall.Received.AppName).To(ContainSubstring(appName+"-new-build-"))
+			Expect(c.PushCall.Received.AppName).To(ContainSubstring(appName + "-new-build-"))
 			Expect(c.PushCall.Received.Instances).To(Equal(uint16(1)))
 			Expect(c.PushCall.Received.Hostname).To(Equal(appName))
 		}
@@ -190,7 +188,7 @@ applications:
 	})
 	It("maps the new application routes", func() {
 		for i, c := range couriers {
-			if i!= 1 {
+			if i != 1 {
 				Expect(len(c.MapRouteCall.Received.AppName)).To(Equal(1))
 				Expect(c.MapRouteCall.Received.AppName[0]).To(ContainSubstring(appName + "-new-build-"))
 				Expect(c.MapRouteCall.Received.Domain[0]).To(Equal("example.com"))
@@ -200,7 +198,7 @@ applications:
 	})
 	It("renames the new app", func() {
 		for _, c := range couriers {
-			Expect(c.RenameCall.Received.AppName).To(ContainSubstring(appName+"-new-build-"))
+			Expect(c.RenameCall.Received.AppName).To(ContainSubstring(appName + "-new-build-"))
 			Expect(c.RenameCall.Received.AppNameVenerable).To(Equal(appName))
 		}
 	})

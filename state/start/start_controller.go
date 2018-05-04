@@ -84,6 +84,7 @@ func (c *StartController) StartDeployment(deployment *I.Deployment, data map[str
 		Environment:   environment,
 		Data:          data,
 		Response:      response,
+		Log:           c.Log,
 	})
 	if err != nil {
 		c.Log.Error(err)
@@ -133,6 +134,7 @@ func (c StartController) emitStartFinish(response io.ReadWriter, deploymentLogge
 		Authorization: *auth,
 		Data:          data,
 		Environment:   *environment,
+		Log:           deploymentLogger,
 	}
 	deploymentLogger.Debugf("emitting a %s event", event.Name())
 	c.EventManager.EmitEvent(event)
@@ -150,6 +152,7 @@ func (c StartController) emitStartSuccessOrFailure(response io.ReadWriter, deplo
 			Data:          data,
 			Response:      response,
 			Error:         deployResponse.Error,
+			Log:           deploymentLogger,
 		}
 
 	} else {
@@ -159,6 +162,7 @@ func (c StartController) emitStartSuccessOrFailure(response io.ReadWriter, deplo
 			Environment:   *environment,
 			Data:          data,
 			Response:      response,
+			Log:           deploymentLogger,
 		}
 	}
 	deploymentLogger.Debugf("emitting a %s event", event.Name())

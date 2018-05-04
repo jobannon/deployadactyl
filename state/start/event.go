@@ -30,6 +30,7 @@ type StartFailureEvent struct {
 	Authorization interfaces.Authorization
 	Response      io.ReadWriter
 	Error         error
+	Log           interfaces.DeploymentLogger
 }
 
 func (e StartFailureEvent) Name() string {
@@ -56,6 +57,7 @@ type StartSuccessEvent struct {
 	Environment   structs.Environment
 	Authorization interfaces.Authorization
 	Response      io.ReadWriter
+	Log           interfaces.DeploymentLogger
 }
 
 func (e StartSuccessEvent) Name() string {
@@ -82,6 +84,7 @@ type StartStartedEvent struct {
 	Environment   structs.Environment
 	Authorization interfaces.Authorization
 	Response      io.ReadWriter
+	Log           interfaces.DeploymentLogger
 }
 
 func (e StartStartedEvent) Name() string {
@@ -108,6 +111,7 @@ type StartFinishedEvent struct {
 	Authorization interfaces.Authorization
 	Response      io.ReadWriter
 	Environment   structs.Environment
+	Log           interfaces.DeploymentLogger
 }
 
 func (e StartFinishedEvent) Name() string {

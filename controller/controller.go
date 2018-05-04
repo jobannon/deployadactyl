@@ -11,20 +11,20 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 
 	"github.com/compozed/deployadactyl/config"
+	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"github.com/compozed/deployadactyl/randomizer"
 )
 
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
-	Log             I.Logger
-	PushControllerFactory func(log I.DeploymentLogger) I.PushController
+	Log                    I.Logger
+	PushControllerFactory  func(log I.DeploymentLogger) I.PushController
 	StartControllerFactory func(log I.DeploymentLogger) I.StartController
 	StopControllerFactory  func(log I.DeploymentLogger) I.StopController
-	Config          config.Config
-	EventManager    I.EventManager
-	ErrorFinder     I.ErrorFinder
+	Config                 config.Config
+	EventManager           I.EventManager
+	ErrorFinder            I.ErrorFinder
 }
 
 type PutRequest struct {
@@ -32,11 +32,10 @@ type PutRequest struct {
 	Data  map[string]interface{} `json:"data"`
 }
 
+// Deprecated - wrapper for PushController.RunDeployment
 func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
-	if deployment.CFContext.UUID == "" {
-		deployment.CFContext.UUID = randomizer.StringRunes(10)
-	}
-	log := I.DeploymentLogger{Log: c.Log, UUID: deployment.CFContext.UUID}
+	uuid := randomizer.StringRunes(10)
+	log := I.DeploymentLogger{Log: c.Log, UUID: uuid}
 	return c.PushControllerFactory(log).RunDeployment(deployment, response)
 }
 
@@ -51,7 +50,6 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 		Organization: g.Param("org"),
 		Space:        g.Param("space"),
 		Application:  g.Param("appName"),
-		UUID: uuid,
 	}
 
 	user, pwd, _ := g.Request.BasicAuth()
@@ -98,7 +96,6 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 		Organization: g.Param("org"),
 		Space:        g.Param("space"),
 		Application:  g.Param("appName"),
-		UUID: uuid,
 	}
 
 	response := &bytes.Buffer{}

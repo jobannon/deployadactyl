@@ -520,19 +520,7 @@ var _ = Describe("RunDeployment", func() {
 						Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.UUID).ShouldNot(BeEmpty())
 					})
 				})
-				Context("when uuid is provided", func() {
-					It("uses the provided uuid", func() {
-						deployment.CFContext.Environment = environment
-						uuid := randomizer.StringRunes(10)
-						deployment.CFContext.UUID = uuid
-						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, response)
-
-						Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.UUID).Should(Equal(uuid))
-
-					})
-				})
 				It("has the correct domain and skipssl", func() {
 					deployment.CFContext.Environment = environment
 					domain := "domain-" + randomizer.StringRunes(10)
@@ -690,7 +678,6 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Application = appName
 						deployment.CFContext.Space = space
 						deployment.CFContext.Organization = org
-						deployment.CFContext.UUID = uuid
 
 						deployment.Type.ZIP = true
 
@@ -701,7 +688,6 @@ var _ = Describe("RunDeployment", func() {
 						Expect(event.CFContext.Application).To(Equal(appName))
 						Expect(event.CFContext.Space).To(Equal(space))
 						Expect(event.CFContext.Organization).To(Equal(org))
-						Expect(event.CFContext.UUID).To(Equal(uuid))
 					})
 					It("passes Auth to EmitEvent in the event", func() {
 						deployment.CFContext.Environment = environment
@@ -773,7 +759,6 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Application = appName
 						deployment.CFContext.Space = space
 						deployment.CFContext.Organization = org
-						deployment.CFContext.UUID = uuid
 
 						deployment.Type.ZIP = true
 
@@ -784,7 +769,6 @@ var _ = Describe("RunDeployment", func() {
 						Expect(event.CFContext.Application).To(Equal(appName))
 						Expect(event.CFContext.Space).To(Equal(space))
 						Expect(event.CFContext.Organization).To(Equal(org))
-						Expect(event.CFContext.UUID).To(Equal(uuid))
 					})
 					It("passes Auth to EmitEvent in the event", func() {
 						deployment.CFContext.Environment = environment
@@ -879,7 +863,6 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Application = appName
 						deployment.CFContext.Space = space
 						deployment.CFContext.Organization = org
-						deployment.CFContext.UUID = uuid
 
 						deployment.Type.ZIP = true
 
@@ -890,7 +873,6 @@ var _ = Describe("RunDeployment", func() {
 						Expect(event.CFContext.Application).To(Equal(appName))
 						Expect(event.CFContext.Space).To(Equal(space))
 						Expect(event.CFContext.Organization).To(Equal(org))
-						Expect(event.CFContext.UUID).To(Equal(uuid))
 					})
 					It("passes Auth to EmitEvent in the event", func() {
 						deployment.CFContext.Environment = environment
@@ -995,7 +977,6 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Application = appName
 						deployment.CFContext.Space = space
 						deployment.CFContext.Organization = org
-						deployment.CFContext.UUID = uuid
 						deployment.Type.ZIP = true
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
@@ -1007,7 +988,6 @@ var _ = Describe("RunDeployment", func() {
 						Expect(event.CFContext.Application).To(Equal(appName))
 						Expect(event.CFContext.Space).To(Equal(space))
 						Expect(event.CFContext.Organization).To(Equal(org))
-						Expect(event.CFContext.UUID).To(Equal(uuid))
 					})
 					It("passes Auth to EmitEvent in the event", func() {
 						deployment.CFContext.Environment = environment

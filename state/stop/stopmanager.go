@@ -75,7 +75,6 @@ func (a StopManager) Create(environment S.Environment, response io.ReadWriter, f
 			Organization: a.DeployEventData.DeploymentInfo.Org,
 			Space:        a.DeployEventData.DeploymentInfo.Space,
 			Application:  a.DeployEventData.DeploymentInfo.AppName,
-			UUID:         a.DeployEventData.DeploymentInfo.UUID,
 			SkipSSL:      a.DeployEventData.DeploymentInfo.SkipSSL,
 		},
 		Authorization: I.Authorization{

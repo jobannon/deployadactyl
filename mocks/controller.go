@@ -15,7 +15,6 @@ type Controller struct {
 		Received struct {
 			Deployment *I.Deployment
 			Response   *bytes.Buffer
-			UUID       string
 		}
 		Write struct {
 			Output string
@@ -41,7 +40,6 @@ func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buf
 
 	c.RunDeploymentCall.Received.Deployment = deployment
 	c.RunDeploymentCall.Received.Response = response
-	c.RunDeploymentCall.Received.UUID = deployment.CFContext.UUID
 
 	fmt.Fprint(response, c.RunDeploymentCall.Write.Output)
 

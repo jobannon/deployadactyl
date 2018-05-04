@@ -27,7 +27,6 @@ type CFContext struct {
 	Organization string
 	Space        string
 	Application  string
-	UUID         string
 	SkipSSL      bool
 }
 

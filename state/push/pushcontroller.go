@@ -10,7 +10,6 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/structs"
 	"io"
 	"io/ioutil"
@@ -45,16 +44,12 @@ type PushController struct {
 // PUSH specific
 func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
-	if cf.UUID == "" {
-		cf.UUID = randomizer.StringRunes(10)
-	}
-
 	deploymentInfo := &structs.DeploymentInfo{
 		Org:         cf.Organization,
 		Space:       cf.Space,
 		AppName:     cf.Application,
 		Environment: cf.Environment,
-		UUID:        cf.UUID,
+		UUID:        c.Log.UUID,
 	}
 
 	c.Log.Debugf("Starting deploy of %s with UUID %s", cf.Application, deploymentInfo.UUID)

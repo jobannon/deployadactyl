@@ -7,7 +7,6 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/structs"
 	"io"
 	"net/http"
@@ -17,12 +16,12 @@ type StopControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer,
 
 func NewStopController(l I.DeploymentLogger, d I.Deployer, c config.Config, em I.EventManager, ef I.ErrorFinder, smf I.StopManagerFactory) I.StopController {
 	return &StopController{
-		Deployer: d,
-		Config: c,
-		EventManager: em,
-		ErrorFinder: ef,
+		Deployer:           d,
+		Config:             c,
+		EventManager:       em,
+		ErrorFinder:        ef,
 		StopManagerFactory: smf,
-		Log: l,
+		Log:                l,
 	}
 }
 
@@ -37,10 +36,7 @@ type StopController struct {
 
 func (c *StopController) StopDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
-	if cf.UUID == "" {
-		cf.UUID = randomizer.StringRunes(10)
-	}
-	c.Log.Debugf("Preparing to stop %s with UUID %s", cf.Application, cf.UUID)
+	c.Log.Debugf("Preparing to stop %s with UUID %s", cf.Application, c.Log.UUID)
 
 	if data == nil {
 		data = make(map[string]interface{})
@@ -67,7 +63,7 @@ func (c *StopController) StopDeployment(deployment *I.Deployment, data map[strin
 		Space:        cf.Space,
 		AppName:      cf.Application,
 		Environment:  cf.Environment,
-		UUID:         cf.UUID,
+		UUID:         c.Log.UUID,
 		Domain:       environment.Domain,
 		SkipSSL:      environment.SkipSSL,
 		CustomParams: environment.CustomParams,

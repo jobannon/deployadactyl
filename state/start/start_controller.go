@@ -18,15 +18,14 @@ type StartControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer
 
 func NewStartController(l I.DeploymentLogger, d I.Deployer, c config.Config, em I.EventManager, ef I.ErrorFinder, smf I.StartManagerFactory) I.StartController {
 	return &StartController{
-		Deployer: d,
-		Config: c,
-		EventManager: em,
-		ErrorFinder: ef,
+		Deployer:            d,
+		Config:              c,
+		EventManager:        em,
+		ErrorFinder:         ef,
 		StartManagerFactory: smf,
-		Log: l,
+		Log:                 l,
 	}
 }
-
 
 // StartController is used to determine the type of request and process it accordingly.
 type StartController struct {
@@ -40,10 +39,7 @@ type StartController struct {
 
 func (c *StartController) StartDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
-	if cf.UUID == "" {
-		cf.UUID = c.Log.UUID
-	}
-	c.Log.Debugf("Preparing to start %s with UUID %s", cf.Application, cf.UUID)
+	c.Log.Debugf("Preparing to start %s with UUID %s", cf.Application, c.Log.UUID)
 
 	if data == nil {
 		data = make(map[string]interface{})
@@ -70,7 +66,7 @@ func (c *StartController) StartDeployment(deployment *I.Deployment, data map[str
 		Space:        cf.Space,
 		AppName:      cf.Application,
 		Environment:  cf.Environment,
-		UUID:         cf.UUID,
+		UUID:         c.Log.UUID,
 		Domain:       environment.Domain,
 		SkipSSL:      environment.SkipSSL,
 		CustomParams: environment.CustomParams,

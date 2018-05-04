@@ -3,12 +3,12 @@ package start
 import (
 	"io"
 
+	"fmt"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
 	S "github.com/compozed/deployadactyl/structs"
 	"net/http"
-	"fmt"
 	"regexp"
 )
 
@@ -44,10 +44,10 @@ func (a StartManager) OnFinish(env S.Environment, response io.ReadWriter, err er
 				Error:      err,
 			}
 		}
-		return I.DeployResponse {
-			Error: err,
+		return I.DeployResponse{
+			Error:      err,
 			StatusCode: http.StatusInternalServerError,
-			}
+		}
 	}
 
 	a.Logger.Infof("successfully started application %s", a.DeployEventData.DeploymentInfo.AppName)
@@ -71,7 +71,6 @@ func (a StartManager) Create(environment S.Environment, response io.ReadWriter, 
 			Organization: a.DeployEventData.DeploymentInfo.Org,
 			Space:        a.DeployEventData.DeploymentInfo.Space,
 			Application:  a.DeployEventData.DeploymentInfo.AppName,
-			UUID:         a.DeployEventData.DeploymentInfo.UUID,
 			SkipSSL:      a.DeployEventData.DeploymentInfo.SkipSSL,
 		},
 		Authorization: I.Authorization{

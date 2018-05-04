@@ -87,23 +87,6 @@ var _ = Describe("StopDeployment", func() {
 			Expect(deploymentResponse.DeploymentInfo.UUID).ShouldNot(BeEmpty())
 		})
 	})
-	Context("When UUID is provided", func() {
-		It("Should return UUID", func() {
-
-			deployment := &I.Deployment{
-				CFContext: I.CFContext{
-					UUID:        "myUUID",
-					Environment: environment,
-				},
-			}
-			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StopDeployment(deployment, nil, response)
-
-			Expect(deploymentResponse.DeploymentInfo.UUID).ShouldNot(BeEmpty())
-			Expect(deploymentResponse.DeploymentInfo.UUID).Should(Equal("myUUID"))
-
-		})
-	})
 	It("Should return org, space, appname, and environment when provided", func() {
 
 		deployment := &I.Deployment{
@@ -147,7 +130,6 @@ var _ = Describe("StopDeployment", func() {
 					Space:        "mySpace",
 					Application:  "myApp",
 					Environment:  environment,
-					UUID:         "myUUID",
 				},
 			}
 			data := make(map[string]interface{})
@@ -156,7 +138,6 @@ var _ = Describe("StopDeployment", func() {
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(StopStartedEvent{})))
 			stopEvent := eventManager.EmitEventCall.Received.Events[0].(StopStartedEvent)
-			Expect(stopEvent.CFContext.UUID).Should(Equal("myUUID"))
 			Expect(stopEvent.CFContext.Space).Should(Equal("mySpace"))
 			Expect(stopEvent.CFContext.Application).Should(Equal("myApp"))
 			Expect(stopEvent.CFContext.Environment).Should(Equal(environment))
@@ -360,7 +341,6 @@ var _ = Describe("StopDeployment", func() {
 						Space:        "mySpace",
 						Application:  "myApp",
 						Environment:  environment,
-						UUID:         "myUUID",
 					},
 					Authorization: I.Authorization{
 						Username: "myUser",
@@ -379,7 +359,6 @@ var _ = Describe("StopDeployment", func() {
 				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(StopSuccessEvent{})))
 				stopSuccessEvent := eventManager.EmitEventCall.Received.Events[1].(StopSuccessEvent)
 
-				Expect(stopSuccessEvent.CFContext.UUID).Should(Equal("myUUID"))
 				Expect(stopSuccessEvent.CFContext.Space).Should(Equal("mySpace"))
 				Expect(stopSuccessEvent.CFContext.Application).Should(Equal("myApp"))
 				Expect(stopSuccessEvent.CFContext.Environment).Should(Equal(environment))
@@ -397,7 +376,6 @@ var _ = Describe("StopDeployment", func() {
 						Space:        "mySpace",
 						Application:  "myApp",
 						Environment:  environment,
-						UUID:         "myUUID",
 					},
 				}
 				data := make(map[string]interface{})
@@ -406,7 +384,6 @@ var _ = Describe("StopDeployment", func() {
 
 				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(StopStartedEvent{})))
 				stopEvent := eventManager.EmitEventCall.Received.Events[0].(StopStartedEvent)
-				Expect(stopEvent.CFContext.UUID).Should(Equal("myUUID"))
 				Expect(stopEvent.CFContext.Space).Should(Equal("mySpace"))
 				Expect(stopEvent.CFContext.Application).Should(Equal("myApp"))
 				Expect(stopEvent.CFContext.Environment).Should(Equal(environment))
@@ -452,7 +429,6 @@ var _ = Describe("StopDeployment", func() {
 					Space:        "mySpace",
 					Application:  "myApp",
 					Environment:  environment,
-					UUID:         "myUUID",
 				},
 				Authorization: I.Authorization{
 					Username: "myUser",
@@ -472,7 +448,6 @@ var _ = Describe("StopDeployment", func() {
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(StopFailureEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[1].(StopFailureEvent)
 
-			Expect(event.CFContext.UUID).Should(Equal("myUUID"))
 			Expect(event.CFContext.Space).Should(Equal("mySpace"))
 			Expect(event.CFContext.Application).Should(Equal("myApp"))
 			Expect(event.CFContext.Environment).Should(Equal(environment))
@@ -523,7 +498,6 @@ var _ = Describe("StopDeployment", func() {
 					Space:        "mySpace",
 					Application:  "myApp",
 					Environment:  environment,
-					UUID:         "myUUID",
 				},
 				Authorization: I.Authorization{
 					Username: "myUser",
@@ -542,7 +516,6 @@ var _ = Describe("StopDeployment", func() {
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[2])).To(Equal(reflect.TypeOf(StopFinishedEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[2].(StopFinishedEvent)
 
-			Expect(event.CFContext.UUID).Should(Equal("myUUID"))
 			Expect(event.CFContext.Space).Should(Equal("mySpace"))
 			Expect(event.CFContext.Application).Should(Equal("myApp"))
 			Expect(event.CFContext.Environment).Should(Equal(environment))

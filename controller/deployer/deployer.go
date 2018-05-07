@@ -80,16 +80,14 @@ type Deployer struct {
 
 func (d Deployer) Deploy(deploymentInfo *S.DeploymentInfo, env S.Environment, actionCreator I.ActionCreator, response io.ReadWriter) *I.DeployResponse {
 
-	deploymentLogger := I.DeploymentLogger{d.Log, deploymentInfo.UUID}
-
 	deployResponse := &I.DeployResponse{
 		DeploymentInfo: deploymentInfo,
 	}
 
-	deploymentLogger.Debug("prechecking the foundations")
+	d.Log.Debug("prechecking the foundations")
 	err := d.Prechecker.AssertAllFoundationsUp(env)
 	if err != nil {
-		deploymentLogger.Error(err)
+		d.Log.Error(err)
 		deployResponse.StatusCode = http.StatusInternalServerError
 		deployResponse.Error = err
 		return deployResponse

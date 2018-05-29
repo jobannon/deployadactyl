@@ -10,10 +10,10 @@ import (
 	"github.com/op/go-logging"
 
 	"fmt"
+	"github.com/compozed/deployadactyl/interfaces"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
-	"github.com/compozed/deployadactyl/interfaces"
 )
 
 var _ = Describe("Bluegreen", func() {

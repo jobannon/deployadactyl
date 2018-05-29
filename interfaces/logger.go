@@ -35,7 +35,7 @@ func DefaultLogger(out io.Writer, level logging.Level, module string) Logger {
 }
 
 type DeploymentLogger struct {
-	Log Logger
+	Log  Logger
 	UUID string
 }
 

@@ -34,8 +34,8 @@ var _ = Describe("Controller", func() {
 		startController *mocks.StartController
 		pushController  *mocks.PushController
 
-		controller      *Controller
-		logBuffer       *Buffer
+		controller *Controller
+		logBuffer  *Buffer
 
 		appName     string
 		environment string
@@ -63,8 +63,8 @@ var _ = Describe("Controller", func() {
 
 		errorFinder = &mocks.ErrorFinder{}
 		controller = &Controller{
-			Log:             I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
-			StopControllerFactory:  func(log I.DeploymentLogger) I.StopController {
+			Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
+			StopControllerFactory: func(log I.DeploymentLogger) I.StopController {
 				return stopController
 			},
 			StartControllerFactory: func(log I.DeploymentLogger) I.StartController {
@@ -73,9 +73,9 @@ var _ = Describe("Controller", func() {
 			PushControllerFactory: func(log I.DeploymentLogger) I.PushController {
 				return pushController
 			},
-			EventManager:    eventManager,
-			Config:          config.Config{},
-			ErrorFinder:     errorFinder,
+			EventManager: eventManager,
+			Config:       config.Config{},
+			ErrorFinder:  errorFinder,
 		}
 	})
 

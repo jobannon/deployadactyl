@@ -11,8 +11,8 @@ import (
 	"github.com/op/go-logging"
 
 	. "github.com/compozed/deployadactyl/artifetcher/extractor"
-	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/randomizer"
 )
 
 const deployadactylManifest = `---

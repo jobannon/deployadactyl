@@ -10,7 +10,7 @@ type PushManagerFactory struct {
 	PushManagerCall struct {
 		Called   bool
 		Received struct {
-			Log interfaces.DeploymentLogger
+			Log             interfaces.DeploymentLogger
 			DeployEventData structs.DeployEventData
 			CFContext       interfaces.CFContext
 			Auth            interfaces.Authorization
@@ -41,7 +41,7 @@ type StopManagerFactory struct {
 	StopManagerCall struct {
 		Called   bool
 		Received struct {
-			Log interfaces.DeploymentLogger
+			Log             interfaces.DeploymentLogger
 			DeployEventData structs.DeployEventData
 		}
 		Returns struct {
@@ -50,7 +50,7 @@ type StopManagerFactory struct {
 	}
 }
 
-func (s *StopManagerFactory) StopManager(log interfaces.DeploymentLogger,DeployEventData structs.DeployEventData) interfaces.ActionCreator {
+func (s *StopManagerFactory) StopManager(log interfaces.DeploymentLogger, DeployEventData structs.DeployEventData) interfaces.ActionCreator {
 	s.StopManagerCall.Called = true
 	s.StopManagerCall.Received.Log = log
 	s.StopManagerCall.Received.DeployEventData = DeployEventData
@@ -62,7 +62,7 @@ type StartManagerFactory struct {
 	StartManagerCall struct {
 		Called   bool
 		Received struct {
-			Log interfaces.DeploymentLogger
+			Log             interfaces.DeploymentLogger
 			DeployEventData structs.DeployEventData
 		}
 		Returns struct {

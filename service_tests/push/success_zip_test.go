@@ -7,15 +7,15 @@ import (
 	"net/http/httptest"
 	"os"
 
-	"github.com/compozed/deployadactyl/mocks"
-	"github.com/compozed/deployadactyl/randomizer"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/compozed/deployadactyl/creator"
 	"github.com/compozed/deployadactyl/interfaces"
-	"reflect"
+	"github.com/compozed/deployadactyl/mocks"
+	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/state/push"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"io"
+	"reflect"
 )
 
 const (
@@ -45,17 +45,17 @@ var _ = Describe("Service", func() {
 
 	var (
 		deployadactylServer *httptest.Server
-		prechecker *mocks.Prechecker
-		eventManager *mocks.EventManager
-		provider creator.CreatorModuleProvider
+		prechecker          *mocks.Prechecker
+		eventManager        *mocks.EventManager
+		provider            creator.CreatorModuleProvider
 
-		couriers []*mocks.Courier
+		couriers     []*mocks.Courier
 		responseBody []byte
-		response *http.Response
-		org = randomizer.StringRunes(10)
-		space = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
-		appName = randomizer.StringRunes(10)
-		body io.Reader
+		response     *http.Response
+		org          = randomizer.StringRunes(10)
+		space        = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
+		appName      = randomizer.StringRunes(10)
+		body         io.Reader
 	)
 
 	BeforeEach(func() {
@@ -129,7 +129,7 @@ var _ = Describe("Service", func() {
 	It("calls courier push with correct info", func() {
 		for _, c := range couriers {
 			Expect(c.PushCall.Received.AppPath).To(ContainSubstring("/deployadactyl-"))
-			Expect(c.PushCall.Received.AppName).To(ContainSubstring(appName+"-new-build-"))
+			Expect(c.PushCall.Received.AppName).To(ContainSubstring(appName + "-new-build-"))
 			Expect(c.PushCall.Received.Instances).To(Equal(uint16(1)))
 			Expect(c.PushCall.Received.Hostname).To(Equal(appName))
 		}
@@ -157,7 +157,7 @@ var _ = Describe("Service", func() {
 	It("maps the new application routes", func() {
 		for _, c := range couriers {
 			Expect(len(c.MapRouteCall.Received.AppName)).To(Equal(1))
-			Expect(c.MapRouteCall.Received.AppName[0]).To(ContainSubstring(appName+"-new-build-"))
+			Expect(c.MapRouteCall.Received.AppName[0]).To(ContainSubstring(appName + "-new-build-"))
 			Expect(c.MapRouteCall.Received.Domain[0]).To(Equal("example.com"))
 			Expect(c.MapRouteCall.Received.Hostname[0]).To(Equal(appName))
 		}
@@ -176,7 +176,7 @@ var _ = Describe("Service", func() {
 	})
 	It("renames the new app", func() {
 		for _, c := range couriers {
-			Expect(c.RenameCall.Received.AppName).To(ContainSubstring(appName+"-new-build-"))
+			Expect(c.RenameCall.Received.AppName).To(ContainSubstring(appName + "-new-build-"))
 			Expect(c.RenameCall.Received.AppNameVenerable).To(Equal(appName))
 		}
 	})

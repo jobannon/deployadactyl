@@ -16,13 +16,14 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
-	"net/http"
 	"io/ioutil"
+	"net/http"
 )
 
 type courierCreator struct {
 	CourierCreatorFn func() (interfaces.Courier, error)
 }
+
 func (c courierCreator) CreateCourier() (interfaces.Courier, error) {
 	if c.CourierCreatorFn != nil {
 		return c.CourierCreatorFn()
@@ -45,7 +46,7 @@ var _ = Describe("Startmanager", func() {
 		response     io.ReadWriter
 		startManager interfaces.ActionCreator
 		creator      *courierCreator
-		logBuffer   *gbytes.Buffer
+		logBuffer    *gbytes.Buffer
 	)
 	BeforeEach(func() {
 

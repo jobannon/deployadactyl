@@ -129,7 +129,7 @@ applications:
 applications:
 - name: "blah"
   instances: 2`
-  					pusherCreator.SetUp()
+					pusherCreator.SetUp()
 
 					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).To(Equal(reflect.TypeOf(ArtifactRetrievalStartEvent{})))
 				})

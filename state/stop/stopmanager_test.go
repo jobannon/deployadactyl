@@ -22,6 +22,7 @@ import (
 type courierCreator struct {
 	CourierCreatorFn func() (interfaces.Courier, error)
 }
+
 func (c courierCreator) CreateCourier() (interfaces.Courier, error) {
 	if c.CourierCreatorFn != nil {
 		return c.CourierCreatorFn()

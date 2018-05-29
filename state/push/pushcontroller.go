@@ -17,9 +17,9 @@ import (
 	"os"
 )
 
-type PushControllerConstructor func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory) I.PushController
+type PushControllerConstructor func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, resolver I.AuthResolver) I.PushController
 
-func NewPushController(l I.DeploymentLogger, d, sd I.Deployer, c config.Config, em I.EventManager, ef I.ErrorFinder, pmf I.PushManagerFactory) I.PushController {
+func NewPushController(l I.DeploymentLogger, d, sd I.Deployer, c config.Config, em I.EventManager, ef I.ErrorFinder, pmf I.PushManagerFactory, resolver I.AuthResolver) I.PushController {
 	return &PushController{
 		Deployer:           d,
 		SilentDeployer:     sd,
@@ -28,6 +28,7 @@ func NewPushController(l I.DeploymentLogger, d, sd I.Deployer, c config.Config, 
 		ErrorFinder:        ef,
 		PushManagerFactory: pmf,
 		Log:                l,
+		AuthResolver:       resolver,
 	}
 }
 
@@ -39,6 +40,7 @@ type PushController struct {
 	EventManager       I.EventManager
 	ErrorFinder        I.ErrorFinder
 	PushManagerFactory I.PushManagerFactory
+	AuthResolver       I.AuthResolver
 }
 
 // PUSH specific
@@ -78,7 +80,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 			Error:      err,
 		}
 	}
-	auth, err := c.resolveAuthorization(deployment.Authorization, environment, c.Log)
+	auth, err := c.AuthResolver.Resolve(deployment.Authorization, environment, c.Log)
 	if err != nil {
 		return I.DeployResponse{
 			StatusCode: http.StatusUnauthorized,

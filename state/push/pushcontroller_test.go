@@ -11,6 +11,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state"
 	"github.com/compozed/deployadactyl/state/push"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/go-errors/errors"
@@ -34,6 +35,7 @@ var _ = Describe("RunDeployment", func() {
 		errorFinder        *mocks.ErrorFinder
 		controller         *push.PushController
 		deployment         I.Deployment
+		authResolver       *state.AuthResolver
 		logBuffer          *Buffer
 
 		appName     string
@@ -58,6 +60,9 @@ var _ = Describe("RunDeployment", func() {
 		silentDeployer = &mocks.Deployer{}
 		pushManagerFactory = &mocks.PushManagerFactory{}
 
+		config := config.Config{}
+		authResolver = &state.AuthResolver{Config: config}
+
 		errorFinder = &mocks.ErrorFinder{}
 		controller = &push.PushController{
 			Deployer:           deployer,
@@ -65,8 +70,9 @@ var _ = Describe("RunDeployment", func() {
 			Log:                I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"), UUID: uuid},
 			PushManagerFactory: pushManagerFactory,
 			EventManager:       eventManager,
-			Config:             config.Config{},
+			Config:             config,
 			ErrorFinder:        errorFinder,
+			AuthResolver:       authResolver,
 		}
 
 		environments := map[string]structs.Environment{}
@@ -406,11 +412,13 @@ var _ = Describe("RunDeployment", func() {
 							deployment.Authorization.Password = ""
 							controller.Config.Username = "username-" + randomizer.StringRunes(10)
 							controller.Config.Password = "password-" + randomizer.StringRunes(10)
+							authResolver.Config.Username = controller.Config.Username
+							authResolver.Config.Password = controller.Config.Password
 
 							controller.RunDeployment(&deployment, response)
 
-							Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Username).Should(Equal(controller.Config.Username))
-							Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Password).Should(Equal(controller.Config.Password))
+							Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Username).Should(Equal(authResolver.Config.Username))
+							Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Password).Should(Equal(authResolver.Config.Password))
 						})
 					})
 					Context("and authentication is required", func() {

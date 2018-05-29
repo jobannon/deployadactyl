@@ -22,6 +22,7 @@ import (
 	"github.com/compozed/deployadactyl/eventmanager/handlers/routemapper"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state"
 	"github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/compozed/deployadactyl/structs"
@@ -49,6 +50,7 @@ type CreatorModuleProvider struct {
 	NewPushController  push.PushControllerConstructor
 	NewStartController start.StartControllerConstructor
 	NewStopController  stop.StopControllerConstructor
+	NewAuthResolver    state.AuthResolverConstructor
 }
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
@@ -168,12 +170,18 @@ func (c Creator) CreateController() I.Controller {
 		ErrorFinder:            c.createErrorFinder(),
 	}
 }
+func (c Creator) CreateAuthResolver() I.AuthResolver {
+	if c.provider.NewAuthResolver != nil {
+		return c.provider.NewAuthResolver(c.CreateConfig())
+	}
+	return state.NewAuthResolver(c.CreateConfig())
+}
 
 func (c Creator) CreatePushController(log I.DeploymentLogger) I.PushController {
 	if c.provider.NewPushController != nil {
-		return c.provider.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+		return c.provider.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver())
 	}
-	return push.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+	return push.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver())
 }
 
 func (c Creator) CreateStopController(log I.DeploymentLogger) I.StopController {

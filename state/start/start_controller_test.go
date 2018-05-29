@@ -14,6 +14,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state"
 	. "github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/structs"
 	. "github.com/onsi/ginkgo"
@@ -31,6 +32,7 @@ var _ = Describe("StartDeployment", func() {
 		deployment          I.Deployment
 		logBuffer           *Buffer
 		deployer            *mocks.Deployer
+		authResolver        *state.AuthResolver
 		uuid                string
 
 		appName     string
@@ -54,6 +56,8 @@ var _ = Describe("StartDeployment", func() {
 		startManagerFactory = &mocks.StartManagerFactory{}
 		errorFinder = &mocks.ErrorFinder{}
 
+		authResolver = &state.AuthResolver{Config: config.Config{}}
+
 		controller = &StartController{
 			Log:                 I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"), UUID: uuid},
 			Deployer:            deployer,
@@ -61,6 +65,7 @@ var _ = Describe("StartDeployment", func() {
 			EventManager:        eventManager,
 			Config:              config.Config{},
 			ErrorFinder:         errorFinder,
+			AuthResolver:        authResolver,
 		}
 		environments := map[string]structs.Environment{}
 		environments[environment] = structs.Environment{}
@@ -222,10 +227,11 @@ var _ = Describe("StartDeployment", func() {
 				Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.BasicAuthError{})))
 			})
 		})
+
 		Context("When environment authenticate is false", func() {
 			It("Should username and password using the config", func() {
-				controller.Config.Username = "username"
-				controller.Config.Password = "password"
+				authResolver.Config.Username = "username"
+				authResolver.Config.Password = "password"
 				controller.Config.Environments[environment] = structs.Environment{
 					Authenticate: false,
 				}

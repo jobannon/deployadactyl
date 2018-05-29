@@ -186,16 +186,16 @@ func (c Creator) CreatePushController(log I.DeploymentLogger) I.PushController {
 
 func (c Creator) CreateStopController(log I.DeploymentLogger) I.StopController {
 	if c.provider.NewStopController != nil {
-		return c.provider.NewStopController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+		return c.provider.NewStopController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver())
 	}
-	return stop.NewStopController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+	return stop.NewStopController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver())
 }
 
 func (c Creator) CreateStartController(log I.DeploymentLogger) I.StartController {
 	if c.provider.NewStartController != nil {
-		return c.provider.NewStartController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+		return c.provider.NewStartController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver())
 	}
-	return start.NewStartController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+	return start.NewStartController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver())
 }
 
 func (c Creator) createDeployer(log I.DeploymentLogger) I.Deployer {

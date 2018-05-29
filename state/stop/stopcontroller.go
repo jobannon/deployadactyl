@@ -12,9 +12,9 @@ import (
 	"net/http"
 )
 
-type StopControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory) I.StopController
+type StopControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, resolver I.AuthResolver) I.StopController
 
-func NewStopController(l I.DeploymentLogger, d I.Deployer, c config.Config, em I.EventManager, ef I.ErrorFinder, smf I.StopManagerFactory) I.StopController {
+func NewStopController(l I.DeploymentLogger, d I.Deployer, c config.Config, em I.EventManager, ef I.ErrorFinder, smf I.StopManagerFactory, resolver I.AuthResolver) I.StopController {
 	return &StopController{
 		Deployer:           d,
 		Config:             c,
@@ -22,6 +22,7 @@ func NewStopController(l I.DeploymentLogger, d I.Deployer, c config.Config, em I
 		ErrorFinder:        ef,
 		StopManagerFactory: smf,
 		Log:                l,
+		AuthResolver:       resolver,
 	}
 }
 
@@ -32,6 +33,7 @@ type StopController struct {
 	Config             config.Config
 	EventManager       I.EventManager
 	ErrorFinder        I.ErrorFinder
+	AuthResolver       I.AuthResolver
 }
 
 func (c *StopController) StopDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
@@ -50,7 +52,7 @@ func (c *StopController) StopDeployment(deployment *I.Deployment, data map[strin
 			Error:      err,
 		}
 	}
-	auth, err := c.resolveAuthorization(deployment.Authorization, environment, c.Log)
+	auth, err := c.AuthResolver.Resolve(deployment.Authorization, environment, c.Log)
 	if err != nil {
 		return I.DeployResponse{
 			StatusCode: http.StatusUnauthorized,

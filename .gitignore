@@ -9,3 +9,4 @@ config.yml
 .idea
 **/coverage.out
 artifetcher/fixtures/deployadactyl-fixture-unzipped
+service_tests/push/test_config.yml

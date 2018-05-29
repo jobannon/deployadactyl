@@ -60,8 +60,7 @@ var _ = Describe("RunDeployment", func() {
 		silentDeployer = &mocks.Deployer{}
 		pushManagerFactory = &mocks.PushManagerFactory{}
 
-		config := config.Config{}
-		authResolver = &state.AuthResolver{Config: config}
+		authResolver = &state.AuthResolver{Config: config.Config{}}
 
 		errorFinder = &mocks.ErrorFinder{}
 		controller = &push.PushController{
@@ -70,7 +69,7 @@ var _ = Describe("RunDeployment", func() {
 			Log:                I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"), UUID: uuid},
 			PushManagerFactory: pushManagerFactory,
 			EventManager:       eventManager,
-			Config:             config,
+			Config:             config.Config{},
 			ErrorFinder:        errorFinder,
 			AuthResolver:       authResolver,
 		}
@@ -410,10 +409,8 @@ var _ = Describe("RunDeployment", func() {
 
 							deployment.Authorization.Username = ""
 							deployment.Authorization.Password = ""
-							controller.Config.Username = "username-" + randomizer.StringRunes(10)
-							controller.Config.Password = "password-" + randomizer.StringRunes(10)
-							authResolver.Config.Username = controller.Config.Username
-							authResolver.Config.Password = controller.Config.Password
+							authResolver.Config.Username = "username-" + randomizer.StringRunes(10)
+							authResolver.Config.Password = "password-" + randomizer.StringRunes(10)
 
 							controller.RunDeployment(&deployment, response)
 

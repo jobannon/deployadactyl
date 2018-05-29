@@ -14,9 +14,9 @@ import (
 	"github.com/compozed/deployadactyl/structs"
 )
 
-type StartControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory) I.StartController
+type StartControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, resolver I.AuthResolver) I.StartController
 
-func NewStartController(l I.DeploymentLogger, d I.Deployer, c config.Config, em I.EventManager, ef I.ErrorFinder, smf I.StartManagerFactory) I.StartController {
+func NewStartController(l I.DeploymentLogger, d I.Deployer, c config.Config, em I.EventManager, ef I.ErrorFinder, smf I.StartManagerFactory, resolver I.AuthResolver) I.StartController {
 	return &StartController{
 		Deployer:            d,
 		Config:              c,
@@ -24,6 +24,7 @@ func NewStartController(l I.DeploymentLogger, d I.Deployer, c config.Config, em 
 		ErrorFinder:         ef,
 		StartManagerFactory: smf,
 		Log:                 l,
+		AuthResolver:        resolver,
 	}
 }
 
@@ -35,6 +36,7 @@ type StartController struct {
 	Config              config.Config
 	EventManager        I.EventManager
 	ErrorFinder         I.ErrorFinder
+	AuthResolver        I.AuthResolver
 }
 
 func (c *StartController) StartDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
@@ -53,7 +55,7 @@ func (c *StartController) StartDeployment(deployment *I.Deployment, data map[str
 			Error:      err,
 		}
 	}
-	auth, err := c.resolveAuthorization(deployment.Authorization, environment, c.Log)
+	auth, err := c.AuthResolver.Resolve(deployment.Authorization, environment, c.Log)
 	if err != nil {
 		return I.DeployResponse{
 			StatusCode: http.StatusUnauthorized,

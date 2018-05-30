@@ -36,6 +36,7 @@ var _ = Describe("RunDeployment", func() {
 		controller         *push.PushController
 		deployment         I.Deployment
 		authResolver       *state.AuthResolver
+		envResolver        *state.EnvResolver
 		logBuffer          *Buffer
 
 		appName     string
@@ -61,6 +62,7 @@ var _ = Describe("RunDeployment", func() {
 		pushManagerFactory = &mocks.PushManagerFactory{}
 
 		authResolver = &state.AuthResolver{Config: config.Config{}}
+		envResolver = &state.EnvResolver{Config: config.Config{}}
 
 		errorFinder = &mocks.ErrorFinder{}
 		controller = &push.PushController{
@@ -69,14 +71,15 @@ var _ = Describe("RunDeployment", func() {
 			Log:                I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"), UUID: uuid},
 			PushManagerFactory: pushManagerFactory,
 			EventManager:       eventManager,
-			Config:             config.Config{},
 			ErrorFinder:        errorFinder,
 			AuthResolver:       authResolver,
+			EnvResolver:        envResolver,
 		}
 
 		environments := map[string]structs.Environment{}
 		environments[environment] = structs.Environment{}
-		controller.Config.Environments = environments
+		envResolver.Config.Environments = environments
+
 		bodyByte := []byte("{}")
 		response = &bytes.Buffer{}
 
@@ -389,6 +392,7 @@ var _ = Describe("RunDeployment", func() {
 				Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Data["avalue"]).Should(Equal("the data"))
 			})
 		})
+
 		Context("the deployment info", func() {
 			Context("when environment does not exist", func() {
 				It("returns an error with StatusInternalServerError", func() {
@@ -401,6 +405,7 @@ var _ = Describe("RunDeployment", func() {
 				})
 			})
 			Context("when environment exists", func() {
+
 				Context("when Authorization doesn't have values", func() {
 					Context("and authentication is not required", func() {
 						It("returns username and password from the config", func() {
@@ -426,7 +431,7 @@ var _ = Describe("RunDeployment", func() {
 							deployment.Authorization.Username = ""
 							deployment.Authorization.Password = ""
 
-							controller.Config.Environments[environment] = structs.Environment{
+							envResolver.Config.Environments[environment] = structs.Environment{
 								Authenticate: true,
 							}
 
@@ -437,6 +442,7 @@ var _ = Describe("RunDeployment", func() {
 						})
 					})
 				})
+
 				Context("when Authorization has values", func() {
 					It("logs checking auth", func() {
 						deployment.CFContext.Environment = environment
@@ -459,6 +465,7 @@ var _ = Describe("RunDeployment", func() {
 						Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Password).Should(Equal(deployment.Authorization.Password))
 					})
 				})
+
 				It("has the correct org, space ,appname, env, uuid", func() {
 					deployment.CFContext.Environment = environment
 					deployment.Type.ZIP = true
@@ -533,7 +540,7 @@ var _ = Describe("RunDeployment", func() {
 					deployment.Authorization.Password = ""
 					deployment.Type.ZIP = true
 
-					controller.Config.Environments[environment] = structs.Environment{
+					envResolver.Config.Environments[environment] = structs.Environment{
 						Domain:  domain,
 						SkipSSL: true,
 					}
@@ -552,7 +559,7 @@ var _ = Describe("RunDeployment", func() {
 					customParams["param1"] = "value1"
 					customParams["param2"] = "value2"
 
-					controller.Config.Environments[environment] = structs.Environment{
+					envResolver.Config.Environments[environment] = structs.Environment{
 						CustomParams: customParams,
 					}
 
@@ -712,7 +719,7 @@ var _ = Describe("RunDeployment", func() {
 					It("passes other info to EmitEvent", func() {
 						deployment.CFContext.Environment = environment
 
-						controller.Config.Environments[environment] = structs.Environment{
+						envResolver.Config.Environments[environment] = structs.Environment{
 							Name: environment,
 						}
 
@@ -793,7 +800,7 @@ var _ = Describe("RunDeployment", func() {
 					It("passes other info to EmitEvent", func() {
 						deployment.CFContext.Environment = environment
 
-						controller.Config.Environments[environment] = structs.Environment{
+						envResolver.Config.Environments[environment] = structs.Environment{
 							Name: environment,
 						}
 
@@ -897,7 +904,7 @@ var _ = Describe("RunDeployment", func() {
 					It("passes other info to EmitEvent", func() {
 						deployment.CFContext.Environment = environment
 
-						controller.Config.Environments[environment] = structs.Environment{
+						envResolver.Config.Environments[environment] = structs.Environment{
 							Name: environment,
 						}
 
@@ -1012,7 +1019,7 @@ var _ = Describe("RunDeployment", func() {
 					})
 					It("passes other info to EmitEvent", func() {
 						deployment.CFContext.Environment = environment
-						controller.Config.Environments[environment] = structs.Environment{
+						envResolver.Config.Environments[environment] = structs.Environment{
 							Name: environment,
 						}
 						deployment.Type.ZIP = true

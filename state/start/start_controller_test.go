@@ -33,6 +33,7 @@ var _ = Describe("StartDeployment", func() {
 		logBuffer           *Buffer
 		deployer            *mocks.Deployer
 		authResolver        *state.AuthResolver
+		envResolver         *state.EnvResolver
 		uuid                string
 
 		appName     string
@@ -57,19 +58,21 @@ var _ = Describe("StartDeployment", func() {
 		errorFinder = &mocks.ErrorFinder{}
 
 		authResolver = &state.AuthResolver{Config: config.Config{}}
+		envResolver = &state.EnvResolver{Config: config.Config{}}
 
 		controller = &StartController{
 			Log:                 I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"), UUID: uuid},
 			Deployer:            deployer,
 			StartManagerFactory: startManagerFactory,
 			EventManager:        eventManager,
-			Config:              config.Config{},
 			ErrorFinder:         errorFinder,
 			AuthResolver:        authResolver,
+			EnvResolver:         envResolver,
 		}
 		environments := map[string]structs.Environment{}
 		environments[environment] = structs.Environment{}
-		controller.Config.Environments = environments
+		envResolver.Config.Environments = environments
+
 		bodyByte := []byte("{}")
 		response = &bytes.Buffer{}
 
@@ -191,12 +194,12 @@ var _ = Describe("StartDeployment", func() {
 	Context("When environment exists", func() {
 		It("Should return SkipSSL, CustomParams, and Domain", func() {
 
-			controller.Config.Environments[environment] = structs.Environment{
+			envResolver.Config.Environments[environment] = structs.Environment{
 				SkipSSL:      true,
 				Domain:       "myDomain",
 				CustomParams: make(map[string]interface{}),
 			}
-			controller.Config.Environments[environment].CustomParams["customName"] = "customParams"
+			envResolver.Config.Environments[environment].CustomParams["customName"] = "customParams"
 
 			deployment := &I.Deployment{
 				CFContext: I.CFContext{
@@ -214,7 +217,7 @@ var _ = Describe("StartDeployment", func() {
 	Context("When auth does not exist", func() {
 		Context("When environment authenticate is true", func() {
 			It("Should return error", func() {
-				controller.Config.Environments[environment] = structs.Environment{
+				envResolver.Config.Environments[environment] = structs.Environment{
 					Authenticate: true,
 				}
 				deployment := &I.Deployment{
@@ -232,7 +235,7 @@ var _ = Describe("StartDeployment", func() {
 			It("Should username and password using the config", func() {
 				authResolver.Config.Username = "username"
 				authResolver.Config.Password = "password"
-				controller.Config.Environments[environment] = structs.Environment{
+				envResolver.Config.Environments[environment] = structs.Environment{
 					Authenticate: false,
 				}
 				deployment := &I.Deployment{
@@ -350,7 +353,7 @@ var _ = Describe("StartDeployment", func() {
 				response := bytes.NewBuffer([]byte{})
 				data := make(map[string]interface{})
 				data["mykey"] = "first value"
-				controller.Config.Environments[environment] = structs.Environment{
+				envResolver.Config.Environments[environment] = structs.Environment{
 					Name:         environment,
 					Authenticate: true,
 				}
@@ -441,7 +444,7 @@ var _ = Describe("StartDeployment", func() {
 			response := bytes.NewBuffer([]byte{})
 			data := make(map[string]interface{})
 			data["mykey"] = "first value"
-			controller.Config.Environments[environment] = structs.Environment{
+			envResolver.Config.Environments[environment] = structs.Environment{
 				Name:         environment,
 				Authenticate: true,
 			}
@@ -513,7 +516,7 @@ var _ = Describe("StartDeployment", func() {
 			response := bytes.NewBuffer([]byte{})
 			data := make(map[string]interface{})
 			data["mykey"] = "first value"
-			controller.Config.Environments[environment] = structs.Environment{
+			envResolver.Config.Environments[environment] = structs.Environment{
 				Name:         environment,
 				Authenticate: true,
 			}

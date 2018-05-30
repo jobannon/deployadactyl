@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
@@ -17,18 +16,18 @@ import (
 	"os"
 )
 
-type PushControllerConstructor func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, resolver I.AuthResolver) I.PushController
+type PushControllerConstructor func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.PushController
 
-func NewPushController(l I.DeploymentLogger, d, sd I.Deployer, c config.Config, em I.EventManager, ef I.ErrorFinder, pmf I.PushManagerFactory, resolver I.AuthResolver) I.PushController {
+func NewPushController(l I.DeploymentLogger, d, sd I.Deployer, em I.EventManager, ef I.ErrorFinder, pmf I.PushManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.PushController {
 	return &PushController{
 		Deployer:           d,
 		SilentDeployer:     sd,
-		Config:             c,
 		EventManager:       em,
 		ErrorFinder:        ef,
 		PushManagerFactory: pmf,
 		Log:                l,
 		AuthResolver:       resolver,
+		EnvResolver:        envResolver,
 	}
 }
 
@@ -36,11 +35,11 @@ type PushController struct {
 	Deployer           I.Deployer
 	SilentDeployer     I.Deployer
 	Log                I.DeploymentLogger
-	Config             config.Config
 	EventManager       I.EventManager
 	ErrorFinder        I.ErrorFinder
 	PushManagerFactory I.PushManagerFactory
 	AuthResolver       I.AuthResolver
+	EnvResolver        I.EnvResolver
 }
 
 // PUSH specific
@@ -72,7 +71,8 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 			Error:      deployer.InvalidContentTypeError{},
 		}
 	}
-	environment, err := c.resolveEnvironment(cf.Environment)
+
+	environment, err := c.EnvResolver.Resolve(cf.Environment)
 	if err != nil {
 		fmt.Fprintln(response, err.Error())
 		return I.DeployResponse{
@@ -80,6 +80,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 			Error:      err,
 		}
 	}
+
 	auth, err := c.AuthResolver.Resolve(deployment.Authorization, environment, c.Log)
 	if err != nil {
 		return I.DeployResponse{
@@ -189,30 +190,6 @@ func (c *PushController) getDeploymentInfo(body *[]byte, deploymentInfo *structs
 		return &structs.DeploymentInfo{}, err
 	}
 	return deploymentInfo, nil
-}
-
-func (c *PushController) resolveAuthorization(auth I.Authorization, envs structs.Environment, deploymentLogger I.DeploymentLogger) (I.Authorization, error) {
-	config := c.Config
-	deploymentLogger.Debug("checking for basic auth")
-	if auth.Username == "" && auth.Password == "" {
-		if envs.Authenticate {
-			return I.Authorization{}, deployer.BasicAuthError{}
-
-		}
-		auth.Username = config.Username
-		auth.Password = config.Password
-	}
-
-	return auth, nil
-}
-
-func (c *PushController) resolveEnvironment(env string) (structs.Environment, error) {
-	config := c.Config
-	environment, ok := config.Environments[env]
-	if !ok {
-		return structs.Environment{}, deployer.EnvironmentNotFoundError{env}
-	}
-	return environment, nil
 }
 
 func (c *PushController) emitDeployFinish(deployEventData *structs.DeployEventData, response io.ReadWriter, cf I.CFContext, auth I.Authorization, environment structs.Environment, deployResponse *I.DeployResponse, deploymentLogger I.DeploymentLogger) {

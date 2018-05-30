@@ -78,7 +78,7 @@ var _ = Describe("Custom creator", func() {
 
 				expected := &mocks.PushController{}
 				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewPushController: func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, authResolver I.AuthResolver) I.PushController {
+					NewPushController: func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, authResolver I.AuthResolver, resolver I.EnvResolver) I.PushController {
 						return expected
 					},
 				})
@@ -103,11 +103,11 @@ var _ = Describe("Custom creator", func() {
 				Expect(concrete.Deployer).ToNot(BeNil())
 				Expect(concrete.SilentDeployer).ToNot(BeNil())
 				Expect(concrete.Log).ToNot(BeNil())
-				Expect(concrete.Config).ToNot(BeNil())
 				Expect(concrete.EventManager).ToNot(BeNil())
 				Expect(concrete.ErrorFinder).ToNot(BeNil())
 				Expect(concrete.PushManagerFactory).ToNot(BeNil())
 				Expect(concrete.AuthResolver).ToNot(BeNil())
+				Expect(concrete.EnvResolver).ToNot(BeNil())
 
 			})
 		})
@@ -165,7 +165,7 @@ var _ = Describe("Custom creator", func() {
 
 				expected := &mocks.StartController{}
 				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewStartController: func(log I.DeploymentLogger, deployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, startmanagerFactory I.StartManagerFactory, authResolver I.AuthResolver) I.StartController {
+					NewStartController: func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, startmanagerFactory I.StartManagerFactory, authResolver I.AuthResolver, envResolver I.EnvResolver) I.StartController {
 						return expected
 					},
 				})
@@ -188,7 +188,6 @@ var _ = Describe("Custom creator", func() {
 				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(&start.StartController{})))
 				concrete := controller.(*start.StartController)
 				Expect(concrete.Deployer).ToNot(BeNil())
-				Expect(concrete.Config).ToNot(BeNil())
 				Expect(concrete.EventManager).ToNot(BeNil())
 				Expect(concrete.ErrorFinder).ToNot(BeNil())
 				Expect(concrete.StartManagerFactory).ToNot(BeNil())
@@ -210,7 +209,7 @@ var _ = Describe("Custom creator", func() {
 
 				expected := &mocks.StopController{}
 				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewStopController: func(log I.DeploymentLogger, deployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, resolver I.AuthResolver) I.StopController {
+					NewStopController: func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StopController {
 						return expected
 					},
 				})
@@ -233,7 +232,6 @@ var _ = Describe("Custom creator", func() {
 				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(&stop.StopController{})))
 				concrete := controller.(*stop.StopController)
 				Expect(concrete.Deployer).ToNot(BeNil())
-				Expect(concrete.Config).ToNot(BeNil())
 				Expect(concrete.EventManager).ToNot(BeNil())
 				Expect(concrete.ErrorFinder).ToNot(BeNil())
 				Expect(concrete.StopManagerFactory).ToNot(BeNil())

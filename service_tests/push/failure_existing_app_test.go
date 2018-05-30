@@ -7,16 +7,16 @@ import (
 	"net/http/httptest"
 	"os"
 
-	"github.com/compozed/deployadactyl/mocks"
-	"github.com/compozed/deployadactyl/randomizer"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"errors"
 	"github.com/compozed/deployadactyl/creator"
 	"github.com/compozed/deployadactyl/interfaces"
-	"reflect"
+	"github.com/compozed/deployadactyl/mocks"
+	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/state/push"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"io"
-	"errors"
+	"reflect"
 )
 
 var _ = Describe("Service", func() {
@@ -39,17 +39,17 @@ environments:
 
 	var (
 		deployadactylServer *httptest.Server
-		prechecker *mocks.Prechecker
-		eventManager *mocks.EventManager
-		provider creator.CreatorModuleProvider
+		prechecker          *mocks.Prechecker
+		eventManager        *mocks.EventManager
+		provider            creator.CreatorModuleProvider
 
-		couriers []*mocks.Courier
+		couriers     []*mocks.Courier
 		responseBody []byte
-		response *http.Response
-		org = randomizer.StringRunes(10)
-		space = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
-		appName = randomizer.StringRunes(10)
-		body io.Reader
+		response     *http.Response
+		org          = randomizer.StringRunes(10)
+		space        = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
+		appName      = randomizer.StringRunes(10)
+		body         io.Reader
 	)
 
 	BeforeEach(func() {
@@ -126,7 +126,7 @@ environments:
 	It("calls courier push with correct info", func() {
 		for _, c := range couriers {
 			Expect(c.PushCall.Received.AppPath).To(ContainSubstring("/deployadactyl-"))
-			Expect(c.PushCall.Received.AppName).To(ContainSubstring(appName+"-new-build-"))
+			Expect(c.PushCall.Received.AppName).To(ContainSubstring(appName + "-new-build-"))
 			Expect(c.PushCall.Received.Instances).To(Equal(uint16(1)))
 			Expect(c.PushCall.Received.Hostname).To(Equal(appName))
 		}
@@ -163,7 +163,7 @@ environments:
 	})
 	It("deletes the new application", func() {
 		for _, c := range couriers {
-			Expect(c.DeleteCall.Received.AppName).To(ContainSubstring(appName+"-new-build-"))
+			Expect(c.DeleteCall.Received.AppName).To(ContainSubstring(appName + "-new-build-"))
 		}
 	})
 	It("calls Emit the correct number of times", func() {

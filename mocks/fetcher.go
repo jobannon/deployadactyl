@@ -22,9 +22,9 @@ type Fetcher struct {
 			Request io.Reader
 		}
 		Returns struct {
-			AppPath string
+			AppPath  string
 			Manifest string
-			Error   error
+			Error    error
 		}
 	}
 }

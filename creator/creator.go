@@ -22,6 +22,7 @@ import (
 	"github.com/compozed/deployadactyl/eventmanager/handlers/routemapper"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state"
 	"github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/compozed/deployadactyl/structs"
@@ -49,6 +50,8 @@ type CreatorModuleProvider struct {
 	NewPushController  push.PushControllerConstructor
 	NewStartController start.StartControllerConstructor
 	NewStopController  stop.StopControllerConstructor
+	NewAuthResolver    state.AuthResolverConstructor
+	NewEnvResolver     state.EnvResolverConstructor
 }
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
@@ -168,26 +171,39 @@ func (c Creator) CreateController() I.Controller {
 		ErrorFinder:            c.createErrorFinder(),
 	}
 }
+func (c Creator) CreateAuthResolver() I.AuthResolver {
+	if c.provider.NewAuthResolver != nil {
+		return c.provider.NewAuthResolver(c.CreateConfig())
+	}
+	return state.NewAuthResolver(c.CreateConfig())
+}
+
+func (c Creator) CreateEnvResolver() I.EnvResolver {
+	if c.provider.NewEnvResolver != nil {
+		return c.provider.NewEnvResolver(c.CreateConfig())
+	}
+	return state.NewEnvResolver(c.CreateConfig())
+}
 
 func (c Creator) CreatePushController(log I.DeploymentLogger) I.PushController {
 	if c.provider.NewPushController != nil {
-		return c.provider.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+		return c.provider.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
 	}
-	return push.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+	return push.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
 }
 
 func (c Creator) CreateStopController(log I.DeploymentLogger) I.StopController {
 	if c.provider.NewStopController != nil {
-		return c.provider.NewStopController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+		return c.provider.NewStopController(log, c.createDeployer(log), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
 	}
-	return stop.NewStopController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+	return stop.NewStopController(log, c.createDeployer(log), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
 }
 
 func (c Creator) CreateStartController(log I.DeploymentLogger) I.StartController {
 	if c.provider.NewStartController != nil {
-		return c.provider.NewStartController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+		return c.provider.NewStartController(log, c.createDeployer(log), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
 	}
-	return start.NewStartController(log, c.createDeployer(log), c.CreateConfig(), c.CreateEventManager(), c.createErrorFinder(), c)
+	return start.NewStartController(log, c.createDeployer(log), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
 }
 
 func (c Creator) createDeployer(log I.DeploymentLogger) I.Deployer {

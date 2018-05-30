@@ -7,9 +7,9 @@ import (
 	"os"
 
 	"github.com/compozed/deployadactyl/creator"
+	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state/push"
 	"github.com/op/go-logging"
-	"github.com/compozed/deployadactyl/interfaces"
 )
 
 const (

@@ -10,6 +10,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state"
 	. "github.com/compozed/deployadactyl/state/stop"
 	"github.com/compozed/deployadactyl/structs"
 	. "github.com/onsi/ginkgo"
@@ -29,6 +30,8 @@ var _ = Describe("StopDeployment", func() {
 		errorFinder        *mocks.ErrorFinder
 		controller         *StopController
 		deployment         I.Deployment
+		authResolver       *state.AuthResolver
+		envResolver        *state.EnvResolver
 		logBuffer          *Buffer
 
 		appName     string
@@ -49,6 +52,9 @@ var _ = Describe("StopDeployment", func() {
 		deployer = &mocks.Deployer{}
 		pushManagerFactory = &mocks.PushManagerFactory{}
 
+		authResolver = &state.AuthResolver{Config: config.Config{}}
+		envResolver = &state.EnvResolver{Config: config.Config{}}
+
 		stopManagerFactory = &mocks.StopManagerFactory{}
 		errorFinder = &mocks.ErrorFinder{}
 		controller = &StopController{
@@ -56,12 +62,13 @@ var _ = Describe("StopDeployment", func() {
 			Log:                I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"), UUID: randomizer.StringRunes(10)},
 			StopManagerFactory: stopManagerFactory,
 			EventManager:       eventManager,
-			Config:             config.Config{},
+			AuthResolver:       authResolver,
 			ErrorFinder:        errorFinder,
+			EnvResolver:        envResolver,
 		}
 		environments := map[string]structs.Environment{}
 		environments[environment] = structs.Environment{}
-		controller.Config.Environments = environments
+		envResolver.Config.Environments = environments
 		bodyByte := []byte("{}")
 		response = &bytes.Buffer{}
 
@@ -106,7 +113,6 @@ var _ = Describe("StopDeployment", func() {
 		Expect(deploymentResponse.DeploymentInfo.AppName).Should(Equal("myApp"))
 
 	})
-
 	It("Should log start of process", func() {
 
 		deployment := &I.Deployment{
@@ -122,6 +128,7 @@ var _ = Describe("StopDeployment", func() {
 		Expect(logBuffer).Should(Say(fmt.Sprintf("Preparing to stop %s with UUID %s", "myApp", deploymentResponse.DeploymentInfo.UUID)))
 
 	})
+
 	Context("When StopStartEvent succeeds", func() {
 		It("should emit a StopStarteEvent", func() {
 			deployment := &I.Deployment{
@@ -146,6 +153,7 @@ var _ = Describe("StopDeployment", func() {
 
 		})
 	})
+
 	Context("When StopStartEvent fails", func() {
 		It("should return error", func() {
 			eventManager.EmitEventCall.Returns.Error = []error{errors.New("anything")}
@@ -176,15 +184,16 @@ var _ = Describe("StopDeployment", func() {
 			Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.EnvironmentNotFoundError{})))
 		})
 	})
+
 	Context("When environment exists", func() {
 		It("Should return SkipSSL, CustomParams, and Domain", func() {
 
-			controller.Config.Environments[environment] = structs.Environment{
+			envResolver.Config.Environments[environment] = structs.Environment{
 				SkipSSL:      true,
 				Domain:       "myDomain",
 				CustomParams: make(map[string]interface{}),
 			}
-			controller.Config.Environments[environment].CustomParams["customName"] = "customParams"
+			envResolver.Config.Environments[environment].CustomParams["customName"] = "customParams"
 
 			deployment := &I.Deployment{
 				CFContext: I.CFContext{
@@ -198,10 +207,11 @@ var _ = Describe("StopDeployment", func() {
 			Expect(deploymentResponse.DeploymentInfo.CustomParams["customName"]).Should(Equal("customParams"))
 		})
 	})
+
 	Context("When auth does not exist", func() {
 		Context("When environment authenticate is true", func() {
 			It("Should return error", func() {
-				controller.Config.Environments[environment] = structs.Environment{
+				envResolver.Config.Environments[environment] = structs.Environment{
 					Authenticate: true,
 				}
 				deployment := &I.Deployment{
@@ -214,11 +224,12 @@ var _ = Describe("StopDeployment", func() {
 				Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.BasicAuthError{})))
 			})
 		})
+
 		Context("When environment authenticate is false", func() {
 			It("Should username and password using the config", func() {
-				controller.Config.Username = "username"
-				controller.Config.Password = "password"
-				controller.Config.Environments[environment] = structs.Environment{
+				authResolver.Config.Username = "username"
+				authResolver.Config.Password = "password"
+				envResolver.Config.Environments[environment] = structs.Environment{
 					Authenticate: false,
 				}
 				deployment := &I.Deployment{
@@ -230,10 +241,10 @@ var _ = Describe("StopDeployment", func() {
 
 				Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("username"))
 				Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("password"))
-
 			})
 		})
 	})
+
 	Context("When auth is provided", func() {
 		It("Should populate the deploymentInfo with the username and password", func() {
 			deployment := &I.Deployment{
@@ -251,6 +262,7 @@ var _ = Describe("StopDeployment", func() {
 			Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("myPassword"))
 		})
 	})
+
 	Context("When auth is provided", func() {
 		It("Should populate the deploymentInfo with the username and password", func() {
 			deployment := &I.Deployment{
@@ -314,7 +326,6 @@ var _ = Describe("StopDeployment", func() {
 		controller.StopDeployment(deployment, nil, response)
 		Expect(deployer.DeployCall.Received.ActionCreator).Should(Equal(manager))
 	})
-
 	It("should call deploy with the stop manager ", func() {
 		deployer.DeployCall.Returns.Error = errors.New("test error")
 		deployer.DeployCall.Returns.StatusCode = http.StatusOK
@@ -350,7 +361,7 @@ var _ = Describe("StopDeployment", func() {
 				response := bytes.NewBuffer([]byte{})
 				data := make(map[string]interface{})
 				data["mykey"] = "first value"
-				controller.Config.Environments[environment] = structs.Environment{
+				envResolver.Config.Environments[environment] = structs.Environment{
 					Name:         environment,
 					Authenticate: true,
 				}
@@ -408,6 +419,7 @@ var _ = Describe("StopDeployment", func() {
 		})
 
 	})
+
 	Context("when stop fails", func() {
 		It("print errors", func() {
 			deployment := &I.Deployment{
@@ -438,7 +450,7 @@ var _ = Describe("StopDeployment", func() {
 			response := bytes.NewBuffer([]byte{})
 			data := make(map[string]interface{})
 			data["mykey"] = "first value"
-			controller.Config.Environments[environment] = structs.Environment{
+			envResolver.Config.Environments[environment] = structs.Environment{
 				Name:         environment,
 				Authenticate: true,
 			}
@@ -477,6 +489,7 @@ var _ = Describe("StopDeployment", func() {
 		})
 
 	})
+
 	Context("when stop finishes", func() {
 		It("should log an emit StopFinish event", func() {
 			deployment := &I.Deployment{
@@ -507,7 +520,7 @@ var _ = Describe("StopDeployment", func() {
 			response := bytes.NewBuffer([]byte{})
 			data := make(map[string]interface{})
 			data["mykey"] = "first value"
-			controller.Config.Environments[environment] = structs.Environment{
+			envResolver.Config.Environments[environment] = structs.Environment{
 				Name:         environment,
 				Authenticate: true,
 			}

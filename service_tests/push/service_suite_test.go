@@ -7,14 +7,14 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"testing"
 	"runtime"
+	"testing"
 )
 
 var (
 	username string
 	password string
-	ospath string
+	ospath   string
 )
 
 func TestService(t *testing.T) {

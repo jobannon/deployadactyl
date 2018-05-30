@@ -16,7 +16,7 @@ type ExtractorConstructor func(log I.DeploymentLogger, fs *afero.Afero) I.Extrac
 
 func NewExtractor(log I.DeploymentLogger, fs *afero.Afero) I.Extractor {
 	return &Extractor{
-		Log: log,
+		Log:        log,
 		FileSystem: fs,
 	}
 }

@@ -13,10 +13,10 @@ import (
 	"github.com/op/go-logging"
 
 	. "github.com/compozed/deployadactyl/artifetcher"
+	E "github.com/compozed/deployadactyl/artifetcher/extractor"
+	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
-	"github.com/compozed/deployadactyl/interfaces"
-	E "github.com/compozed/deployadactyl/artifetcher/extractor"
 )
 
 var _ = Describe("Artifetcher", func() {
@@ -26,7 +26,7 @@ var _ = Describe("Artifetcher", func() {
 		extractor   *mocks.Extractor
 		testserver  *httptest.Server
 		manifest    string
-		log interfaces.DeploymentLogger
+		log         interfaces.DeploymentLogger
 	)
 
 	BeforeEach(func() {

@@ -9,23 +9,21 @@ import (
 	"net/http/httptest"
 	"os"
 
+	"encoding/base64"
+	"errors"
+	"github.com/compozed/deployadactyl/creator"
+	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state/push"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/compozed/deployadactyl/creator"
-	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/spf13/afero"
-	"encoding/base64"
-	"reflect"
-	"github.com/compozed/deployadactyl/state/push"
-	"errors"
-	"path"
 	"io"
+	"path"
+	"reflect"
 )
-
-
 
 var _ = Describe("Service", func() {
 
@@ -53,17 +51,17 @@ applications:
 
 	var (
 		deployadactylServer *httptest.Server
-		prechecker *mocks.Prechecker
-		fetcher *mocks.Fetcher
-		eventManager *mocks.EventManager
-		provider creator.CreatorModuleProvider
+		prechecker          *mocks.Prechecker
+		fetcher             *mocks.Fetcher
+		eventManager        *mocks.EventManager
+		provider            creator.CreatorModuleProvider
 
-		couriers []*mocks.Courier
+		couriers     []*mocks.Courier
 		responseBody []byte
-		response *http.Response
-		org = randomizer.StringRunes(10)
-		space = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
-		appName = randomizer.StringRunes(10)
+		response     *http.Response
+		org          = randomizer.StringRunes(10)
+		space        = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
+		appName      = randomizer.StringRunes(10)
 	)
 
 	BeforeEach(func() {
@@ -121,7 +119,7 @@ applications:
 		j, err := json.Marshal(gin.H{
 			"artifact_url":          "the artifact url",
 			"health_check_endpoint": "/health",
-			"manifest": base64.StdEncoding.EncodeToString([]byte(manifest)),
+			"manifest":              base64.StdEncoding.EncodeToString([]byte(manifest)),
 		})
 		Expect(err).ToNot(HaveOccurred())
 		jsonBuffer := bytes.NewBuffer(j)

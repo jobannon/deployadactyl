@@ -7,23 +7,23 @@ import (
 
 	"io"
 
-	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/structs"
 )
 
-type StartControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, conf config.Config, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory) I.StartController
+type StartControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StartController
 
-func NewStartController(l I.DeploymentLogger, d I.Deployer, c config.Config, em I.EventManager, ef I.ErrorFinder, smf I.StartManagerFactory) I.StartController {
+func NewStartController(l I.DeploymentLogger, d I.Deployer, em I.EventManager, ef I.ErrorFinder, smf I.StartManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StartController {
 	return &StartController{
 		Deployer:            d,
-		Config:              c,
 		EventManager:        em,
 		ErrorFinder:         ef,
 		StartManagerFactory: smf,
 		Log:                 l,
+		AuthResolver:        resolver,
+		EnvResolver:         envResolver,
 	}
 }
 
@@ -32,9 +32,10 @@ type StartController struct {
 	Log                 I.DeploymentLogger
 	StartManagerFactory I.StartManagerFactory
 	Deployer            I.Deployer
-	Config              config.Config
 	EventManager        I.EventManager
 	ErrorFinder         I.ErrorFinder
+	AuthResolver        I.AuthResolver
+	EnvResolver         I.EnvResolver
 }
 
 func (c *StartController) StartDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
@@ -45,7 +46,7 @@ func (c *StartController) StartDeployment(deployment *I.Deployment, data map[str
 		data = make(map[string]interface{})
 	}
 
-	environment, err := c.resolveEnvironment(cf.Environment)
+	environment, err := c.EnvResolver.Resolve(cf.Environment)
 	if err != nil {
 		fmt.Fprintln(response, err.Error())
 		return I.DeployResponse{
@@ -53,7 +54,7 @@ func (c *StartController) StartDeployment(deployment *I.Deployment, data map[str
 			Error:      err,
 		}
 	}
-	auth, err := c.resolveAuthorization(deployment.Authorization, environment, c.Log)
+	auth, err := c.AuthResolver.Resolve(deployment.Authorization, environment, c.Log)
 	if err != nil {
 		return I.DeployResponse{
 			StatusCode: http.StatusUnauthorized,
@@ -101,30 +102,6 @@ func (c *StartController) StartDeployment(deployment *I.Deployment, data map[str
 	manager := c.StartManagerFactory.StartManager(c.Log, deployEventData)
 	deployResponse = *c.Deployer.Deploy(deploymentInfo, environment, manager, response)
 	return deployResponse
-}
-
-func (c *StartController) resolveAuthorization(auth I.Authorization, envs structs.Environment, deploymentLogger I.DeploymentLogger) (I.Authorization, error) {
-	config := c.Config
-	deploymentLogger.Debug("checking for basic auth")
-	if auth.Username == "" && auth.Password == "" {
-		if envs.Authenticate {
-			return I.Authorization{}, deployer.BasicAuthError{}
-
-		}
-		auth.Username = config.Username
-		auth.Password = config.Password
-	}
-
-	return auth, nil
-}
-
-func (c *StartController) resolveEnvironment(env string) (structs.Environment, error) {
-	config := c.Config
-	environment, ok := config.Environments[env]
-	if !ok {
-		return structs.Environment{}, deployer.EnvironmentNotFoundError{env}
-	}
-	return environment, nil
 }
 
 func (c StartController) emitStartFinish(response io.ReadWriter, deploymentLogger I.DeploymentLogger, cfContext I.CFContext, auth *I.Authorization, environment *structs.Environment, data map[string]interface{}, deployResponse *I.DeployResponse) {

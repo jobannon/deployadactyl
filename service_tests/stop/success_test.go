@@ -9,18 +9,16 @@ import (
 	"net/http/httptest"
 	"os"
 
+	"github.com/compozed/deployadactyl/creator"
+	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/compozed/deployadactyl/creator"
-	"github.com/compozed/deployadactyl/interfaces"
 	"reflect"
-	"github.com/compozed/deployadactyl/state/stop"
 )
-
-
 
 var _ = Describe("Service", func() {
 
@@ -36,20 +34,21 @@ environments:
   - api2.example.com
   - api3.example.com
   - api4.example.com
-`)
+`
+	)
 
 	var (
 		deployadactylServer *httptest.Server
-		prechecker *mocks.Prechecker
-		eventManager *mocks.EventManager
-		provider creator.CreatorModuleProvider
+		prechecker          *mocks.Prechecker
+		eventManager        *mocks.EventManager
+		provider            creator.CreatorModuleProvider
 
-		couriers []*mocks.Courier
+		couriers     []*mocks.Courier
 		responseBody []byte
-		response *http.Response
-		org = randomizer.StringRunes(10)
-		space = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
-		appName = randomizer.StringRunes(10)
+		response     *http.Response
+		org          = randomizer.StringRunes(10)
+		space        = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
+		appName      = randomizer.StringRunes(10)
 	)
 
 	BeforeEach(func() {

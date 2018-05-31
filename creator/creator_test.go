@@ -111,44 +111,43 @@ var _ = Describe("Custom creator", func() {
 
 			})
 		})
+	})
 
-		Describe("CreateAuthResolver", func() {
+	Describe("CreateAuthResolver", func() {
 
-			Context("when mock constructor is provided", func() {
-				It("should return the mock implementation", func() {
-					os.Setenv("CF_USERNAME", "test user")
-					os.Setenv("CF_PASSWORD", "test pwd")
+		Context("when mock constructor is provided", func() {
+			It("should return the mock implementation", func() {
+				os.Setenv("CF_USERNAME", "test user")
+				os.Setenv("CF_PASSWORD", "test pwd")
 
-					level := "DEBUG"
-					configPath := "./testconfig.yml"
+				level := "DEBUG"
+				configPath := "./testconfig.yml"
 
-					expected := &mocks.AuthResolver{}
-					creator, _ := Custom(level, configPath, CreatorModuleProvider{
-						NewAuthResolver: func(authConfig config.Config) I.AuthResolver {
-							return expected
-						},
-					})
-					resolver := creator.CreateAuthResolver()
-					Expect(reflect.TypeOf(resolver)).To(Equal(reflect.TypeOf(expected)))
+				expected := &mocks.AuthResolver{}
+				creator, _ := Custom(level, configPath, CreatorModuleProvider{
+					NewAuthResolver: func(authConfig config.Config) I.AuthResolver {
+						return expected
+					},
 				})
+				resolver := creator.CreateAuthResolver()
+				Expect(reflect.TypeOf(resolver)).To(Equal(reflect.TypeOf(expected)))
 			})
+		})
 
-			Context("when mock constructor is not provided", func() {
-				It("should return the default implementation", func() {
-					os.Setenv("CF_USERNAME", "")
-					os.Setenv("CF_PASSWORD", "")
+		Context("when mock constructor is not provided", func() {
+			It("should return the default implementation", func() {
+				os.Setenv("CF_USERNAME", "")
+				os.Setenv("CF_PASSWORD", "")
 
-					level := "DEBUG"
-					configPath := "./testconfig.yml"
+				level := "DEBUG"
+				configPath := "./testconfig.yml"
 
-					creator, _ := Custom(level, configPath, CreatorModuleProvider{})
-					resolver := creator.CreateAuthResolver()
-					Expect(reflect.TypeOf(resolver)).To(Equal(reflect.TypeOf(state.AuthResolver{})))
-					concrete := resolver.(state.AuthResolver)
-					Expect(concrete.Config).ToNot(BeNil())
-				})
+				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
+				resolver := creator.CreateAuthResolver()
+				Expect(reflect.TypeOf(resolver)).To(Equal(reflect.TypeOf(state.AuthResolver{})))
+				concrete := resolver.(state.AuthResolver)
+				Expect(concrete.Config).ToNot(BeNil())
 			})
-
 		})
 
 	})

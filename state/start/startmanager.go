@@ -16,12 +16,20 @@ const successfulStart = `Your start was successful! (^_^)b
 
 `
 
-type courierCreator interface {
-	CreateCourier() (I.Courier, error)
+type StartManagerConstructor func(courierCreator I.CourierCreator, eventManager I.EventManager, logger I.DeploymentLogger, deployEventData S.DeployEventData) I.ActionCreator
+
+func NewStartManager(c I.CourierCreator, em I.EventManager, l I.DeploymentLogger, d S.DeployEventData) I.ActionCreator {
+	return &StartManager{
+		CourierCreator:  c,
+		EventManager:    em,
+		Logger:          l,
+		DeployEventData: d,
+	}
+
 }
 
 type StartManager struct {
-	CourierCreator  courierCreator
+	CourierCreator  I.CourierCreator
 	EventManager    I.EventManager
 	Logger          I.DeploymentLogger
 	DeployEventData S.DeployEventData

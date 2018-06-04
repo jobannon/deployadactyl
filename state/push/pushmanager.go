@@ -30,21 +30,34 @@ Thanks for using Deployadactyl! Please push down pull up on your lap bar and exi
 
 `
 
-type courierCreator interface {
-	CreateCourier() (I.Courier, error)
+type PushManagerConstructor func(courierCreator I.CourierCreator, eventManager I.EventManager, log I.DeploymentLogger, fetcher I.Fetcher, deployEventData S.DeployEventData, fileSystemCleaner FileSystemCleaner, cfContext I.CFContext, auth I.Authorization, environment S.Environment, envVars map[string]string) I.ActionCreator
+
+func NewPushManager(c I.CourierCreator, em I.EventManager, log I.DeploymentLogger, f I.Fetcher, ded S.DeployEventData, fcs FileSystemCleaner, cf I.CFContext, auth I.Authorization, env S.Environment, envVars map[string]string) I.ActionCreator {
+	return &PushManager{
+		CourierCreator:       c,
+		EventManager:         em,
+		Logger:               log,
+		Fetcher:              f,
+		DeployEventData:      ded,
+		FileSystemCleaner:    fcs,
+		CFContext:            cf,
+		Auth:                 auth,
+		Environment:          env,
+		EnvironmentVariables: envVars,
+	}
 }
 
-type fileSystemCleaner interface {
+type FileSystemCleaner interface {
 	RemoveAll(path string) error
 }
 
 type PushManager struct {
-	CourierCreator       courierCreator
+	CourierCreator       I.CourierCreator
 	EventManager         I.EventManager
 	Logger               I.DeploymentLogger
 	Fetcher              I.Fetcher
 	DeployEventData      S.DeployEventData
-	FileSystemCleaner    fileSystemCleaner
+	FileSystemCleaner    FileSystemCleaner
 	CFContext            I.CFContext
 	Auth                 I.Authorization
 	Environment          S.Environment

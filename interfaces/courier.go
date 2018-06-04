@@ -1,5 +1,9 @@
 package interfaces
 
+type CourierCreator interface {
+	CreateCourier() (Courier, error)
+}
+
 // Courier interface.
 type Courier interface {
 	Login(foundationURL, username, password, org, space string, skipSSL bool) ([]byte, error)

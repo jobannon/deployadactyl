@@ -12,6 +12,14 @@ import (
 )
 
 // BlueGreen has a PushManager to creater pushers for blue green deployments.
+type BlueGreenConstructor func(log I.DeploymentLogger) I.BlueGreener
+
+func NewBlueGreen(log I.DeploymentLogger) I.BlueGreener {
+	return BlueGreen{
+		Log: log,
+	}
+}
+
 type BlueGreen struct {
 	Log I.DeploymentLogger
 }

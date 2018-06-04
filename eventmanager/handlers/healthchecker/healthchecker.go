@@ -11,7 +11,16 @@ import (
 	"github.com/compozed/deployadactyl/state/push"
 )
 
-// HealthChecker will check an endpoint for a http.StatusOK
+func NewHealthChecker(oldURL, newURL, silentDeployURL, silentDeployEnvironment string, client I.Client) HealthChecker {
+	return HealthChecker{
+		OldURL:                  oldURL,
+		NewURL:                  newURL,
+		SilentDeployURL:         silentDeployURL,
+		SilentDeployEnvironment: silentDeployEnvironment,
+		Client:                  client,
+	}
+}
+
 type HealthChecker struct {
 	// OldURL is the prepend on the foundationURL to replace in order to build the
 	// newly pushed application URL.

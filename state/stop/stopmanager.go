@@ -15,12 +15,19 @@ const successfulStop = `Your stop was successful! (^_^)b
 
 `
 
-type courierCreator interface {
-	CreateCourier() (I.Courier, error)
+type StopManagerConstructor func(courierCreator I.CourierCreator, eventManager I.EventManager, log I.DeploymentLogger, deployEventData S.DeployEventData) I.ActionCreator
+
+func NewStopManager(c I.CourierCreator, em I.EventManager, log I.DeploymentLogger, ded S.DeployEventData) I.ActionCreator {
+	return &StopManager{
+		CourierCreator:  c,
+		EventManager:    em,
+		Log:             log,
+		DeployEventData: ded,
+	}
 }
 
 type StopManager struct {
-	CourierCreator  courierCreator
+	CourierCreator  I.CourierCreator
 	EventManager    I.EventManager
 	Log             I.DeploymentLogger
 	DeployEventData S.DeployEventData

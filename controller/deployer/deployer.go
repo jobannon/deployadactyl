@@ -68,6 +68,20 @@ func (d SilentDeployer) Deploy(deploymentInfo *S.DeploymentInfo, env S.Environme
 	return deployResponse
 }
 
+type DeployerConstructor func(config config.Config, blueGreener I.BlueGreener, preChecker I.Prechecker, eventManager I.EventManager, randomizer I.Randomizer, errorFinder I.ErrorFinder, logger I.DeploymentLogger) I.Deployer
+
+func NewDeployer(c config.Config, bg I.BlueGreener, p I.Prechecker, em I.EventManager, r I.Randomizer, ef I.ErrorFinder, l I.DeploymentLogger) I.Deployer {
+	return &Deployer{
+		Config:       c,
+		BlueGreener:  bg,
+		Prechecker:   p,
+		EventManager: em,
+		Randomizer:   r,
+		ErrorFinder:  ef,
+		Log:          l,
+	}
+}
+
 type Deployer struct {
 	Config       config.Config
 	BlueGreener  I.BlueGreener

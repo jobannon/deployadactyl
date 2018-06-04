@@ -52,6 +52,11 @@ type CreatorModuleProvider struct {
 	NewStopController  stop.StopControllerConstructor
 	NewAuthResolver    state.AuthResolverConstructor
 	NewEnvResolver     state.EnvResolverConstructor
+	NewDeployer        deployer.DeployerConstructor
+	NewPushManager     push.PushManagerConstructor
+	NewStopManager     stop.StopManagerConstructor
+	NewStartManager    start.StartManagerConstructor
+	NewBlueGreen       bluegreen.BlueGreenConstructor
 }
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
@@ -134,7 +139,7 @@ func (c Creator) GetLogger() I.Logger {
 	return c.logger
 }
 
-// CreateConfig returns a Config.
+// CreateConfig returns a Config
 func (c Creator) CreateConfig() config.Config {
 	return c.config
 }
@@ -207,49 +212,31 @@ func (c Creator) CreateStartController(log I.DeploymentLogger) I.StartController
 }
 
 func (c Creator) createDeployer(log I.DeploymentLogger) I.Deployer {
-	return deployer.Deployer{
-		Config:       c.CreateConfig(),
-		BlueGreener:  c.createBlueGreener(log),
-		Prechecker:   c.createPrechecker(),
-		EventManager: c.CreateEventManager(),
-		Randomizer:   c.createRandomizer(),
-		ErrorFinder:  c.createErrorFinder(),
-		Log:          log,
+	if c.provider.NewDeployer != nil {
+		return c.provider.NewDeployer(c.CreateConfig(), c.createBlueGreener(log), c.createPrechecker(), c.CreateEventManager(), c.createRandomizer(), c.createErrorFinder(), log)
 	}
+	return deployer.NewDeployer(c.CreateConfig(), c.createBlueGreener(log), c.createPrechecker(), c.CreateEventManager(), c.createRandomizer(), c.createErrorFinder(), log)
 }
 
 func (c Creator) PushManager(log I.DeploymentLogger, deployEventData structs.DeployEventData, cf I.CFContext, auth I.Authorization, env structs.Environment, envVars map[string]string) I.ActionCreator {
-	return &push.PushManager{
-		CourierCreator:       c,
-		EventManager:         c.CreateEventManager(),
-		Logger:               log,
-		Fetcher:              c.createFetcher(log),
-		DeployEventData:      deployEventData,
-		FileSystemCleaner:    c.CreateFileSystem(),
-		CFContext:            cf,
-		Auth:                 auth,
-		Environment:          env,
-		EnvironmentVariables: envVars,
+	if c.provider.NewPushManager != nil {
+		return c.provider.NewPushManager(c, c.CreateEventManager(), log, c.createFetcher(log), deployEventData, c.CreateFileSystem(), cf, auth, env, envVars)
 	}
+	return push.NewPushManager(c, c.CreateEventManager(), log, c.createFetcher(log), deployEventData, c.CreateFileSystem(), cf, auth, env, envVars)
 }
 
 func (c Creator) StopManager(log I.DeploymentLogger, deployEventData structs.DeployEventData) I.ActionCreator {
-	return stop.StopManager{
-		CourierCreator:  c,
-		EventManager:    c.CreateEventManager(),
-		Log:             log,
-		DeployEventData: deployEventData,
+	if c.provider.NewStopManager != nil {
+		return c.provider.NewStopManager(c, c.CreateEventManager(), log, deployEventData)
 	}
+	return stop.NewStopManager(c, c.CreateEventManager(), log, deployEventData)
 }
 
 func (c Creator) StartManager(log I.DeploymentLogger, deployEventData structs.DeployEventData) I.ActionCreator {
-	//deploymentLogger := I.DeploymentLogger{c.CreateLogger(), deployEventData.DeploymentInfo.UUID}
-	return start.StartManager{
-		CourierCreator:  c,
-		EventManager:    c.CreateEventManager(),
-		Logger:          log,
-		DeployEventData: deployEventData,
+	if c.provider.NewStartManager != nil {
+		return c.provider.NewStartManager(c, c.CreateEventManager(), log, deployEventData)
 	}
+	return start.NewStartManager(c, c.CreateEventManager(), log, deployEventData)
 }
 
 func (c Creator) CreateEnvVarHandler() envvar.Envvarhandler {
@@ -257,11 +244,9 @@ func (c Creator) CreateEnvVarHandler() envvar.Envvarhandler {
 }
 
 func (c Creator) CreateHealthChecker() healthchecker.HealthChecker {
-	return healthchecker.HealthChecker{
-		OldURL: "api.cf",
-		NewURL: "apps",
-		Client: c.CreateHTTPClient(),
-	}
+	silentUrl := os.Getenv("SILENT_DEPLOY_URL")
+	silentEnv := os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
+	return healthchecker.NewHealthChecker("api.cf", "apps", silentUrl, silentEnv, c.CreateHTTPClient())
 }
 
 func (c Creator) CreateRouteMapper() routemapper.RouteMapper {
@@ -304,9 +289,10 @@ func (c Creator) createWriter() io.Writer {
 }
 
 func (c Creator) createBlueGreener(log I.DeploymentLogger) I.BlueGreener {
-	return bluegreen.BlueGreen{
-		Log: log,
+	if c.provider.NewBlueGreen != nil {
+		return c.provider.NewBlueGreen(log)
 	}
+	return bluegreen.NewBlueGreen(log)
 }
 
 func (c Creator) createErrorFinder() I.ErrorFinder {
@@ -315,6 +301,9 @@ func (c Creator) createErrorFinder() I.ErrorFinder {
 	}
 }
 
+/*
+Skip refactoring the functions below
+*/
 func createCreator(l logging.Level, cfg config.Config, provider CreatorModuleProvider) (Creator, error) {
 	err := ensureCLI()
 	if err != nil {

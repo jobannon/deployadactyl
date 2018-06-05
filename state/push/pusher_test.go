@@ -89,6 +89,7 @@ var _ = Describe("Pusher", func() {
 			ArtifactURL:         randomArtifactUrl,
 			Manifest:            randomManifest,
 			ContentType:         "JSON",
+			Data:                make(map[string]interface{}, 0),
 		}
 
 		pusher = Pusher{
@@ -401,6 +402,11 @@ var _ = Describe("Pusher", func() {
 				Expect(event.AppPath).To(Equal(pusher.AppPath))
 				Expect(event.FoundationURL).To(Equal(pusher.FoundationURL))
 				Expect(event.TempAppWithUUID).ToNot(BeNil())
+				Expect(event.Log).To(Equal(pusher.Log))
+				Expect(event.Courier).ToNot(BeNil())
+				Expect(event.Data).To(Equal(deploymentInfo.Data))
+				Expect(event.Manifest).To(Equal(deploymentInfo.Manifest))
+				Expect(event.HealthCheckEndpoint).To(Equal(deploymentInfo.HealthCheckEndpoint))
 			})
 			Context("when Emit fails", func() {
 				It("returns an error", func() {

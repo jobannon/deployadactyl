@@ -118,6 +118,7 @@ func (p Pusher) Execute() error {
 		Courier:             p.Courier,
 		Manifest:            p.DeploymentInfo.Manifest,
 		HealthCheckEndpoint: p.DeploymentInfo.HealthCheckEndpoint,
+		Log:                 p.Log,
 	}
 	err = p.EventManager.EmitEvent(event)
 	if err != nil {

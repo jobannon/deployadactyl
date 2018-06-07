@@ -16,6 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 	"io"
 	"reflect"
+	"strings"
 )
 
 const (
@@ -52,9 +53,9 @@ var _ = Describe("Service", func() {
 		couriers     []*mocks.Courier
 		responseBody []byte
 		response     *http.Response
-		org          = randomizer.StringRunes(10)
-		space        = os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
-		appName      = randomizer.StringRunes(10)
+		org          = strings.ToLower(randomizer.StringRunes(10))
+		space        = strings.ToLower(os.Getenv("SILENT_DEPLOY_ENVIRONMENT"))
+		appName      = strings.ToLower(randomizer.StringRunes(10))
 		body         io.Reader
 	)
 

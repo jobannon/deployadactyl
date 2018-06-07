@@ -21,6 +21,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
+	"strings"
 )
 
 var _ = Describe("Controller", func() {
@@ -48,11 +49,11 @@ var _ = Describe("Controller", func() {
 
 	BeforeEach(func() {
 		logBuffer = NewBuffer()
-		appName = "appName-" + randomizer.StringRunes(10)
-		environment = "environment-" + randomizer.StringRunes(10)
-		org = "org-" + randomizer.StringRunes(10)
-		space = "non-prod"
-		uuid = "uuid-" + randomizer.StringRunes(10)
+		appName = strings.ToLower("appName-" + randomizer.StringRunes(10))
+		environment = strings.ToLower("environment-" + randomizer.StringRunes(10))
+		org = strings.ToLower("org-" + randomizer.StringRunes(10))
+		space = strings.ToLower("non-prod")
+		uuid = strings.ToLower("uuid-" + randomizer.StringRunes(10))
 
 		eventManager = &mocks.EventManager{}
 		deployer = &mocks.Deployer{}

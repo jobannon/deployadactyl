@@ -14,6 +14,7 @@ import (
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strings"
 )
 
 type PushControllerFactory func(log I.DeploymentLogger) I.PushController
@@ -50,10 +51,10 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
 
 	cfContext := I.CFContext{
-		Environment:  g.Param("environment"),
-		Organization: g.Param("org"),
-		Space:        g.Param("space"),
-		Application:  g.Param("appName"),
+		Environment:  strings.ToLower(g.Param("environment")),
+		Organization: strings.ToLower(g.Param("org")),
+		Space:        strings.ToLower(g.Param("space")),
+		Application:  strings.ToLower(g.Param("appName")),
 	}
 
 	user, pwd, _ := g.Request.BasicAuth()
@@ -96,10 +97,10 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 	log.Debugf("PUT Request originated from: %+v", g.Request.RemoteAddr)
 
 	cfContext := I.CFContext{
-		Environment:  g.Param("environment"),
-		Organization: g.Param("org"),
-		Space:        g.Param("space"),
-		Application:  g.Param("appName"),
+		Environment:  strings.ToLower(g.Param("environment")),
+		Organization: strings.ToLower(g.Param("org")),
+		Space:        strings.ToLower(g.Param("space")),
+		Application:  strings.ToLower(g.Param("appName")),
 	}
 
 	response := &bytes.Buffer{}

@@ -28,7 +28,7 @@ environments:
 - name: Test
   domain: example.com
   instances: 1
-  rollback_enabled: true
+  rollback_disabled: false
   foundations:
   - api1.example.com
   - api2.example.com

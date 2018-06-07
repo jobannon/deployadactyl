@@ -47,7 +47,7 @@ var _ = Describe("Bluegreen", func() {
 
 		environment = S.Environment{Name: randomizer.StringRunes(10)}
 		environment.Foundations = []string{randomizer.StringRunes(10), randomizer.StringRunes(10)}
-		environment.EnableRollback = true
+		environment.DisableRollback = false
 
 		deploymentInfo = S.DeploymentInfo{AppName: appName}
 
@@ -164,7 +164,7 @@ var _ = Describe("Bluegreen", func() {
 			Eventually(response).Should(Say(pushOutput))
 		})
 
-		Context("when enable_rollback is false", func() {
+		Context("when DisableRollback is true", func() {
 			It("can push an app that does not rollback on fail", func() {
 				By("setting a single foundation")
 				var (
@@ -271,9 +271,9 @@ var _ = Describe("Bluegreen", func() {
 			})
 		})
 
-		Context("EnableRollback is false", func() {
+		Context("DisableRollback is true", func() {
 			It("app is not rolled back to previous version", func() {
-				environment.EnableRollback = false
+				environment.DisableRollback = true
 
 				for _, pusher := range pushers {
 					pusher.ExecuteCall.Returns.Error = pushError
@@ -286,7 +286,7 @@ var _ = Describe("Bluegreen", func() {
 			})
 
 			It("returns a FinishPushError if Success fails", func() {
-				environment.EnableRollback = false
+				environment.DisableRollback = true
 
 				for _, pusher := range pushers {
 					pusher.ExecuteCall.Returns.Error = errors.New("a push execute error")

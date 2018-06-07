@@ -158,8 +158,8 @@ func (p Pusher) Success() error {
 func (p Pusher) Undo() error {
 
 	tempAppWithUUID := p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID
-	if !p.Environment.EnableRollback {
-		p.Log.Errorf("Failed to deploy, deployment not rolled back due to EnableRollback=false")
+	if p.Environment.DisableRollback {
+		p.Log.Errorf("Failed to deploy, deployment not rolled back due to DisabledRollback=true")
 
 		return p.Success()
 	} else {

@@ -64,7 +64,7 @@ var _ = Describe("Deployer", func() {
 		deploymentInfo               S.DeploymentInfo
 		deploymentInfoNoCustomParams S.DeploymentInfo
 		foundations                  []string
-		enableRollback               bool
+		disabledRollback             bool
 		environments                 = map[string]S.Environment{}
 		environmentsNoCustomParams   = map[string]S.Environment{}
 		af                           *afero.Afero
@@ -93,7 +93,7 @@ var _ = Describe("Deployer", func() {
 		manifest = "manifest-" + randomizer.StringRunes(10)
 		contentType = randomizer.StringRunes(10)
 
-		enableRollback = true
+		disabledRollback = false
 
 		base64Manifest = base64.StdEncoding.EncodeToString([]byte(manifest))
 
@@ -152,12 +152,12 @@ var _ = Describe("Deployer", func() {
 		response = &bytes.Buffer{}
 
 		environments[environment] = S.Environment{
-			Name:           environment,
-			Domain:         domain,
-			Foundations:    foundations,
-			Instances:      instances,
-			CustomParams:   customParams,
-			EnableRollback: enableRollback,
+			Name:            environment,
+			Domain:          domain,
+			Foundations:     foundations,
+			Instances:       instances,
+			CustomParams:    customParams,
+			DisableRollback: disabledRollback,
 		}
 		authorization.Username = deploymentInfo.Username
 		authorization.Password = deploymentInfo.Password

@@ -100,7 +100,7 @@ var _ = Describe("Pusher", func() {
 			Log:            interfaces.DeploymentLogger{Log: interfaces.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test")},
 			FoundationURL:  randomFoundationURL,
 			AppPath:        randomAppPath,
-			Environment:    S.Environment{EnableRollback: true},
+			Environment:    S.Environment{DisableRollback: false},
 			Fetcher:        fetcher,
 			CFContext:      interfaces.CFContext{},
 			Auth:           interfaces.Authorization{},

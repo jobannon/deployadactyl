@@ -625,9 +625,9 @@ applications:
 
 	Describe("OnFinish", func() {
 		Context("when error occurs", func() {
-			Context("and EnableRollback is false", func() {
+			Context("and DisableRollback is true", func() {
 				It("returns StatusOK", func() {
-					env := structs.Environment{EnableRollback: false}
+					env := structs.Environment{DisableRollback: true}
 					err := errors.New("a test error")
 
 					resp := pusherCreator.OnFinish(env, response, err)
@@ -635,19 +635,19 @@ applications:
 					Expect(resp.StatusCode).To(Equal(http.StatusOK))
 				})
 				It("logs the failure", func() {
-					env := structs.Environment{EnableRollback: false}
+					env := structs.Environment{DisableRollback: true}
 					err := errors.New("a test error")
 
 					pusherCreator.OnFinish(env, response, err)
 
 					logBytes, _ := ioutil.ReadAll(logBuffer)
-					Eventually(string(logBytes)).Should(ContainSubstring("EnableRollback false, returning status"))
+					Eventually(string(logBytes)).Should(ContainSubstring("DisabledRollback true, returning status"))
 				})
 			})
-			Context("and EnableRollback is true", func() {
+			Context("and DisableRollback is false", func() {
 				Context("and error is a login failure", func() {
 					It("returns StatusBadRequest", func() {
-						env := structs.Environment{EnableRollback: true}
+						env := structs.Environment{DisableRollback: false}
 						err := errors.New("the login failed")
 
 						resp := pusherCreator.OnFinish(env, response, err)
@@ -656,7 +656,7 @@ applications:
 					})
 				})
 				It("returns StatusInternalServerError", func() {
-					env := structs.Environment{EnableRollback: true}
+					env := structs.Environment{DisableRollback: false}
 					err := errors.New("a test error")
 
 					resp := pusherCreator.OnFinish(env, response, err)
@@ -667,21 +667,21 @@ applications:
 		})
 		Context("when no error occurs", func() {
 			It("returns StatusOK", func() {
-				env := structs.Environment{EnableRollback: true}
+				env := structs.Environment{DisableRollback: false}
 
 				resp := pusherCreator.OnFinish(env, response, nil)
 
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
 			})
 			It("logs a successful deployment message", func() {
-				env := structs.Environment{EnableRollback: true}
+				env := structs.Environment{DisableRollback: false}
 
 				pusherCreator.OnFinish(env, response, nil)
 				logBytes, _ := ioutil.ReadAll(logBuffer)
 				Eventually(string(logBytes)).Should(ContainSubstring("successfully deployed application"))
 			})
 			It("writes success to the output", func() {
-				env := structs.Environment{EnableRollback: true}
+				env := structs.Environment{DisableRollback: false}
 
 				pusherCreator.OnFinish(env, response, nil)
 				logBytes, _ := ioutil.ReadAll(response)

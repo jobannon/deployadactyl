@@ -210,8 +210,8 @@ func (a PushManager) OnStart() error {
 
 func (a PushManager) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
 	if err != nil {
-		if !env.EnableRollback {
-			a.Logger.Errorf("EnableRollback %t, returning status %d and err %s", env.EnableRollback, http.StatusOK, err)
+		if env.DisableRollback {
+			a.Logger.Errorf("DisabledRollback %t, returning status %d and err %s", env.DisableRollback, http.StatusOK, err)
 			return I.DeployResponse{
 				StatusCode: http.StatusOK,
 				Error:      err,

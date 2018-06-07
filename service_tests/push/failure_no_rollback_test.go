@@ -34,7 +34,7 @@ var _ = Describe("Service", func() {
 environments:
 - name: Test
   domain: example.com
-  enable_rollback: false
+  rollback_disabled: true
   foundations:
   - api1.example.com
   - api2.example.com

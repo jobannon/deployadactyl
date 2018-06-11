@@ -9,7 +9,6 @@ type StopController struct {
 	StopDeploymentCall struct {
 		Received struct {
 			Deployment *interfaces.Deployment
-			Data       map[string]interface{}
 			Response   *bytes.Buffer
 		}
 		Returns struct {
@@ -20,10 +19,9 @@ type StopController struct {
 	}
 }
 
-func (c *StopController) StopDeployment(deployment *interfaces.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
+func (c *StopController) StopDeployment(deployment *interfaces.Deployment, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
 	c.StopDeploymentCall.Called = true
 	c.StopDeploymentCall.Received.Deployment = deployment
-	c.StopDeploymentCall.Received.Data = data
 	c.StopDeploymentCall.Received.Response = response
 
 	if c.StopDeploymentCall.Writes != "" {

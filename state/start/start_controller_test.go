@@ -93,7 +93,7 @@ var _ = Describe("StartDeployment", func() {
 					Environment: environment,
 				}}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StartDeployment(deployment, nil, response)
+			deploymentResponse := controller.StartDeployment(deployment, response)
 
 			Expect(deploymentResponse.DeploymentInfo.UUID).ShouldNot(BeEmpty())
 		})
@@ -110,7 +110,7 @@ var _ = Describe("StartDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.StartDeployment(deployment, nil, response)
+		deploymentResponse := controller.StartDeployment(deployment, response)
 
 		Expect(deploymentResponse.DeploymentInfo.Org).Should(Equal("myOrg"))
 		Expect(deploymentResponse.DeploymentInfo.Environment).Should(Equal(environment))
@@ -129,7 +129,7 @@ var _ = Describe("StartDeployment", func() {
 		}
 
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.StartDeployment(deployment, nil, response)
+		deploymentResponse := controller.StartDeployment(deployment, response)
 
 		Expect(logBuffer).Should(Say(fmt.Sprintf("Preparing to start %s with UUID %s", "myApp", deploymentResponse.DeploymentInfo.UUID)))
 
@@ -137,6 +137,8 @@ var _ = Describe("StartDeployment", func() {
 
 	Context("When StartStartEvent succeeds", func() {
 		It("should emit a StartStartedEvent", func() {
+			data := make(map[string]interface{})
+			data["mykey"] = "first value"
 			deployment := &I.Deployment{
 				CFContext: I.CFContext{
 					Organization: "myOrg",
@@ -144,10 +146,10 @@ var _ = Describe("StartDeployment", func() {
 					Application:  "myApp",
 					Environment:  environment,
 				},
+				Data: data,
 			}
-			data := make(map[string]interface{})
-			data["mykey"] = "first value"
-			controller.StartDeployment(deployment, data, response)
+
+			controller.StartDeployment(deployment, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(StartStartedEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[0].(StartStartedEvent)
@@ -169,7 +171,7 @@ var _ = Describe("StartDeployment", func() {
 					Environment: environment,
 				},
 			}
-			deployResponse := controller.StartDeployment(deployment, nil, response)
+			deployResponse := controller.StartDeployment(deployment, response)
 
 			Expect(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))
 			Expect(reflect.TypeOf(deployResponse.Error)).Should(Equal(reflect.TypeOf(D.EventError{})))
@@ -185,7 +187,7 @@ var _ = Describe("StartDeployment", func() {
 					Environment: "bad environment",
 				}}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StartDeployment(deployment, nil, response)
+			deploymentResponse := controller.StartDeployment(deployment, response)
 
 			Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.EnvironmentNotFoundError{})))
 		})
@@ -207,11 +209,12 @@ var _ = Describe("StartDeployment", func() {
 				}}
 
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StartDeployment(deployment, nil, response)
+			deploymentResponse := controller.StartDeployment(deployment, response)
 			Expect(deploymentResponse.DeploymentInfo.Domain).Should(Equal("myDomain"))
 			Expect(deploymentResponse.DeploymentInfo.SkipSSL).Should(Equal(true))
 			Expect(deploymentResponse.DeploymentInfo.CustomParams["customName"]).Should(Equal("customParams"))
 		})
+
 	})
 
 	Context("When auth does not exist", func() {
@@ -225,7 +228,7 @@ var _ = Describe("StartDeployment", func() {
 						Environment: environment,
 					}}
 				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StartDeployment(deployment, nil, response)
+				deploymentResponse := controller.StartDeployment(deployment, response)
 
 				Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.BasicAuthError{})))
 			})
@@ -243,7 +246,7 @@ var _ = Describe("StartDeployment", func() {
 						Environment: environment,
 					}}
 				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StartDeployment(deployment, nil, response)
+				deploymentResponse := controller.StartDeployment(deployment, response)
 
 				Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("username"))
 				Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("password"))
@@ -264,7 +267,7 @@ var _ = Describe("StartDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StartDeployment(deployment, nil, response)
+			deploymentResponse := controller.StartDeployment(deployment, response)
 			Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("myUser"))
 			Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("myPassword"))
 		})
@@ -280,9 +283,10 @@ var _ = Describe("StartDeployment", func() {
 				CFContext: I.CFContext{
 					Environment: environment,
 				},
+				Data: data,
 			}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StartDeployment(deployment, data, response)
+			deploymentResponse := controller.StartDeployment(deployment, response)
 			Expect(deploymentResponse.DeploymentInfo.Data["user_id"]).Should(Equal("myuserid"))
 			Expect(deploymentResponse.DeploymentInfo.Data["group"]).Should(Equal("mygroup"))
 
@@ -300,7 +304,7 @@ var _ = Describe("StartDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		controller.StartDeployment(deployment, nil, response)
+		controller.StartDeployment(deployment, response)
 		Expect(startManagerFactory.StartManagerCall.Called).Should(Equal(true))
 		Expect(startManagerFactory.StartManagerCall.Received.DeployEventData.DeploymentInfo.Username).Should(Equal("myUser"))
 	})
@@ -314,7 +318,7 @@ var _ = Describe("StartDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		controller.StartDeployment(deployment, nil, response)
+		controller.StartDeployment(deployment, response)
 		Expect(deployer.DeployCall.Received.ActionCreator).Should(Equal(manager))
 	})
 
@@ -328,7 +332,7 @@ var _ = Describe("StartDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.StartDeployment(deployment, nil, response)
+		deploymentResponse := controller.StartDeployment(deployment, response)
 
 		Expect(deploymentResponse.Error.Error()).Should(Equal("test error"))
 		Expect(deploymentResponse.StatusCode).Should(Equal(http.StatusOK))
@@ -338,6 +342,8 @@ var _ = Describe("StartDeployment", func() {
 	Context("when start succeeds", func() {
 		Context("if StartSuccessEvent succeeds", func() {
 			It("should emit StartSuccessEvent", func() {
+				data := make(map[string]interface{})
+				data["mykey"] = "first value"
 				deployment := &I.Deployment{
 					CFContext: I.CFContext{
 						Organization: "myOrg",
@@ -349,15 +355,15 @@ var _ = Describe("StartDeployment", func() {
 						Username: "myUser",
 						Password: "myPassword",
 					},
+					Data: data,
 				}
 				response := bytes.NewBuffer([]byte{})
-				data := make(map[string]interface{})
-				data["mykey"] = "first value"
+
 				envResolver.Config.Environments[environment] = structs.Environment{
 					Name:         environment,
 					Authenticate: true,
 				}
-				controller.StartDeployment(deployment, data, response)
+				controller.StartDeployment(deployment, response)
 
 				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(StartSuccessEvent{})))
 				event := eventManager.EmitEventCall.Received.Events[1].(StartSuccessEvent)
@@ -374,6 +380,8 @@ var _ = Describe("StartDeployment", func() {
 			})
 
 			It("should emit a StartStartedEvent", func() {
+				data := make(map[string]interface{})
+				data["mykey"] = "first value"
 				deployment := &I.Deployment{
 					CFContext: I.CFContext{
 						Organization: "myOrg",
@@ -381,10 +389,10 @@ var _ = Describe("StartDeployment", func() {
 						Application:  "myApp",
 						Environment:  environment,
 					},
+					Data: data,
 				}
-				data := make(map[string]interface{})
-				data["mykey"] = "first value"
-				controller.StartDeployment(deployment, data, response)
+
+				controller.StartDeployment(deployment, response)
 
 				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(StartStartedEvent{})))
 				event := eventManager.EmitEventCall.Received.Events[0].(StartStartedEvent)
@@ -406,7 +414,7 @@ var _ = Describe("StartDeployment", func() {
 					},
 				}
 				response := bytes.NewBuffer([]byte{})
-				controller.StartDeployment(deployment, nil, response)
+				controller.StartDeployment(deployment, response)
 
 				Eventually(logBuffer).Should(Say("an error occurred when emitting a StartSuccessEvent event: errors"))
 			})
@@ -423,11 +431,13 @@ var _ = Describe("StartDeployment", func() {
 			deployer.DeployCall.Returns.Error = errors.New("deploy error")
 			errorFinder.FindErrorsCall.Returns.Errors = []I.LogMatchedError{error_finder.CreateLogMatchedError("a test error", []string{"error 1", "error 2", "error 3"}, "error solution", "test code")}
 			response := bytes.NewBuffer([]byte{})
-			controller.StartDeployment(deployment, nil, response)
+			controller.StartDeployment(deployment, response)
 			Eventually(response).Should(ContainSubstring("Potential solution"))
 		})
 
 		It("should emit StartFailureEvent", func() {
+			data := make(map[string]interface{})
+			data["mykey"] = "first value"
 
 			deployment := &I.Deployment{
 				CFContext: I.CFContext{
@@ -440,16 +450,16 @@ var _ = Describe("StartDeployment", func() {
 					Username: "myUser",
 					Password: "myPassword",
 				},
+				Data: data,
 			}
 			response := bytes.NewBuffer([]byte{})
-			data := make(map[string]interface{})
-			data["mykey"] = "first value"
+
 			envResolver.Config.Environments[environment] = structs.Environment{
 				Name:         environment,
 				Authenticate: true,
 			}
 			deployer.DeployCall.Returns.Error = errors.New("deploy error")
-			controller.StartDeployment(deployment, data, response)
+			controller.StartDeployment(deployment, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(StartFailureEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[1].(StartFailureEvent)
@@ -477,7 +487,7 @@ var _ = Describe("StartDeployment", func() {
 				deployer.DeployCall.Returns.Error = errors.New("deploy error")
 
 				response := bytes.NewBuffer([]byte{})
-				controller.StartDeployment(deployment, nil, response)
+				controller.StartDeployment(deployment, response)
 
 				Eventually(logBuffer).Should(Say("an error occurred when emitting a StartFailureEvent event: errors"))
 			})
@@ -494,12 +504,14 @@ var _ = Describe("StartDeployment", func() {
 			}
 
 			response := bytes.NewBuffer([]byte{})
-			controller.StartDeployment(deployment, nil, response)
+			controller.StartDeployment(deployment, response)
 
 			Eventually(logBuffer).Should(Say("emitting a StartFinishedEvent"))
 		})
 
 		It("should emit StartFinishedEvent", func() {
+			data := make(map[string]interface{})
+			data["mykey"] = "first value"
 
 			deployment := &I.Deployment{
 				CFContext: I.CFContext{
@@ -512,15 +524,15 @@ var _ = Describe("StartDeployment", func() {
 					Username: "myUser",
 					Password: "myPassword",
 				},
+				Data: data,
 			}
 			response := bytes.NewBuffer([]byte{})
-			data := make(map[string]interface{})
-			data["mykey"] = "first value"
+
 			envResolver.Config.Environments[environment] = structs.Environment{
 				Name:         environment,
 				Authenticate: true,
 			}
-			controller.StartDeployment(deployment, data, response)
+			controller.StartDeployment(deployment, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[2])).To(Equal(reflect.TypeOf(StartFinishedEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[2].(StartFinishedEvent)

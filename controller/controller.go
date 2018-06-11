@@ -112,11 +112,6 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 		Password: pwd,
 	}
 
-	deployment := I.Deployment{
-		Authorization: authorization,
-		CFContext:     cfContext,
-	}
-
 	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
 	g.Request.Body.Close()
 
@@ -128,12 +123,18 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 		return
 	}
 
+	deployment := I.Deployment{
+		Authorization: authorization,
+		CFContext:     cfContext,
+		Data:          putRequest.Data,
+	}
+
 	var deployResponse I.DeployResponse
 
 	if putRequest.State == "stopped" {
-		deployResponse = c.StopControllerFactory(log).StopDeployment(&deployment, putRequest.Data, response)
+		deployResponse = c.StopControllerFactory(log).StopDeployment(&deployment, response)
 	} else if putRequest.State == "started" {
-		deployResponse = c.StartControllerFactory(log).StartDeployment(&deployment, putRequest.Data, response)
+		deployResponse = c.StartControllerFactory(log).StartDeployment(&deployment, response)
 	} else {
 		response.Write([]byte("Unknown requested state: " + putRequest.State))
 		deployResponse = I.DeployResponse{

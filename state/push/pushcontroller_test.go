@@ -482,6 +482,54 @@ var _ = Describe("RunDeployment", func() {
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.AppName).Should(Equal(appName))
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Environment).Should(Equal(environment))
 				})
+
+				It("merges custom data provided with data in the request", func() {
+					data := make(map[string]interface{})
+					data["my param"] = "my value"
+
+					bodyByte := []byte(`{"data": {"request param": "request value"}, "artifact_url": "url"}`)
+
+					deployment.CFContext.Environment = environment
+					deployment.Type.JSON = true
+
+					deployment.CFContext.Organization = org
+					deployment.CFContext.Space = space
+					deployment.CFContext.Application = appName
+					deployment.CFContext.Environment = environment
+					deployment.Data = data
+					deployment.Body = &bodyByte
+
+					controller.RunDeployment(&deployment, response)
+
+					deploymentInfo := eventManager.EmitCall.Received.Events[0].Data.(*structs.DeployEventData).DeploymentInfo
+
+					Expect(deploymentInfo.Data["my param"]).To(Equal("my value"))
+					Expect(deploymentInfo.Data["request param"]).To(Equal("request value"))
+				})
+
+				It("replaces provided custom data with overriding request data", func() {
+					data := make(map[string]interface{})
+					data["my param"] = "my value"
+
+					bodyByte := []byte(`{"data": {"my param": "request value"}, "artifact_url": "url"}`)
+
+					deployment.CFContext.Environment = environment
+					deployment.Type.JSON = true
+
+					deployment.CFContext.Organization = org
+					deployment.CFContext.Space = space
+					deployment.CFContext.Application = appName
+					deployment.CFContext.Environment = environment
+					deployment.Data = data
+					deployment.Body = &bodyByte
+
+					controller.RunDeployment(&deployment, response)
+
+					deploymentInfo := eventManager.EmitCall.Received.Events[0].Data.(*structs.DeployEventData).DeploymentInfo
+
+					Expect(deploymentInfo.Data["my param"]).To(Equal("request value"))
+				})
+
 				It("has the correct JSON content type", func() {
 					deployment.CFContext.Environment = environment
 					deployment.Type.JSON = true

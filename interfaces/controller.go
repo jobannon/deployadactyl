@@ -15,6 +15,7 @@ type Deployment struct {
 	Type          DeploymentType
 	Authorization Authorization
 	CFContext     CFContext
+	Data          map[string]interface{}
 }
 
 type Authorization struct {

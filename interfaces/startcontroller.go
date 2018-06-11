@@ -10,5 +10,5 @@ type StartManagerFactory interface {
 }
 
 type StartController interface {
-	StartDeployment(deployment *Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse DeployResponse)
+	StartDeployment(deployment *Deployment, response *bytes.Buffer) (deployResponse DeployResponse)
 }

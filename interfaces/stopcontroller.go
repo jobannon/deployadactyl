@@ -10,5 +10,5 @@ type StopManagerFactory interface {
 }
 
 type StopController interface {
-	StopDeployment(deployment *Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse DeployResponse)
+	StopDeployment(deployment *Deployment, response *bytes.Buffer) (deployResponse DeployResponse)
 }

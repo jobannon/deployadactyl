@@ -323,8 +323,8 @@ var _ = Describe("Controller", func() {
 
 				router.ServeHTTP(resp, req)
 
-				Expect(stopController.StopDeploymentCall.Received.Deployment.Data["user_id"]).To(Equal("jhodo"))
-				Expect(stopController.StopDeploymentCall.Received.Deployment.Data["group"]).To(Equal("XP_IS_CHG"))
+				Expect(stopController.StopDeploymentCall.Received.Data["user_id"]).To(Equal("jhodo"))
+				Expect(stopController.StopDeploymentCall.Received.Data["group"]).To(Equal("XP_IS_CHG"))
 			})
 
 			Context("if requested state is not 'stop'", func() {

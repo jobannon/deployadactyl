@@ -93,7 +93,7 @@ var _ = Describe("StartDeployment", func() {
 					Environment: environment,
 				}}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StartDeployment(deployment, response)
+			deploymentResponse := controller.StartDeployment(deployment, nil, response)
 
 			Expect(deploymentResponse.DeploymentInfo.UUID).ShouldNot(BeEmpty())
 		})
@@ -110,7 +110,7 @@ var _ = Describe("StartDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.StartDeployment(deployment, response)
+		deploymentResponse := controller.StartDeployment(deployment, nil, response)
 
 		Expect(deploymentResponse.DeploymentInfo.Org).Should(Equal("myOrg"))
 		Expect(deploymentResponse.DeploymentInfo.Environment).Should(Equal(environment))
@@ -129,7 +129,7 @@ var _ = Describe("StartDeployment", func() {
 		}
 
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.StartDeployment(deployment, response)
+		deploymentResponse := controller.StartDeployment(deployment, nil, response)
 
 		Expect(logBuffer).Should(Say(fmt.Sprintf("Preparing to start %s with UUID %s", "myApp", deploymentResponse.DeploymentInfo.UUID)))
 
@@ -146,10 +146,9 @@ var _ = Describe("StartDeployment", func() {
 					Application:  "myApp",
 					Environment:  environment,
 				},
-				Data: data,
 			}
 
-			controller.StartDeployment(deployment, response)
+			controller.StartDeployment(deployment, data, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(StartStartedEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[0].(StartStartedEvent)
@@ -171,7 +170,7 @@ var _ = Describe("StartDeployment", func() {
 					Environment: environment,
 				},
 			}
-			deployResponse := controller.StartDeployment(deployment, response)
+			deployResponse := controller.StartDeployment(deployment, nil, response)
 
 			Expect(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))
 			Expect(reflect.TypeOf(deployResponse.Error)).Should(Equal(reflect.TypeOf(D.EventError{})))
@@ -187,7 +186,7 @@ var _ = Describe("StartDeployment", func() {
 					Environment: "bad environment",
 				}}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StartDeployment(deployment, response)
+			deploymentResponse := controller.StartDeployment(deployment, nil, response)
 
 			Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.EnvironmentNotFoundError{})))
 		})
@@ -209,7 +208,7 @@ var _ = Describe("StartDeployment", func() {
 				}}
 
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StartDeployment(deployment, response)
+			deploymentResponse := controller.StartDeployment(deployment, nil, response)
 			Expect(deploymentResponse.DeploymentInfo.Domain).Should(Equal("myDomain"))
 			Expect(deploymentResponse.DeploymentInfo.SkipSSL).Should(Equal(true))
 			Expect(deploymentResponse.DeploymentInfo.CustomParams["customName"]).Should(Equal("customParams"))
@@ -228,7 +227,7 @@ var _ = Describe("StartDeployment", func() {
 						Environment: environment,
 					}}
 				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StartDeployment(deployment, response)
+				deploymentResponse := controller.StartDeployment(deployment, nil, response)
 
 				Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.BasicAuthError{})))
 			})
@@ -246,7 +245,7 @@ var _ = Describe("StartDeployment", func() {
 						Environment: environment,
 					}}
 				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StartDeployment(deployment, response)
+				deploymentResponse := controller.StartDeployment(deployment, nil, response)
 
 				Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("username"))
 				Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("password"))
@@ -267,7 +266,7 @@ var _ = Describe("StartDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StartDeployment(deployment, response)
+			deploymentResponse := controller.StartDeployment(deployment, nil, response)
 			Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("myUser"))
 			Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("myPassword"))
 		})
@@ -283,10 +282,9 @@ var _ = Describe("StartDeployment", func() {
 				CFContext: I.CFContext{
 					Environment: environment,
 				},
-				Data: data,
 			}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StartDeployment(deployment, response)
+			deploymentResponse := controller.StartDeployment(deployment, data, response)
 			Expect(deploymentResponse.DeploymentInfo.Data["user_id"]).Should(Equal("myuserid"))
 			Expect(deploymentResponse.DeploymentInfo.Data["group"]).Should(Equal("mygroup"))
 
@@ -304,7 +302,7 @@ var _ = Describe("StartDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		controller.StartDeployment(deployment, response)
+		controller.StartDeployment(deployment, nil, response)
 		Expect(startManagerFactory.StartManagerCall.Called).Should(Equal(true))
 		Expect(startManagerFactory.StartManagerCall.Received.DeployEventData.DeploymentInfo.Username).Should(Equal("myUser"))
 	})
@@ -318,7 +316,7 @@ var _ = Describe("StartDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		controller.StartDeployment(deployment, response)
+		controller.StartDeployment(deployment, nil, response)
 		Expect(deployer.DeployCall.Received.ActionCreator).Should(Equal(manager))
 	})
 
@@ -332,7 +330,7 @@ var _ = Describe("StartDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.StartDeployment(deployment, response)
+		deploymentResponse := controller.StartDeployment(deployment, nil, response)
 
 		Expect(deploymentResponse.Error.Error()).Should(Equal("test error"))
 		Expect(deploymentResponse.StatusCode).Should(Equal(http.StatusOK))
@@ -355,7 +353,6 @@ var _ = Describe("StartDeployment", func() {
 						Username: "myUser",
 						Password: "myPassword",
 					},
-					Data: data,
 				}
 				response := bytes.NewBuffer([]byte{})
 
@@ -363,7 +360,7 @@ var _ = Describe("StartDeployment", func() {
 					Name:         environment,
 					Authenticate: true,
 				}
-				controller.StartDeployment(deployment, response)
+				controller.StartDeployment(deployment, data, response)
 
 				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(StartSuccessEvent{})))
 				event := eventManager.EmitEventCall.Received.Events[1].(StartSuccessEvent)
@@ -389,10 +386,9 @@ var _ = Describe("StartDeployment", func() {
 						Application:  "myApp",
 						Environment:  environment,
 					},
-					Data: data,
 				}
 
-				controller.StartDeployment(deployment, response)
+				controller.StartDeployment(deployment, data, response)
 
 				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(StartStartedEvent{})))
 				event := eventManager.EmitEventCall.Received.Events[0].(StartStartedEvent)
@@ -414,7 +410,7 @@ var _ = Describe("StartDeployment", func() {
 					},
 				}
 				response := bytes.NewBuffer([]byte{})
-				controller.StartDeployment(deployment, response)
+				controller.StartDeployment(deployment, nil, response)
 
 				Eventually(logBuffer).Should(Say("an error occurred when emitting a StartSuccessEvent event: errors"))
 			})
@@ -431,7 +427,7 @@ var _ = Describe("StartDeployment", func() {
 			deployer.DeployCall.Returns.Error = errors.New("deploy error")
 			errorFinder.FindErrorsCall.Returns.Errors = []I.LogMatchedError{error_finder.CreateLogMatchedError("a test error", []string{"error 1", "error 2", "error 3"}, "error solution", "test code")}
 			response := bytes.NewBuffer([]byte{})
-			controller.StartDeployment(deployment, response)
+			controller.StartDeployment(deployment, nil, response)
 			Eventually(response).Should(ContainSubstring("Potential solution"))
 		})
 
@@ -450,7 +446,6 @@ var _ = Describe("StartDeployment", func() {
 					Username: "myUser",
 					Password: "myPassword",
 				},
-				Data: data,
 			}
 			response := bytes.NewBuffer([]byte{})
 
@@ -459,7 +454,7 @@ var _ = Describe("StartDeployment", func() {
 				Authenticate: true,
 			}
 			deployer.DeployCall.Returns.Error = errors.New("deploy error")
-			controller.StartDeployment(deployment, response)
+			controller.StartDeployment(deployment, data, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(StartFailureEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[1].(StartFailureEvent)
@@ -487,7 +482,7 @@ var _ = Describe("StartDeployment", func() {
 				deployer.DeployCall.Returns.Error = errors.New("deploy error")
 
 				response := bytes.NewBuffer([]byte{})
-				controller.StartDeployment(deployment, response)
+				controller.StartDeployment(deployment, nil, response)
 
 				Eventually(logBuffer).Should(Say("an error occurred when emitting a StartFailureEvent event: errors"))
 			})
@@ -504,7 +499,7 @@ var _ = Describe("StartDeployment", func() {
 			}
 
 			response := bytes.NewBuffer([]byte{})
-			controller.StartDeployment(deployment, response)
+			controller.StartDeployment(deployment, nil, response)
 
 			Eventually(logBuffer).Should(Say("emitting a StartFinishedEvent"))
 		})
@@ -524,7 +519,6 @@ var _ = Describe("StartDeployment", func() {
 					Username: "myUser",
 					Password: "myPassword",
 				},
-				Data: data,
 			}
 			response := bytes.NewBuffer([]byte{})
 
@@ -532,7 +526,7 @@ var _ = Describe("StartDeployment", func() {
 				Name:         environment,
 				Authenticate: true,
 			}
-			controller.StartDeployment(deployment, response)
+			controller.StartDeployment(deployment, data, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[2])).To(Equal(reflect.TypeOf(StartFinishedEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[2].(StartFinishedEvent)

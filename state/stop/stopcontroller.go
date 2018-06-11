@@ -35,12 +35,12 @@ type StopController struct {
 	EnvResolver        I.EnvResolver
 }
 
-func (c *StopController) StopDeployment(deployment *I.Deployment, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *StopController) StopDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 	c.Log.Debugf("Preparing to stop %s with UUID %s", cf.Application, c.Log.UUID)
 
-	if deployment.Data == nil {
-		deployment.Data = make(map[string]interface{})
+	if data == nil {
+		data = make(map[string]interface{})
 	}
 
 	environment, err := c.EnvResolver.Resolve(cf.Environment)
@@ -70,15 +70,15 @@ func (c *StopController) StopDeployment(deployment *I.Deployment, response *byte
 		CustomParams: environment.CustomParams,
 		Username:     auth.Username,
 		Password:     auth.Password,
-		Data:         deployment.Data,
+		Data:         data,
 	}
 
-	defer c.emitStopFinish(response, c.Log, cf, &auth, &environment, deployment.Data, &deployResponse)
-	defer c.emitStopSuccessOrFailure(response, c.Log, cf, &auth, &environment, deployment.Data, &deployResponse)
+	defer c.emitStopFinish(response, c.Log, cf, &auth, &environment, data, &deployResponse)
+	defer c.emitStopSuccessOrFailure(response, c.Log, cf, &auth, &environment, data, &deployResponse)
 
 	err = c.EventManager.EmitEvent(StopStartedEvent{
 		CFContext:     cf,
-		Data:          deployment.Data,
+		Data:          data,
 		Environment:   environment,
 		Authorization: auth,
 		Response:      response,

@@ -41,7 +41,7 @@ type PutRequest struct {
 func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
 	uuid := randomizer.StringRunes(10)
 	log := I.DeploymentLogger{Log: c.Log, UUID: uuid}
-	return c.PushControllerFactory(log).RunDeployment(deployment, response)
+	return c.PushControllerFactory(log).RunDeployment(deployment, nil, response)
 }
 
 // RunDeploymentViaHttp checks the request content type and passes it to the Deployer.
@@ -78,7 +78,7 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 	g.Request.Body.Close()
 	deployment.Body = &bodyBuffer
 
-	deployResponse := c.PushControllerFactory(log).RunDeployment(&deployment, response)
+	deployResponse := c.PushControllerFactory(log).RunDeployment(&deployment, nil, response)
 
 	defer io.Copy(g.Writer, response)
 
@@ -126,15 +126,14 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 	deployment := I.Deployment{
 		Authorization: authorization,
 		CFContext:     cfContext,
-		Data:          putRequest.Data,
 	}
 
 	var deployResponse I.DeployResponse
 
 	if putRequest.State == "stopped" {
-		deployResponse = c.StopControllerFactory(log).StopDeployment(&deployment, response)
+		deployResponse = c.StopControllerFactory(log).StopDeployment(&deployment, putRequest.Data, response)
 	} else if putRequest.State == "started" {
-		deployResponse = c.StartControllerFactory(log).StartDeployment(&deployment, response)
+		deployResponse = c.StartControllerFactory(log).StartDeployment(&deployment, putRequest.Data, response)
 	} else {
 		response.Write([]byte("Unknown requested state: " + putRequest.State))
 		deployResponse = I.DeployResponse{

@@ -43,11 +43,11 @@ type PushController struct {
 }
 
 // PUSH specific
-func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *PushController) RunDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 
-	if deployment.Data == nil {
-		deployment.Data = make(map[string]interface{})
+	if data == nil {
+		data = make(map[string]interface{})
 	}
 
 	deploymentInfo := &structs.DeploymentInfo{
@@ -56,7 +56,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, response *bytes
 		AppName:     cf.Application,
 		Environment: cf.Environment,
 		UUID:        c.Log.UUID,
-		Data:        deployment.Data,
+		Data:        data,
 	}
 
 	c.Log.Debugf("Starting deploy of %s with UUID %s", cf.Application, deploymentInfo.UUID)

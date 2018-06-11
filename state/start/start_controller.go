@@ -38,12 +38,12 @@ type StartController struct {
 	EnvResolver         I.EnvResolver
 }
 
-func (c *StartController) StartDeployment(deployment *I.Deployment, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *StartController) StartDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 	c.Log.Debugf("Preparing to start %s with UUID %s", cf.Application, c.Log.UUID)
 
-	if deployment.Data == nil {
-		deployment.Data = make(map[string]interface{})
+	if data == nil {
+		data = make(map[string]interface{})
 	}
 
 	environment, err := c.EnvResolver.Resolve(cf.Environment)
@@ -73,17 +73,17 @@ func (c *StartController) StartDeployment(deployment *I.Deployment, response *by
 		CustomParams: environment.CustomParams,
 		Username:     auth.Username,
 		Password:     auth.Password,
-		Data:         deployment.Data,
+		Data:         data,
 	}
 
-	defer c.emitStartFinish(response, c.Log, cf, &auth, &environment, deployment.Data, &deployResponse)
-	defer c.emitStartSuccessOrFailure(response, c.Log, cf, &auth, &environment, deployment.Data, &deployResponse)
+	defer c.emitStartFinish(response, c.Log, cf, &auth, &environment, data, &deployResponse)
+	defer c.emitStartSuccessOrFailure(response, c.Log, cf, &auth, &environment, data, &deployResponse)
 
 	err = c.EventManager.EmitEvent(StartStartedEvent{
 		CFContext:     cf,
 		Authorization: auth,
 		Environment:   environment,
-		Data:          deployment.Data,
+		Data:          data,
 		Response:      response,
 		Log:           c.Log,
 	})

@@ -10,5 +10,5 @@ type PushManagerFactory interface {
 }
 
 type PushController interface {
-	RunDeployment(deployment *Deployment, response *bytes.Buffer) (deployResponse DeployResponse)
+	RunDeployment(deployment *Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse DeployResponse)
 }

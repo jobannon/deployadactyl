@@ -2,7 +2,6 @@ package push_test
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/constants"
 	D "github.com/compozed/deployadactyl/controller/deployer"
@@ -114,7 +113,7 @@ var _ = Describe("RunDeployment", func() {
 				},
 			}
 			deployment.Type.ZIP = true
-			deployResponse := controller.RunDeployment(deployment, nil, response)
+			deployResponse := controller.RunDeployment(deployment, I.PostRequest{ArtifactUrl: "fakeTest.url"}, response)
 
 			Eventually(deployer.DeployCall.Called).Should(Equal(1))
 			Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
@@ -150,7 +149,7 @@ var _ = Describe("RunDeployment", func() {
 			}
 			deployment.Type.ZIP = true
 
-			deployResponse := controller.RunDeployment(deployment, nil, response)
+			deployResponse := controller.RunDeployment(deployment, I.PostRequest{}, response)
 			receivedBody, _ := ioutil.ReadAll(deployer.DeployCall.Received.DeploymentInfo.Body)
 			Eventually(deployer.DeployCall.Called).Should(Equal(1))
 			Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
@@ -171,7 +170,7 @@ var _ = Describe("RunDeployment", func() {
 			deployer.DeployCall.Returns.StatusCode = http.StatusOK
 			deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
-			deployResponse := controller.RunDeployment(&deployment, nil, response)
+			deployResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 			Eventually(deployer.DeployCall.Called).Should(Equal(1))
 			Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
@@ -199,7 +198,7 @@ var _ = Describe("RunDeployment", func() {
 			deployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
 			deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
-			deployResponse := controller.RunDeployment(&deployment, nil, response)
+			deployResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 			Eventually(deployer.DeployCall.Called).Should(Equal(1))
 			Eventually(silentDeployer.DeployCall.Called).Should(Equal(0))
@@ -236,7 +235,7 @@ var _ = Describe("RunDeployment", func() {
 					Password: "",
 				},
 			}
-			controller.RunDeployment(deployment, nil, response)
+			controller.RunDeployment(deployment, I.PostRequest{}, response)
 
 			Eventually(deployer.DeployCall.Received.DeploymentInfo.Username).Should(Equal(""))
 			Eventually(deployer.DeployCall.Received.DeploymentInfo.Password).Should(Equal(""))
@@ -253,7 +252,7 @@ var _ = Describe("RunDeployment", func() {
 				Password: "TestPassword",
 			}
 
-			controller.RunDeployment(&deployment, nil, response)
+			controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 			Eventually(deployer.DeployCall.Received.DeploymentInfo.Username).Should(Equal("TestUsername"))
 			Eventually(deployer.DeployCall.Received.DeploymentInfo.Password).Should(Equal("TestPassword"))
@@ -273,7 +272,7 @@ var _ = Describe("RunDeployment", func() {
 			deployer.DeployCall.Returns.StatusCode = http.StatusOK
 			deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
-			deployResponse := controller.RunDeployment(&deployment, nil, response)
+			deployResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 			Eventually(deployer.DeployCall.Called).Should(Equal(1))
 			Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
@@ -310,7 +309,7 @@ var _ = Describe("RunDeployment", func() {
 			silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
 			os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
 
-			deployResponse := controller.RunDeployment(&deployment, nil, response)
+			deployResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 			Eventually(deployer.DeployCall.Called).Should(Equal(1))
 			Eventually(silentDeployer.DeployCall.Called).Should(Equal(1))
@@ -332,14 +331,14 @@ var _ = Describe("RunDeployment", func() {
 		It("logs building deploymentInfo", func() {
 			deployment.CFContext.Environment = environment
 
-			controller.RunDeployment(&deployment, nil, response)
+			controller.RunDeployment(&deployment, I.PostRequest{}, response)
 			Eventually(logBuffer).Should(Say("building deploymentInfo"))
 		})
 		It("creates a pusher creator", func() {
 			deployment.CFContext.Environment = environment
 			deployment.Type.ZIP = true
 
-			controller.RunDeployment(&deployment, nil, response)
+			controller.RunDeployment(&deployment, I.PostRequest{}, response)
 			Eventually(pushManagerFactory.PushManagerCall.Called).Should(Equal(true))
 
 		})
@@ -349,7 +348,7 @@ var _ = Describe("RunDeployment", func() {
 			deployment.Body = &bodyByte
 			deployment.Type.ZIP = true
 
-			controller.RunDeployment(&deployment, nil, response)
+			controller.RunDeployment(&deployment, I.PostRequest{}, response)
 			returnedBody, _ := ioutil.ReadAll(pushManagerFactory.PushManagerCall.Received.DeployEventData.RequestBody)
 			Eventually(returnedBody).Should(Equal(bodyByte))
 		})
@@ -359,36 +358,39 @@ var _ = Describe("RunDeployment", func() {
 
 			response = bytes.NewBuffer([]byte("hello"))
 
-			controller.RunDeployment(&deployment, nil, response)
+			controller.RunDeployment(&deployment, I.PostRequest{}, response)
 			returnedResponse, _ := ioutil.ReadAll(pushManagerFactory.PushManagerCall.Received.DeployEventData.Response)
 			Eventually(returnedResponse).Should(Equal([]byte("hello")))
 		})
 		Context("when type is JSON", func() {
 			It("gets the artifact url from the request", func() {
-				bodyByte := []byte("{\"artifact_url\": \"the artifact url\"}")
+				bodyByte := []byte("")
 				deployment.Body = &bodyByte
 				deployment.CFContext.Environment = environment
 				deployment.Type.JSON = true
 
-				controller.RunDeployment(&deployment, nil, response)
+				controller.RunDeployment(&deployment, I.PostRequest{ArtifactUrl: "the artifact url"}, response)
 				Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.ArtifactURL).Should(Equal("the artifact url"))
 			})
 			It("gets the manifest from the request", func() {
-				bodyByte := []byte("{\"artifact_url\": \"the artifact url\", \"manifest\": \"the manifest\"}")
+				bodyByte := []byte("")
 				deployment.Body = &bodyByte
 				deployment.CFContext.Environment = environment
 				deployment.Type.JSON = true
 
-				controller.RunDeployment(&deployment, nil, response)
+				controller.RunDeployment(&deployment, I.PostRequest{ArtifactUrl: "the artifact url", Manifest: "the manifest"}, response)
 				Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Manifest).Should(Equal("the manifest"))
 			})
 			It("gets the data from the request", func() {
-				bodyByte := []byte("{\"artifact_url\": \"the artifact url\", \"data\": {\"avalue\": \"the data\"}}")
+				bodyByte := []byte("")
 				deployment.Body = &bodyByte
 				deployment.CFContext.Environment = environment
 				deployment.Type.JSON = true
 
-				controller.RunDeployment(&deployment, nil, response)
+				fakeData := make(map[string]interface{})
+				fakeData["avalue"] = "the data"
+
+				controller.RunDeployment(&deployment, I.PostRequest{ArtifactUrl: "a fake url", Data: fakeData}, response)
 				Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Data["avalue"]).Should(Equal("the data"))
 			})
 		})
@@ -399,7 +401,7 @@ var _ = Describe("RunDeployment", func() {
 					deployment.CFContext.Environment = "bad env"
 					deployment.Type.ZIP = true
 
-					deploymentResponse := controller.RunDeployment(&deployment, nil, response)
+					deploymentResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 					Eventually(deploymentResponse.Error).Should(HaveOccurred())
 					Eventually(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.EnvironmentNotFoundError{})))
 				})
@@ -417,7 +419,7 @@ var _ = Describe("RunDeployment", func() {
 							authResolver.Config.Username = "username-" + randomizer.StringRunes(10)
 							authResolver.Config.Password = "password-" + randomizer.StringRunes(10)
 
-							controller.RunDeployment(&deployment, nil, response)
+							controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 							Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Username).Should(Equal(authResolver.Config.Username))
 							Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Password).Should(Equal(authResolver.Config.Password))
@@ -435,7 +437,7 @@ var _ = Describe("RunDeployment", func() {
 								Authenticate: true,
 							}
 
-							deploymentResponse := controller.RunDeployment(&deployment, nil, response)
+							deploymentResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 							Eventually(deploymentResponse.Error).Should(HaveOccurred())
 							Eventually(deploymentResponse.Error.Error()).Should(Equal("basic auth header not found"))
@@ -448,7 +450,7 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{ArtifactUrl: "a fake url"}, response)
 
 						Eventually(logBuffer).Should(Say("checking for basic auth"))
 					})
@@ -459,7 +461,7 @@ var _ = Describe("RunDeployment", func() {
 						deployment.Authorization.Username = "username-" + randomizer.StringRunes(10)
 						deployment.Authorization.Password = "password-" + randomizer.StringRunes(10)
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Username).Should(Equal(deployment.Authorization.Username))
 						Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Password).Should(Equal(deployment.Authorization.Password))
@@ -475,35 +477,12 @@ var _ = Describe("RunDeployment", func() {
 					deployment.CFContext.Application = appName
 					deployment.CFContext.Environment = environment
 
-					controller.RunDeployment(&deployment, nil, response)
+					controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Org).Should(Equal(org))
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Space).Should(Equal(space))
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.AppName).Should(Equal(appName))
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Environment).Should(Equal(environment))
-				})
-
-				It("merges custom data provided with data in the request", func() {
-					data := make(map[string]interface{})
-					data["my param"] = "my value"
-
-					bodyByte := []byte(`{"data": {"request param": "request value"}, "artifact_url": "url"}`)
-
-					deployment.CFContext.Environment = environment
-					deployment.Type.JSON = true
-
-					deployment.CFContext.Organization = org
-					deployment.CFContext.Space = space
-					deployment.CFContext.Application = appName
-					deployment.CFContext.Environment = environment
-					deployment.Body = &bodyByte
-
-					controller.RunDeployment(&deployment, data, response)
-
-					deploymentInfo := eventManager.EmitCall.Received.Events[0].Data.(*structs.DeployEventData).DeploymentInfo
-
-					Expect(deploymentInfo.Data["my param"]).To(Equal("my value"))
-					Expect(deploymentInfo.Data["request param"]).To(Equal("request value"))
 				})
 
 				It("replaces provided custom data with overriding request data", func() {
@@ -521,7 +500,10 @@ var _ = Describe("RunDeployment", func() {
 					deployment.CFContext.Environment = environment
 					deployment.Body = &bodyByte
 
-					controller.RunDeployment(&deployment, data, response)
+					testData := make(map[string]interface{})
+					testData["my param"] = "request value"
+
+					controller.RunDeployment(&deployment, I.PostRequest{ArtifactUrl: "a fake url", Data: testData}, response)
 
 					deploymentInfo := eventManager.EmitCall.Received.Events[0].Data.(*structs.DeployEventData).DeploymentInfo
 
@@ -534,7 +516,7 @@ var _ = Describe("RunDeployment", func() {
 					bodyByte := []byte(`{"artifact_url": "xyz"}`)
 					deployment.Body = &bodyByte
 
-					controller.RunDeployment(&deployment, nil, response)
+					controller.RunDeployment(&deployment, I.PostRequest{ArtifactUrl: "a fake url"}, response)
 
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.ContentType).Should(Equal("JSON"))
 				})
@@ -542,7 +524,7 @@ var _ = Describe("RunDeployment", func() {
 					deployment.CFContext.Environment = environment
 					deployment.Type.ZIP = true
 
-					controller.RunDeployment(&deployment, nil, response)
+					controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.ContentType).Should(Equal("ZIP"))
 				})
@@ -552,7 +534,7 @@ var _ = Describe("RunDeployment", func() {
 					bodyByte := []byte(`{"artifact_url": "xyz"}`)
 					deployment.Body = &bodyByte
 
-					controller.RunDeployment(&deployment, nil, response)
+					controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 					returnedBody, _ := ioutil.ReadAll(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Body)
 					Eventually(string(returnedBody)).Should(Equal(string(bodyByte)))
@@ -562,7 +544,7 @@ var _ = Describe("RunDeployment", func() {
 					It("returns an error", func() {
 						deployment.CFContext.Environment = environment
 
-						deployResponse := controller.RunDeployment(&deployment, nil, response)
+						deployResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						Eventually(reflect.TypeOf(deployResponse.Error)).Should(Equal(reflect.TypeOf(D.InvalidContentTypeError{})))
 					})
@@ -573,7 +555,7 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.UUID).ShouldNot(BeEmpty())
 					})
@@ -591,7 +573,7 @@ var _ = Describe("RunDeployment", func() {
 						SkipSSL: true,
 					}
 
-					controller.RunDeployment(&deployment, nil, response)
+					controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.Domain).Should(Equal(domain))
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.SkipSSL).Should(BeTrue())
@@ -609,7 +591,7 @@ var _ = Describe("RunDeployment", func() {
 						CustomParams: customParams,
 					}
 
-					controller.RunDeployment(&deployment, nil, response)
+					controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.CustomParams["param1"]).Should(Equal("value1"))
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.CustomParams["param2"]).Should(Equal("value2"))
@@ -620,7 +602,7 @@ var _ = Describe("RunDeployment", func() {
 					deployment.Authorization.Username = randomizer.StringRunes(10)
 					deployment.Type.ZIP = true
 
-					controller.RunDeployment(&deployment, nil, response)
+					controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo).ShouldNot(BeNil())
 					Eventually(pushManagerFactory.PushManagerCall.Received.CFContext.Environment).Should(Equal(environment))
@@ -629,16 +611,17 @@ var _ = Describe("RunDeployment", func() {
 				})
 				It("correctly extracts artifact url from body", func() {
 					artifactURL := "artifactURL-" + randomizer.StringRunes(10)
-					bodyByte := []byte(fmt.Sprintf(`{"artifact_url": "%s"}`, artifactURL))
+					bodyByte := []byte("")
 
 					deployment.CFContext.Environment = environment
 					deployment.Body = &bodyByte
 					deployment.Type.JSON = true
 
-					controller.RunDeployment(&deployment, nil, response)
+					controller.RunDeployment(&deployment, I.PostRequest{ArtifactUrl: artifactURL}, response)
 
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo.ArtifactURL).Should(Equal(artifactURL))
 				})
+
 				Context("if artifact url isn't provided in body", func() {
 					It("returns an error", func() {
 						bodyByte := []byte("{}")
@@ -647,32 +630,19 @@ var _ = Describe("RunDeployment", func() {
 						deployment.Body = &bodyByte
 						deployment.Type.JSON = true
 
-						deploymentResponse := controller.RunDeployment(&deployment, nil, response)
+						deploymentResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						Eventually(deploymentResponse.Error).ShouldNot(BeNil())
-						Eventually(deploymentResponse.Error.Error()).Should(ContainSubstring("The following properties are missing: artifact_url"))
+						Eventually(deploymentResponse.Error.Error()).Should(ContainSubstring("the following properties are missing: artifact_url"))
 					})
 				})
-				Context("if body is invalid", func() {
-					It("returns an error", func() {
-						bodyByte := []byte("")
 
-						deployment.CFContext.Environment = environment
-						deployment.Body = &bodyByte
-						deployment.Type.JSON = true
-
-						deploymentResponse := controller.RunDeployment(&deployment, nil, response)
-
-						Eventually(deploymentResponse.Error).ShouldNot(BeNil())
-						Eventually(deploymentResponse.Error.Error()).Should(ContainSubstring("EOF"))
-					})
-				})
 				Context("deploy.start event", func() {
 					It("logs a start event", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						Eventually(logBuffer).Should(Say("emitting a deploy.start event"))
 					})
@@ -680,7 +650,7 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						Expect(eventManager.EmitCall.Received.Events[0].Type).Should(Equal(constants.DeployStartEvent))
 					})
@@ -688,7 +658,7 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						Expect(eventManager.EmitEventCall.Received.Events[0].Name()).Should(Equal("DeployStartedEvent"))
 					})
@@ -699,7 +669,7 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitCall.Returns.Error = []error{errors.New("a test error")}
 
-							deploymentResponse := controller.RunDeployment(&deployment, nil, response)
+							deploymentResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 							Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.EventError{})))
 						})
@@ -711,7 +681,7 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error")}
 
-							deploymentResponse := controller.RunDeployment(&deployment, nil, response)
+							deploymentResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 							Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.EventError{})))
 						})
@@ -723,7 +693,7 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Organization = org
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						deploymentInfo := eventManager.EmitCall.Received.Events[0].Data.(*structs.DeployEventData).DeploymentInfo
 						Expect(deploymentInfo.AppName).To(Equal(appName))
@@ -739,7 +709,7 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[0].(push.DeployStartedEvent)
 						Expect(event.CFContext.Environment).To(Equal(environment))
@@ -756,7 +726,7 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[0].(push.DeployStartedEvent)
 						Expect(event.Auth.Username).To(Equal("myuser"))
@@ -771,7 +741,7 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[0].(push.DeployStartedEvent)
 						Expect(event.Body).ToNot(BeNil())
@@ -786,14 +756,14 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 						Expect(eventManager.EmitCall.Received.Events[2].Type).Should(Equal(constants.DeployFinishEvent))
 					})
 					It("calls EmitEvent", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						Expect(eventManager.EmitEventCall.Received.Events[2].Name()).To(Equal(push.DeployFinishedEvent{}.Name()))
 					})
@@ -804,7 +774,7 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Organization = org
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						deploymentInfo := eventManager.EmitCall.Received.Events[2].Data.(*structs.DeployEventData).DeploymentInfo
 						Expect(deploymentInfo.AppName).To(Equal(appName))
@@ -820,7 +790,7 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[2].(push.DeployFinishedEvent)
 						Expect(event.CFContext.Environment).To(Equal(environment))
@@ -837,7 +807,7 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[2].(push.DeployFinishedEvent)
 						Expect(event.Auth.Username).To(Equal("myuser"))
@@ -852,7 +822,7 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[2].(push.DeployFinishedEvent)
 						Expect(event.Body).ToNot(BeNil())
@@ -867,7 +837,7 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitCall.Returns.Error = []error{nil, nil, errors.New("a test error")}
 
-							deploymentResponse := controller.RunDeployment(&deployment, nil, response)
+							deploymentResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 							Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(bluegreen.FinishDeployError{})))
 						})
@@ -879,7 +849,7 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitEventCall.Returns.Error = []error{nil, nil, errors.New("a test error")}
 
-							deploymentResponse := controller.RunDeployment(&deployment, nil, response)
+							deploymentResponse := controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 							Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(bluegreen.FinishDeployError{})))
 						})
@@ -890,14 +860,14 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 						Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.DeploySuccessEvent))
 					})
 					It("calls EmitEvent", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						Expect(eventManager.EmitEventCall.Received.Events[1].Name()).To(Equal(push.DeploySuccessEvent{}.Name()))
 					})
@@ -908,7 +878,7 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Organization = org
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						deploymentInfo := eventManager.EmitCall.Received.Events[1].Data.(*structs.DeployEventData).DeploymentInfo
 						Expect(deploymentInfo.AppName).To(Equal(appName))
@@ -924,7 +894,7 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[1].(push.DeploySuccessEvent)
 						Expect(event.CFContext.Environment).To(Equal(environment))
@@ -941,7 +911,7 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[1].(push.DeploySuccessEvent)
 						Expect(event.Auth.Username).To(Equal("myuser"))
@@ -956,7 +926,7 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[1].(push.DeploySuccessEvent)
 						Expect(event.Body).ToNot(BeNil())
@@ -968,7 +938,7 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 						Eventually(logBuffer).Should(Say("emitting a deploy.success event"))
 					})
 					Context("when Emit fails", func() {
@@ -978,7 +948,7 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitCall.Returns.Error = []error{nil, errors.New("a test error"), nil}
 
-							controller.RunDeployment(&deployment, nil, response)
+							controller.RunDeployment(&deployment, I.PostRequest{}, response)
 							Eventually(logBuffer).Should(Say("an error occurred when emitting a deploy.success event"))
 						})
 					})
@@ -989,7 +959,7 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitEventCall.Returns.Error = []error{nil, errors.New("a test error")}
 
-							controller.RunDeployment(&deployment, nil, response)
+							controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 							Eventually(logBuffer).Should(Say("an error occurred when emitting a DeploySuccessEvent"))
 						})
@@ -1002,7 +972,7 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 						Expect(eventManager.EmitCall.Received.Events[1].Type).Should(Equal(constants.DeployFailureEvent))
 					})
 					It("calls EmitEvent", func() {
@@ -1011,7 +981,7 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						Expect(eventManager.EmitEventCall.Received.Events[1].Name()).To(Equal(push.DeployFailureEvent{}.Name()))
 					})
@@ -1022,7 +992,7 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Organization = org
 						deployment.Type.ZIP = true
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						deploymentInfo := eventManager.EmitCall.Received.Events[1].Data.(*structs.DeployEventData).DeploymentInfo
 						Expect(deploymentInfo.AppName).To(Equal(appName))
@@ -1039,7 +1009,7 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[1].(push.DeployFailureEvent)
 						Expect(event.CFContext.Environment).To(Equal(environment))
@@ -1057,7 +1027,7 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[1].(push.DeployFailureEvent)
 						Expect(event.Auth.Username).To(Equal("myuser"))
@@ -1072,7 +1042,7 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 						event := eventManager.EmitEventCall.Received.Events[1].(push.DeployFailureEvent)
 						Expect(event.Body).ToNot(BeNil())
@@ -1086,7 +1056,7 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						controller.RunDeployment(&deployment, nil, response)
+						controller.RunDeployment(&deployment, I.PostRequest{}, response)
 						Eventually(logBuffer).Should(Say("emitting a deploy.failure event"))
 					})
 					Context("when Emit fails", func() {
@@ -1096,7 +1066,7 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitCall.Returns.Error = []error{errors.New("a test error"), errors.New("a test error"), nil}
 
-							controller.RunDeployment(&deployment, nil, response)
+							controller.RunDeployment(&deployment, I.PostRequest{ArtifactUrl: "a fake url"}, response)
 							Eventually(logBuffer).Should(Say("an error occurred when emitting a deploy.failure event"))
 						})
 					})
@@ -1107,7 +1077,7 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), errors.New("a test error"), nil}
 
-							controller.RunDeployment(&deployment, nil, response)
+							controller.RunDeployment(&deployment, I.PostRequest{}, response)
 
 							Eventually(logBuffer).Should(Say("an error occurred when emitting a DeployFailureEvent"))
 						})
@@ -1123,7 +1093,7 @@ var _ = Describe("RunDeployment", func() {
 					retError := error_finder.CreateLogMatchedError("a description", []string{"some details"}, "a solution", "a code")
 					errorFinder.FindErrorsCall.Returns.Errors = []I.LogMatchedError{retError}
 
-					controller.RunDeployment(&deployment, nil, response)
+					controller.RunDeployment(&deployment, I.PostRequest{}, response)
 					responseBytes, _ := ioutil.ReadAll(response)
 					Eventually(string(responseBytes)).Should(ContainSubstring("The following error was found in the above logs: a description"))
 					Eventually(string(responseBytes)).Should(ContainSubstring("Error: some details"))

@@ -101,8 +101,8 @@ func (c Creator) CreateControllerHandler(controller I.Controller) *gin.Engine {
 	r.Use(gin.LoggerWithWriter(c.createWriter()))
 	r.Use(gin.ErrorLogger())
 
-	r.POST(v2ENDPOINT, controller.RunDeploymentViaHttp)
-	r.POST(ENDPOINT, controller.RunDeploymentViaHttp)
+	r.POST(v2ENDPOINT, controller.PostRequestHandler)
+	r.POST(ENDPOINT, controller.PostRequestHandler)
 	r.PUT(ENDPOINT, controller.PutRequestHandler)
 
 	return r

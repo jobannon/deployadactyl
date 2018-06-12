@@ -37,15 +37,7 @@ type PutRequest struct {
 	Data  map[string]interface{} `json:"data"`
 }
 
-// Deprecated - wrapper for PushController.RunDeployment
-func (c *Controller) RunDeployment(deployment *I.Deployment, response *bytes.Buffer) I.DeployResponse {
-	uuid := randomizer.StringRunes(10)
-	log := I.DeploymentLogger{Log: c.Log, UUID: uuid}
-	return c.PushControllerFactory(log).RunDeployment(deployment, nil, response)
-}
-
-// RunDeploymentViaHttp checks the request content type and passes it to the Deployer.
-func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
+func (c *Controller) PostRequestHandler(g *gin.Context) {
 	uuid := randomizer.StringRunes(10)
 	log := I.DeploymentLogger{Log: c.Log, UUID: uuid}
 	log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
@@ -67,7 +59,9 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 		JSON: g.Request.Header.Get("Content-Type") == "application/json",
 		ZIP:  g.Request.Header.Get("Content-Type") == "application/zip",
 	}
+
 	response := &bytes.Buffer{}
+	defer io.Copy(g.Writer, response)
 
 	deployment := I.Deployment{
 		Authorization: authorization,
@@ -75,12 +69,21 @@ func (c *Controller) RunDeploymentViaHttp(g *gin.Context) {
 		Type:          deploymentType,
 	}
 	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
+
 	g.Request.Body.Close()
 	deployment.Body = &bodyBuffer
 
-	deployResponse := c.PushControllerFactory(log).RunDeployment(&deployment, nil, response)
+	postRequest := I.PostRequest{}
+	if deploymentType.JSON {
+		err := json.Unmarshal(bodyBuffer, &postRequest)
+		if err != nil {
+			response.Write([]byte("Invalid request body."))
+			g.Writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
 
-	defer io.Copy(g.Writer, response)
+	deployResponse := c.PushControllerFactory(log).RunDeployment(&deployment, postRequest, response)
 
 	if deployResponse.Error != nil {
 		g.Writer.WriteHeader(deployResponse.StatusCode)

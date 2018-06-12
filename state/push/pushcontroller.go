@@ -2,14 +2,13 @@ package push
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
-	"github.com/compozed/deployadactyl/geterrors"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/structs"
+	"github.com/go-errors/errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -31,6 +30,14 @@ func NewPushController(l I.DeploymentLogger, d, sd I.Deployer, em I.EventManager
 	}
 }
 
+type MissingParameterError struct {
+	Err error
+}
+
+func (e MissingParameterError) Error() string {
+	return e.Err.Error()
+}
+
 type PushController struct {
 	Deployer           I.Deployer
 	SilentDeployer     I.Deployer
@@ -43,20 +50,32 @@ type PushController struct {
 }
 
 // PUSH specific
-func (c *PushController) RunDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 
-	if data == nil {
-		data = make(map[string]interface{})
+	if deployment.Type.JSON && request.ArtifactUrl == "" {
+		c.Log.Error("artifact url is missing from request")
+		return I.DeployResponse{
+			StatusCode: http.StatusBadRequest,
+			Error:      MissingParameterError{Err: errors.New("the following properties are missing: artifact_url")},
+		}
+	}
+
+	if request.Data == nil {
+		request.Data = make(map[string]interface{})
 	}
 
 	deploymentInfo := &structs.DeploymentInfo{
-		Org:         cf.Organization,
-		Space:       cf.Space,
-		AppName:     cf.Application,
-		Environment: cf.Environment,
-		UUID:        c.Log.UUID,
-		Data:        data,
+		Org:                  cf.Organization,
+		Space:                cf.Space,
+		AppName:              cf.Application,
+		Environment:          cf.Environment,
+		UUID:                 c.Log.UUID,
+		Manifest:             request.Manifest,
+		ArtifactURL:          request.ArtifactUrl,
+		EnvironmentVariables: request.EnvironmentVariables,
+		HealthCheckEndpoint:  request.HealthCheckEndpoint,
+		Data:                 request.Data,
 	}
 
 	c.Log.Debugf("Starting deploy of %s with UUID %s", cf.Application, deploymentInfo.UUID)
@@ -100,18 +119,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, data map[string
 	deploymentInfo.Domain = environment.Domain
 	deploymentInfo.SkipSSL = environment.SkipSSL
 	deploymentInfo.CustomParams = environment.CustomParams
-
-	if deployment.Type.JSON {
-		deploymentInfo, err = c.getDeploymentInfo(deployment.Body, deploymentInfo)
-		if err != nil {
-			c.Log.Error(err)
-			return I.DeployResponse{
-				StatusCode:     http.StatusInternalServerError,
-				Error:          err,
-				DeploymentInfo: deploymentInfo,
-			}
-		}
-	}
+	deploymentInfo.Data = request.Data
 
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: body}
 	defer c.emitDeployFinish(&deployEventData, response, cf, auth, environment, &deployResponse, c.Log)
@@ -173,29 +181,6 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, data map[string
 	deployResponse = *<-reqChannel1
 
 	return deployResponse
-}
-
-func (c *PushController) getDeploymentInfo(body *[]byte, deploymentInfo *structs.DeploymentInfo) (*structs.DeploymentInfo, error) {
-	reader := ioutil.NopCloser(bytes.NewBuffer(*body))
-	err := json.NewDecoder(reader).Decode(deploymentInfo)
-	if err != nil {
-		return deploymentInfo, err
-	}
-
-	getter := geterrors.WrapFunc(func(key string) string {
-		if key == "artifact_url" {
-			return deploymentInfo.ArtifactURL
-		}
-		return ""
-	})
-
-	getter.Get("artifact_url")
-
-	err = getter.Err("The following properties are missing")
-	if err != nil {
-		return &structs.DeploymentInfo{}, err
-	}
-	return deploymentInfo, nil
 }
 
 func (c *PushController) emitDeployFinish(deployEventData *structs.DeployEventData, response io.ReadWriter, cf I.CFContext, auth I.Authorization, environment structs.Environment, deployResponse *I.DeployResponse, deploymentLogger I.DeploymentLogger) {

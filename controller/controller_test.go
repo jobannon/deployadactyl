@@ -80,7 +80,7 @@ var _ = Describe("Controller", func() {
 		}
 	})
 
-	Describe("RunDeploymentViaHttp handler", func() {
+	Describe("PostRequestHandler handler", func() {
 		var (
 			router        *gin.Engine
 			resp          *httptest.ResponseRecorder
@@ -92,7 +92,7 @@ var _ = Describe("Controller", func() {
 			resp = httptest.NewRecorder()
 			jsonBuffer = &bytes.Buffer{}
 
-			router.POST("/v3/apps/:environment/:org/:space/:appName", controller.RunDeploymentViaHttp)
+			router.POST("/v3/apps/:environment/:org/:space/:appName", controller.PostRequestHandler)
 
 			server = httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 				byteBody, _ = ioutil.ReadAll(req.Body)
@@ -106,9 +106,65 @@ var _ = Describe("Controller", func() {
 			server.Close()
 		})
 
+		It("provides the deserialized request to the push controller", func() {
+			foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+
+			jsonBuffer = bytes.NewBufferString(`{"artifact_url": "the url",
+                                                "environment_variables": {"foo": "bar"},
+                                                "health_check_endpoint": "the healthcheck",
+                                                "manifest": "the manifest",
+                                                "data": {"puppy": "dachshund"}}`)
+			req, _ := http.NewRequest("POST", foundationURL, jsonBuffer)
+			req.Header.Set("Content-Type", "application/json")
+
+			router.ServeHTTP(resp, req)
+
+			Eventually(pushController.RunDeploymentCall.Received.Request.ArtifactUrl).Should(Equal("the url"))
+			Eventually(pushController.RunDeploymentCall.Received.Request.EnvironmentVariables["foo"]).Should(Equal("bar"))
+			Eventually(pushController.RunDeploymentCall.Received.Request.HealthCheckEndpoint).Should(Equal("the healthcheck"))
+			Eventually(pushController.RunDeploymentCall.Received.Request.Manifest).Should(Equal("the manifest"))
+			Eventually(pushController.RunDeploymentCall.Received.Request.Data["puppy"]).Should(Equal("dachshund"))
+		})
+
+		Context("When the deserializer is unable to process the request", func() {
+
+			It("provides an error response", func() {
+				foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+
+				jsonBuffer = bytes.NewBufferString(`{`)
+
+				req, _ := http.NewRequest("POST", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				router.ServeHTTP(resp, req)
+
+				Eventually(resp.Code).Should(Equal(http.StatusBadRequest))
+			})
+		})
+
+		//Context("When given a empty artifact url in the request", func() {
+		//	It("provides an error", func() {
+		//		foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+		//
+		//		jsonBuffer = bytes.NewBufferString(`{"artifact_url": "",
+		//                                       "environment_variables": {"foo": "bar"},
+		//                                       "health_check_endpoint": "the healthcheck",
+		//                                       "manifest": "the manifest",
+		//                                       "data": {"puppy": "dachshund"}}`)
+		//		req, _ := http.NewRequest("POST", foundationURL, jsonBuffer)
+		//		req.Header.Set("Content-Type", "application/json")
+		//
+		//		router.ServeHTTP(resp, req)
+		//		Eventually(resp.Code).Should(Equal(http.StatusBadRequest))
+		//		Eventually(resp.Body.String()).Should(ContainSubstring("The following properties are missing: artifact_url"))
+		//	})
+		//})
+
 		Context("when deployer succeeds", func() {
 			It("deploys and returns http.StatusOK", func() {
 				foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+
+				jsonBuffer = bytes.NewBufferString("{}")
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
 				req.Header.Set("Content-Type", "application/zip")
@@ -134,6 +190,8 @@ var _ = Describe("Controller", func() {
 			It("does not run silent deploy when environment other than non-prop", func() {
 				foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, "not-non-prod", appName)
 
+				jsonBuffer = bytes.NewBufferString("{}")
+
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
 				req.Header.Set("Content-Type", "application/zip")
 
@@ -157,6 +215,8 @@ var _ = Describe("Controller", func() {
 			It("doesn't deploy and gives http.StatusInternalServerError", func() {
 				foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
 
+				jsonBuffer = bytes.NewBufferString("{}")
+
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
 				req.Header.Set("Content-Type", "application/zip")
 
@@ -177,6 +237,8 @@ var _ = Describe("Controller", func() {
 		Context("when parameters are added to the url", func() {
 			It("does not return an error", func() {
 				foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s?broken=false", environment, org, space, appName)
+
+				jsonBuffer = bytes.NewBufferString("{}")
 
 				req, err := http.NewRequest("POST", foundationURL, jsonBuffer)
 				req.Header.Set("Content-Type", "application/zip")

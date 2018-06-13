@@ -36,6 +36,23 @@ func (e GetStatusError) Error() string {
 	return fmt.Sprintf("cannot GET url: %s: %s", e.Url, e.Status)
 }
 
+type ArtifactoryTimeoutError struct {
+	Url    string
+	Status string
+}
+
+func (e ArtifactoryTimeoutError) Error() string {
+	return fmt.Sprintf(`*******************
+
+The following error was found in the above logs:
+
+Error: Artifactory timed out during artifact download
+
+Potential Solution: Reduce the size of the artifact
+
+"*******************"`)
+}
+
 type WriteResponseError struct {
 	Err error
 }

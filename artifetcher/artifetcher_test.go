@@ -37,7 +37,12 @@ var _ = Describe("Artifetcher", func() {
 		manifest = "manifest-" + randomizer.StringRunes(10)
 
 		testserver = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, "./fixtures/deployadactyl-fixture.jar")
+			if r.RequestURI == "/timeoutTest" {
+				w.WriteHeader(504)
+			} else {
+				http.ServeFile(w, r, "./fixtures/deployadactyl-fixture.jar")
+			}
+
 		}))
 	})
 
@@ -80,6 +85,15 @@ var _ = Describe("Artifetcher", func() {
 				_, err := artifetcher.Fetch(testserver.URL, "")
 
 				Expect(err).To(MatchError(UnzipError{errors.New("unzip call failed")}))
+			})
+		})
+
+		Context("when request to retrieve artifact times out", func() {
+			It("should return an error", func() {
+				_, err := artifetcher.Fetch(testserver.URL+"/timeoutTest", "")
+				Expect(err).To(HaveOccurred())
+
+				Expect(err.Error()).To(ContainSubstring("Artifactory timed out during artifact download"))
 			})
 		})
 	})

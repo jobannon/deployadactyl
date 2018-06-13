@@ -68,7 +68,11 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return "", GetStatusError{url, response.Status}
+		if response.StatusCode == 504 {
+			return "", ArtifactoryTimeoutError{}
+		} else {
+			return "", GetStatusError{url, response.Status}
+		}
 	}
 
 	_, err = io.Copy(artifactFile, response.Body)

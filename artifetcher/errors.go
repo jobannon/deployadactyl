@@ -46,7 +46,7 @@ func (e ArtifactoryTimeoutError) Error() string {
 
 The following error was found in the above logs:
 
-Error: Artifactory timed out during artifact download
+Error: Download of application artifact timed out
 
 Potential Solution: Reduce the size of the artifact
 

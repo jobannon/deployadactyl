@@ -36,7 +36,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 	a.Log.Info("fetching artifact")
 	a.Log.Debugf("artifact URL: %s", url)
 
-	artifactFile, err := a.FileSystem.TempFile("", "deployadactyl-zip-")
+	artifactFile, err := a.FileSystem.TempFile("", "deployadactyl-artifact-")
 	if err != nil {
 		return "", CreateTempFileError{err}
 	}
@@ -69,7 +69,7 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 
 	if response.StatusCode != http.StatusOK {
 		if response.StatusCode == 504 {
-			return "", ArtifactoryTimeoutError{}
+			return "", ArtifactoryTimeoutError{url, response.Status}
 		} else {
 			return "", GetStatusError{url, response.Status}
 		}
@@ -80,57 +80,73 @@ func (a *Artifetcher) Fetch(url, manifest string) (string, error) {
 		return "", WriteResponseError{err}
 	}
 
-	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-unzipped-")
+	unarchivedPath, err := a.FileSystem.TempDir("", "deployadactyl-unarchived-")
 	if err != nil {
 		return "", CreateTempDirectoryError{err}
 	}
 
-	err = a.Extractor.Unzip(artifactFile.Name(), unzippedPath, manifest)
-	if err != nil {
-		a.FileSystem.RemoveAll(unzippedPath)
-		return "", UnzipError{err}
+	if response.Header.Get("Content-Type") == "application/java-archive" || response.Header.Get("Content-Type") == "application/zip" {
+		err = a.Extractor.Unzip(artifactFile.Name(), unarchivedPath, manifest)
+		if err != nil {
+			a.FileSystem.RemoveAll(unarchivedPath)
+			return "", NonProcessError{err}
 
+		}
+	} else if response.Header.Get("Content-Type") == "application/x-tar" || response.Header.Get("Content-Type") == "application/x-gzip" {
+		err = a.Extractor.Untar(artifactFile.Name(), unarchivedPath, manifest)
+		if err != nil {
+			a.FileSystem.RemoveAll(unarchivedPath)
+			return "", NonProcessError{err}
+
+		}
+	} else {
+		return "", UnsupportedFormatError{}
 	}
 
-	a.Log.Debugf("fetched and unzipped to tempdir: %s", unzippedPath)
-	return unzippedPath, nil
+	a.Log.Debugf("fetched and unarchived to tempdir: %s", unarchivedPath)
+	return unarchivedPath, nil
 }
 
 // FetchZipFromRequest fetches files from a compressed zip file in the request body.
 //
 // Returns a string to the unzipped application path and an error.
-func (a *Artifetcher) FetchZipFromRequest(body io.Reader) (string, string, error) {
+func (a *Artifetcher) FetchArtifactFromRequest(body io.Reader, contentType string) (string, string, error) {
 
-	zipFile, err := a.FileSystem.TempFile("", "deployadactyl-")
+	file, err := a.FileSystem.TempFile("", "deployadactyl-")
 	if err != nil {
 		return "", "", CreateTempFileError{err}
 	}
-	defer zipFile.Close()
-	defer a.FileSystem.Remove(zipFile.Name())
+	defer file.Close()
+	defer a.FileSystem.Remove(file.Name())
 
-	a.Log.Infof("fetching zip file %s", zipFile.Name())
-
-	_, err = io.Copy(zipFile, body)
+	a.Log.Infof("fetching file %s", file.Name())
+	_, err = io.Copy(file, body)
 	if err != nil {
 		return "", "", WriteResponseError{err}
 	}
 
-	unzippedPath, err := a.FileSystem.TempDir("", "deployadactyl-")
+	unarchivedPath, err := a.FileSystem.TempDir("", "deployadactyl-")
 	if err != nil {
 		return "", "", CreateTempDirectoryError{err}
 	}
 
-	err = a.Extractor.Unzip(zipFile.Name(), unzippedPath, "")
-	if err != nil {
-		a.FileSystem.RemoveAll(unzippedPath)
-		return "", "", UnzipError{err}
+	if contentType == "application/zip" || contentType == "application/java-archive" {
+		err = a.Extractor.Unzip(file.Name(), unarchivedPath, "")
+		if err != nil {
+			a.FileSystem.RemoveAll(unarchivedPath)
+			return "", "", NonProcessError{err}
+		}
+	} else if contentType == "application/x-tar" || contentType == "application/x-gzip" {
+		err = a.Extractor.Untar(file.Name(), unarchivedPath, "")
+	} else {
+		return "", "", UnsupportedFormatError{}
 	}
 
-	manifest, err := a.FileSystem.ReadFile(unzippedPath + "/manifest.yml")
+	manifest, err := a.FileSystem.ReadFile(unarchivedPath + "/manifest.yml")
 	if err != nil {
 		return "", "", err
 	}
 
-	a.Log.Debugf("fetched and unzipped to tempdir %s", unzippedPath)
-	return unzippedPath, string(manifest), nil
+	a.Log.Debugf("fetched and unarchived to tempdir %s", unarchivedPath)
+	return unarchivedPath, string(manifest), nil
 }

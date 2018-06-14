@@ -53,7 +53,7 @@ type PushController struct {
 func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 
-	if deployment.Type.JSON && request.ArtifactUrl == "" {
+	if deployment.Type == "application/json" && request.ArtifactUrl == "" {
 		c.Log.Error("artifact url is missing from request")
 		return I.DeployResponse{
 			StatusCode: http.StatusBadRequest,
@@ -82,14 +82,8 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostR
 	c.Log.Debug("building deploymentInfo")
 
 	body := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
-	if deployment.Type.JSON {
-		c.Log.Debug("deploying from json request")
-
-		deploymentInfo.ContentType = "JSON"
-	} else if deployment.Type.ZIP {
-		c.Log.Debug("deploying from zip request")
-		deploymentInfo.Body = body
-		deploymentInfo.ContentType = "ZIP"
+	if deployment.Type == "application/json" || deployment.Type == "application/zip" || deployment.Type == "application/x-tar" || deployment.Type == "application/x-gzip" {
+		deploymentInfo.ContentType = deployment.Type
 	} else {
 		return I.DeployResponse{
 			StatusCode: http.StatusBadRequest,
@@ -120,6 +114,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostR
 	deploymentInfo.SkipSSL = environment.SkipSSL
 	deploymentInfo.CustomParams = environment.CustomParams
 	deploymentInfo.Data = request.Data
+	deploymentInfo.Body = body
 
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: body}
 	defer c.emitDeployFinish(&deployEventData, response, cf, auth, environment, &deployResponse, c.Log)

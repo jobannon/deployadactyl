@@ -4,14 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type DeploymentType struct {
-	JSON bool
-	ZIP  bool
-}
-
 type Deployment struct {
 	Body          *[]byte
-	Type          DeploymentType
+	Type          string
 	Authorization Authorization
 	CFContext     CFContext
 }

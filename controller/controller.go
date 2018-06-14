@@ -55,10 +55,7 @@ func (c *Controller) PostRequestHandler(g *gin.Context) {
 		Password: pwd,
 	}
 
-	deploymentType := I.DeploymentType{
-		JSON: g.Request.Header.Get("Content-Type") == "application/json",
-		ZIP:  g.Request.Header.Get("Content-Type") == "application/zip",
-	}
+	deploymentType := g.Request.Header.Get("Content-Type")
 
 	response := &bytes.Buffer{}
 	defer io.Copy(g.Writer, response)
@@ -74,7 +71,7 @@ func (c *Controller) PostRequestHandler(g *gin.Context) {
 	deployment.Body = &bodyBuffer
 
 	postRequest := I.PostRequest{}
-	if deploymentType.JSON {
+	if deploymentType == "application/json" {
 		err := json.Unmarshal(bodyBuffer, &postRequest)
 		if err != nil {
 			response.Write([]byte("Invalid request body."))

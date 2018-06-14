@@ -17,9 +17,10 @@ type Fetcher struct {
 		}
 	}
 
-	FetchFromZipCall struct {
+	FetchArtifactFromRequestCall struct {
 		Received struct {
-			Request io.Reader
+			Request     io.Reader
+			ContentType string
 		}
 		Returns struct {
 			AppPath  string
@@ -38,8 +39,9 @@ func (f *Fetcher) Fetch(url, manifest string) (string, error) {
 }
 
 // FetchZipFromRequest mock method.
-func (f *Fetcher) FetchZipFromRequest(body io.Reader) (string, string, error) {
-	f.FetchFromZipCall.Received.Request = body
+func (f *Fetcher) FetchArtifactFromRequest(body io.Reader, contentType string) (string, string, error) {
+	f.FetchArtifactFromRequestCall.Received.Request = body
+	f.FetchArtifactFromRequestCall.Received.ContentType = contentType
 
-	return f.FetchFromZipCall.Returns.AppPath, f.FetchFromZipCall.Returns.Manifest, f.FetchFromZipCall.Returns.Error
+	return f.FetchArtifactFromRequestCall.Returns.AppPath, f.FetchArtifactFromRequestCall.Returns.Manifest, f.FetchArtifactFromRequestCall.Returns.Error
 }

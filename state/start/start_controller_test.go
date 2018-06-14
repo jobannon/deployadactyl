@@ -78,7 +78,7 @@ var _ = Describe("StartDeployment", func() {
 
 		deployment = I.Deployment{
 			Body:          &bodyByte,
-			Type:          I.DeploymentType{},
+			Type:          "application/json",
 			CFContext:     I.CFContext{},
 			Authorization: I.Authorization{},
 		}

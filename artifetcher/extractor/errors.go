@@ -74,3 +74,11 @@ type WriteFileError struct {
 func (e WriteFileError) Error() string {
 	return fmt.Sprintf("cannot write to file: %s: %s", e.SavedLocation, e.Err)
 }
+
+type ReadTarError struct {
+	Err error
+}
+
+func (e ReadTarError) Error() string {
+	return fmt.Sprintf("Failed to untar file: %s", e.Err)
+}

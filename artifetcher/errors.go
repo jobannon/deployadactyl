@@ -50,7 +50,7 @@ Error: Download of application artifact timed out
 
 Potential Solution: Reduce the size of the artifact
 
-"*******************"`)
+*******************`)
 }
 
 type WriteResponseError struct {

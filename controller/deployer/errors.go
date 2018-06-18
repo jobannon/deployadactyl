@@ -19,7 +19,7 @@ func (e ManifestError) Error() string {
 type InvalidContentTypeError struct{}
 
 func (e InvalidContentTypeError) Error() string {
-	return "must be application/json or application/zip"
+	return "must be application/json, application/zip, application/x-tar, or application/x-gzip"
 }
 
 type EventError struct {

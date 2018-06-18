@@ -24,6 +24,16 @@ type CFContext struct {
 	SkipSSL      bool
 }
 
+type PutRequest struct {
+	State string                 `json:"state"`
+	Data  map[string]interface{} `json:"data"`
+}
+
+type PutDeploymentRequest struct {
+	Deployment
+	Request *PutRequest
+}
+
 type Controller interface {
 	PostRequestHandler(g *gin.Context)
 

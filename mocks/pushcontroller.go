@@ -8,8 +8,7 @@ import (
 type PushController struct {
 	RunDeploymentCall struct {
 		Received struct {
-			Deployment *interfaces.Deployment
-			Request    interfaces.PostRequest
+			Deployment interfaces.PostDeploymentRequest
 			Response   *bytes.Buffer
 		}
 		Returns struct {
@@ -20,10 +19,10 @@ type PushController struct {
 	}
 }
 
-func (c *PushController) RunDeployment(deployment *interfaces.Deployment, request interfaces.PostRequest, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
+func (c *PushController) RunDeployment(deployment interfaces.PostDeploymentRequest, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
 	c.RunDeploymentCall.Called = true
 	c.RunDeploymentCall.Received.Deployment = deployment
-	c.RunDeploymentCall.Received.Request = request
+	c.RunDeploymentCall.Received.Deployment.Request = deployment.Request
 	c.RunDeploymentCall.Received.Response = response
 
 	if c.RunDeploymentCall.Writes != "" {

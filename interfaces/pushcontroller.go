@@ -13,10 +13,15 @@ type PostRequest struct {
 	Data                 map[string]interface{} `json:"data"`
 }
 
+type PostDeploymentRequest struct {
+	Deployment
+	Request PostRequest
+}
+
 type PushManagerFactory interface {
 	PushManager(log DeploymentLogger, deployEventData structs.DeployEventData, cfContext CFContext, auth Authorization, env structs.Environment, envVars map[string]string) ActionCreator
 }
 
 type PushController interface {
-	RunDeployment(deployment *Deployment, data PostRequest, response *bytes.Buffer) (deployResponse DeployResponse)
+	RunDeployment(postDeploymentRequest PostDeploymentRequest, response *bytes.Buffer) (deployResponse DeployResponse)
 }

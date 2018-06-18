@@ -119,11 +119,11 @@ var _ = Describe("Controller", func() {
 
 			router.ServeHTTP(resp, req)
 
-			Eventually(pushController.RunDeploymentCall.Received.Request.ArtifactUrl).Should(Equal("the url"))
-			Eventually(pushController.RunDeploymentCall.Received.Request.EnvironmentVariables["foo"]).Should(Equal("bar"))
-			Eventually(pushController.RunDeploymentCall.Received.Request.HealthCheckEndpoint).Should(Equal("the healthcheck"))
-			Eventually(pushController.RunDeploymentCall.Received.Request.Manifest).Should(Equal("the manifest"))
-			Eventually(pushController.RunDeploymentCall.Received.Request.Data["puppy"]).Should(Equal("dachshund"))
+			Eventually(pushController.RunDeploymentCall.Received.Deployment.Request.ArtifactUrl).Should(Equal("the url"))
+			Eventually(pushController.RunDeploymentCall.Received.Deployment.Request.EnvironmentVariables["foo"]).Should(Equal("bar"))
+			Eventually(pushController.RunDeploymentCall.Received.Deployment.Request.HealthCheckEndpoint).Should(Equal("the healthcheck"))
+			Eventually(pushController.RunDeploymentCall.Received.Deployment.Request.Manifest).Should(Equal("the manifest"))
+			Eventually(pushController.RunDeploymentCall.Received.Deployment.Request.Data["puppy"]).Should(Equal("dachshund"))
 		})
 
 		Context("When the deserializer is unable to process the request", func() {
@@ -385,8 +385,8 @@ var _ = Describe("Controller", func() {
 
 				router.ServeHTTP(resp, req)
 
-				Expect(stopController.StopDeploymentCall.Received.Data["user_id"]).To(Equal("jhodo"))
-				Expect(stopController.StopDeploymentCall.Received.Data["group"]).To(Equal("XP_IS_CHG"))
+				Expect(stopController.StopDeploymentCall.Received.Deployment.Request.Data["user_id"]).To(Equal("jhodo"))
+				Expect(stopController.StopDeploymentCall.Received.Deployment.Request.Data["group"]).To(Equal("XP_IS_CHG"))
 			})
 
 			Context("if requested state is not 'stop'", func() {

@@ -32,11 +32,6 @@ type Controller struct {
 	ErrorFinder            I.ErrorFinder
 }
 
-type PutRequest struct {
-	State string                 `json:"state"`
-	Data  map[string]interface{} `json:"data"`
-}
-
 func (c *Controller) PostRequestHandler(g *gin.Context) {
 	uuid := randomizer.StringRunes(10)
 	log := I.DeploymentLogger{Log: c.Log, UUID: uuid}
@@ -83,7 +78,12 @@ func (c *Controller) PostRequestHandler(g *gin.Context) {
 		}
 	}
 
-	deployResponse := c.PushControllerFactory(log).RunDeployment(&deployment, postRequest, response)
+	postDeploymentRequest := I.PostDeploymentRequest{
+		Deployment: deployment,
+		Request:    postRequest,
+	}
+
+	deployResponse := c.PushControllerFactory(log).RunDeployment(postDeploymentRequest, response)
 
 	if deployResponse.Error != nil {
 		g.Writer.WriteHeader(deployResponse.StatusCode)
@@ -118,7 +118,7 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
 	g.Request.Body.Close()
 
-	putRequest := &PutRequest{}
+	putRequest := &I.PutRequest{}
 	err := json.Unmarshal(bodyBuffer, putRequest)
 	if err != nil {
 		response.Write([]byte("Invalid request body."))
@@ -131,12 +131,17 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 		CFContext:     cfContext,
 	}
 
+	putDeploymentRequest := I.PutDeploymentRequest{
+		Deployment: deployment,
+		Request:    putRequest,
+	}
+
 	var deployResponse I.DeployResponse
 
 	if putRequest.State == "stopped" {
-		deployResponse = c.StopControllerFactory(log).StopDeployment(&deployment, putRequest.Data, response)
+		deployResponse = c.StopControllerFactory(log).StopDeployment(putDeploymentRequest, response)
 	} else if putRequest.State == "started" {
-		deployResponse = c.StartControllerFactory(log).StartDeployment(&deployment, putRequest.Data, response)
+		deployResponse = c.StartControllerFactory(log).StartDeployment(putDeploymentRequest, response)
 	} else {
 		response.Write([]byte("Unknown requested state: " + putRequest.State))
 		deployResponse = I.DeployResponse{

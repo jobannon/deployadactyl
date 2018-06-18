@@ -50,10 +50,10 @@ type PushController struct {
 }
 
 // PUSH specific
-func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *PushController) RunDeployment(deployment I.PostDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 
-	if deployment.Type.JSON && request.ArtifactUrl == "" {
+	if deployment.Type.JSON && deployment.Request.ArtifactUrl == "" {
 		c.Log.Error("artifact url is missing from request")
 		return I.DeployResponse{
 			StatusCode: http.StatusBadRequest,
@@ -61,8 +61,8 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostR
 		}
 	}
 
-	if request.Data == nil {
-		request.Data = make(map[string]interface{})
+	if deployment.Request.Data == nil {
+		deployment.Request.Data = make(map[string]interface{})
 	}
 
 	deploymentInfo := &structs.DeploymentInfo{
@@ -71,11 +71,11 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostR
 		AppName:              cf.Application,
 		Environment:          cf.Environment,
 		UUID:                 c.Log.UUID,
-		Manifest:             request.Manifest,
-		ArtifactURL:          request.ArtifactUrl,
-		EnvironmentVariables: request.EnvironmentVariables,
-		HealthCheckEndpoint:  request.HealthCheckEndpoint,
-		Data:                 request.Data,
+		Manifest:             deployment.Request.Manifest,
+		ArtifactURL:          deployment.Request.ArtifactUrl,
+		EnvironmentVariables: deployment.Request.EnvironmentVariables,
+		HealthCheckEndpoint:  deployment.Request.HealthCheckEndpoint,
+		Data:                 deployment.Request.Data,
 	}
 
 	c.Log.Debugf("Starting deploy of %s with UUID %s", cf.Application, deploymentInfo.UUID)
@@ -119,7 +119,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostR
 	deploymentInfo.Domain = environment.Domain
 	deploymentInfo.SkipSSL = environment.SkipSSL
 	deploymentInfo.CustomParams = environment.CustomParams
-	deploymentInfo.Data = request.Data
+	deploymentInfo.Data = deployment.Request.Data
 
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: body}
 	defer c.emitDeployFinish(&deployEventData, response, cf, auth, environment, &deployResponse, c.Log)

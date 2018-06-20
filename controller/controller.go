@@ -115,8 +115,8 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
 	g.Request.Body.Close()
 
-	putRequest := &I.PutRequest{}
-	err := json.Unmarshal(bodyBuffer, putRequest)
+	putRequest := I.PutRequest{}
+	err := json.Unmarshal(bodyBuffer, &putRequest)
 	if err != nil {
 		response.Write([]byte("Invalid request body."))
 		g.Writer.WriteHeader(http.StatusBadRequest)

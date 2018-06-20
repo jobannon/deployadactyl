@@ -31,7 +31,20 @@ type PutRequest struct {
 
 type PutDeploymentRequest struct {
 	Deployment
-	Request *PutRequest
+	Request PutRequest
+}
+
+type PostRequest struct {
+	ArtifactUrl          string                 `json:"artifact_url"`
+	Manifest             string                 `json:"manifest"`
+	EnvironmentVariables map[string]string      `json:"environment_variables"`
+	HealthCheckEndpoint  string                 `json:"health_check_endpoint"`
+	Data                 map[string]interface{} `json:"data"`
+}
+
+type PostDeploymentRequest struct {
+	Deployment
+	Request PostRequest
 }
 
 type Controller interface {

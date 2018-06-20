@@ -96,7 +96,7 @@ var _ = Describe("StartDeployment", func() {
 
 			putDeploymentRequest := I.PutDeploymentRequest{
 				Deployment: *deployment,
-				Request:    &I.PutRequest{Data: nil},
+				Request:    I.PutRequest{Data: nil},
 			}
 
 			deploymentResponse := controller.StartDeployment(putDeploymentRequest, response)
@@ -118,7 +118,7 @@ var _ = Describe("StartDeployment", func() {
 		response := bytes.NewBuffer([]byte{})
 		putDeploymentRequest := I.PutDeploymentRequest{
 			Deployment: *deployment,
-			Request:    &I.PutRequest{Data: nil},
+			Request:    I.PutRequest{Data: nil},
 		}
 		deploymentResponse := controller.StartDeployment(putDeploymentRequest, response)
 
@@ -141,7 +141,7 @@ var _ = Describe("StartDeployment", func() {
 		response := bytes.NewBuffer([]byte{})
 		putDeploymentRequest := I.PutDeploymentRequest{
 			Deployment: *deployment,
-			Request:    &I.PutRequest{Data: nil},
+			Request:    I.PutRequest{Data: nil},
 		}
 		deploymentResponse := controller.StartDeployment(putDeploymentRequest, response)
 
@@ -164,7 +164,7 @@ var _ = Describe("StartDeployment", func() {
 
 			putDeploymentRequest := I.PutDeploymentRequest{
 				Deployment: *deployment,
-				Request:    &I.PutRequest{Data: data},
+				Request:    I.PutRequest{Data: data},
 			}
 
 			controller.StartDeployment(putDeploymentRequest, response)
@@ -191,7 +191,7 @@ var _ = Describe("StartDeployment", func() {
 			}
 			putDeploymentRequest := I.PutDeploymentRequest{
 				Deployment: *deployment,
-				Request:    &I.PutRequest{Data: nil},
+				Request:    I.PutRequest{Data: nil},
 			}
 
 			deployResponse := controller.StartDeployment(putDeploymentRequest, response)
@@ -212,7 +212,7 @@ var _ = Describe("StartDeployment", func() {
 			response := bytes.NewBuffer([]byte{})
 			putDeploymentRequest := I.PutDeploymentRequest{
 				Deployment: *deployment,
-				Request:    &I.PutRequest{Data: nil},
+				Request:    I.PutRequest{Data: nil},
 			}
 			deploymentResponse := controller.StartDeployment(putDeploymentRequest, response)
 
@@ -239,7 +239,7 @@ var _ = Describe("StartDeployment", func() {
 
 			putDeploymentRequest := I.PutDeploymentRequest{
 				Deployment: *deployment,
-				Request:    &I.PutRequest{Data: nil},
+				Request:    I.PutRequest{Data: nil},
 			}
 			deploymentResponse := controller.StartDeployment(putDeploymentRequest, response)
 			Expect(deploymentResponse.DeploymentInfo.Domain).Should(Equal("myDomain"))
@@ -262,7 +262,7 @@ var _ = Describe("StartDeployment", func() {
 				response := bytes.NewBuffer([]byte{})
 				putDeploymentRequest := I.PutDeploymentRequest{
 					Deployment: *deployment,
-					Request:    &I.PutRequest{Data: nil},
+					Request:    I.PutRequest{Data: nil},
 				}
 
 				deploymentResponse := controller.StartDeployment(putDeploymentRequest, response)
@@ -285,7 +285,7 @@ var _ = Describe("StartDeployment", func() {
 				response := bytes.NewBuffer([]byte{})
 				putDeploymentRequest := I.PutDeploymentRequest{
 					Deployment: *deployment,
-					Request:    &I.PutRequest{Data: nil},
+					Request:    I.PutRequest{Data: nil},
 				}
 
 				deploymentResponse := controller.StartDeployment(putDeploymentRequest, response)
@@ -311,7 +311,7 @@ var _ = Describe("StartDeployment", func() {
 			response := bytes.NewBuffer([]byte{})
 			putDeploymentRequest := I.PutDeploymentRequest{
 				Deployment: *deployment,
-				Request:    &I.PutRequest{Data: nil},
+				Request:    I.PutRequest{Data: nil},
 			}
 
 			deploymentResponse := controller.StartDeployment(putDeploymentRequest, response)
@@ -334,7 +334,7 @@ var _ = Describe("StartDeployment", func() {
 			response := bytes.NewBuffer([]byte{})
 			putDeploymentRequest := I.PutDeploymentRequest{
 				Deployment: *deployment,
-				Request:    &I.PutRequest{Data: data},
+				Request:    I.PutRequest{Data: data},
 			}
 
 			deploymentResponse := controller.StartDeployment(putDeploymentRequest, response)
@@ -356,7 +356,7 @@ var _ = Describe("StartDeployment", func() {
 		}
 		putDeploymentRequest := I.PutDeploymentRequest{
 			Deployment: *deployment,
-			Request:    &I.PutRequest{Data: nil},
+			Request:    I.PutRequest{Data: nil},
 		}
 
 		response := bytes.NewBuffer([]byte{})
@@ -375,7 +375,7 @@ var _ = Describe("StartDeployment", func() {
 		}
 		putDeploymentRequest := I.PutDeploymentRequest{
 			Deployment: *deployment,
-			Request:    &I.PutRequest{Data: nil},
+			Request:    I.PutRequest{Data: nil},
 		}
 
 		response := bytes.NewBuffer([]byte{})
@@ -395,7 +395,7 @@ var _ = Describe("StartDeployment", func() {
 		response := bytes.NewBuffer([]byte{})
 		putDeploymentRequest := I.PutDeploymentRequest{
 			Deployment: *deployment,
-			Request:    &I.PutRequest{Data: nil},
+			Request:    I.PutRequest{Data: nil},
 		}
 		deploymentResponse := controller.StartDeployment(putDeploymentRequest, response)
 
@@ -429,7 +429,7 @@ var _ = Describe("StartDeployment", func() {
 				}
 				putDeploymentRequest := I.PutDeploymentRequest{
 					Deployment: *deployment,
-					Request:    &I.PutRequest{Data: data},
+					Request:    I.PutRequest{Data: data},
 				}
 
 				controller.StartDeployment(putDeploymentRequest, response)
@@ -461,7 +461,7 @@ var _ = Describe("StartDeployment", func() {
 				}
 				putDeploymentRequest := I.PutDeploymentRequest{
 					Deployment: *deployment,
-					Request:    &I.PutRequest{Data: data},
+					Request:    I.PutRequest{Data: data},
 				}
 
 				controller.StartDeployment(putDeploymentRequest, response)
@@ -488,7 +488,7 @@ var _ = Describe("StartDeployment", func() {
 				response := bytes.NewBuffer([]byte{})
 				putDeploymentRequest := I.PutDeploymentRequest{
 					Deployment: *deployment,
-					Request:    &I.PutRequest{Data: nil},
+					Request:    I.PutRequest{Data: nil},
 				}
 
 				controller.StartDeployment(putDeploymentRequest, response)
@@ -510,7 +510,7 @@ var _ = Describe("StartDeployment", func() {
 			response := bytes.NewBuffer([]byte{})
 			putDeploymentRequest := I.PutDeploymentRequest{
 				Deployment: *deployment,
-				Request:    &I.PutRequest{Data: nil},
+				Request:    I.PutRequest{Data: nil},
 			}
 
 			controller.StartDeployment(putDeploymentRequest, response)
@@ -541,7 +541,7 @@ var _ = Describe("StartDeployment", func() {
 			}
 			putDeploymentRequest := I.PutDeploymentRequest{
 				Deployment: *deployment,
-				Request:    &I.PutRequest{Data: data},
+				Request:    I.PutRequest{Data: data},
 			}
 
 			deployer.DeployCall.Returns.Error = errors.New("deploy error")
@@ -574,7 +574,7 @@ var _ = Describe("StartDeployment", func() {
 				response := bytes.NewBuffer([]byte{})
 				putDeploymentRequest := I.PutDeploymentRequest{
 					Deployment: *deployment,
-					Request:    &I.PutRequest{Data: nil},
+					Request:    I.PutRequest{Data: nil},
 				}
 
 				controller.StartDeployment(putDeploymentRequest, response)
@@ -595,7 +595,7 @@ var _ = Describe("StartDeployment", func() {
 
 			putDeploymentRequest := I.PutDeploymentRequest{
 				Deployment: *deployment,
-				Request:    &I.PutRequest{Data: nil},
+				Request:    I.PutRequest{Data: nil},
 			}
 
 			response := bytes.NewBuffer([]byte{})
@@ -628,7 +628,7 @@ var _ = Describe("StartDeployment", func() {
 			}
 			putDeploymentRequest := I.PutDeploymentRequest{
 				Deployment: *deployment,
-				Request:    &I.PutRequest{Data: data},
+				Request:    I.PutRequest{Data: data},
 			}
 
 			controller.StartDeployment(putDeploymentRequest, response)

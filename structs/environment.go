@@ -10,5 +10,5 @@ type Environment struct {
 	Instances        uint16
 	DisableRollback  bool                   `yaml:"rollback_disabled"`
 	CustomParams     map[string]interface{} `yaml:"custom_params"`
-	AllowInvalidUser bool                   `yaml:"allow_invalid_users"`
+	AllowInvalidUser bool                   `yaml:"allow_invalid_user"`
 }

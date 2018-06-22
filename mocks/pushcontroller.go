@@ -2,14 +2,15 @@ package mocks
 
 import (
 	"bytes"
+
 	"github.com/compozed/deployadactyl/interfaces"
 )
 
 type PushController struct {
 	RunDeploymentCall struct {
 		Received struct {
-			Deployment interfaces.PostDeploymentRequest
-			Response   *bytes.Buffer
+			Request  interfaces.PostDeploymentRequest
+			Response *bytes.Buffer
 		}
 		Returns struct {
 			DeployResponse interfaces.DeployResponse
@@ -21,8 +22,7 @@ type PushController struct {
 
 func (c *PushController) RunDeployment(deployment interfaces.PostDeploymentRequest, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
 	c.RunDeploymentCall.Called = true
-	c.RunDeploymentCall.Received.Deployment = deployment
-	c.RunDeploymentCall.Received.Deployment.Request = deployment.Request
+	c.RunDeploymentCall.Received.Request = deployment
 	c.RunDeploymentCall.Received.Response = response
 
 	if c.RunDeploymentCall.Writes != "" {

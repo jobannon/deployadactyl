@@ -3,16 +3,17 @@ package push
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+
 	"github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/go-errors/errors"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
 )
 
 type PushControllerConstructor func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.PushController
@@ -154,7 +155,7 @@ func (c *PushController) RunDeployment(deployment I.PostDeploymentRequest, respo
 		}
 	}
 
-	pusherCreator := c.PushManagerFactory.PushManager(c.Log, deployEventData, cf, auth, environment, deploymentInfo.EnvironmentVariables)
+	pusherCreator := c.PushManagerFactory.PushManager(deployEventData, auth, environment, deploymentInfo.EnvironmentVariables)
 
 	reqChannel1 := make(chan *I.DeployResponse)
 	reqChannel2 := make(chan *I.DeployResponse)

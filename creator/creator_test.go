@@ -3,21 +3,19 @@ package creator
 import (
 	"os"
 
+	"reflect"
+	"runtime"
+
+	"bytes"
+
 	"github.com/compozed/deployadactyl/config"
-	"github.com/compozed/deployadactyl/controller/deployer"
-	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/state"
 	"github.com/compozed/deployadactyl/state/push"
-	"github.com/compozed/deployadactyl/state/start"
-	"github.com/compozed/deployadactyl/state/stop"
-	"github.com/compozed/deployadactyl/structs"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"reflect"
-	"runtime"
 )
 
 var _ = Describe("Custom creator", func() {
@@ -70,53 +68,6 @@ var _ = Describe("Custom creator", func() {
 		Expect(err.Error()).To(Equal("missing environment variables: CF_USERNAME, CF_PASSWORD"))
 	})
 
-	Describe("CreatePushController", func() {
-
-		Context("when mock constructor is provided", func() {
-			It("should return the mock implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				expected := &mocks.PushController{}
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewPushController: func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, authResolver I.AuthResolver, resolver I.EnvResolver) I.PushController {
-						return expected
-					},
-				})
-				controller := creator.CreatePushController(I.DeploymentLogger{})
-				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(expected)))
-			})
-		})
-
-		Context("when mock constructor is not provided", func() {
-			It("should return the default implementation", func() {
-
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
-				controller := creator.CreatePushController(I.DeploymentLogger{})
-				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(&push.PushController{})))
-				concrete := controller.(*push.PushController)
-				Expect(concrete.Deployer).ToNot(BeNil())
-				Expect(concrete.SilentDeployer).ToNot(BeNil())
-				Expect(concrete.Log).ToNot(BeNil())
-				Expect(concrete.EventManager).ToNot(BeNil())
-				Expect(concrete.ErrorFinder).ToNot(BeNil())
-				Expect(concrete.PushManagerFactory).ToNot(BeNil())
-				Expect(concrete.AuthResolver).ToNot(BeNil())
-				Expect(concrete.EnvResolver).ToNot(BeNil())
-
-			})
-		})
-	})
-
 	Describe("CreateAuthResolver", func() {
 
 		Context("when mock constructor is provided", func() {
@@ -156,308 +107,6 @@ var _ = Describe("Custom creator", func() {
 
 	})
 
-	Describe("CreateStartController", func() {
-
-		Context("when mock constructor is provided ", func() {
-			It("should return the mock implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				expected := &mocks.StartController{}
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewStartController: func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, startmanagerFactory I.StartManagerFactory, authResolver I.AuthResolver, envResolver I.EnvResolver) I.StartController {
-						return expected
-					},
-				})
-				controller := creator.CreateStartController(I.DeploymentLogger{})
-				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(expected)))
-
-			})
-		})
-
-		Context("when mock constructor is not provided", func() {
-			It("should return the default implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
-				controller := creator.CreateStartController(I.DeploymentLogger{})
-				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(&start.StartController{})))
-				concrete := controller.(*start.StartController)
-				Expect(concrete.Deployer).ToNot(BeNil())
-				Expect(concrete.EventManager).ToNot(BeNil())
-				Expect(concrete.ErrorFinder).ToNot(BeNil())
-				Expect(concrete.StartManagerFactory).ToNot(BeNil())
-				Expect(concrete.Log).ToNot(BeNil())
-				Expect(concrete.AuthResolver).ToNot(BeNil())
-			})
-		})
-	})
-
-	Describe("CreateStopController", func() {
-
-		Context("when mock constructor is provided", func() {
-			It("should return the mock implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				expected := &mocks.StopController{}
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewStopController: func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StopController {
-						return expected
-					},
-				})
-				controller := creator.CreateStopController(I.DeploymentLogger{})
-				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(expected)))
-			})
-		})
-
-		Context("when mock constructor is not provided", func() {
-			It("should return the default implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
-				controller := creator.CreateStopController((I.DeploymentLogger{}))
-
-				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(&stop.StopController{})))
-				concrete := controller.(*stop.StopController)
-				Expect(concrete.Deployer).ToNot(BeNil())
-				Expect(concrete.EventManager).ToNot(BeNil())
-				Expect(concrete.ErrorFinder).ToNot(BeNil())
-				Expect(concrete.StopManagerFactory).ToNot(BeNil())
-				Expect(concrete.Log).ToNot(BeNil())
-				Expect(concrete.AuthResolver).ToNot(BeNil())
-			})
-
-		})
-	})
-	Describe("CreateDeployer", func() {
-
-		Context("when mock constructor is provided", func() {
-			It("should return the mock implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				expected := &mocks.Deployer{}
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewDeployer: func(config config.Config, blueGreener I.BlueGreener, prechecker I.Prechecker, eventManager I.EventManager, randomizer I.Randomizer, errorFinder I.ErrorFinder, log I.DeploymentLogger) I.Deployer {
-						return expected
-					},
-				})
-				controller := creator.createDeployer(I.DeploymentLogger{})
-				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(expected)))
-			})
-		})
-
-		Context("when mock constructor is not provided", func() {
-			It("should return the default implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
-				actual := creator.createDeployer(I.DeploymentLogger{})
-
-				Expect(reflect.TypeOf(actual)).To(Equal(reflect.TypeOf(&deployer.Deployer{})))
-				concrete := actual.(*deployer.Deployer)
-				Expect(concrete.Config).ToNot(BeNil())
-				Expect(concrete.BlueGreener).ToNot(BeNil())
-				Expect(concrete.Prechecker).ToNot(BeNil())
-				Expect(concrete.EventManager).ToNot(BeNil())
-				Expect(concrete.Randomizer).ToNot(BeNil())
-				Expect(concrete.ErrorFinder).ToNot(BeNil())
-				Expect(concrete.Log).ToNot(BeNil())
-			})
-
-		})
-	})
-	Describe("CreatePushManager", func() {
-
-		Context("when mock constructor is provided", func() {
-			It("should return the mock implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				expected := &mocks.PushManager{}
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewPushManager: func(courierCreator I.CourierCreator, eventManager I.EventManager, log I.DeploymentLogger, fetcher I.Fetcher, deployEventData structs.DeployEventData, fileSystemCleaner push.FileSystemCleaner, cfContext I.CFContext, auth I.Authorization, environment structs.Environment, envVars map[string]string) I.ActionCreator {
-						return expected
-					},
-				})
-				controller := creator.PushManager(I.DeploymentLogger{}, structs.DeployEventData{}, I.CFContext{}, I.Authorization{}, structs.Environment{}, make(map[string]string))
-				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(expected)))
-			})
-		})
-
-		Context("when mock constructor is not provided", func() {
-			It("should return the default implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
-				actual := creator.PushManager(I.DeploymentLogger{}, structs.DeployEventData{}, I.CFContext{}, I.Authorization{}, structs.Environment{}, make(map[string]string))
-
-				Expect(reflect.TypeOf(actual)).To(Equal(reflect.TypeOf(&push.PushManager{})))
-				concrete := actual.(*push.PushManager)
-				Expect(concrete.CourierCreator).ToNot(BeNil())
-				Expect(concrete.EventManager).ToNot(BeNil())
-				Expect(concrete.Logger).ToNot(BeNil())
-				Expect(concrete.Fetcher).ToNot(BeNil())
-				Expect(concrete.DeployEventData).ToNot(BeNil())
-				Expect(concrete.FileSystemCleaner).ToNot(BeNil())
-				Expect(concrete.CFContext).ToNot(BeNil())
-				Expect(concrete.Auth).ToNot(BeNil())
-				Expect(concrete.Environment).ToNot(BeNil())
-				Expect(concrete.EnvironmentVariables).ToNot(BeNil())
-			})
-
-		})
-	})
-	Describe("CreateStopManager", func() {
-
-		Context("when mock constructor is provided", func() {
-			It("should return the mock implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				expected := &mocks.StopManager{}
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewStopManager: func(courierCreator I.CourierCreator, eventManager I.EventManager, log I.DeploymentLogger, deployEventData structs.DeployEventData) I.ActionCreator {
-						return expected
-					},
-				})
-				controller := creator.StopManager(I.DeploymentLogger{}, structs.DeployEventData{})
-				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(expected)))
-			})
-		})
-
-		Context("when mock constructor is not provided", func() {
-			It("should return the default implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
-				actual := creator.StopManager(I.DeploymentLogger{}, structs.DeployEventData{})
-
-				Expect(reflect.TypeOf(actual)).To(Equal(reflect.TypeOf(&stop.StopManager{})))
-				concrete := actual.(*stop.StopManager)
-				Expect(concrete.CourierCreator).ToNot(BeNil())
-				Expect(concrete.EventManager).ToNot(BeNil())
-				Expect(concrete.Logger).ToNot(BeNil())
-				Expect(concrete.DeployEventData).ToNot(BeNil())
-			})
-
-		})
-	})
-	Describe("CreateStartManager", func() {
-
-		Context("when mock constructor is provided", func() {
-			It("should return the mock implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				expected := &mocks.StartManager{}
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewStartManager: func(courierCreator I.CourierCreator, eventManager I.EventManager, logger I.DeploymentLogger, deployEventData structs.DeployEventData) I.ActionCreator {
-						return expected
-					},
-				})
-				actual := creator.StartManager(I.DeploymentLogger{}, structs.DeployEventData{})
-				Expect(reflect.TypeOf(actual)).To(Equal(reflect.TypeOf(expected)))
-			})
-		})
-
-		Context("when mock constructor is not provided", func() {
-			It("should return the default implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
-				actual := creator.StartManager(I.DeploymentLogger{}, structs.DeployEventData{})
-
-				Expect(reflect.TypeOf(actual)).To(Equal(reflect.TypeOf(&start.StartManager{})))
-				concrete := actual.(*start.StartManager)
-				Expect(concrete.CourierCreator).ToNot(BeNil())
-				Expect(concrete.EventManager).ToNot(BeNil())
-				Expect(concrete.Logger).ToNot(BeNil())
-				Expect(concrete.DeployEventData).ToNot(BeNil())
-			})
-		})
-	})
-	Describe("CreateBlueGreen", func() {
-		Context("when mock constructor is provided", func() {
-			It("should return the mock implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				expected := &mocks.BlueGreener{}
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewBlueGreen: func(log I.DeploymentLogger) I.BlueGreener {
-						return expected
-					},
-				})
-				actual := creator.createBlueGreener(I.DeploymentLogger{})
-				Expect(reflect.TypeOf(actual)).To(Equal(reflect.TypeOf(expected)))
-			})
-		})
-
-		Context("when mock constructor is not provided", func() {
-			It("should return the default implementation", func() {
-				os.Setenv("CF_USERNAME", "test user")
-				os.Setenv("CF_PASSWORD", "test pwd")
-
-				level := "DEBUG"
-				configPath := "./testconfig.yml"
-
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
-				actual := creator.createBlueGreener(I.DeploymentLogger{})
-
-				Expect(reflect.TypeOf(actual)).To(Equal(reflect.TypeOf(bluegreen.BlueGreen{})))
-
-				concrete := actual.(bluegreen.BlueGreen)
-				Expect(concrete.Log).ToNot(BeNil())
-			})
-		})
-	})
 	Describe("CreateHealthChecker", func() {
 		Context("when mock constructor is not provided", func() {
 			It("should return the default implementation", func() {
@@ -477,6 +126,257 @@ var _ = Describe("Custom creator", func() {
 				Expect(actual.SilentDeployURL).ToNot(BeNil())
 				Expect(actual.SilentDeployEnvironment).ToNot(BeNil())
 				Expect(actual.Client).ToNot(BeNil())
+			})
+		})
+	})
+
+	Describe("CreateRequestCreator", func() {
+		Context("when the provided request is a PostDeploymentRequest", func() {
+			Context("when mock constructor is provided", func() {
+				It("should return the mock implementation", func() {
+					os.Setenv("CF_USERNAME", "test user")
+					os.Setenv("CF_PASSWORD", "test pwd")
+
+					level := "DEBUG"
+					configPath := "./testconfig.yml"
+
+					expected := &mocks.RequestCreator{}
+					creator, _ := Custom(level, configPath, CreatorModuleProvider{
+						NewPushRequestCreator: func(creator Creator, uuid string, request I.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
+							return expected
+						},
+					})
+					rc, _ := creator.CreateRequestCreator("the uuid", I.PostDeploymentRequest{}, bytes.NewBuffer([]byte{}))
+					Expect(rc).To(Equal(expected))
+				})
+			})
+
+			Context("when mock constructor is not provided", func() {
+				It("should return the default implementation", func() {
+					os.Setenv("CF_USERNAME", "test user")
+					os.Setenv("CF_PASSWORD", "test pwd")
+
+					level := "DEBUG"
+					configPath := "./testconfig.yml"
+
+					response := bytes.NewBuffer([]byte("the response"))
+					request := I.PostDeploymentRequest{
+						Deployment: I.Deployment{
+							CFContext: I.CFContext{
+								Organization: "the org",
+							},
+						},
+					}
+
+					creator, _ := Custom(level, configPath, CreatorModuleProvider{})
+					rc, _ := creator.CreateRequestCreator("the uuid", request, response)
+
+					Expect(reflect.TypeOf(rc)).To(Equal(reflect.TypeOf(&PushRequestCreator{})))
+					concrete := rc.(*PushRequestCreator)
+					Expect(concrete.Creator).To(Equal(creator))
+					Expect(concrete.Buffer).To(Equal(response))
+					Expect(concrete.Request).To(Equal(request))
+					Expect(concrete.Log.UUID).To(Equal("the uuid"))
+				})
+
+			})
+		})
+
+		Context("when the provided request is a PutDeploymentRequest", func() {
+			Context("and requested state is stopped", func() {
+				Context("when mock constructor is provided", func() {
+					It("should return the mock implementation", func() {
+						os.Setenv("CF_USERNAME", "test user")
+						os.Setenv("CF_PASSWORD", "test pwd")
+
+						level := "DEBUG"
+						configPath := "./testconfig.yml"
+
+						expected := &mocks.RequestCreator{}
+						creator, _ := Custom(level, configPath, CreatorModuleProvider{
+							NewStopRequestCreator: func(creator Creator, uuid string, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
+								return expected
+							},
+						})
+						rc, _ := creator.CreateRequestCreator("the uuid", I.PutDeploymentRequest{Request: I.PutRequest{State: "stopped"}}, bytes.NewBuffer([]byte{}))
+						Expect(rc).To(Equal(expected))
+					})
+				})
+
+				Context("when mock constructor is not provided", func() {
+					It("should return the default implementation", func() {
+						os.Setenv("CF_USERNAME", "test user")
+						os.Setenv("CF_PASSWORD", "test pwd")
+
+						level := "DEBUG"
+						configPath := "./testconfig.yml"
+
+						response := bytes.NewBuffer([]byte("the response"))
+						request := I.PutDeploymentRequest{
+							Deployment: I.Deployment{
+								CFContext: I.CFContext{
+									Organization: "the org",
+								},
+							},
+							Request: I.PutRequest{
+								State: "stopped",
+							},
+						}
+
+						creator, _ := Custom(level, configPath, CreatorModuleProvider{})
+						rc, _ := creator.CreateRequestCreator("the uuid", request, response)
+
+						Expect(reflect.TypeOf(rc)).To(Equal(reflect.TypeOf(&StopRequestCreator{})))
+						concrete := rc.(*StopRequestCreator)
+						Expect(concrete.Creator).To(Equal(creator))
+						Expect(concrete.Buffer).To(Equal(response))
+						Expect(concrete.Request).To(Equal(request))
+						Expect(concrete.Log.UUID).To(Equal("the uuid"))
+					})
+
+				})
+			})
+
+			Context("and requested state is started", func() {
+				Context("when mock constructor is provided", func() {
+					It("should return the mock implementation", func() {
+						os.Setenv("CF_USERNAME", "test user")
+						os.Setenv("CF_PASSWORD", "test pwd")
+
+						level := "DEBUG"
+						configPath := "./testconfig.yml"
+
+						expected := &mocks.RequestCreator{}
+						creator, _ := Custom(level, configPath, CreatorModuleProvider{
+							NewStartRequestCreator: func(creator Creator, uuid string, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
+								return expected
+							},
+						})
+						rc, _ := creator.CreateRequestCreator("the uuid", I.PutDeploymentRequest{Request: I.PutRequest{State: "started"}}, bytes.NewBuffer([]byte{}))
+						Expect(rc).To(Equal(expected))
+					})
+				})
+
+				Context("when mock constructor is not provided", func() {
+					It("should return the default implementation", func() {
+						os.Setenv("CF_USERNAME", "test user")
+						os.Setenv("CF_PASSWORD", "test pwd")
+
+						level := "DEBUG"
+						configPath := "./testconfig.yml"
+
+						response := bytes.NewBuffer([]byte("the response"))
+						request := I.PutDeploymentRequest{
+							Deployment: I.Deployment{
+								CFContext: I.CFContext{
+									Organization: "the org",
+								},
+							},
+							Request: I.PutRequest{
+								State: "started",
+							},
+						}
+
+						creator, _ := Custom(level, configPath, CreatorModuleProvider{})
+						rc, _ := creator.CreateRequestCreator("the uuid", request, response)
+
+						Expect(reflect.TypeOf(rc)).To(Equal(reflect.TypeOf(&StartRequestCreator{})))
+						concrete := rc.(*StartRequestCreator)
+						Expect(concrete.Creator).To(Equal(creator))
+						Expect(concrete.Buffer).To(Equal(response))
+						Expect(concrete.Request).To(Equal(request))
+						Expect(concrete.Log.UUID).To(Equal("the uuid"))
+					})
+
+				})
+			})
+		})
+
+		Context("when the provided request is unknown", func() {
+			It("returns an error", func() {
+				os.Setenv("CF_USERNAME", "test user")
+				os.Setenv("CF_PASSWORD", "test pwd")
+
+				level := "DEBUG"
+				configPath := "./testconfig.yml"
+
+				response := bytes.NewBuffer([]byte("the response"))
+
+				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
+				_, err := creator.CreateRequestCreator("the uuid", "", response)
+
+				Expect(err).To(HaveOccurred())
+				Expect(reflect.TypeOf(err)).To(Equal(reflect.TypeOf(InvalidRequestError{})))
+			})
+		})
+	})
+
+	Describe("CreateRequestProcessor", func() {
+		Context("when mock constructor is provided", func() {
+			It("should return the mock implementation", func() {
+				os.Setenv("CF_USERNAME", "test user")
+				os.Setenv("CF_PASSWORD", "test pwd")
+
+				level := "DEBUG"
+				configPath := "./testconfig.yml"
+
+				expected := &mocks.RequestProcessor{}
+				creator, _ := Custom(level, configPath, CreatorModuleProvider{
+					NewPushRequestProcessor: func(log I.DeploymentLogger, controller I.PushController, request I.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestProcessor {
+						return expected
+					},
+				})
+				processor := creator.CreateRequestProcessor("the uuid", I.PostDeploymentRequest{}, bytes.NewBuffer([]byte{}))
+				Expect(processor).To(Equal(expected))
+			})
+		})
+
+		Context("when mock constructor is not provided", func() {
+			It("should return the default implementation", func() {
+				os.Setenv("CF_USERNAME", "test user")
+				os.Setenv("CF_PASSWORD", "test pwd")
+
+				level := "DEBUG"
+				configPath := "./testconfig.yml"
+
+				response := bytes.NewBuffer([]byte("the response"))
+				request := I.PostDeploymentRequest{
+					Deployment: I.Deployment{
+						CFContext: I.CFContext{
+							Organization: "the org",
+						},
+					},
+				}
+
+				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
+				processor := creator.CreateRequestProcessor("the uuid", request, response)
+
+				Expect(reflect.TypeOf(processor)).To(Equal(reflect.TypeOf(&push.PushRequestProcessor{})))
+				concrete := processor.(*push.PushRequestProcessor)
+				Expect(concrete.PushController).ToNot(BeNil())
+				Expect(concrete.Response).To(Equal(response))
+				Expect(concrete.Request).To(Equal(request))
+				Expect(concrete.Log.UUID).To(Equal("the uuid"))
+			})
+
+		})
+
+		Context("when an unknown request is provided", func() {
+			It("returns an InvalidRequestProcessor", func() {
+				os.Setenv("CF_USERNAME", "test user")
+				os.Setenv("CF_PASSWORD", "test pwd")
+
+				level := "DEBUG"
+				configPath := "./testconfig.yml"
+
+				response := bytes.NewBuffer([]byte("the response"))
+
+				request := ""
+
+				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
+				processor := creator.CreateRequestProcessor("the uuid", request, response)
+
+				Expect(reflect.TypeOf(processor)).To(Equal(reflect.TypeOf(InvalidRequestProcessor{})))
 			})
 		})
 	})

@@ -3,15 +3,16 @@ package stop
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/structs"
-	"io"
-	"net/http"
 )
 
-type StopControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StopController
+type StopControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, stopManagerFactory I.StopManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StopController
 
 func NewStopController(l I.DeploymentLogger, d I.Deployer, em I.EventManager, ef I.ErrorFinder, smf I.StopManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StopController {
 	return &StopController{
@@ -96,7 +97,7 @@ func (c *StopController) StopDeployment(deployment I.PutDeploymentRequest, respo
 
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo}
 
-	manager := c.StopManagerFactory.StopManager(c.Log, deployEventData)
+	manager := c.StopManagerFactory.StopManager(deployEventData)
 	return *c.Deployer.Deploy(deploymentInfo, environment, manager, response)
 }
 

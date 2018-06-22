@@ -2,6 +2,12 @@ package push_test
 
 import (
 	"bytes"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"reflect"
+
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/constants"
 	D "github.com/compozed/deployadactyl/controller/deployer"
@@ -18,11 +24,6 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
-	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"reflect"
 )
 
 var _ = Describe("RunDeployment", func() {
@@ -787,7 +788,6 @@ var _ = Describe("RunDeployment", func() {
 					controller.RunDeployment(postDeploymentRequest, response)
 
 					Eventually(pushManagerFactory.PushManagerCall.Received.DeployEventData.DeploymentInfo).ShouldNot(BeNil())
-					Eventually(pushManagerFactory.PushManagerCall.Received.CFContext.Environment).Should(Equal(environment))
 					Eventually(pushManagerFactory.PushManagerCall.Received.Auth.Username).Should(Equal(deployment.Authorization.Username))
 					Expect(pushManagerFactory.PushManagerCall.Received.Environment).ToNot(BeNil())
 				})

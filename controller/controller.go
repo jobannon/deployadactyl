@@ -8,28 +8,26 @@ import (
 	"io/ioutil"
 
 	"encoding/json"
+
 	I "github.com/compozed/deployadactyl/interfaces"
+
+	"net/http"
+	"strings"
 
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
-	"net/http"
-	"strings"
 )
 
-type PushControllerFactory func(log I.DeploymentLogger) I.PushController
-type StartControllerFactory func(log I.DeploymentLogger) I.StartController
-type StopControllerFactory func(log I.DeploymentLogger) I.StopController
+type RequestProcessorFactory func(uuid string, request interface{}, buffer *bytes.Buffer) I.RequestProcessor
 
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
-	Log                    I.Logger
-	PushControllerFactory  PushControllerFactory
-	StartControllerFactory StartControllerFactory
-	StopControllerFactory  StopControllerFactory
-	Config                 config.Config
-	EventManager           I.EventManager
-	ErrorFinder            I.ErrorFinder
+	Log                     I.Logger
+	RequestProcessorFactory RequestProcessorFactory
+	Config                  config.Config
+	EventManager            I.EventManager
+	ErrorFinder             I.ErrorFinder
 }
 
 func (c *Controller) PostRequestHandler(g *gin.Context) {
@@ -55,15 +53,16 @@ func (c *Controller) PostRequestHandler(g *gin.Context) {
 	response := &bytes.Buffer{}
 	defer io.Copy(g.Writer, response)
 
+	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
+
+	g.Request.Body.Close()
+
 	deployment := I.Deployment{
 		Authorization: authorization,
 		CFContext:     cfContext,
 		Type:          deploymentType,
+		Body:          &bodyBuffer,
 	}
-	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
-
-	g.Request.Body.Close()
-	deployment.Body = &bodyBuffer
 
 	postRequest := I.PostRequest{}
 	if deploymentType == "application/json" {
@@ -80,7 +79,7 @@ func (c *Controller) PostRequestHandler(g *gin.Context) {
 		Request:    postRequest,
 	}
 
-	deployResponse := c.PushControllerFactory(log).RunDeployment(postDeploymentRequest, response)
+	deployResponse := c.RequestProcessorFactory(uuid, postDeploymentRequest, response).Process()
 
 	if deployResponse.Error != nil {
 		g.Writer.WriteHeader(deployResponse.StatusCode)
@@ -124,8 +123,10 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 	}
 
 	deployment := I.Deployment{
+		Body:          &bodyBuffer,
 		Authorization: authorization,
 		CFContext:     cfContext,
+		Type:          g.Request.Header.Get("Content-Type"),
 	}
 
 	putDeploymentRequest := I.PutDeploymentRequest{
@@ -133,17 +134,9 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 		Request:    putRequest,
 	}
 
-	var deployResponse I.DeployResponse
-
-	if putRequest.State == "stopped" {
-		deployResponse = c.StopControllerFactory(log).StopDeployment(putDeploymentRequest, response)
-	} else if putRequest.State == "started" {
-		deployResponse = c.StartControllerFactory(log).StartDeployment(putDeploymentRequest, response)
-	} else {
-		response.Write([]byte("Unknown requested state: " + putRequest.State))
-		deployResponse = I.DeployResponse{
-			StatusCode: http.StatusBadRequest,
-		}
+	deployResponse := c.RequestProcessorFactory(uuid, putDeploymentRequest, response).Process()
+	if deployResponse.Error != nil {
+		fmt.Fprintf(response, "cannot deploy application: %s\n", deployResponse.Error)
 	}
 
 	g.Writer.WriteHeader(deployResponse.StatusCode)

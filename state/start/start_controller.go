@@ -101,7 +101,7 @@ func (c *StartController) StartDeployment(deployment I.PutDeploymentRequest, res
 
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo}
 
-	manager := c.StartManagerFactory.StartManager(c.Log, deployEventData)
+	manager := c.StartManagerFactory.StartManager(deployEventData)
 	deployResponse = *c.Deployer.Deploy(deploymentInfo, environment, manager, response)
 	return deployResponse
 }

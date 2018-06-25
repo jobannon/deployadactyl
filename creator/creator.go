@@ -61,10 +61,10 @@ func (p InvalidRequestProcessor) Process() I.DeployResponse {
 	}
 }
 
-type LoggerConstructor func() I.Logger
+type LoggerConstructor func() (I.Logger, error)
 
-func NewLogger() I.Logger {
-	return I.DefaultLogger(os.Stdout, logging.DEBUG, "controller")
+func NewLogger() (I.Logger, error) {
+	return I.DefaultLogger(os.Stdout, logging.DEBUG, "controller"), nil
 }
 
 type CreatorModuleProvider struct {
@@ -103,36 +103,50 @@ type Creator struct {
 	provider     CreatorModuleProvider
 }
 
-// Default returns a default Creator and an Error.
+// Default returns a default Creator and an Error [Deprecated].
 func Default() (Creator, error) {
-	cfg, err := config.Default(os.Getenv)
-	if err != nil {
-		return Creator{}, err
-	}
-	return createCreator(I.DefaultLogger(os.Stdout, logging.DEBUG, "controller"), cfg, CreatorModuleProvider{})
+	return New(CreatorModuleProvider{})
 }
 
-// Custom returns a custom Creator with an Error.
+// Custom returns a custom Creator with an Error [Deprecated].
 func Custom(level string, configFilename string, provider CreatorModuleProvider) (Creator, error) {
-	l, err := getLevel(level)
-	if err != nil {
-		return Creator{}, err
+
+	if provider.NewLogger == nil {
+		provider.NewLogger = func() (I.Logger, error) {
+			l, err := getLevel(level)
+			if err != nil {
+				return nil, err
+			}
+			return I.DefaultLogger(os.Stdout, l, "controller"), nil
+		}
 	}
 
-	cfg, err := config.Custom(os.Getenv, configFilename)
-	if err != nil {
-		return Creator{}, err
+	if provider.NewConfig == nil {
+		provider.NewConfig = func() (config.Config, error) {
+			return config.Custom(os.Getenv, configFilename)
+		}
 	}
-	return createCreator(I.DefaultLogger(os.Stdout, l, "controller"), cfg, provider)
+
+	return New(provider)
 }
 
 func New(provider CreatorModuleProvider) (Creator, error) {
-	var cfg config.Config
-	var err error
+	_, err := exec.LookPath("cf")
+	if err != nil {
+		return Creator{}, err
+	}
+
 	var logger I.Logger
 	if provider.NewLogger != nil {
-		logger = provider.NewLogger()
+		logger, err = provider.NewLogger()
+	} else {
+		logger = I.DefaultLogger(os.Stdout, logging.DEBUG, "controller")
 	}
+	if err != nil {
+		return Creator{}, err
+	}
+
+	var cfg config.Config
 	if provider.NewConfig != nil {
 		cfg, err = provider.NewConfig()
 	} else {
@@ -141,7 +155,22 @@ func New(provider CreatorModuleProvider) (Creator, error) {
 	if err != nil {
 		return Creator{}, err
 	}
-	return createCreator(logger, cfg, provider)
+
+	var eventManager I.EventManager
+	if provider.NewEventManager != nil {
+		eventManager = provider.NewEventManager(logger)
+	} else {
+		eventManager = eventmanager.NewEventManager(logger)
+	}
+
+	return Creator{
+		cfg,
+		eventManager,
+		logger,
+		os.Stdout,
+		&afero.Afero{Fs: afero.NewOsFs()},
+		provider,
+	}, nil
 }
 
 // CreateControllerHandler returns a gin.Engine that implements http.Handler.
@@ -313,38 +342,6 @@ func (c Creator) createErrorFinder() I.ErrorFinder {
 	return &error_finder.ErrorFinder{
 		Matchers: c.config.ErrorMatchers,
 	}
-}
-
-/*
-Skip refactoring the functions below
-*/
-func createCreator(logger I.Logger, cfg config.Config, provider CreatorModuleProvider) (Creator, error) {
-	err := ensureCLI()
-	if err != nil {
-		return Creator{}, err
-	}
-
-	var eventManager I.EventManager
-	if provider.NewEventManager != nil {
-		eventManager = provider.NewEventManager(logger)
-	} else {
-		eventManager = eventmanager.NewEventManager(logger)
-	}
-
-	return Creator{
-		cfg,
-		eventManager,
-		logger,
-		os.Stdout,
-		&afero.Afero{Fs: afero.NewOsFs()},
-		provider,
-	}, nil
-
-}
-
-func ensureCLI() error {
-	_, err := exec.LookPath("cf")
-	return err
 }
 
 func getLevel(level string) (logging.Level, error) {

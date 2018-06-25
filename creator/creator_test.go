@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 
 	"github.com/compozed/deployadactyl/config"
+	"github.com/compozed/deployadactyl/eventmanager"
 	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
@@ -18,6 +19,7 @@ import (
 	"github.com/compozed/deployadactyl/state/push"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
 
@@ -43,7 +45,7 @@ var _ = Describe("Creator", func() {
 		os.Setenv("PATH", path)
 	})
 
-	FDescribe("New", func() {
+	Describe("New", func() {
 		Context("when Config constructor is provided", func() {
 			It("should return with the provided Config", func() {
 				expectedConfig := config.Config{Port: 943}
@@ -96,13 +98,33 @@ error_matchers:
 			})
 		})
 
+		Context("When Logger creation fails", func() {
+			It("should return an error", func() {
+				expectedError := errors.New("a test error")
+				_, err := New(CreatorModuleProvider{
+					NewConfig: func() (config.Config, error) {
+						return config.Config{}, nil
+					},
+					NewLogger: func() (I.Logger, error) {
+						return nil, expectedError
+					},
+				})
+
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedError))
+			})
+		})
+
 		Context("when Logger constructor is provided", func() {
 			It("should return with the provided Logger", func() {
-				expectedLog := NewLogger()
+				expectedLog, _ := NewLogger()
 
 				creator, err := New(CreatorModuleProvider{
-					NewLogger: func() I.Logger {
-						return expectedLog
+					NewConfig: func() (config.Config, error) {
+						return config.Config{}, nil
+					},
+					NewLogger: func() (I.Logger, error) {
+						return expectedLog, nil
 					},
 				})
 
@@ -110,6 +132,55 @@ error_matchers:
 				Expect(creator.logger).To(Equal(expectedLog))
 			})
 		})
+
+		Context("when logger constructor is not provided", func() {
+			It("should return the default logger", func() {
+				creator, err := New(CreatorModuleProvider{
+					NewConfig: func() (config.Config, error) {
+						return config.Config{}, nil
+					},
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(reflect.TypeOf(creator.logger)).To(Equal(reflect.TypeOf(&logging.Logger{})))
+			})
+		})
+
+		Context("when EventManager constructor is provided", func() {
+			It("should return with the provided EventManager", func() {
+				log, _ := NewLogger()
+
+				expectedEventManager := eventmanager.EventManager{
+					Log: log,
+				}
+
+				creator, err := New(CreatorModuleProvider{
+					NewConfig: func() (config.Config, error) {
+						return config.Config{}, nil
+					},
+					NewEventManager: func(logger I.Logger) I.EventManager {
+						return &expectedEventManager
+					},
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(creator.eventManager).To(Equal(&expectedEventManager))
+			})
+		})
+
+		Context("when EventManager constructor is not provided", func() {
+			It("should return the default EventManager", func() {
+				creator, err := New(CreatorModuleProvider{
+					NewConfig: func() (config.Config, error) {
+						return config.Config{}, nil
+					},
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(reflect.TypeOf(creator.eventManager)).To(Equal(reflect.TypeOf(&eventmanager.EventManager{})))
+			})
+		})
+
 	})
 
 	It("creates the creator from the provided yaml configuration", func() {
@@ -163,13 +234,14 @@ error_matchers:
 
 		Context("when mock constructor is not provided", func() {
 			It("should return the default implementation", func() {
-				os.Setenv("CF_USERNAME", "")
-				os.Setenv("CF_PASSWORD", "")
+				os.Setenv("CF_USERNAME", "test user")
+				os.Setenv("CF_PASSWORD", "test pwd")
 
 				level := "DEBUG"
 				configPath := "./testconfig.yml"
 
-				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
+				creator, err := Custom(level, configPath, CreatorModuleProvider{})
+				Expect(err).ToNot(HaveOccurred())
 				resolver := creator.CreateAuthResolver()
 				Expect(reflect.TypeOf(resolver)).To(Equal(reflect.TypeOf(state.AuthResolver{})))
 				concrete := resolver.(state.AuthResolver)
@@ -245,7 +317,10 @@ error_matchers:
 
 					Expect(reflect.TypeOf(rc)).To(Equal(reflect.TypeOf(&PushRequestCreator{})))
 					concrete := rc.(*PushRequestCreator)
-					Expect(concrete.Creator).To(Equal(creator))
+					Expect(concrete.Creator.logger).To(Equal(creator.logger))
+					Expect(concrete.Creator.fileSystem).To(Equal(creator.fileSystem))
+					Expect(concrete.Creator.eventManager).To(Equal(creator.eventManager))
+					Expect(concrete.Creator.config).To(Equal(creator.config))
 					Expect(concrete.Buffer).To(Equal(response))
 					Expect(concrete.Request).To(Equal(request))
 					Expect(concrete.Log.UUID).To(Equal("the uuid"))
@@ -300,7 +375,10 @@ error_matchers:
 
 						Expect(reflect.TypeOf(rc)).To(Equal(reflect.TypeOf(&StopRequestCreator{})))
 						concrete := rc.(*StopRequestCreator)
-						Expect(concrete.Creator).To(Equal(creator))
+						Expect(concrete.Creator.logger).To(Equal(creator.logger))
+						Expect(concrete.Creator.fileSystem).To(Equal(creator.fileSystem))
+						Expect(concrete.Creator.eventManager).To(Equal(creator.eventManager))
+						Expect(concrete.Creator.config).To(Equal(creator.config))
 						Expect(concrete.Buffer).To(Equal(response))
 						Expect(concrete.Request).To(Equal(request))
 						Expect(concrete.Log.UUID).To(Equal("the uuid"))
@@ -354,7 +432,10 @@ error_matchers:
 
 						Expect(reflect.TypeOf(rc)).To(Equal(reflect.TypeOf(&StartRequestCreator{})))
 						concrete := rc.(*StartRequestCreator)
-						Expect(concrete.Creator).To(Equal(creator))
+						Expect(concrete.Creator.logger).To(Equal(creator.logger))
+						Expect(concrete.Creator.fileSystem).To(Equal(creator.fileSystem))
+						Expect(concrete.Creator.eventManager).To(Equal(creator.eventManager))
+						Expect(concrete.Creator.config).To(Equal(creator.config))
 						Expect(concrete.Buffer).To(Equal(response))
 						Expect(concrete.Request).To(Equal(request))
 						Expect(concrete.Log.UUID).To(Equal("the uuid"))

@@ -8,6 +8,8 @@ import (
 
 	"bytes"
 
+	"io/ioutil"
+
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
 	I "github.com/compozed/deployadactyl/interfaces"
@@ -16,9 +18,10 @@ import (
 	"github.com/compozed/deployadactyl/state/push"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 )
 
-var _ = Describe("Custom creator", func() {
+var _ = Describe("Creator", func() {
 
 	var path string
 
@@ -38,6 +41,75 @@ var _ = Describe("Custom creator", func() {
 		os.Unsetenv("CF_USERNAME")
 		os.Unsetenv("CF_PASSWORD")
 		os.Setenv("PATH", path)
+	})
+
+	FDescribe("New", func() {
+		Context("when Config constructor is provided", func() {
+			It("should return with the provided Config", func() {
+				expectedConfig := config.Config{Port: 943}
+
+				creator, err := New(CreatorModuleProvider{
+					NewConfig: func() (config.Config, error) {
+						return expectedConfig, nil
+					},
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(creator.config).To(Equal(expectedConfig))
+			})
+		})
+
+		Context("when Config constructor is not provided", func() {
+			It("should return with the default Config", func() {
+				os.Setenv("CF_USERNAME", "myusername")
+				os.Setenv("CF_PASSWORD", "mypassword")
+
+				config := `---
+environments:
+ - name: my-env
+   foundations:
+    - https://my/foundation
+error_matchers:
+ - description: a description`
+
+				ioutil.WriteFile("./config.yml", []byte(config), 0777)
+
+				creator, err := New(CreatorModuleProvider{})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(creator.config.Environments["my-env"].Name).To(Equal("my-env"))
+			})
+
+		})
+
+		Context("When config creation fails", func() {
+			It("should return an error", func() {
+				expectedError := errors.New("a test error")
+				_, err := New(CreatorModuleProvider{
+					NewConfig: func() (config.Config, error) {
+						return config.Config{}, expectedError
+					},
+				})
+
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedError))
+			})
+		})
+
+		Context("when Logger constructor is provided", func() {
+			It("should return with the provided Logger", func() {
+				expectedLog := NewLogger()
+
+				creator, err := New(CreatorModuleProvider{
+					NewLogger: func() I.Logger {
+						return expectedLog
+					},
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(creator.logger).To(Equal(expectedLog))
+			})
+		})
 	})
 
 	It("creates the creator from the provided yaml configuration", func() {

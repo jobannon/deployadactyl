@@ -34,6 +34,8 @@ type foundationYaml struct {
 	Foundations []string
 }
 
+type ConfigConstructor func() (Config, error)
+
 // Default returns a new Config struct with information from environment variables and the default config file (./config.yml).
 func Default(getenv func(string) string) (Config, error) {
 	return Custom(getenv, defaultConfigPath)

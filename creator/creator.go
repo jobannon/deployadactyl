@@ -61,6 +61,12 @@ func (p InvalidRequestProcessor) Process() I.DeployResponse {
 	}
 }
 
+type LoggerConstructor func() I.Logger
+
+func NewLogger() I.Logger {
+	return I.DefaultLogger(os.Stdout, logging.DEBUG, "controller")
+}
+
 type CreatorModuleProvider struct {
 	NewCourier               courier.CourierConstructor
 	NewPrechecker            prechecker.PrecheckerConstructor
@@ -83,6 +89,8 @@ type CreatorModuleProvider struct {
 	NewStopRequestCreator    StopRequestCreatorConstructor
 	NewStartRequestProcessor start.StartRequestProcessorConstructor
 	NewStartRequestCreator   StartRequestCreatorConstructor
+	NewConfig                config.ConfigConstructor
+	NewLogger                LoggerConstructor
 }
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
@@ -101,7 +109,7 @@ func Default() (Creator, error) {
 	if err != nil {
 		return Creator{}, err
 	}
-	return createCreator(logging.DEBUG, cfg, CreatorModuleProvider{})
+	return createCreator(I.DefaultLogger(os.Stdout, logging.DEBUG, "controller"), cfg, CreatorModuleProvider{})
 }
 
 // Custom returns a custom Creator with an Error.
@@ -115,7 +123,25 @@ func Custom(level string, configFilename string, provider CreatorModuleProvider)
 	if err != nil {
 		return Creator{}, err
 	}
-	return createCreator(l, cfg, provider)
+	return createCreator(I.DefaultLogger(os.Stdout, l, "controller"), cfg, provider)
+}
+
+func New(provider CreatorModuleProvider) (Creator, error) {
+	var cfg config.Config
+	var err error
+	var logger I.Logger
+	if provider.NewLogger != nil {
+		logger = provider.NewLogger()
+	}
+	if provider.NewConfig != nil {
+		cfg, err = provider.NewConfig()
+	} else {
+		cfg, err = config.Default(os.Getenv)
+	}
+	if err != nil {
+		return Creator{}, err
+	}
+	return createCreator(logger, cfg, provider)
 }
 
 // CreateControllerHandler returns a gin.Engine that implements http.Handler.
@@ -292,13 +318,12 @@ func (c Creator) createErrorFinder() I.ErrorFinder {
 /*
 Skip refactoring the functions below
 */
-func createCreator(l logging.Level, cfg config.Config, provider CreatorModuleProvider) (Creator, error) {
+func createCreator(logger I.Logger, cfg config.Config, provider CreatorModuleProvider) (Creator, error) {
 	err := ensureCLI()
 	if err != nil {
 		return Creator{}, err
 	}
 
-	logger := I.DefaultLogger(os.Stdout, l, "controller")
 	var eventManager I.EventManager
 	if provider.NewEventManager != nil {
 		eventManager = provider.NewEventManager(logger)

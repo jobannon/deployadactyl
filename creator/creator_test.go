@@ -46,6 +46,19 @@ var _ = Describe("Creator", func() {
 	})
 
 	Describe("New", func() {
+		Context("if CLI Checker returns error", func() {
+			It("returns an error", func() {
+				provider := CreatorModuleProvider{CLIChecker: func() error {
+					return errors.New("this is a test error")
+				}}
+
+				_, err := New(provider)
+
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("this is a test error"))
+			})
+		})
+
 		Context("when Config constructor is provided", func() {
 			It("should return with the provided Config", func() {
 				expectedConfig := config.Config{Port: 943}

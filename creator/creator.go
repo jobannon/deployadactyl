@@ -91,6 +91,7 @@ type CreatorModuleProvider struct {
 	NewStartRequestCreator   StartRequestCreatorConstructor
 	NewConfig                config.ConfigConstructor
 	NewLogger                LoggerConstructor
+	CLIChecker               func() error
 }
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
@@ -131,7 +132,13 @@ func Custom(level string, configFilename string, provider CreatorModuleProvider)
 }
 
 func New(provider CreatorModuleProvider) (Creator, error) {
-	_, err := exec.LookPath("cf")
+	var err error
+	if provider.CLIChecker != nil {
+		err = provider.CLIChecker()
+	} else {
+		_, err = exec.LookPath("cf")
+	}
+
 	if err != nil {
 		return Creator{}, err
 	}

@@ -11,6 +11,8 @@ import (
 
 	"os"
 
+	"strings"
+
 	"github.com/compozed/deployadactyl/config"
 	. "github.com/compozed/deployadactyl/controller"
 	I "github.com/compozed/deployadactyl/interfaces"
@@ -21,19 +23,19 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
-	"strings"
 )
 
 var _ = Describe("Controller", func() {
 
 	var (
-		deployer        *mocks.Deployer
-		silentDeployer  *mocks.Deployer
-		eventManager    *mocks.EventManager
-		errorFinder     *mocks.ErrorFinder
-		stopController  *mocks.StopController
-		startController *mocks.StartController
-		pushController  *mocks.PushController
+		deployer         *mocks.Deployer
+		silentDeployer   *mocks.Deployer
+		eventManager     *mocks.EventManager
+		errorFinder      *mocks.ErrorFinder
+		stopController   *mocks.StopController
+		startController  *mocks.StartController
+		pushController   *mocks.PushController
+		deleteController *mocks.DeleteController
 
 		controller *Controller
 		logBuffer  *Buffer
@@ -61,6 +63,7 @@ var _ = Describe("Controller", func() {
 		pushController = &mocks.PushController{}
 		stopController = &mocks.StopController{}
 		startController = &mocks.StartController{}
+		deleteController = &mocks.DeleteController{}
 
 		errorFinder = &mocks.ErrorFinder{}
 		controller = &Controller{
@@ -73,6 +76,9 @@ var _ = Describe("Controller", func() {
 			},
 			PushControllerFactory: func(log I.DeploymentLogger) I.PushController {
 				return pushController
+			},
+			DeleteControllerFactory: func(log I.DeploymentLogger) I.DeleteController {
+				return deleteController
 			},
 			EventManager: eventManager,
 			Config:       config.Config{},
@@ -514,4 +520,103 @@ var _ = Describe("Controller", func() {
 		})
 	})
 
+	Describe("DeleteRequestHandler", func() {
+		var (
+			router     *gin.Engine
+			resp       *httptest.ResponseRecorder
+			jsonBuffer *bytes.Buffer
+		)
+
+		BeforeEach(func() {
+			router = gin.New()
+			resp = httptest.NewRecorder()
+			jsonBuffer = &bytes.Buffer{}
+
+			router.DELETE("/v3/apps/:environment/:org/:space/:appName", controller.DeleteRequestHandler)
+
+			server = httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				byteBody, _ = ioutil.ReadAll(req.Body)
+				req.Body.Close()
+			}))
+		})
+
+		AfterEach(func() {
+			server.Close()
+		})
+
+		It("returns http status.OK", func() {
+			foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+			jsonBuffer = bytes.NewBufferString(`{"state": "delete"}`)
+
+			req, err := http.NewRequest("DELETE", foundationURL, jsonBuffer)
+			req.Header.Set("Content-Type", "application/json")
+
+			deleteController.DeleteDeploymentCall.Returns.DeployResponse.StatusCode = 200
+			deleteController.DeleteDeploymentCall.Writes = "BattleMoose"
+
+			Expect(err).ToNot(HaveOccurred())
+
+			router.ServeHTTP(resp, req)
+
+			Eventually(resp.Code).Should(Equal(http.StatusOK))
+			Eventually(resp.Body.String()).Should(Equal("BattleMoose"))
+		})
+
+		It("calls DeleteDeployment with correct CFContext", func() {
+			foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+			jsonBuffer = bytes.NewBufferString(`{"state": "delete"}`)
+
+			req, err := http.NewRequest("DELETE", foundationURL, jsonBuffer)
+			req.Header.Set("Content-Type", "application/json")
+
+			Expect(err).ToNot(HaveOccurred())
+
+			router.ServeHTTP(resp, req)
+
+			Expect(deleteController.DeleteDeploymentCall.Received.Deployment.CFContext.Environment).To(Equal(environment))
+			Expect(deleteController.DeleteDeploymentCall.Received.Deployment.CFContext.Organization).To(Equal(org))
+			Expect(deleteController.DeleteDeploymentCall.Received.Deployment.CFContext.Space).To(Equal(space))
+			Expect(deleteController.DeleteDeploymentCall.Received.Deployment.CFContext.Organization).To(Equal(org))
+
+		})
+
+		It("calls DeleteDeployment with correct Authorization", func() {
+			foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+			jsonBuffer = bytes.NewBufferString(`{"state": "delete"}`)
+
+			req, err := http.NewRequest("DELETE", foundationURL, jsonBuffer)
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Basic bXlVc2VyOm15UGFzc3dvcmQ=")
+
+			Expect(err).ToNot(HaveOccurred())
+
+			router.ServeHTTP(resp, req)
+
+			Expect(deleteController.DeleteDeploymentCall.Received.Deployment.Authorization.Username).To(Equal("myUser"))
+			Expect(deleteController.DeleteDeploymentCall.Received.Deployment.Authorization.Password).To(Equal("myPassword"))
+
+		})
+
+		It("calls DeleteDeployment with correct CFContext", func() {
+			foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+			jsonString := `{
+  "state": "delete",
+  "data": {
+    "firstData": "theFirstData",
+    "secondData": "theSecondData"
+  }
+}`
+			jsonBuffer = bytes.NewBufferString(jsonString)
+
+			req, err := http.NewRequest("DELETE", foundationURL, jsonBuffer)
+			req.Header.Set("Content-Type", "application/json")
+
+			Expect(err).ToNot(HaveOccurred())
+
+			router.ServeHTTP(resp, req)
+
+			Expect(deleteController.DeleteDeploymentCall.Received.Data["firstData"]).To(Equal("theFirstData"))
+			Expect(deleteController.DeleteDeploymentCall.Received.Data["secondData"]).To(Equal("theSecondData"))
+		})
+	})
 })

@@ -93,7 +93,7 @@ var _ = Describe("Artifetcher", func() {
 				_, err := artifetcher.Fetch(testserver.URL+"/timeoutTest", "")
 				Expect(err).To(HaveOccurred())
 
-				Expect(err.Error()).To(ContainSubstring("Artifactory timed out during artifact download"))
+				Expect(err.Error()).To(ContainSubstring("Download of application artifact timed out"))
 			})
 		})
 	})

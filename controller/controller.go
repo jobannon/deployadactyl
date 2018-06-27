@@ -8,31 +8,40 @@ import (
 	"io/ioutil"
 
 	"encoding/json"
+
 	I "github.com/compozed/deployadactyl/interfaces"
+
+	"net/http"
+	"strings"
 
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
-	"net/http"
-	"strings"
 )
 
 type PushControllerFactory func(log I.DeploymentLogger) I.PushController
 type StartControllerFactory func(log I.DeploymentLogger) I.StartController
 type StopControllerFactory func(log I.DeploymentLogger) I.StopController
+type DeleteControllerFactory func(log I.DeploymentLogger) I.DeleteController
 
 // Controller is used to determine the type of request and process it accordingly.
 type Controller struct {
-	Log                    I.Logger
-	PushControllerFactory  PushControllerFactory
-	StartControllerFactory StartControllerFactory
-	StopControllerFactory  StopControllerFactory
-	Config                 config.Config
-	EventManager           I.EventManager
-	ErrorFinder            I.ErrorFinder
+	Log                     I.Logger
+	PushControllerFactory   PushControllerFactory
+	StartControllerFactory  StartControllerFactory
+	StopControllerFactory   StopControllerFactory
+	DeleteControllerFactory DeleteControllerFactory
+	Config                  config.Config
+	EventManager            I.EventManager
+	ErrorFinder             I.ErrorFinder
 }
 
 type PutRequest struct {
+	State string                 `json:"state"`
+	Data  map[string]interface{} `json:"data"`
+}
+
+type DeleteRequest struct {
 	State string                 `json:"state"`
 	Data  map[string]interface{} `json:"data"`
 }
@@ -143,6 +152,48 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 			StatusCode: http.StatusBadRequest,
 		}
 	}
+
+	g.Writer.WriteHeader(deployResponse.StatusCode)
+}
+
+func (c *Controller) DeleteRequestHandler(g *gin.Context) {
+	uuid := randomizer.StringRunes(10)
+	log := I.DeploymentLogger{Log: c.Log, UUID: uuid}
+	log.Debugf("DELETE Request originated from: %+v", g.Request.RemoteAddr)
+
+	cfContext := I.CFContext{
+		Environment:  strings.ToLower(g.Param("environment")),
+		Organization: strings.ToLower(g.Param("org")),
+		Space:        strings.ToLower(g.Param("space")),
+		Application:  strings.ToLower(g.Param("appName")),
+	}
+
+	response := &bytes.Buffer{}
+	defer io.Copy(g.Writer, response)
+
+	user, pwd, _ := g.Request.BasicAuth()
+	authorization := I.Authorization{
+		Username: user,
+		Password: pwd,
+	}
+
+	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
+	g.Request.Body.Close()
+
+	deleteRequest := &DeleteRequest{}
+	err := json.Unmarshal(bodyBuffer, deleteRequest)
+	if err != nil {
+		response.Write([]byte("Invalid request body."))
+		g.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	deployment := I.Deployment{
+		Authorization: authorization,
+		CFContext:     cfContext,
+	}
+
+	deployResponse := c.DeleteControllerFactory(log).DeleteDeployment(&deployment, deleteRequest.Data, response)
 
 	g.Writer.WriteHeader(deployResponse.StatusCode)
 }

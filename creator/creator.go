@@ -4,6 +4,7 @@ package creator
 import (
 	"crypto/tls"
 	"fmt"
+
 	"github.com/compozed/deployadactyl/artifetcher"
 	"github.com/compozed/deployadactyl/artifetcher/extractor"
 	"github.com/compozed/deployadactyl/config"
@@ -11,6 +12,13 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/state/push"
+
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
 
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/courier"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/courier/executor"
@@ -23,18 +31,13 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/state"
+	"github.com/compozed/deployadactyl/state/delete"
 	"github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
-	"io"
-	"log"
-	"net"
-	"net/http"
-	"os"
-	"os/exec"
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
@@ -42,21 +45,23 @@ const v2ENDPOINT = "/v2/deploy/:environment/:org/:space/:appName"
 const ENDPOINT = "/v3/apps/:environment/:org/:space/:appName"
 
 type CreatorModuleProvider struct {
-	NewCourier         courier.CourierConstructor
-	NewPrechecker      prechecker.PrecheckerConstructor
-	NewFetcher         artifetcher.ArtifetcherConstructor
-	NewExtractor       extractor.ExtractorConstructor
-	NewEventManager    eventmanager.EventManagerConstructor
-	NewPushController  push.PushControllerConstructor
-	NewStartController start.StartControllerConstructor
-	NewStopController  stop.StopControllerConstructor
-	NewAuthResolver    state.AuthResolverConstructor
-	NewEnvResolver     state.EnvResolverConstructor
-	NewDeployer        deployer.DeployerConstructor
-	NewPushManager     push.PushManagerConstructor
-	NewStopManager     stop.StopManagerConstructor
-	NewStartManager    start.StartManagerConstructor
-	NewBlueGreen       bluegreen.BlueGreenConstructor
+	NewCourier          courier.CourierConstructor
+	NewPrechecker       prechecker.PrecheckerConstructor
+	NewFetcher          artifetcher.ArtifetcherConstructor
+	NewExtractor        extractor.ExtractorConstructor
+	NewEventManager     eventmanager.EventManagerConstructor
+	NewPushController   push.PushControllerConstructor
+	NewStartController  start.StartControllerConstructor
+	NewStopController   stop.StopControllerConstructor
+	NewDeleteController delete.DeleteControllerConstructor
+	NewAuthResolver     state.AuthResolverConstructor
+	NewEnvResolver      state.EnvResolverConstructor
+	NewDeployer         deployer.DeployerConstructor
+	NewPushManager      push.PushManagerConstructor
+	NewStopManager      stop.StopManagerConstructor
+	NewStartManager     start.StartManagerConstructor
+	NewDeleteManager    delete.DeleteManagerConstructor
+	NewBlueGreen        bluegreen.BlueGreenConstructor
 }
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
@@ -104,6 +109,7 @@ func (c Creator) CreateControllerHandler(controller I.Controller) *gin.Engine {
 	r.POST(v2ENDPOINT, controller.PostRequestHandler)
 	r.POST(ENDPOINT, controller.PostRequestHandler)
 	r.PUT(ENDPOINT, controller.PutRequestHandler)
+	r.DELETE(ENDPOINT, controller.DeleteRequestHandler)
 
 	return r
 }
@@ -168,14 +174,16 @@ func (c Creator) CreateHTTPClient() *http.Client {
 func (c Creator) CreateController() I.Controller {
 	return &controller.Controller{
 		Log: c.logger,
-		PushControllerFactory:  c.CreatePushController,
-		StopControllerFactory:  c.CreateStopController,
-		StartControllerFactory: c.CreateStartController,
-		Config:                 c.CreateConfig(),
-		EventManager:           c.CreateEventManager(),
-		ErrorFinder:            c.createErrorFinder(),
+		PushControllerFactory:   c.CreatePushController,
+		StopControllerFactory:   c.CreateStopController,
+		StartControllerFactory:  c.CreateStartController,
+		DeleteControllerFactory: c.CreateDeleteController,
+		Config:                  c.CreateConfig(),
+		EventManager:            c.CreateEventManager(),
+		ErrorFinder:             c.createErrorFinder(),
 	}
 }
+
 func (c Creator) CreateAuthResolver() I.AuthResolver {
 	if c.provider.NewAuthResolver != nil {
 		return c.provider.NewAuthResolver(c.CreateConfig())
@@ -211,6 +219,13 @@ func (c Creator) CreateStartController(log I.DeploymentLogger) I.StartController
 	return start.NewStartController(log, c.createDeployer(log), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
 }
 
+func (c Creator) CreateDeleteController(log I.DeploymentLogger) I.DeleteController {
+	if c.provider.NewDeleteController != nil {
+		return c.provider.NewDeleteController(log, c.createDeployer(log), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
+	}
+	return delete.NewDeleteController(log, c.createDeployer(log), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
+}
+
 func (c Creator) createDeployer(log I.DeploymentLogger) I.Deployer {
 	if c.provider.NewDeployer != nil {
 		return c.provider.NewDeployer(c.CreateConfig(), c.createBlueGreener(log), c.createPrechecker(), c.CreateEventManager(), c.createRandomizer(), c.createErrorFinder(), log)
@@ -237,6 +252,13 @@ func (c Creator) StartManager(log I.DeploymentLogger, deployEventData structs.De
 		return c.provider.NewStartManager(c, c.CreateEventManager(), log, deployEventData)
 	}
 	return start.NewStartManager(c, c.CreateEventManager(), log, deployEventData)
+}
+
+func (c Creator) DeleteManager(log I.DeploymentLogger, deployEventData structs.DeployEventData) I.ActionCreator {
+	if c.provider.NewDeleteManager != nil {
+		return c.provider.NewDeleteManager(c, c.CreateEventManager(), log, deployEventData)
+	}
+	return delete.NewDeleteManager(c, c.CreateEventManager(), log, deployEventData)
 }
 
 func (c Creator) CreateEnvVarHandler() envvar.Envvarhandler {

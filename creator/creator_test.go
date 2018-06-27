@@ -3,6 +3,9 @@ package creator
 import (
 	"os"
 
+	"reflect"
+	"runtime"
+
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
@@ -10,14 +13,13 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/state"
+	"github.com/compozed/deployadactyl/state/delete"
 	"github.com/compozed/deployadactyl/state/push"
 	"github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/compozed/deployadactyl/structs"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"reflect"
-	"runtime"
 )
 
 var _ = Describe("Custom creator", func() {
@@ -244,6 +246,51 @@ var _ = Describe("Custom creator", func() {
 
 		})
 	})
+
+	Describe("CreateDeleteController", func() {
+		Context("when mock constructor is provided", func() {
+			It("should return the mock implementation", func() {
+				os.Setenv("CF_USERNAME", "test user")
+				os.Setenv("CF_PASSWORD", "test pwd")
+
+				level := "DEBUG"
+				configPath := "./testconfig.yml"
+
+				expected := &mocks.DeleteController{}
+				creator, _ := Custom(level, configPath, CreatorModuleProvider{
+					NewDeleteController: func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, stopManagerFactory I.StopManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.DeleteController {
+						return expected
+					},
+				})
+				controller := creator.CreateDeleteController(I.DeploymentLogger{})
+				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(expected)))
+			})
+		})
+
+		Context("when mock constructor is not provided", func() {
+			It("should return the default implementation", func() {
+				os.Setenv("CF_USERNAME", "test user")
+				os.Setenv("CF_PASSWORD", "test pwd")
+
+				level := "DEBUG"
+				configPath := "./testconfig.yml"
+
+				creator, _ := Custom(level, configPath, CreatorModuleProvider{})
+				controller := creator.CreateDeleteController((I.DeploymentLogger{}))
+
+				Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(&delete.DeleteController{})))
+				concrete := controller.(*delete.DeleteController)
+				Expect(concrete.Deployer).ToNot(BeNil())
+				Expect(concrete.EventManager).ToNot(BeNil())
+				Expect(concrete.ErrorFinder).ToNot(BeNil())
+				Expect(concrete.DeleteManagerFactory).ToNot(BeNil())
+				Expect(concrete.Log).ToNot(BeNil())
+				Expect(concrete.AuthResolver).ToNot(BeNil())
+			})
+
+		})
+	})
+
 	Describe("CreateDeployer", func() {
 
 		Context("when mock constructor is provided", func() {
@@ -289,6 +336,7 @@ var _ = Describe("Custom creator", func() {
 
 		})
 	})
+
 	Describe("CreatePushManager", func() {
 
 		Context("when mock constructor is provided", func() {
@@ -337,6 +385,7 @@ var _ = Describe("Custom creator", func() {
 
 		})
 	})
+
 	Describe("CreateStopManager", func() {
 
 		Context("when mock constructor is provided", func() {
@@ -379,6 +428,7 @@ var _ = Describe("Custom creator", func() {
 
 		})
 	})
+
 	Describe("CreateStartManager", func() {
 
 		Context("when mock constructor is provided", func() {
@@ -420,6 +470,7 @@ var _ = Describe("Custom creator", func() {
 			})
 		})
 	})
+
 	Describe("CreateBlueGreen", func() {
 		Context("when mock constructor is provided", func() {
 			It("should return the mock implementation", func() {
@@ -458,6 +509,7 @@ var _ = Describe("Custom creator", func() {
 			})
 		})
 	})
+
 	Describe("CreateHealthChecker", func() {
 		Context("when mock constructor is not provided", func() {
 			It("should return the default implementation", func() {

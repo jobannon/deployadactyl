@@ -78,3 +78,24 @@ func (t *StartManagerFactory) StartManager(log interfaces.DeploymentLogger, Depl
 
 	return t.StartManagerCall.Returns.ActionCreater
 }
+
+type DeleteManagerFactory struct {
+	DeleteManagerCall struct {
+		Called   bool
+		Received struct {
+			Log             interfaces.DeploymentLogger
+			DeployEventData structs.DeployEventData
+		}
+		Returns struct {
+			ActionCreater interfaces.ActionCreator
+		}
+	}
+}
+
+func (t *DeleteManagerFactory) DeleteManager(log interfaces.DeploymentLogger, DeployEventData structs.DeployEventData) interfaces.ActionCreator {
+	t.DeleteManagerCall.Called = true
+	t.DeleteManagerCall.Received.Log = log
+	t.DeleteManagerCall.Received.DeployEventData = DeployEventData
+
+	return t.DeleteManagerCall.Returns.ActionCreater
+}

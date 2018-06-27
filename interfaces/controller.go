@@ -33,4 +33,6 @@ type Controller interface {
 	PostRequestHandler(g *gin.Context)
 
 	PutRequestHandler(g *gin.Context)
+
+	DeleteRequestHandler(g *gin.Context)
 }

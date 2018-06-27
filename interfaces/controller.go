@@ -4,14 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type DeploymentType struct {
-	JSON bool
-	ZIP  bool
-}
-
 type Deployment struct {
 	Body          *[]byte
-	Type          DeploymentType
+	Type          string
 	Authorization Authorization
 	CFContext     CFContext
 }
@@ -27,6 +22,29 @@ type CFContext struct {
 	Space        string
 	Application  string
 	SkipSSL      bool
+}
+
+type PutRequest struct {
+	State string                 `json:"state"`
+	Data  map[string]interface{} `json:"data"`
+}
+
+type PutDeploymentRequest struct {
+	Deployment
+	Request PutRequest
+}
+
+type PostRequest struct {
+	ArtifactUrl          string                 `json:"artifact_url"`
+	Manifest             string                 `json:"manifest"`
+	EnvironmentVariables map[string]string      `json:"environment_variables"`
+	HealthCheckEndpoint  string                 `json:"health_check_endpoint"`
+	Data                 map[string]interface{} `json:"data"`
+}
+
+type PostDeploymentRequest struct {
+	Deployment
+	Request PostRequest
 }
 
 type Controller interface {

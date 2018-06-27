@@ -3,15 +3,16 @@ package stop
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/structs"
-	"io"
-	"net/http"
 )
 
-type StopControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StopController
+type StopControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, stopManagerFactory I.StopManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StopController
 
 func NewStopController(l I.DeploymentLogger, d I.Deployer, em I.EventManager, ef I.ErrorFinder, smf I.StopManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StopController {
 	return &StopController{
@@ -35,12 +36,12 @@ type StopController struct {
 	EnvResolver        I.EnvResolver
 }
 
-func (c *StopController) StopDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *StopController) StopDeployment(deployment I.PutDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 	c.Log.Debugf("Preparing to stop %s with UUID %s", cf.Application, c.Log.UUID)
 
-	if data == nil {
-		data = make(map[string]interface{})
+	if deployment.Request.Data == nil {
+		deployment.Request.Data = make(map[string]interface{})
 	}
 
 	environment, err := c.EnvResolver.Resolve(cf.Environment)
@@ -70,15 +71,15 @@ func (c *StopController) StopDeployment(deployment *I.Deployment, data map[strin
 		CustomParams: environment.CustomParams,
 		Username:     auth.Username,
 		Password:     auth.Password,
-		Data:         data,
+		Data:         deployment.Request.Data,
 	}
 
-	defer c.emitStopFinish(response, c.Log, cf, &auth, &environment, data, &deployResponse)
-	defer c.emitStopSuccessOrFailure(response, c.Log, cf, &auth, &environment, data, &deployResponse)
+	defer c.emitStopFinish(response, c.Log, cf, &auth, &environment, deployment.Request.Data, &deployResponse)
+	defer c.emitStopSuccessOrFailure(response, c.Log, cf, &auth, &environment, deployment.Request.Data, &deployResponse)
 
 	err = c.EventManager.EmitEvent(StopStartedEvent{
 		CFContext:     cf,
-		Data:          data,
+		Data:          deployment.Request.Data,
 		Environment:   environment,
 		Authorization: auth,
 		Response:      response,
@@ -96,7 +97,7 @@ func (c *StopController) StopDeployment(deployment *I.Deployment, data map[strin
 
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo}
 
-	manager := c.StopManagerFactory.StopManager(c.Log, deployEventData)
+	manager := c.StopManagerFactory.StopManager(deployEventData)
 	return *c.Deployer.Deploy(deploymentInfo, environment, manager, response)
 }
 

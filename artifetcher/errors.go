@@ -50,7 +50,7 @@ Error: Download of application artifact timed out
 
 Potential Solution: Reduce the size of the artifact
 
-"*******************"`)
+*******************`)
 }
 
 type WriteResponseError struct {
@@ -69,10 +69,16 @@ func (e CreateTempDirectoryError) Error() string {
 	return fmt.Sprintf("cannot create temp directory: %s", e.Err)
 }
 
-type UnzipError struct {
+type NonProcessError struct {
 	Err error
 }
 
-func (e UnzipError) Error() string {
-	return fmt.Sprintf("cannot unzip artifact: %s", e.Err)
+func (e NonProcessError) Error() string {
+	return fmt.Sprintf("cannot process artifact: %s", e.Err)
+}
+
+type UnsupportedFormatError struct{}
+
+func (e UnsupportedFormatError) Error() string {
+	return fmt.Sprintf("File format not supported")
 }

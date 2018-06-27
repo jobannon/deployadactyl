@@ -228,7 +228,7 @@ var _ = Describe("Pusher", func() {
 				It("pushes the new app", func() {
 					pusher.DeploymentInfo.ContentType = "ZIP"
 					courier.PushCall.Returns.Output = []byte("push succeeded")
-					fetcher.FetchFromZipCall.Returns.AppPath = randomAppPath
+					fetcher.FetchArtifactFromRequestCall.Returns.AppPath = randomAppPath
 
 					Expect(pusher.Execute()).To(Succeed())
 
@@ -252,7 +252,7 @@ var _ = Describe("Pusher", func() {
 				It("pushes the new app", func() {
 					pusher.DeploymentInfo.ContentType = "ZIP"
 					courier.PushCall.Returns.Output = []byte("push succeeded")
-					fetcher.FetchFromZipCall.Returns.AppPath = randomAppPath
+					fetcher.FetchArtifactFromRequestCall.Returns.AppPath = randomAppPath
 
 					Expect(pusher.Execute()).To(Succeed())
 

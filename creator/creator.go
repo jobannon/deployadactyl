@@ -4,6 +4,7 @@ package creator
 import (
 	"crypto/tls"
 	"fmt"
+
 	"github.com/compozed/deployadactyl/artifetcher"
 	"github.com/compozed/deployadactyl/artifetcher/extractor"
 	"github.com/compozed/deployadactyl/config"
@@ -11,6 +12,15 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/state/push"
+
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+
+	"bytes"
 
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/courier"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen/courier/executor"
@@ -25,38 +35,54 @@ import (
 	"github.com/compozed/deployadactyl/state"
 	"github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/state/stop"
-	"github.com/compozed/deployadactyl/structs"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
-	"io"
-	"log"
-	"net"
-	"net/http"
-	"os"
-	"os/exec"
 )
 
 // ENDPOINT is used by the handler to define the deployment endpoint.
 const v2ENDPOINT = "/v2/deploy/:environment/:org/:space/:appName"
 const ENDPOINT = "/v3/apps/:environment/:org/:space/:appName"
 
+type InvalidRequestError struct{}
+
+func (e InvalidRequestError) Error() string {
+	return "invalid request"
+}
+
+type InvalidRequestProcessor struct {
+	Err error
+}
+
+func (p InvalidRequestProcessor) Process() I.DeployResponse {
+	return I.DeployResponse{
+		StatusCode: 400,
+		Error:      p.Err,
+	}
+}
+
 type CreatorModuleProvider struct {
-	NewCourier         courier.CourierConstructor
-	NewPrechecker      prechecker.PrecheckerConstructor
-	NewFetcher         artifetcher.ArtifetcherConstructor
-	NewExtractor       extractor.ExtractorConstructor
-	NewEventManager    eventmanager.EventManagerConstructor
-	NewPushController  push.PushControllerConstructor
-	NewStartController start.StartControllerConstructor
-	NewStopController  stop.StopControllerConstructor
-	NewAuthResolver    state.AuthResolverConstructor
-	NewEnvResolver     state.EnvResolverConstructor
-	NewDeployer        deployer.DeployerConstructor
-	NewPushManager     push.PushManagerConstructor
-	NewStopManager     stop.StopManagerConstructor
-	NewStartManager    start.StartManagerConstructor
-	NewBlueGreen       bluegreen.BlueGreenConstructor
+	NewCourier               courier.CourierConstructor
+	NewPrechecker            prechecker.PrecheckerConstructor
+	NewFetcher               artifetcher.ArtifetcherConstructor
+	NewExtractor             extractor.ExtractorConstructor
+	NewEventManager          eventmanager.EventManagerConstructor
+	NewPushController        push.PushControllerConstructor
+	NewStartController       start.StartControllerConstructor
+	NewStopController        stop.StopControllerConstructor
+	NewAuthResolver          state.AuthResolverConstructor
+	NewEnvResolver           state.EnvResolverConstructor
+	NewDeployer              deployer.DeployerConstructor
+	NewPushManager           push.PushManagerConstructor
+	NewStopManager           stop.StopManagerConstructor
+	NewStartManager          start.StartManagerConstructor
+	NewBlueGreen             bluegreen.BlueGreenConstructor
+	NewPushRequestProcessor  push.PushRequestProcessorConstructor
+	NewPushRequestCreator    PushRequestCreatorConstructor
+	NewStopRequestProcessor  stop.StopRequestProcessorConstructor
+	NewStopRequestCreator    StopRequestCreatorConstructor
+	NewStartRequestProcessor start.StartRequestProcessorConstructor
+	NewStartRequestCreator   StartRequestCreatorConstructor
 }
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
@@ -168,14 +194,13 @@ func (c Creator) CreateHTTPClient() *http.Client {
 func (c Creator) CreateController() I.Controller {
 	return &controller.Controller{
 		Log: c.logger,
-		PushControllerFactory:  c.CreatePushController,
-		StopControllerFactory:  c.CreateStopController,
-		StartControllerFactory: c.CreateStartController,
-		Config:                 c.CreateConfig(),
-		EventManager:           c.CreateEventManager(),
-		ErrorFinder:            c.createErrorFinder(),
+		RequestProcessorFactory: c.CreateRequestProcessor,
+		Config:                  c.CreateConfig(),
+		EventManager:            c.CreateEventManager(),
+		ErrorFinder:             c.createErrorFinder(),
 	}
 }
+
 func (c Creator) CreateAuthResolver() I.AuthResolver {
 	if c.provider.NewAuthResolver != nil {
 		return c.provider.NewAuthResolver(c.CreateConfig())
@@ -188,55 +213,6 @@ func (c Creator) CreateEnvResolver() I.EnvResolver {
 		return c.provider.NewEnvResolver(c.CreateConfig())
 	}
 	return state.NewEnvResolver(c.CreateConfig())
-}
-
-func (c Creator) CreatePushController(log I.DeploymentLogger) I.PushController {
-	if c.provider.NewPushController != nil {
-		return c.provider.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
-	}
-	return push.NewPushController(log, c.createDeployer(log), c.createSilentDeployer(), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
-}
-
-func (c Creator) CreateStopController(log I.DeploymentLogger) I.StopController {
-	if c.provider.NewStopController != nil {
-		return c.provider.NewStopController(log, c.createDeployer(log), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
-	}
-	return stop.NewStopController(log, c.createDeployer(log), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
-}
-
-func (c Creator) CreateStartController(log I.DeploymentLogger) I.StartController {
-	if c.provider.NewStartController != nil {
-		return c.provider.NewStartController(log, c.createDeployer(log), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
-	}
-	return start.NewStartController(log, c.createDeployer(log), c.CreateEventManager(), c.createErrorFinder(), c, c.CreateAuthResolver(), c.CreateEnvResolver())
-}
-
-func (c Creator) createDeployer(log I.DeploymentLogger) I.Deployer {
-	if c.provider.NewDeployer != nil {
-		return c.provider.NewDeployer(c.CreateConfig(), c.createBlueGreener(log), c.createPrechecker(), c.CreateEventManager(), c.createRandomizer(), c.createErrorFinder(), log)
-	}
-	return deployer.NewDeployer(c.CreateConfig(), c.createBlueGreener(log), c.createPrechecker(), c.CreateEventManager(), c.createRandomizer(), c.createErrorFinder(), log)
-}
-
-func (c Creator) PushManager(log I.DeploymentLogger, deployEventData structs.DeployEventData, cf I.CFContext, auth I.Authorization, env structs.Environment, envVars map[string]string) I.ActionCreator {
-	if c.provider.NewPushManager != nil {
-		return c.provider.NewPushManager(c, c.CreateEventManager(), log, c.createFetcher(log), deployEventData, c.CreateFileSystem(), cf, auth, env, envVars)
-	}
-	return push.NewPushManager(c, c.CreateEventManager(), log, c.createFetcher(log), deployEventData, c.CreateFileSystem(), cf, auth, env, envVars)
-}
-
-func (c Creator) StopManager(log I.DeploymentLogger, deployEventData structs.DeployEventData) I.ActionCreator {
-	if c.provider.NewStopManager != nil {
-		return c.provider.NewStopManager(c, c.CreateEventManager(), log, deployEventData)
-	}
-	return stop.NewStopManager(c, c.CreateEventManager(), log, deployEventData)
-}
-
-func (c Creator) StartManager(log I.DeploymentLogger, deployEventData structs.DeployEventData) I.ActionCreator {
-	if c.provider.NewStartManager != nil {
-		return c.provider.NewStartManager(c, c.CreateEventManager(), log, deployEventData)
-	}
-	return start.NewStartManager(c, c.CreateEventManager(), log, deployEventData)
 }
 
 func (c Creator) CreateEnvVarHandler() envvar.Envvarhandler {
@@ -255,22 +231,41 @@ func (c Creator) CreateRouteMapper() routemapper.RouteMapper {
 	}
 }
 
+func (c Creator) CreateRequestProcessor(uuid string, request interface{}, buffer *bytes.Buffer) I.RequestProcessor {
+	requestCreator, err := c.CreateRequestCreator(uuid, request, buffer)
+	if err != nil {
+		return InvalidRequestProcessor{Err: err}
+	}
+	return requestCreator.CreateRequestProcessor()
+}
+
+func (c Creator) CreateRequestCreator(uuid string, request interface{}, buffer *bytes.Buffer) (I.RequestCreator, error) {
+	post, ok := request.(I.PostDeploymentRequest)
+	if ok {
+		if c.provider.NewPushRequestCreator != nil {
+			return c.provider.NewPushRequestCreator(c, uuid, post, buffer), nil
+		}
+		return NewPushRequestCreator(c, uuid, post, buffer), nil
+	}
+	put, ok := request.(I.PutDeploymentRequest)
+	if ok {
+		if put.Request.State == "stopped" {
+			if c.provider.NewStopRequestCreator != nil {
+				return c.provider.NewStopRequestCreator(c, uuid, put, buffer), nil
+			}
+			return NewStopRequestCreator(c, uuid, put, buffer), nil
+		} else if put.Request.State == "started" {
+			if c.provider.NewStartRequestCreator != nil {
+				return c.provider.NewStartRequestCreator(c, uuid, put, buffer), nil
+			}
+			return NewStartRequestCreator(c, uuid, put, buffer), nil
+		}
+	}
+	return nil, InvalidRequestError{}
+}
+
 func (c Creator) createSilentDeployer() I.Deployer {
 	return deployer.SilentDeployer{}
-}
-
-func (c Creator) createExtractor(log I.DeploymentLogger) I.Extractor {
-	if c.provider.NewExtractor != nil {
-		return c.provider.NewExtractor(log, c.CreateFileSystem())
-	}
-	return extractor.NewExtractor(log, c.CreateFileSystem())
-}
-
-func (c Creator) createFetcher(log I.DeploymentLogger) I.Fetcher {
-	if c.provider.NewFetcher != nil {
-		return c.provider.NewFetcher(c.CreateFileSystem(), c.createExtractor(log), log)
-	}
-	return artifetcher.NewArtifetcher(c.CreateFileSystem(), c.createExtractor(log), log)
 }
 
 func (c Creator) createRandomizer() I.Randomizer {
@@ -286,13 +281,6 @@ func (c Creator) createPrechecker() I.Prechecker {
 
 func (c Creator) createWriter() io.Writer {
 	return c.writer
-}
-
-func (c Creator) createBlueGreener(log I.DeploymentLogger) I.BlueGreener {
-	if c.provider.NewBlueGreen != nil {
-		return c.provider.NewBlueGreen(log)
-	}
-	return bluegreen.NewBlueGreen(log)
 }
 
 func (c Creator) createErrorFinder() I.ErrorFinder {

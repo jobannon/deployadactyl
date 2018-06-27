@@ -74,7 +74,7 @@ func (a *PushManager) SetUp() error {
 
 	var fetchFn func() (string, error)
 
-	if a.DeployEventData.DeploymentInfo.ContentType == "JSON" {
+	if a.DeployEventData.DeploymentInfo.ContentType == "application/json" {
 
 		if a.DeployEventData.DeploymentInfo.Manifest != "" {
 			manifest, err := base64.StdEncoding.DecodeString(a.DeployEventData.DeploymentInfo.Manifest)
@@ -94,8 +94,9 @@ func (a *PushManager) SetUp() error {
 		}
 	} else {
 		fetchFn = func() (string, error) {
-			a.Logger.Debug("deploying from zip request")
-			appPath, manifestString, err = a.Fetcher.FetchZipFromRequest(a.DeployEventData.DeploymentInfo.Body)
+			a.Logger.Debug("deploying from archive request")
+
+			appPath, manifestString, err = a.Fetcher.FetchArtifactFromRequest(a.DeployEventData.RequestBody, a.DeployEventData.DeploymentInfo.ContentType)
 			if err != nil {
 				return "", state.UnzippingError{Err: err}
 			}

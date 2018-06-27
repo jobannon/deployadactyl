@@ -38,12 +38,14 @@ type StartController struct {
 	EnvResolver         I.EnvResolver
 }
 
-func (c *StartController) StartDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+//deployment *I.Deployment, data map[string]interface{}
+
+func (c *StartController) StartDeployment(deployment I.PutDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 	c.Log.Debugf("Preparing to start %s with UUID %s", cf.Application, c.Log.UUID)
 
-	if data == nil {
-		data = make(map[string]interface{})
+	if deployment.Request.Data == nil {
+		deployment.Request.Data = make(map[string]interface{})
 	}
 
 	environment, err := c.EnvResolver.Resolve(cf.Environment)
@@ -73,17 +75,17 @@ func (c *StartController) StartDeployment(deployment *I.Deployment, data map[str
 		CustomParams: environment.CustomParams,
 		Username:     auth.Username,
 		Password:     auth.Password,
-		Data:         data,
+		Data:         deployment.Request.Data,
 	}
 
-	defer c.emitStartFinish(response, c.Log, cf, &auth, &environment, data, &deployResponse)
-	defer c.emitStartSuccessOrFailure(response, c.Log, cf, &auth, &environment, data, &deployResponse)
+	defer c.emitStartFinish(response, c.Log, cf, &auth, &environment, deployment.Request.Data, &deployResponse)
+	defer c.emitStartSuccessOrFailure(response, c.Log, cf, &auth, &environment, deployment.Request.Data, &deployResponse)
 
 	err = c.EventManager.EmitEvent(StartStartedEvent{
 		CFContext:     cf,
 		Authorization: auth,
 		Environment:   environment,
-		Data:          data,
+		Data:          deployment.Request.Data,
 		Response:      response,
 		Log:           c.Log,
 	})
@@ -99,7 +101,7 @@ func (c *StartController) StartDeployment(deployment *I.Deployment, data map[str
 
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo}
 
-	manager := c.StartManagerFactory.StartManager(c.Log, deployEventData)
+	manager := c.StartManagerFactory.StartManager(deployEventData)
 	deployResponse = *c.Deployer.Deploy(deploymentInfo, environment, manager, response)
 	return deployResponse
 }

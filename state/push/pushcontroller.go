@@ -3,16 +3,17 @@ package push
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+
 	"github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/go-errors/errors"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
 )
 
 type PushControllerConstructor func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.PushController
@@ -50,10 +51,10 @@ type PushController struct {
 }
 
 // PUSH specific
-func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *PushController) RunDeployment(deployment I.PostDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 
-	if deployment.Type.JSON && request.ArtifactUrl == "" {
+	if deployment.Type == "application/json" && deployment.Request.ArtifactUrl == "" {
 		c.Log.Error("artifact url is missing from request")
 		return I.DeployResponse{
 			StatusCode: http.StatusBadRequest,
@@ -61,8 +62,8 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostR
 		}
 	}
 
-	if request.Data == nil {
-		request.Data = make(map[string]interface{})
+	if deployment.Request.Data == nil {
+		deployment.Request.Data = make(map[string]interface{})
 	}
 
 	deploymentInfo := &structs.DeploymentInfo{
@@ -71,25 +72,19 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostR
 		AppName:              cf.Application,
 		Environment:          cf.Environment,
 		UUID:                 c.Log.UUID,
-		Manifest:             request.Manifest,
-		ArtifactURL:          request.ArtifactUrl,
-		EnvironmentVariables: request.EnvironmentVariables,
-		HealthCheckEndpoint:  request.HealthCheckEndpoint,
-		Data:                 request.Data,
+		Manifest:             deployment.Request.Manifest,
+		ArtifactURL:          deployment.Request.ArtifactUrl,
+		EnvironmentVariables: deployment.Request.EnvironmentVariables,
+		HealthCheckEndpoint:  deployment.Request.HealthCheckEndpoint,
+		Data:                 deployment.Request.Data,
 	}
 
 	c.Log.Debugf("Starting deploy of %s with UUID %s", cf.Application, deploymentInfo.UUID)
 	c.Log.Debug("building deploymentInfo")
 
 	body := ioutil.NopCloser(bytes.NewBuffer(*deployment.Body))
-	if deployment.Type.JSON {
-		c.Log.Debug("deploying from json request")
-
-		deploymentInfo.ContentType = "JSON"
-	} else if deployment.Type.ZIP {
-		c.Log.Debug("deploying from zip request")
-		deploymentInfo.Body = body
-		deploymentInfo.ContentType = "ZIP"
+	if deployment.Type == "application/json" || deployment.Type == "application/zip" || deployment.Type == "application/x-tar" || deployment.Type == "application/x-gzip" {
+		deploymentInfo.ContentType = deployment.Type
 	} else {
 		return I.DeployResponse{
 			StatusCode: http.StatusBadRequest,
@@ -119,7 +114,8 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostR
 	deploymentInfo.Domain = environment.Domain
 	deploymentInfo.SkipSSL = environment.SkipSSL
 	deploymentInfo.CustomParams = environment.CustomParams
-	deploymentInfo.Data = request.Data
+	deploymentInfo.Data = deployment.Request.Data
+	deploymentInfo.Body = body
 
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo, RequestBody: body}
 	defer c.emitDeployFinish(&deployEventData, response, cf, auth, environment, &deployResponse, c.Log)
@@ -159,7 +155,7 @@ func (c *PushController) RunDeployment(deployment *I.Deployment, request I.PostR
 		}
 	}
 
-	pusherCreator := c.PushManagerFactory.PushManager(c.Log, deployEventData, cf, auth, environment, deploymentInfo.EnvironmentVariables)
+	pusherCreator := c.PushManagerFactory.PushManager(deployEventData, auth, environment, deploymentInfo.EnvironmentVariables)
 
 	reqChannel1 := make(chan *I.DeployResponse)
 	reqChannel2 := make(chan *I.DeployResponse)

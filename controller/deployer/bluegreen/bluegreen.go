@@ -15,7 +15,7 @@ import (
 type BlueGreenConstructor func(log I.DeploymentLogger) I.BlueGreener
 
 func NewBlueGreen(log I.DeploymentLogger) I.BlueGreener {
-	return BlueGreen{
+	return &BlueGreen{
 		Log: log,
 	}
 }

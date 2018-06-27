@@ -74,7 +74,7 @@ var _ = Describe("StopDeployment", func() {
 
 		deployment = I.Deployment{
 			Body:          &bodyByte,
-			Type:          I.DeploymentType{},
+			Type:          "application/json",
 			CFContext:     I.CFContext{},
 			Authorization: I.Authorization{},
 		}
@@ -89,7 +89,12 @@ var _ = Describe("StopDeployment", func() {
 					Environment: environment,
 				}}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StopDeployment(deployment, nil, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: nil},
+			}
+
+			deploymentResponse := controller.StopDeployment(putDeploymentRequest, response)
 
 			Expect(deploymentResponse.DeploymentInfo.UUID).ShouldNot(BeEmpty())
 		})
@@ -105,7 +110,12 @@ var _ = Describe("StopDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.StopDeployment(deployment, nil, response)
+		putDeploymentRequest := I.PutDeploymentRequest{
+			Deployment: *deployment,
+			Request:    I.PutRequest{Data: nil},
+		}
+
+		deploymentResponse := controller.StopDeployment(putDeploymentRequest, response)
 
 		Expect(deploymentResponse.DeploymentInfo.Org).Should(Equal("myOrg"))
 		Expect(deploymentResponse.DeploymentInfo.Environment).Should(Equal(environment))
@@ -121,9 +131,13 @@ var _ = Describe("StopDeployment", func() {
 				Environment: environment,
 			},
 		}
-
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.StopDeployment(deployment, nil, response)
+		putDeploymentRequest := I.PutDeploymentRequest{
+			Deployment: *deployment,
+			Request:    I.PutRequest{Data: nil},
+		}
+
+		deploymentResponse := controller.StopDeployment(putDeploymentRequest, response)
 
 		Expect(logBuffer).Should(Say(fmt.Sprintf("Preparing to stop %s with UUID %s", "myApp", deploymentResponse.DeploymentInfo.UUID)))
 
@@ -142,7 +156,12 @@ var _ = Describe("StopDeployment", func() {
 				},
 			}
 
-			controller.StopDeployment(deployment, data, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: data},
+			}
+
+			controller.StopDeployment(putDeploymentRequest, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(StopStartedEvent{})))
 			stopEvent := eventManager.EmitEventCall.Received.Events[0].(StopStartedEvent)
@@ -164,7 +183,12 @@ var _ = Describe("StopDeployment", func() {
 					Environment: environment,
 				},
 			}
-			deployResponse := controller.StopDeployment(deployment, nil, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: nil},
+			}
+
+			deployResponse := controller.StopDeployment(putDeploymentRequest, response)
 
 			Expect(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))
 			Expect(reflect.TypeOf(deployResponse.Error)).Should(Equal(reflect.TypeOf(D.EventError{})))
@@ -180,7 +204,12 @@ var _ = Describe("StopDeployment", func() {
 					Environment: "bad environment",
 				}}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StopDeployment(deployment, nil, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: nil},
+			}
+
+			deploymentResponse := controller.StopDeployment(putDeploymentRequest, response)
 
 			Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.EnvironmentNotFoundError{})))
 		})
@@ -200,9 +229,13 @@ var _ = Describe("StopDeployment", func() {
 				CFContext: I.CFContext{
 					Environment: environment,
 				}}
-
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StopDeployment(deployment, nil, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: nil},
+			}
+
+			deploymentResponse := controller.StopDeployment(putDeploymentRequest, response)
 			Expect(deploymentResponse.DeploymentInfo.Domain).Should(Equal("myDomain"))
 			Expect(deploymentResponse.DeploymentInfo.SkipSSL).Should(Equal(true))
 			Expect(deploymentResponse.DeploymentInfo.CustomParams["customName"]).Should(Equal("customParams"))
@@ -220,7 +253,12 @@ var _ = Describe("StopDeployment", func() {
 						Environment: environment,
 					}}
 				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StopDeployment(deployment, nil, response)
+				putDeploymentRequest := I.PutDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.PutRequest{Data: nil},
+				}
+
+				deploymentResponse := controller.StopDeployment(putDeploymentRequest, response)
 
 				Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.BasicAuthError{})))
 			})
@@ -238,7 +276,12 @@ var _ = Describe("StopDeployment", func() {
 						Environment: environment,
 					}}
 				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.StopDeployment(deployment, nil, response)
+				putDeploymentRequest := I.PutDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.PutRequest{Data: nil},
+				}
+
+				deploymentResponse := controller.StopDeployment(putDeploymentRequest, response)
 
 				Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("username"))
 				Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("password"))
@@ -258,7 +301,12 @@ var _ = Describe("StopDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StopDeployment(deployment, nil, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: nil},
+			}
+
+			deploymentResponse := controller.StopDeployment(putDeploymentRequest, response)
 			Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("myUser"))
 			Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("myPassword"))
 		})
@@ -276,7 +324,12 @@ var _ = Describe("StopDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StopDeployment(deployment, nil, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: nil},
+			}
+
+			deploymentResponse := controller.StopDeployment(putDeploymentRequest, response)
 			Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("myUser"))
 			Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("myPassword"))
 		})
@@ -294,7 +347,12 @@ var _ = Describe("StopDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.StopDeployment(deployment, data, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: data},
+			}
+
+			deploymentResponse := controller.StopDeployment(putDeploymentRequest, response)
 			Expect(deploymentResponse.DeploymentInfo.Data["user_id"]).Should(Equal("myuserid"))
 			Expect(deploymentResponse.DeploymentInfo.Data["group"]).Should(Equal("mygroup"))
 
@@ -311,7 +369,12 @@ var _ = Describe("StopDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		controller.StopDeployment(deployment, nil, response)
+		putDeploymentRequest := I.PutDeploymentRequest{
+			Deployment: *deployment,
+			Request:    I.PutRequest{Data: nil},
+		}
+
+		controller.StopDeployment(putDeploymentRequest, response)
 		Expect(stopManagerFactory.StopManagerCall.Called).Should(Equal(true))
 		Expect(stopManagerFactory.StopManagerCall.Received.DeployEventData.DeploymentInfo.Username).Should(Equal("myUser"))
 	})
@@ -323,8 +386,13 @@ var _ = Describe("StopDeployment", func() {
 				Environment: environment,
 			},
 		}
+		putDeploymentRequest := I.PutDeploymentRequest{
+			Deployment: *deployment,
+			Request:    I.PutRequest{Data: nil},
+		}
+
 		response := bytes.NewBuffer([]byte{})
-		controller.StopDeployment(deployment, nil, response)
+		controller.StopDeployment(putDeploymentRequest, response)
 		Expect(deployer.DeployCall.Received.ActionCreator).Should(Equal(manager))
 	})
 	It("should call deploy with the stop manager ", func() {
@@ -337,7 +405,12 @@ var _ = Describe("StopDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.StopDeployment(deployment, nil, response)
+		putDeploymentRequest := I.PutDeploymentRequest{
+			Deployment: *deployment,
+			Request:    I.PutRequest{Data: nil},
+		}
+
+		deploymentResponse := controller.StopDeployment(putDeploymentRequest, response)
 
 		Expect(deploymentResponse.Error.Error()).Should(Equal("test error"))
 		Expect(deploymentResponse.StatusCode).Should(Equal(http.StatusOK))
@@ -368,7 +441,12 @@ var _ = Describe("StopDeployment", func() {
 					Name:         environment,
 					Authenticate: true,
 				}
-				controller.StopDeployment(deployment, data, response)
+				putDeploymentRequest := I.PutDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.PutRequest{Data: data},
+				}
+
+				controller.StopDeployment(putDeploymentRequest, response)
 
 				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(StopSuccessEvent{})))
 				stopSuccessEvent := eventManager.EmitEventCall.Received.Events[1].(StopSuccessEvent)
@@ -395,8 +473,12 @@ var _ = Describe("StopDeployment", func() {
 						Environment:  environment,
 					},
 				}
+				putDeploymentRequest := I.PutDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.PutRequest{Data: data},
+				}
 
-				controller.StopDeployment(deployment, data, response)
+				controller.StopDeployment(putDeploymentRequest, response)
 
 				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(StopStartedEvent{})))
 				stopEvent := eventManager.EmitEventCall.Received.Events[0].(StopStartedEvent)
@@ -417,7 +499,12 @@ var _ = Describe("StopDeployment", func() {
 					},
 				}
 				response := bytes.NewBuffer([]byte{})
-				controller.StopDeployment(deployment, nil, response)
+				putDeploymentRequest := I.PutDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.PutRequest{Data: nil},
+				}
+
+				controller.StopDeployment(putDeploymentRequest, response)
 
 				Eventually(logBuffer).Should(Say("an error occurred when emitting a StopSuccessEvent event: errors"))
 			})
@@ -435,7 +522,12 @@ var _ = Describe("StopDeployment", func() {
 			deployer.DeployCall.Returns.Error = errors.New("deploy error")
 			errorFinder.FindErrorsCall.Returns.Errors = []I.LogMatchedError{error_finder.CreateLogMatchedError("a test error", []string{"error 1", "error 2", "error 3"}, "error solution", "test code")}
 			response := bytes.NewBuffer([]byte{})
-			controller.StopDeployment(deployment, nil, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: nil},
+			}
+
+			controller.StopDeployment(putDeploymentRequest, response)
 			Eventually(response).Should(ContainSubstring("Potential solution"))
 		})
 		It("should emit StopFailureEvent", func() {
@@ -461,7 +553,12 @@ var _ = Describe("StopDeployment", func() {
 				Authenticate: true,
 			}
 			deployer.DeployCall.Returns.Error = errors.New("deploy error")
-			controller.StopDeployment(deployment, data, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: data},
+			}
+
+			controller.StopDeployment(putDeploymentRequest, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(StopFailureEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[1].(StopFailureEvent)
@@ -488,7 +585,12 @@ var _ = Describe("StopDeployment", func() {
 				deployer.DeployCall.Returns.Error = errors.New("deploy error")
 
 				response := bytes.NewBuffer([]byte{})
-				controller.StopDeployment(deployment, nil, response)
+				putDeploymentRequest := I.PutDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.PutRequest{Data: nil},
+				}
+
+				controller.StopDeployment(putDeploymentRequest, response)
 
 				Eventually(logBuffer).Should(Say("an error occurred when emitting a StopFailureEvent event: errors"))
 			})
@@ -503,9 +605,13 @@ var _ = Describe("StopDeployment", func() {
 					Environment: environment,
 				},
 			}
-
 			response := bytes.NewBuffer([]byte{})
-			controller.StopDeployment(deployment, nil, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: nil},
+			}
+
+			controller.StopDeployment(putDeploymentRequest, response)
 
 			Eventually(logBuffer).Should(Say("emitting a StopFinishedEvent"))
 		})
@@ -531,7 +637,12 @@ var _ = Describe("StopDeployment", func() {
 				Name:         environment,
 				Authenticate: true,
 			}
-			controller.StopDeployment(deployment, data, response)
+			putDeploymentRequest := I.PutDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.PutRequest{Data: data},
+			}
+
+			controller.StopDeployment(putDeploymentRequest, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[2])).To(Equal(reflect.TypeOf(StopFinishedEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[2].(StopFinishedEvent)

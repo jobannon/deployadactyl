@@ -68,7 +68,7 @@ applications:
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
-					ContentType: "JSON",
+					ContentType: "application/json",
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
@@ -84,7 +84,7 @@ applications:
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
 					ArtifactURL: "https://artifacturl.com",
-					ContentType: "JSON",
+					ContentType: "application/json",
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
@@ -101,7 +101,7 @@ applications:
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
 					ArtifactURL: "https://artifacturl.com",
-					ContentType: "JSON",
+					ContentType: "application/json",
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
@@ -115,7 +115,7 @@ applications:
 
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
-					ContentType: "JSON",
+					ContentType: "application/json",
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
@@ -125,7 +125,7 @@ applications:
 			})
 			Context("ArtifactRetrievalStartEvent", func() {
 				It("calls EmitEvent", func() {
-					fetcher.FetchFromZipCall.Returns.Manifest = `---
+					fetcher.FetchArtifactFromRequestCall.Returns.Manifest = `---
 applications:
 - name: "blah"
   instances: 2`
@@ -134,7 +134,7 @@ applications:
 					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).To(Equal(reflect.TypeOf(ArtifactRetrievalStartEvent{})))
 				})
 				It("passes the CFContext", func() {
-					fetcher.FetchFromZipCall.Returns.Manifest = `---
+					fetcher.FetchArtifactFromRequestCall.Returns.Manifest = `---
 applications:
 - name: "blah"
   instances: 2`
@@ -150,7 +150,7 @@ applications:
 					Expect(eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent).CFContext).To(Equal(pusherCreator.CFContext))
 				})
 				It("passes the Authorization", func() {
-					fetcher.FetchFromZipCall.Returns.Manifest = `---
+					fetcher.FetchArtifactFromRequestCall.Returns.Manifest = `---
 applications:
 - name: "blah"
   instances: 2`
@@ -164,7 +164,7 @@ applications:
 					Expect(eventManager.EmitEventCall.Received.Events[0].(ArtifactRetrievalStartEvent).Auth).To(Equal(pusherCreator.Auth))
 				})
 				It("passes the environment, response, and data", func() {
-					fetcher.FetchFromZipCall.Returns.Manifest = `---
+					fetcher.FetchArtifactFromRequestCall.Returns.Manifest = `---
 applications:
 - name: "blah"
   instances: 2`
@@ -185,7 +185,7 @@ applications:
 
 					pusherCreator.DeployEventData.DeploymentInfo.Manifest = encodedManifest
 					pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL = "theArtifactURL"
-					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "JSON"
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "application/json"
 
 					pusherCreator.SetUp()
 
@@ -209,7 +209,7 @@ applications:
 
 			Context("ArtifactRetrievalSuccessEvent", func() {
 				It("calls EmitEvent", func() {
-					fetcher.FetchFromZipCall.Returns.Manifest = `---
+					fetcher.FetchArtifactFromRequestCall.Returns.Manifest = `---
 applications:
 - name: "blah"
   instances: 2`
@@ -218,7 +218,7 @@ applications:
 					Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(ArtifactRetrievalSuccessEvent{})))
 				})
 				It("passes the CFContext", func() {
-					fetcher.FetchFromZipCall.Returns.Manifest = `---
+					fetcher.FetchArtifactFromRequestCall.Returns.Manifest = `---
 applications:
 - name: "blah"
   instances: 2`
@@ -234,7 +234,7 @@ applications:
 					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent).CFContext).To(Equal(pusherCreator.CFContext))
 				})
 				It("passes the Authorization", func() {
-					fetcher.FetchFromZipCall.Returns.Manifest = `---
+					fetcher.FetchArtifactFromRequestCall.Returns.Manifest = `---
 applications:
 - name: "blah"
   instances: 2`
@@ -248,7 +248,7 @@ applications:
 					Expect(eventManager.EmitEventCall.Received.Events[1].(ArtifactRetrievalSuccessEvent).Auth).To(Equal(pusherCreator.Auth))
 				})
 				It("passes the environment, response, and data", func() {
-					fetcher.FetchFromZipCall.Returns.Manifest = `---
+					fetcher.FetchArtifactFromRequestCall.Returns.Manifest = `---
 applications:
 - name: "blah"
   instances: 2`
@@ -269,7 +269,7 @@ applications:
 
 					pusherCreator.DeployEventData.DeploymentInfo.Manifest = encodedManifest
 					pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL = "theArtifactURL"
-					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "JSON"
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "application/json"
 
 					fetcher.FetchCall.Returns.AppPath = "new app path"
 
@@ -298,8 +298,8 @@ applications:
 			Context("ArtifactRetrievalFailureEvent", func() {
 				It("calls EmitEvent", func() {
 
-					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
-					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
+					fetcher.FetchArtifactFromRequestCall.Returns.Error = errors.New("a test error")
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "application/zip"
 
 					pusherCreator.SetUp()
 
@@ -313,8 +313,8 @@ applications:
 						Organization: randomizer.StringRunes(10),
 						Application:  randomizer.StringRunes(10),
 					}
-					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
-					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
+					fetcher.FetchArtifactFromRequestCall.Returns.Error = errors.New("a test error")
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "application/zip"
 
 					pusherCreator.SetUp()
 
@@ -326,8 +326,8 @@ applications:
 						Username: randomizer.StringRunes(10),
 						Password: randomizer.StringRunes(10),
 					}
-					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
-					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
+					fetcher.FetchArtifactFromRequestCall.Returns.Error = errors.New("a test error")
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "application/zip"
 
 					pusherCreator.SetUp()
 
@@ -340,8 +340,8 @@ applications:
 					pusherCreator.DeployEventData.Response = response
 					pusherCreator.DeployEventData.DeploymentInfo.Data = make(map[string]interface{})
 
-					fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
-					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "ZIP"
+					fetcher.FetchArtifactFromRequestCall.Returns.Error = errors.New("a test error")
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "application/zip"
 
 					pusherCreator.SetUp()
 
@@ -354,7 +354,7 @@ applications:
 
 					pusherCreator.DeployEventData.DeploymentInfo.Manifest = encodedManifest
 					pusherCreator.DeployEventData.DeploymentInfo.ArtifactURL = "theArtifactURL"
-					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "JSON"
+					pusherCreator.DeployEventData.DeploymentInfo.ContentType = "application/json"
 
 					fetcher.FetchCall.Returns.Error = errors.New("a test error")
 
@@ -380,7 +380,7 @@ applications:
 				deploymentInfo := structs.DeploymentInfo{
 					Manifest:    encodedManifest,
 					ArtifactURL: "https://artifacturl.com",
-					ContentType: "JSON",
+					ContentType: "application/json",
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
@@ -393,66 +393,66 @@ applications:
 		Context("contentType is ZIP", func() {
 
 			It("should extract manifest from the zip file", func() {
-				fetcher.FetchFromZipCall.Returns.Manifest = `---
+				fetcher.FetchArtifactFromRequestCall.Returns.Manifest = `---
 applications:
 - name: "blah"
   instances: 2`
-				fetcher.FetchFromZipCall.Returns.AppPath = "newAppPath"
+				fetcher.FetchArtifactFromRequestCall.Returns.AppPath = "newAppPath"
 
-				deploymentInfo := structs.DeploymentInfo{ContentType: "ZIP"}
+				deploymentInfo := structs.DeploymentInfo{ContentType: "application/zip"}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
 				pusherCreator.SetUp()
 
 				Expect(pusherCreator.DeployEventData.DeploymentInfo.AppPath).To(Equal("newAppPath"))
 				logBytes, _ := ioutil.ReadAll(logBuffer)
-				Eventually(string(logBytes)).Should(ContainSubstring("deploying from zip request"))
+				Eventually(string(logBytes)).Should(ContainSubstring("deploying from archive request"))
 			})
 
 			Context("when instances are listed in the manifest", func() {
 				It("should set the correct number of instances from the manifest", func() {
-					fetcher.FetchFromZipCall.Returns.AppPath = "newAppPath"
-					fetcher.FetchFromZipCall.Returns.Manifest = `---
+					fetcher.FetchArtifactFromRequestCall.Returns.AppPath = "newAppPath"
+					fetcher.FetchArtifactFromRequestCall.Returns.Manifest = `---
 applications:
 - name: "blah"
   instances: 2
 `
 
-					deploymentInfo := structs.DeploymentInfo{ContentType: "ZIP"}
+					deploymentInfo := structs.DeploymentInfo{ContentType: "application/zip"}
 					pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
 					pusherCreator.SetUp()
 
 					Expect(pusherCreator.DeployEventData.DeploymentInfo.Instances).To(Equal(uint16(2)))
 					logBytes, _ := ioutil.ReadAll(logBuffer)
-					Eventually(string(logBytes)).Should(ContainSubstring("deploying from zip request"))
+					Eventually(string(logBytes)).Should(ContainSubstring("deploying from archive request"))
 				})
 			})
 			Context("when no instances are listed in the manifest", func() {
 				It("should set the correct number of instances from the environment", func() {
-					fetcher.FetchFromZipCall.Returns.AppPath = "newAppPath"
+					fetcher.FetchArtifactFromRequestCall.Returns.AppPath = "newAppPath"
 					pusherCreator.Environment.Instances = 7
-					fetcher.FetchFromZipCall.Returns.Manifest = `---
+					fetcher.FetchArtifactFromRequestCall.Returns.Manifest = `---
 applications:
 - name: "blah"
 `
 
-					deploymentInfo := structs.DeploymentInfo{ContentType: "ZIP"}
+					deploymentInfo := structs.DeploymentInfo{ContentType: "application/zip"}
 					pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 
 					pusherCreator.SetUp()
 
 					Expect(pusherCreator.DeployEventData.DeploymentInfo.Instances).To(Equal(uint16(7)))
 					logBytes, _ := ioutil.ReadAll(logBuffer)
-					Eventually(string(logBytes)).Should(ContainSubstring("deploying from zip request"))
+					Eventually(string(logBytes)).Should(ContainSubstring("deploying from archive request"))
 				})
 			})
 
 			It("should error when artifact cannot be fetched", func() {
-				fetcher.FetchFromZipCall.Returns.Error = errors.New("a test error")
+				fetcher.FetchArtifactFromRequestCall.Returns.Error = errors.New("a test error")
 
 				deploymentInfo := structs.DeploymentInfo{
-					ContentType: "ZIP",
+					ContentType: "application/zip",
 				}
 				pusherCreator.DeployEventData.DeploymentInfo = &deploymentInfo
 

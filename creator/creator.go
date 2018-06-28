@@ -33,6 +33,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/state"
+	"github.com/compozed/deployadactyl/state/delete"
 	"github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/state/stop"
 	"github.com/gin-gonic/gin"
@@ -68,30 +69,34 @@ func NewLogger() (I.Logger, error) {
 }
 
 type CreatorModuleProvider struct {
-	NewCourier               courier.CourierConstructor
-	NewPrechecker            prechecker.PrecheckerConstructor
-	NewFetcher               artifetcher.ArtifetcherConstructor
-	NewExtractor             extractor.ExtractorConstructor
-	NewEventManager          eventmanager.EventManagerConstructor
-	NewPushController        push.PushControllerConstructor
-	NewStartController       start.StartControllerConstructor
-	NewStopController        stop.StopControllerConstructor
-	NewAuthResolver          state.AuthResolverConstructor
-	NewEnvResolver           state.EnvResolverConstructor
-	NewDeployer              deployer.DeployerConstructor
-	NewPushManager           push.PushManagerConstructor
-	NewStopManager           stop.StopManagerConstructor
-	NewStartManager          start.StartManagerConstructor
-	NewBlueGreen             bluegreen.BlueGreenConstructor
-	NewPushRequestProcessor  push.PushRequestProcessorConstructor
-	NewPushRequestCreator    PushRequestCreatorConstructor
-	NewStopRequestProcessor  stop.StopRequestProcessorConstructor
-	NewStopRequestCreator    StopRequestCreatorConstructor
-	NewStartRequestProcessor start.StartRequestProcessorConstructor
-	NewStartRequestCreator   StartRequestCreatorConstructor
-	NewConfig                config.ConfigConstructor
-	NewLogger                LoggerConstructor
-	CLIChecker               func() error
+	NewCourier                courier.CourierConstructor
+	NewPrechecker             prechecker.PrecheckerConstructor
+	NewFetcher                artifetcher.ArtifetcherConstructor
+	NewExtractor              extractor.ExtractorConstructor
+	NewEventManager           eventmanager.EventManagerConstructor
+	NewPushController         push.PushControllerConstructor
+	NewStartController        start.StartControllerConstructor
+	NewStopController         stop.StopControllerConstructor
+	NewDeleteController       delete.DeleteControllerConstructor
+	NewAuthResolver           state.AuthResolverConstructor
+	NewEnvResolver            state.EnvResolverConstructor
+	NewDeployer               deployer.DeployerConstructor
+	NewPushManager            push.PushManagerConstructor
+	NewStopManager            stop.StopManagerConstructor
+	NewStartManager           start.StartManagerConstructor
+	NewBlueGreen              bluegreen.BlueGreenConstructor
+	NewPushRequestProcessor   push.PushRequestProcessorConstructor
+	NewPushRequestCreator     PushRequestCreatorConstructor
+	NewStopRequestProcessor   stop.StopRequestProcessorConstructor
+	NewStopRequestCreator     StopRequestCreatorConstructor
+	NewStartRequestProcessor  start.StartRequestProcessorConstructor
+	NewStartRequestCreator    StartRequestCreatorConstructor
+	NewDeleteRequestProcessor delete.DeleteRequestProcessorConstructor
+	NewDeleteRequestCreator   DeleteRequestCreatorConstructor
+	NewDeleteManager          delete.DeleteManagerConstructor
+	NewConfig                 config.ConfigConstructor
+	NewLogger                 LoggerConstructor
+	CLIChecker                func() error
 }
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
@@ -192,6 +197,7 @@ func (c Creator) CreateControllerHandler(controller I.Controller) *gin.Engine {
 	r.POST(v2ENDPOINT, controller.PostRequestHandler)
 	r.POST(ENDPOINT, controller.PostRequestHandler)
 	r.PUT(ENDPOINT, controller.PutRequestHandler)
+	r.DELETE(ENDPOINT, controller.DeleteRequestHandler)
 
 	return r
 }
@@ -322,6 +328,13 @@ func (c Creator) CreateRequestCreator(uuid string, request interface{}, buffer *
 			}
 			return NewStartRequestCreator(c, uuid, put, buffer), nil
 		}
+	}
+	delete, ok := request.(I.DeleteDeploymentRequest)
+	if ok {
+		if c.provider.NewDeleteRequestCreator != nil {
+			return c.provider.NewDeleteRequestCreator(c, uuid, delete, buffer), nil
+		}
+		return NewDeleteRequestCreator(c, uuid, delete, buffer), nil
 	}
 	return nil, InvalidRequestError{}
 }

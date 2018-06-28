@@ -8,6 +8,7 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/state/delete"
 	"github.com/compozed/deployadactyl/state/push"
 	"github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/state/stop"
@@ -165,5 +166,45 @@ func (r StartRequestCreator) StartManager(deployEventData structs.DeployEventDat
 		return r.provider.NewStartManager(r.Creator, r.CreateEventManager(), r.Log, deployEventData)
 	} else {
 		return start.NewStartManager(r.Creator, r.CreateEventManager(), r.Log, deployEventData)
+	}
+}
+
+type DeleteRequestCreatorConstructor func(creator Creator, uuid string, request I.DeleteDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator
+
+func NewDeleteRequestCreator(creator Creator, uuid string, request I.DeleteDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
+	return &DeleteRequestCreator{
+		RequestCreator: RequestCreator{
+			Creator: creator,
+			Buffer:  buffer,
+			Log:     I.DeploymentLogger{UUID: uuid, Log: creator.GetLogger()},
+		},
+		Request: request,
+	}
+}
+
+type DeleteRequestCreator struct {
+	RequestCreator
+	Request I.DeleteDeploymentRequest
+}
+
+func (r DeleteRequestCreator) CreateRequestProcessor() I.RequestProcessor {
+	if r.provider.NewDeleteRequestProcessor != nil {
+		return r.provider.NewDeleteRequestProcessor(r.Log, r.CreateDeleteController(), r.Request, r.Buffer)
+	}
+	return delete.NewDeleteRequestProcessor(r.Log, r.CreateDeleteController(), r.Request, r.Buffer)
+}
+
+func (r DeleteRequestCreator) CreateDeleteController() I.DeleteController {
+	if r.provider.NewDeleteController != nil {
+		return r.provider.NewDeleteController(r.Log, r.CreateDeployer(), r.CreateEventManager(), r.createErrorFinder(), r, r.CreateAuthResolver(), r.CreateEnvResolver())
+	}
+	return delete.NewDeleteController(r.Log, r.CreateDeployer(), r.CreateEventManager(), r.createErrorFinder(), r, r.CreateAuthResolver(), r.CreateEnvResolver())
+}
+
+func (r DeleteRequestCreator) DeleteManager(deployEventData structs.DeployEventData) I.ActionCreator {
+	if r.provider.NewDeleteManager != nil {
+		return r.provider.NewDeleteManager(r.Creator, r.CreateEventManager(), r.Log, deployEventData)
+	} else {
+		return delete.NewDeleteManager(r.Creator, r.CreateEventManager(), r.Log, deployEventData)
 	}
 }

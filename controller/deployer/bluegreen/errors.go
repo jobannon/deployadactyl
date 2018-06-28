@@ -185,3 +185,40 @@ func (e RollbackStartError) Error() string {
 
 	return fmt.Sprintf("start failed: %s: rollback failed: %s", startErrs, rollbackStartErrors)
 }
+
+type FinishDeleteError struct {
+	FinishDeleteErrors []error
+}
+
+func (e FinishDeleteError) Error() string {
+	finishDeleteErrors := makeErrorString(e.FinishDeleteErrors)
+
+	return fmt.Sprintf("finish delete failed: %s", finishDeleteErrors)
+}
+
+type DeleteError struct {
+	Errors []error
+}
+
+func (e DeleteError) Error() string {
+	errs := makeErrorString(e.Errors)
+	return fmt.Sprintf("delete failed: %s", errs)
+}
+
+func (e DeleteError) Code() string {
+	return "DeleteError"
+}
+
+type RollbackDeleteError struct {
+	DeleteErrors   []error
+	RollbackErrors []error
+}
+
+func (e RollbackDeleteError) Error() string {
+	var (
+		startErrs           = makeErrorString(e.DeleteErrors)
+		rollbackStartErrors = makeErrorString(e.RollbackErrors)
+	)
+
+	return fmt.Sprintf("delete failed: %s: rollback failed: %s", startErrs, rollbackStartErrors)
+}

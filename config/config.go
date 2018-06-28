@@ -14,7 +14,7 @@ import (
 	s "github.com/compozed/deployadactyl/structs"
 )
 
-const defaultConfigPath = "./config.yml"
+const DefaultConfigPath = "./config.yml"
 
 // Config is a representation of a config yaml. It can contain multiple Environments.
 type Config struct {
@@ -36,7 +36,7 @@ type foundationYaml struct {
 
 // Default returns a new Config struct with information from environment variables and the default config file (./config.yml).
 func Default(getenv func(string) string) (Config, error) {
-	return Custom(getenv, defaultConfigPath)
+	return Custom(getenv, DefaultConfigPath)
 }
 
 // Custom returns a new Config struct with information from environment variables and a custom config file.

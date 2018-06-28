@@ -47,8 +47,20 @@ type PostDeploymentRequest struct {
 	Request PostRequest
 }
 
+type DeleteRequest struct {
+	State string                 `json:"state"`
+	Data  map[string]interface{} `json:"data"`
+}
+
+type DeleteDeploymentRequest struct {
+	Deployment
+	Request DeleteRequest
+}
+
 type Controller interface {
 	PostRequestHandler(g *gin.Context)
 
 	PutRequestHandler(g *gin.Context)
+
+	DeleteRequestHandler(g *gin.Context)
 }

@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 
+	"errors"
 	"reflect"
 	"strings"
 
@@ -22,7 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Delete", func() {
+var _ = Describe("Service", func() {
 
 	const (
 		CONFIGPATH      = "./test_config.yml"
@@ -71,6 +72,9 @@ environments:
 				courier := &mocks.Courier{}
 				couriers = append(couriers, courier)
 				courier.ExistsCall.Returns.Bool = true
+				if len(couriers) == 2 {
+					courier.DeleteCall.Returns.Error = errors.New("failed to delete")
+				}
 
 				return courier
 			},
@@ -115,7 +119,7 @@ environments:
 	})
 
 	It("returns correct status code", func() {
-		Expect(response.StatusCode).To(Equal(http.StatusOK), string(responseBody))
+		Expect(response.StatusCode).To(Equal(http.StatusInternalServerError), string(responseBody))
 	})
 	It("calls prechecker with all foundation urls", func() {
 		fs := prechecker.AssertAllFoundationsUpCall.Received.Environment.Foundations
@@ -155,8 +159,8 @@ environments:
 	It("emits a DeleteStartedEvent", func() {
 		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).To(Equal(reflect.TypeOf(delete.DeleteStartedEvent{})))
 	})
-	It("emits a DeleteSuccessEvent", func() {
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(delete.DeleteSuccessEvent{})))
+	It("emits a DeleteFailureEvent", func() {
+		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(delete.DeleteFailureEvent{})))
 	})
 	It("emits a DeleteFinishedEvent", func() {
 		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[2])).To(Equal(reflect.TypeOf(delete.DeleteFinishedEvent{})))

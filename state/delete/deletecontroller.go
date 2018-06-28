@@ -12,7 +12,7 @@ import (
 	"github.com/compozed/deployadactyl/structs"
 )
 
-type DeleteControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, stopManagerFactory I.StopManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.DeleteController
+type DeleteControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, deleteManagerFactory I.DeleteManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.DeleteController
 
 func NewDeleteController(l I.DeploymentLogger, d I.Deployer, em I.EventManager, ef I.ErrorFinder, smf I.DeleteManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.DeleteController {
 	return &DeleteController{
@@ -36,12 +36,12 @@ type DeleteController struct {
 	EnvResolver          I.EnvResolver
 }
 
-func (c *DeleteController) DeleteDeployment(deployment *I.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *DeleteController) DeleteDeployment(deployment I.DeleteDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
-	c.Log.Debugf("Preparing to stop %s with UUID %s", cf.Application, c.Log.UUID)
+	c.Log.Debugf("Preparing to delete %s with UUID %s", cf.Application, c.Log.UUID)
 
-	if data == nil {
-		data = make(map[string]interface{})
+	if deployment.Request.Data == nil {
+		deployment.Request.Data = make(map[string]interface{})
 	}
 
 	environment, err := c.EnvResolver.Resolve(cf.Environment)
@@ -71,15 +71,15 @@ func (c *DeleteController) DeleteDeployment(deployment *I.Deployment, data map[s
 		CustomParams: environment.CustomParams,
 		Username:     auth.Username,
 		Password:     auth.Password,
-		Data:         data,
+		Data:         deployment.Request.Data,
 	}
 
-	defer c.emitDeleteFinish(response, c.Log, cf, &auth, &environment, data, &deployResponse)
-	defer c.emitDeleteSuccessOrFailure(response, c.Log, cf, &auth, &environment, data, &deployResponse)
+	defer c.emitDeleteFinish(response, c.Log, cf, &auth, &environment, deployment.Request.Data, &deployResponse)
+	defer c.emitDeleteSuccessOrFailure(response, c.Log, cf, &auth, &environment, deployment.Request.Data, &deployResponse)
 
 	err = c.EventManager.EmitEvent(DeleteStartedEvent{
 		CFContext:     cf,
-		Data:          data,
+		Data:          deployment.Request.Data,
 		Environment:   environment,
 		Authorization: auth,
 		Response:      response,
@@ -97,7 +97,7 @@ func (c *DeleteController) DeleteDeployment(deployment *I.Deployment, data map[s
 
 	deployEventData := structs.DeployEventData{Response: response, DeploymentInfo: deploymentInfo}
 
-	manager := c.DeleteManagerFactory.DeleteManager(c.Log, deployEventData)
+	manager := c.DeleteManagerFactory.DeleteManager(deployEventData)
 	return *c.Deployer.Deploy(deploymentInfo, environment, manager, response)
 }
 

@@ -3,6 +3,8 @@ package delete
 import (
 	"io"
 
+	"fmt"
+
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
 )
@@ -34,10 +36,10 @@ func (s Deleter) Finally() error {
 func (s Deleter) Initially() error {
 	s.Log.Debugf(
 		`logging into cloud foundry with parameters:
-        foundation URL: %+v
-        username: %+v
-        org: %+v
-        space: %+v`,
+		foundation URL: %+v
+		username: %+v
+		org: %+v
+		space: %+v`,
 		s.FoundationURL, s.Authorization.Username, s.CFContext.Organization, s.CFContext.Space,
 	)
 
@@ -82,20 +84,8 @@ func (s Deleter) Execute() error {
 }
 
 func (s Deleter) Undo() error {
-
-	if s.Courier.Exists(s.AppName) != true {
-		return nil
-	}
-
-	s.Log.Infof("starting app %s", s.AppName)
-
-	output, err := s.Courier.Start(s.AppName)
-	if err != nil {
-		return state.StartError{ApplicationName: s.AppName, Out: output}
-	}
-	s.Response.Write(output)
-
-	s.Log.Infof("successfully restarted app %s", s.AppName)
+	s.Response.Write([]byte(fmt.Sprintf("delete feature is unable to rollback: %s", s.AppName)))
+	s.Log.Infof("delete feature is unable to rollback: %s", s.AppName)
 
 	return nil
 }

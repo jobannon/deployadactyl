@@ -201,26 +201,11 @@ var _ = Describe("Deleter", func() {
 	})
 
 	Describe("Undo", func() {
-		Context("when the app does not exist", func() {
-			It("return without error", func() {
-				courier.ExistsCall.Returns.Bool = false
-				err := deleter.Undo()
-
-				Expect(err).To(BeNil())
-			})
-		})
-
 		Context("when successful", func() {
 			It("returns with success", func() {
-				courier.ExistsCall.Returns.Bool = true
-				courier.StartCall.Returns.Output = []byte("start succeeded")
-
 				Expect(deleter.Undo()).To(Succeed())
-				Expect(courier.StartCall.Received.AppName).To(Equal(randomAppName))
 
-				Eventually(response).Should(Say("start succeeded"))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("starting app %s", randomAppName)))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully restarted app %s", randomAppName)))
+				Eventually(response).Should(Say("delete feature is unable to rollback"))
 			})
 		})
 	})

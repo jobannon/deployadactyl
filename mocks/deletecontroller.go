@@ -9,8 +9,7 @@ import (
 type DeleteController struct {
 	DeleteDeploymentCall struct {
 		Received struct {
-			Deployment *interfaces.Deployment
-			Data       map[string]interface{}
+			Deployment interfaces.DeleteDeploymentRequest
 			Response   *bytes.Buffer
 		}
 		Returns struct {
@@ -21,10 +20,10 @@ type DeleteController struct {
 	}
 }
 
-func (c *DeleteController) DeleteDeployment(deployment *interfaces.Deployment, data map[string]interface{}, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
+func (c *DeleteController) DeleteDeployment(deployment interfaces.DeleteDeploymentRequest, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
 	c.DeleteDeploymentCall.Called = true
 	c.DeleteDeploymentCall.Received.Deployment = deployment
-	c.DeleteDeploymentCall.Received.Data = data
+	c.DeleteDeploymentCall.Received.Deployment.Request = deployment.Request
 	c.DeleteDeploymentCall.Received.Response = response
 
 	if c.DeleteDeploymentCall.Writes != "" {

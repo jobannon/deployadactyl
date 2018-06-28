@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"net/http"
-	"reflect"
-
 	"github.com/compozed/deployadactyl/config"
 	D "github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/error_finder"
@@ -20,13 +17,15 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
+	"net/http"
+	"reflect"
 )
 
 var _ = Describe("DeleteDeployment", func() {
 	var (
 		deployer           *mocks.Deployer
 		pushManagerFactory *mocks.PushManagerFactory
-		stopManagerFactory *mocks.DeleteManagerFactory
+		deleteManagerFactory *mocks.DeleteManagerFactory
 		eventManager       *mocks.EventManager
 		errorFinder        *mocks.ErrorFinder
 		controller         *DeleteController
@@ -56,16 +55,16 @@ var _ = Describe("DeleteDeployment", func() {
 		authResolver = &state.AuthResolver{Config: config.Config{}}
 		envResolver = &state.EnvResolver{Config: config.Config{}}
 
-		stopManagerFactory = &mocks.DeleteManagerFactory{}
+		deleteManagerFactory = &mocks.DeleteManagerFactory{}
 		errorFinder = &mocks.ErrorFinder{}
 		controller = &DeleteController{
-			Deployer:             deployer,
-			Log:                  I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"), UUID: randomizer.StringRunes(10)},
-			DeleteManagerFactory: stopManagerFactory,
-			EventManager:         eventManager,
-			AuthResolver:         authResolver,
-			ErrorFinder:          errorFinder,
-			EnvResolver:          envResolver,
+			Deployer:           deployer,
+			Log:                I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"), UUID: randomizer.StringRunes(10)},
+			DeleteManagerFactory: deleteManagerFactory,
+			EventManager:       eventManager,
+			AuthResolver:       authResolver,
+			ErrorFinder:        errorFinder,
+			EnvResolver:        envResolver,
 		}
 		environments := map[string]structs.Environment{}
 		environments[environment] = structs.Environment{}
@@ -75,7 +74,7 @@ var _ = Describe("DeleteDeployment", func() {
 
 		deployment = I.Deployment{
 			Body:          &bodyByte,
-			Type:          I.DeploymentType{},
+			Type:          "application/json",
 			CFContext:     I.CFContext{},
 			Authorization: I.Authorization{},
 		}
@@ -90,7 +89,12 @@ var _ = Describe("DeleteDeployment", func() {
 					Environment: environment,
 				}}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.DeleteDeployment(deployment, nil, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: nil},
+			}
+
+			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
 
 			Expect(deploymentResponse.DeploymentInfo.UUID).ShouldNot(BeEmpty())
 		})
@@ -106,7 +110,12 @@ var _ = Describe("DeleteDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.DeleteDeployment(deployment, nil, response)
+		putDeploymentRequest := I.DeleteDeploymentRequest{
+			Deployment: *deployment,
+			Request:    I.DeleteRequest{Data: nil},
+		}
+
+		deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
 
 		Expect(deploymentResponse.DeploymentInfo.Org).Should(Equal("myOrg"))
 		Expect(deploymentResponse.DeploymentInfo.Environment).Should(Equal(environment))
@@ -122,11 +131,15 @@ var _ = Describe("DeleteDeployment", func() {
 				Environment: environment,
 			},
 		}
-
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.DeleteDeployment(deployment, nil, response)
+		putDeploymentRequest := I.DeleteDeploymentRequest{
+			Deployment: *deployment,
+			Request:    I.DeleteRequest{Data: nil},
+		}
 
-		Expect(logBuffer).Should(Say(fmt.Sprintf("Preparing to stop %s with UUID %s", "myApp", deploymentResponse.DeploymentInfo.UUID)))
+		deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
+
+		Expect(logBuffer).Should(Say(fmt.Sprintf("Preparing to delete %s with UUID %s", "myApp", deploymentResponse.DeploymentInfo.UUID)))
 
 	})
 
@@ -143,15 +156,20 @@ var _ = Describe("DeleteDeployment", func() {
 				},
 			}
 
-			controller.DeleteDeployment(deployment, data, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: data},
+			}
+
+			controller.DeleteDeployment(putDeploymentRequest, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(DeleteStartedEvent{})))
-			stopEvent := eventManager.EmitEventCall.Received.Events[0].(DeleteStartedEvent)
-			Expect(stopEvent.CFContext.Space).Should(Equal("mySpace"))
-			Expect(stopEvent.CFContext.Application).Should(Equal("myApp"))
-			Expect(stopEvent.CFContext.Environment).Should(Equal(environment))
-			Expect(stopEvent.CFContext.Organization).Should(Equal("myOrg"))
-			Expect(stopEvent.Data).Should(Equal(data))
+			deleteEvent := eventManager.EmitEventCall.Received.Events[0].(DeleteStartedEvent)
+			Expect(deleteEvent.CFContext.Space).Should(Equal("mySpace"))
+			Expect(deleteEvent.CFContext.Application).Should(Equal("myApp"))
+			Expect(deleteEvent.CFContext.Environment).Should(Equal(environment))
+			Expect(deleteEvent.CFContext.Organization).Should(Equal("myOrg"))
+			Expect(deleteEvent.Data).Should(Equal(data))
 
 		})
 	})
@@ -165,7 +183,12 @@ var _ = Describe("DeleteDeployment", func() {
 					Environment: environment,
 				},
 			}
-			deployResponse := controller.DeleteDeployment(deployment, nil, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: nil},
+			}
+
+			deployResponse := controller.DeleteDeployment(putDeploymentRequest, response)
 
 			Expect(deployResponse.StatusCode).Should(Equal(http.StatusInternalServerError))
 			Expect(reflect.TypeOf(deployResponse.Error)).Should(Equal(reflect.TypeOf(D.EventError{})))
@@ -181,7 +204,12 @@ var _ = Describe("DeleteDeployment", func() {
 					Environment: "bad environment",
 				}}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.DeleteDeployment(deployment, nil, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: nil},
+			}
+
+			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
 
 			Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.EnvironmentNotFoundError{})))
 		})
@@ -201,9 +229,13 @@ var _ = Describe("DeleteDeployment", func() {
 				CFContext: I.CFContext{
 					Environment: environment,
 				}}
-
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.DeleteDeployment(deployment, nil, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: nil},
+			}
+
+			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
 			Expect(deploymentResponse.DeploymentInfo.Domain).Should(Equal("myDomain"))
 			Expect(deploymentResponse.DeploymentInfo.SkipSSL).Should(Equal(true))
 			Expect(deploymentResponse.DeploymentInfo.CustomParams["customName"]).Should(Equal("customParams"))
@@ -221,7 +253,12 @@ var _ = Describe("DeleteDeployment", func() {
 						Environment: environment,
 					}}
 				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.DeleteDeployment(deployment, nil, response)
+				putDeploymentRequest := I.DeleteDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.DeleteRequest{Data: nil},
+				}
+
+				deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
 
 				Expect(reflect.TypeOf(deploymentResponse.Error)).Should(Equal(reflect.TypeOf(D.BasicAuthError{})))
 			})
@@ -239,7 +276,12 @@ var _ = Describe("DeleteDeployment", func() {
 						Environment: environment,
 					}}
 				response := bytes.NewBuffer([]byte{})
-				deploymentResponse := controller.DeleteDeployment(deployment, nil, response)
+				putDeploymentRequest := I.DeleteDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.DeleteRequest{Data: nil},
+				}
+
+				deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
 
 				Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("username"))
 				Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("password"))
@@ -259,7 +301,12 @@ var _ = Describe("DeleteDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.DeleteDeployment(deployment, nil, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: nil},
+			}
+
+			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
 			Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("myUser"))
 			Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("myPassword"))
 		})
@@ -277,7 +324,12 @@ var _ = Describe("DeleteDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.DeleteDeployment(deployment, nil, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: nil},
+			}
+
+			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
 			Expect(deploymentResponse.DeploymentInfo.Username).Should(Equal("myUser"))
 			Expect(deploymentResponse.DeploymentInfo.Password).Should(Equal("myPassword"))
 		})
@@ -295,13 +347,18 @@ var _ = Describe("DeleteDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			deploymentResponse := controller.DeleteDeployment(deployment, data, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: data},
+			}
+
+			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
 			Expect(deploymentResponse.DeploymentInfo.Data["user_id"]).Should(Equal("myuserid"))
 			Expect(deploymentResponse.DeploymentInfo.Data["group"]).Should(Equal("mygroup"))
 
 		})
 	})
-	It("should create stop manager", func() {
+	It("should create delete manager", func() {
 
 		deployment := &I.Deployment{
 			Authorization: I.Authorization{
@@ -312,23 +369,33 @@ var _ = Describe("DeleteDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		controller.DeleteDeployment(deployment, nil, response)
-		Expect(stopManagerFactory.DeleteManagerCall.Called).Should(Equal(true))
-		Expect(stopManagerFactory.DeleteManagerCall.Received.DeployEventData.DeploymentInfo.Username).Should(Equal("myUser"))
+		putDeploymentRequest := I.DeleteDeploymentRequest{
+			Deployment: *deployment,
+			Request:    I.DeleteRequest{Data: nil},
+		}
+
+		controller.DeleteDeployment(putDeploymentRequest, response)
+		Expect(deleteManagerFactory.DeleteManagerCall.Called).Should(Equal(true))
+		Expect(deleteManagerFactory.DeleteManagerCall.Received.DeployEventData.DeploymentInfo.Username).Should(Equal("myUser"))
 	})
-	It("should call deploy with the stop manager ", func() {
+	It("should call deploy with the delete manager ", func() {
 		manager := &mocks.DeleteManager{}
-		stopManagerFactory.DeleteManagerCall.Returns.ActionCreater = manager
+		deleteManagerFactory.DeleteManagerCall.Returns.ActionCreater = manager
 		deployment := &I.Deployment{
 			CFContext: I.CFContext{
 				Environment: environment,
 			},
 		}
+		putDeploymentRequest := I.DeleteDeploymentRequest{
+			Deployment: *deployment,
+			Request:    I.DeleteRequest{Data: nil},
+		}
+
 		response := bytes.NewBuffer([]byte{})
-		controller.DeleteDeployment(deployment, nil, response)
+		controller.DeleteDeployment(putDeploymentRequest, response)
 		Expect(deployer.DeployCall.Received.ActionCreator).Should(Equal(manager))
 	})
-	It("should call deploy with the stop manager ", func() {
+	It("should call deploy with the delete manager ", func() {
 		deployer.DeployCall.Returns.Error = errors.New("test error")
 		deployer.DeployCall.Returns.StatusCode = http.StatusOK
 
@@ -338,14 +405,19 @@ var _ = Describe("DeleteDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		deploymentResponse := controller.DeleteDeployment(deployment, nil, response)
+		putDeploymentRequest := I.DeleteDeploymentRequest{
+			Deployment: *deployment,
+			Request:    I.DeleteRequest{Data: nil},
+		}
+
+		deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
 
 		Expect(deploymentResponse.Error.Error()).Should(Equal("test error"))
 		Expect(deploymentResponse.StatusCode).Should(Equal(http.StatusOK))
 
 	})
 
-	Context("when stop succeeds", func() {
+	Context("when delete succeeds", func() {
 		Context("if DeleteSuccessEvent succeeds", func() {
 			It("should emit DeleteSuccessEvent", func() {
 				data := make(map[string]interface{})
@@ -369,19 +441,24 @@ var _ = Describe("DeleteDeployment", func() {
 					Name:         environment,
 					Authenticate: true,
 				}
-				controller.DeleteDeployment(deployment, data, response)
+				putDeploymentRequest := I.DeleteDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.DeleteRequest{Data: data},
+				}
+
+				controller.DeleteDeployment(putDeploymentRequest, response)
 
 				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(DeleteSuccessEvent{})))
-				stopSuccessEvent := eventManager.EmitEventCall.Received.Events[1].(DeleteSuccessEvent)
+				deleteSuccessEvent := eventManager.EmitEventCall.Received.Events[1].(DeleteSuccessEvent)
 
-				Expect(stopSuccessEvent.CFContext.Space).Should(Equal("mySpace"))
-				Expect(stopSuccessEvent.CFContext.Application).Should(Equal("myApp"))
-				Expect(stopSuccessEvent.CFContext.Environment).Should(Equal(environment))
-				Expect(stopSuccessEvent.CFContext.Organization).Should(Equal("myOrg"))
-				Expect(stopSuccessEvent.Authorization.Username).Should(Equal("myUser"))
-				Expect(stopSuccessEvent.Authorization.Password).Should(Equal("myPassword"))
-				Expect(stopSuccessEvent.Environment.Name).Should(Equal(environment))
-				Expect(stopSuccessEvent.Data).Should(Equal(data))
+				Expect(deleteSuccessEvent.CFContext.Space).Should(Equal("mySpace"))
+				Expect(deleteSuccessEvent.CFContext.Application).Should(Equal("myApp"))
+				Expect(deleteSuccessEvent.CFContext.Environment).Should(Equal(environment))
+				Expect(deleteSuccessEvent.CFContext.Organization).Should(Equal("myOrg"))
+				Expect(deleteSuccessEvent.Authorization.Username).Should(Equal("myUser"))
+				Expect(deleteSuccessEvent.Authorization.Password).Should(Equal("myPassword"))
+				Expect(deleteSuccessEvent.Environment.Name).Should(Equal(environment))
+				Expect(deleteSuccessEvent.Data).Should(Equal(data))
 
 			})
 			It("should emit a DeleteStartedEvent", func() {
@@ -396,16 +473,20 @@ var _ = Describe("DeleteDeployment", func() {
 						Environment:  environment,
 					},
 				}
+				putDeploymentRequest := I.DeleteDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.DeleteRequest{Data: data},
+				}
 
-				controller.DeleteDeployment(deployment, data, response)
+				controller.DeleteDeployment(putDeploymentRequest, response)
 
 				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).Should(Equal(reflect.TypeOf(DeleteStartedEvent{})))
-				stopEvent := eventManager.EmitEventCall.Received.Events[0].(DeleteStartedEvent)
-				Expect(stopEvent.CFContext.Space).Should(Equal("mySpace"))
-				Expect(stopEvent.CFContext.Application).Should(Equal("myApp"))
-				Expect(stopEvent.CFContext.Environment).Should(Equal(environment))
-				Expect(stopEvent.CFContext.Organization).Should(Equal("myOrg"))
-				Expect(stopEvent.Data).Should(Equal(data))
+				deleteEvent := eventManager.EmitEventCall.Received.Events[0].(DeleteStartedEvent)
+				Expect(deleteEvent.CFContext.Space).Should(Equal("mySpace"))
+				Expect(deleteEvent.CFContext.Application).Should(Equal("myApp"))
+				Expect(deleteEvent.CFContext.Environment).Should(Equal(environment))
+				Expect(deleteEvent.CFContext.Organization).Should(Equal("myOrg"))
+				Expect(deleteEvent.Data).Should(Equal(data))
 
 			})
 		})
@@ -418,7 +499,12 @@ var _ = Describe("DeleteDeployment", func() {
 					},
 				}
 				response := bytes.NewBuffer([]byte{})
-				controller.DeleteDeployment(deployment, nil, response)
+				putDeploymentRequest := I.DeleteDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.DeleteRequest{Data: nil},
+				}
+
+				controller.DeleteDeployment(putDeploymentRequest, response)
 
 				Eventually(logBuffer).Should(Say("an error occurred when emitting a DeleteSuccessEvent event: errors"))
 			})
@@ -426,7 +512,7 @@ var _ = Describe("DeleteDeployment", func() {
 
 	})
 
-	Context("when stop fails", func() {
+	Context("when delete fails", func() {
 		It("print errors", func() {
 			deployment := &I.Deployment{
 				CFContext: I.CFContext{
@@ -436,7 +522,12 @@ var _ = Describe("DeleteDeployment", func() {
 			deployer.DeployCall.Returns.Error = errors.New("deploy error")
 			errorFinder.FindErrorsCall.Returns.Errors = []I.LogMatchedError{error_finder.CreateLogMatchedError("a test error", []string{"error 1", "error 2", "error 3"}, "error solution", "test code")}
 			response := bytes.NewBuffer([]byte{})
-			controller.DeleteDeployment(deployment, nil, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: nil},
+			}
+
+			controller.DeleteDeployment(putDeploymentRequest, response)
 			Eventually(response).Should(ContainSubstring("Potential solution"))
 		})
 		It("should emit DeleteFailureEvent", func() {
@@ -462,7 +553,12 @@ var _ = Describe("DeleteDeployment", func() {
 				Authenticate: true,
 			}
 			deployer.DeployCall.Returns.Error = errors.New("deploy error")
-			controller.DeleteDeployment(deployment, data, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: data},
+			}
+
+			controller.DeleteDeployment(putDeploymentRequest, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[1])).To(Equal(reflect.TypeOf(DeleteFailureEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[1].(DeleteFailureEvent)
@@ -489,7 +585,12 @@ var _ = Describe("DeleteDeployment", func() {
 				deployer.DeployCall.Returns.Error = errors.New("deploy error")
 
 				response := bytes.NewBuffer([]byte{})
-				controller.DeleteDeployment(deployment, nil, response)
+				putDeploymentRequest := I.DeleteDeploymentRequest{
+					Deployment: *deployment,
+					Request:    I.DeleteRequest{Data: nil},
+				}
+
+				controller.DeleteDeployment(putDeploymentRequest, response)
 
 				Eventually(logBuffer).Should(Say("an error occurred when emitting a DeleteFailureEvent event: errors"))
 			})
@@ -497,16 +598,20 @@ var _ = Describe("DeleteDeployment", func() {
 
 	})
 
-	Context("when stop finishes", func() {
+	Context("when delete finishes", func() {
 		It("should log an emit DeleteFinish event", func() {
 			deployment := &I.Deployment{
 				CFContext: I.CFContext{
 					Environment: environment,
 				},
 			}
-
 			response := bytes.NewBuffer([]byte{})
-			controller.DeleteDeployment(deployment, nil, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: nil},
+			}
+
+			controller.DeleteDeployment(putDeploymentRequest, response)
 
 			Eventually(logBuffer).Should(Say("emitting a DeleteFinishedEvent"))
 		})
@@ -532,7 +637,12 @@ var _ = Describe("DeleteDeployment", func() {
 				Name:         environment,
 				Authenticate: true,
 			}
-			controller.DeleteDeployment(deployment, data, response)
+			putDeploymentRequest := I.DeleteDeploymentRequest{
+				Deployment: *deployment,
+				Request:    I.DeleteRequest{Data: data},
+			}
+
+			controller.DeleteDeployment(putDeploymentRequest, response)
 
 			Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[2])).To(Equal(reflect.TypeOf(DeleteFinishedEvent{})))
 			event := eventManager.EmitEventCall.Received.Events[2].(DeleteFinishedEvent)

@@ -12,7 +12,7 @@ import (
 	S "github.com/compozed/deployadactyl/structs"
 )
 
-const successfulDelete = `Your stop was successful! (^_^)b
+const successfulDelete = `Your delete was successful! (^_^)b
 
 `
 
@@ -48,7 +48,7 @@ func (a DeleteManager) OnStart() error {
 
 func (a DeleteManager) OnFinish(env S.Environment, response io.ReadWriter, err error) I.DeployResponse {
 	if err != nil {
-		fmt.Fprintf(response, "\nYour application was not successfully stopped on all foundations: %s\n\n", err.Error())
+		fmt.Fprintf(response, "\nYour application was not successfully delete on all foundations: %s\n\n", err.Error())
 		if matched, _ := regexp.MatchString("login failed", err.Error()); matched {
 			return I.DeployResponse{
 				StatusCode: http.StatusBadRequest,
@@ -62,7 +62,7 @@ func (a DeleteManager) OnFinish(env S.Environment, response io.ReadWriter, err e
 		}
 	}
 
-	a.Log.Infof("successfully stopped application %s", a.DeployEventData.DeploymentInfo.AppName)
+	a.Log.Infof("successfully deleted application %s", a.DeployEventData.DeploymentInfo.AppName)
 	fmt.Fprintf(response, "\n%s", successfulDelete)
 
 	return I.DeployResponse{StatusCode: http.StatusOK}

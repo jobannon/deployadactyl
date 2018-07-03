@@ -26,7 +26,6 @@ type Controller struct {
 	Log                     I.Logger
 	RequestProcessorFactory RequestProcessorFactory
 	Config                  config.Config
-	EventManager            I.EventManager
 	ErrorFinder             I.ErrorFinder
 }
 

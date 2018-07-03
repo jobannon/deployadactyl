@@ -78,7 +78,7 @@ environments:
 
 				return courier
 			},
-			NewEventManager: func(log interfaces.Logger) interfaces.EventManager {
+			NewEventManager: func(log interfaces.DeploymentLogger, bindings []interfaces.Binding) interfaces.EventManager {
 				return eventManager
 			},
 		}

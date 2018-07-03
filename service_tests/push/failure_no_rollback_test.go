@@ -11,6 +11,11 @@ import (
 
 	"encoding/base64"
 	"errors"
+	"io"
+	"path"
+	"reflect"
+	"strings"
+
 	"github.com/compozed/deployadactyl/creator"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
@@ -20,10 +25,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
-	"io"
-	"path"
-	"reflect"
-	"strings"
 )
 
 var _ = Describe("Service", func() {
@@ -102,7 +103,7 @@ applications:
 				fetcher.FetchCall.Returns.AppPath = dst.Name()
 				return fetcher
 			},
-			NewEventManager: func(log interfaces.Logger) interfaces.EventManager {
+			NewEventManager: func(log interfaces.DeploymentLogger, bindings []interfaces.Binding) interfaces.EventManager {
 				return eventManager
 			},
 		}

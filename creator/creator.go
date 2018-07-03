@@ -101,12 +101,12 @@ type CreatorModuleProvider struct {
 
 // Creator has a config, eventManager, logger and writer for creating dependencies.
 type Creator struct {
-	config       config.Config
-	eventManager I.EventManager
-	logger       I.Logger
-	writer       io.Writer
-	fileSystem   *afero.Afero
-	provider     CreatorModuleProvider
+	config     config.Config
+	logger     I.Logger
+	writer     io.Writer
+	fileSystem *afero.Afero
+	provider   CreatorModuleProvider
+	bindings   *eventmanager.EventBindings
 }
 
 // Default returns a default Creator and an Error [Deprecated].
@@ -168,21 +168,18 @@ func New(provider CreatorModuleProvider) (Creator, error) {
 		return Creator{}, err
 	}
 
-	var eventManager I.EventManager
-	if provider.NewEventManager != nil {
-		eventManager = provider.NewEventManager(logger)
-	} else {
-		eventManager = eventmanager.NewEventManager(logger)
-	}
-
 	return Creator{
 		cfg,
-		eventManager,
 		logger,
 		os.Stdout,
 		&afero.Afero{Fs: afero.NewOsFs()},
 		provider,
+		&eventmanager.EventBindings{},
 	}, nil
+}
+
+func (c Creator) GetEventBindings() *eventmanager.EventBindings {
+	return c.bindings
 }
 
 // CreateControllerHandler returns a gin.Engine that implements http.Handler.
@@ -238,11 +235,6 @@ func (c Creator) CreateConfig() config.Config {
 	return c.config
 }
 
-// CreateEventManager returns an EventManager.
-func (c Creator) CreateEventManager() I.EventManager {
-	return c.eventManager
-}
-
 // CreateFileSystem returns a file system.
 func (c Creator) CreateFileSystem() *afero.Afero {
 	return c.fileSystem
@@ -264,7 +256,6 @@ func (c Creator) CreateController() I.Controller {
 		Log: c.logger,
 		RequestProcessorFactory: c.CreateRequestProcessor,
 		Config:                  c.CreateConfig(),
-		EventManager:            c.CreateEventManager(),
 		ErrorFinder:             c.createErrorFinder(),
 	}
 }
@@ -345,13 +336,6 @@ func (c Creator) createSilentDeployer() I.Deployer {
 
 func (c Creator) createRandomizer() I.Randomizer {
 	return randomizer.Randomizer{}
-}
-
-func (c Creator) createPrechecker() I.Prechecker {
-	if c.provider.NewPrechecker != nil {
-		return c.provider.NewPrechecker(c.CreateEventManager())
-	}
-	return prechecker.NewPrechecker(c.CreateEventManager())
 }
 
 func (c Creator) createWriter() io.Writer {

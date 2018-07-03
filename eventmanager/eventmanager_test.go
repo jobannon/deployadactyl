@@ -24,7 +24,7 @@ var _ = Describe("Events", func() {
 		eventHandlerTwo *mocks.Handler
 		eventManager    I.EventManager
 		logBuffer       *gbytes.Buffer
-		log             I.Logger
+		log             I.DeploymentLogger
 	)
 
 	BeforeEach(func() {
@@ -35,22 +35,21 @@ var _ = Describe("Events", func() {
 		eventHandlerOne = &mocks.Handler{}
 		eventHandlerTwo = &mocks.Handler{}
 
-		eventManager = NewEventManager(log)
-
 		logBuffer = gbytes.NewBuffer()
+		log = I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "eventmanager_test")}
 
-		log = I.DefaultLogger(logBuffer, logging.DEBUG, "eventmanager_test")
+		eventManager = NewEventManager(log, []I.Binding{})
 	})
 
 	Context("when an event handler is registered", func() {
 		It("should be successful", func() {
-			eventManager := NewEventManager(log)
+			eventManager := NewEventManager(log, []I.Binding{})
 
 			Expect(eventManager.AddHandler(eventHandler, eventType)).To(Succeed())
 		})
 
 		It("should fail if a nil value is passed in as an argument", func() {
-			eventManager := NewEventManager(log)
+			eventManager := NewEventManager(log, []I.Binding{})
 
 			err := eventManager.AddHandler(nil, eventType)
 

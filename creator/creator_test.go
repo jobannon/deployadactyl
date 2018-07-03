@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 
 	"github.com/compozed/deployadactyl/config"
-	"github.com/compozed/deployadactyl/eventmanager"
 	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
@@ -158,42 +157,6 @@ error_matchers:
 				Expect(reflect.TypeOf(creator.logger)).To(Equal(reflect.TypeOf(&logging.Logger{})))
 			})
 		})
-
-		Context("when EventManager constructor is provided", func() {
-			It("should return with the provided EventManager", func() {
-				log, _ := NewLogger()
-
-				expectedEventManager := eventmanager.EventManager{
-					Log: log,
-				}
-
-				creator, err := New(CreatorModuleProvider{
-					NewConfig: func() (config.Config, error) {
-						return config.Config{}, nil
-					},
-					NewEventManager: func(logger I.Logger) I.EventManager {
-						return &expectedEventManager
-					},
-				})
-
-				Expect(err).ToNot(HaveOccurred())
-				Expect(creator.eventManager).To(Equal(&expectedEventManager))
-			})
-		})
-
-		Context("when EventManager constructor is not provided", func() {
-			It("should return the default EventManager", func() {
-				creator, err := New(CreatorModuleProvider{
-					NewConfig: func() (config.Config, error) {
-						return config.Config{}, nil
-					},
-				})
-
-				Expect(err).ToNot(HaveOccurred())
-				Expect(reflect.TypeOf(creator.eventManager)).To(Equal(reflect.TypeOf(&eventmanager.EventManager{})))
-			})
-		})
-
 	})
 
 	It("creates the creator from the provided yaml configuration", func() {
@@ -208,7 +171,6 @@ error_matchers:
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(creator.config).ToNot(BeNil())
-		Expect(creator.eventManager).ToNot(BeNil())
 		Expect(creator.fileSystem).ToNot(BeNil())
 		Expect(creator.logger).ToNot(BeNil())
 		Expect(creator.writer).ToNot(BeNil())
@@ -332,13 +294,12 @@ error_matchers:
 					concrete := rc.(*PushRequestCreator)
 					Expect(concrete.Creator.logger).To(Equal(creator.logger))
 					Expect(concrete.Creator.fileSystem).To(Equal(creator.fileSystem))
-					Expect(concrete.Creator.eventManager).To(Equal(creator.eventManager))
 					Expect(concrete.Creator.config).To(Equal(creator.config))
+					Expect(concrete.EventManager).ToNot(BeNil())
 					Expect(concrete.Buffer).To(Equal(response))
 					Expect(concrete.Request).To(Equal(request))
 					Expect(concrete.Log.UUID).To(Equal("the uuid"))
 				})
-
 			})
 		})
 
@@ -390,7 +351,6 @@ error_matchers:
 						concrete := rc.(*StopRequestCreator)
 						Expect(concrete.Creator.logger).To(Equal(creator.logger))
 						Expect(concrete.Creator.fileSystem).To(Equal(creator.fileSystem))
-						Expect(concrete.Creator.eventManager).To(Equal(creator.eventManager))
 						Expect(concrete.Creator.config).To(Equal(creator.config))
 						Expect(concrete.Buffer).To(Equal(response))
 						Expect(concrete.Request).To(Equal(request))
@@ -447,7 +407,6 @@ error_matchers:
 						concrete := rc.(*StartRequestCreator)
 						Expect(concrete.Creator.logger).To(Equal(creator.logger))
 						Expect(concrete.Creator.fileSystem).To(Equal(creator.fileSystem))
-						Expect(concrete.Creator.eventManager).To(Equal(creator.eventManager))
 						Expect(concrete.Creator.config).To(Equal(creator.config))
 						Expect(concrete.Buffer).To(Equal(response))
 						Expect(concrete.Request).To(Equal(request))
@@ -524,7 +483,6 @@ error_matchers:
 				Expect(concrete.Request).To(Equal(request))
 				Expect(concrete.Log.UUID).To(Equal("the uuid"))
 			})
-
 		})
 
 		Context("when an unknown request is provided", func() {
@@ -547,4 +505,18 @@ error_matchers:
 		})
 	})
 
+	Describe("GetEventBindings", func() {
+		It("should return the same event bindings each time", func() {
+			c, _ := New(CreatorModuleProvider{
+				NewConfig: func() (config.Config, error) {
+					return config.Config{}, nil
+				},
+			})
+
+			bindings := c.GetEventBindings()
+			bindings.AddBinding(&mocks.EventBinding{})
+
+			Expect(len(c.GetEventBindings().GetBindings())).To(Equal(1))
+		})
+	})
 })

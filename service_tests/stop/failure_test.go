@@ -10,6 +10,9 @@ import (
 	"os"
 
 	"errors"
+	"reflect"
+	"strings"
+
 	"github.com/compozed/deployadactyl/creator"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
@@ -18,8 +21,6 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"reflect"
-	"strings"
 )
 
 var _ = Describe("Service", func() {
@@ -77,7 +78,7 @@ environments:
 
 				return courier
 			},
-			NewEventManager: func(log interfaces.Logger) interfaces.EventManager {
+			NewEventManager: func(log interfaces.DeploymentLogger, bindings []interfaces.Binding) interfaces.EventManager {
 				return eventManager
 			},
 		}

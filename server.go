@@ -44,23 +44,23 @@ func main() {
 		log.Fatal(err)
 	}
 
-	em := c.CreateEventManager()
+	eventBindings := c.GetEventBindings()
 
 	if *envVarHandlerEnabled {
 		envVarHandler := c.CreateEnvVarHandler()
 		log.Infof("registering environment variable event handler")
-		em.AddBinding(push.NewArtifactRetrievalSuccessEventBinding(envVarHandler.ArtifactRetrievalSuccessEventHandler))
+		eventBindings.AddBinding(push.NewArtifactRetrievalSuccessEventBinding(envVarHandler.ArtifactRetrievalSuccessEventHandler))
 	}
 
 	healthHandler := c.CreateHealthChecker()
 	log.Infof("registering health check handler")
-	em.AddBinding(push.NewPushFinishedEventBinding(healthHandler.PushFinishedEventHandler))
+	eventBindings.AddBinding(push.NewPushFinishedEventBinding(healthHandler.PushFinishedEventHandler))
 
 	if *routeMapperEnabled {
 		routeMapper := c.CreateRouteMapper()
 
 		log.Infof("registering health check handler")
-		em.AddBinding(push.NewPushFinishedEventBinding(routeMapper.PushFinishedEventHandler))
+		eventBindings.AddBinding(push.NewPushFinishedEventBinding(routeMapper.PushFinishedEventHandler))
 	}
 
 	l := c.CreateListener()

@@ -5,11 +5,14 @@ import (
 
 	"reflect"
 
+	"strconv"
+
 	"github.com/compozed/deployadactyl/artifetcher"
 	"github.com/compozed/deployadactyl/artifetcher/extractor"
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
+	"github.com/compozed/deployadactyl/eventmanager"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/state/push"
@@ -45,12 +48,11 @@ var _ = Describe("RequestCreator", func() {
 
 		Context("when mock constructor is not provided", func() {
 			It("should return the default implementation", func() {
-				creator := Creator{
-					eventManager: &mocks.EventManager{},
-				}
+				creator := Creator{}
 				rc := RequestCreator{
-					Creator: creator,
-					Log:     I.DeploymentLogger{UUID: "the uuid"},
+					Creator:      creator,
+					Log:          I.DeploymentLogger{UUID: "the uuid"},
+					EventManager: &mocks.EventManager{},
 				}
 				actual := rc.CreateDeployer()
 				Expect(reflect.TypeOf(actual)).To(Equal(reflect.TypeOf(&deployer.Deployer{})))
@@ -58,7 +60,7 @@ var _ = Describe("RequestCreator", func() {
 				Expect(concrete.Config).ToNot(BeNil())
 				Expect(concrete.BlueGreener).ToNot(BeNil())
 				Expect(concrete.Prechecker).ToNot(BeNil())
-				Expect(concrete.EventManager).To(Equal(creator.eventManager))
+				Expect(concrete.EventManager).To(Equal(rc.EventManager))
 				Expect(concrete.Randomizer).ToNot(BeNil())
 				Expect(concrete.ErrorFinder).ToNot(BeNil())
 				Expect(concrete.Log.UUID).To(Equal("the uuid"))
@@ -87,12 +89,11 @@ var _ = Describe("RequestCreator", func() {
 
 		Context("when mock constructor is not provided", func() {
 			It("should return the default implementation", func() {
-				creator := Creator{
-					eventManager: &mocks.EventManager{},
-				}
+				creator := Creator{}
 				rc := RequestCreator{
-					Creator: creator,
-					Log:     I.DeploymentLogger{UUID: "the uuid"},
+					Creator:      creator,
+					Log:          I.DeploymentLogger{UUID: "the uuid"},
+					EventManager: &mocks.EventManager{},
 				}
 				actual := rc.CreateBlueGreener()
 				Expect(reflect.TypeOf(actual)).To(Equal(reflect.TypeOf(&bluegreen.BlueGreen{})))
@@ -125,12 +126,12 @@ var _ = Describe("RequestCreator", func() {
 		Context("when mock constructor is not provided", func() {
 			It("should return the default implementation", func() {
 				creator := Creator{
-					eventManager: &mocks.EventManager{},
-					fileSystem:   &afero.Afero{},
+					fileSystem: &afero.Afero{},
 				}
 				rc := RequestCreator{
-					Creator: creator,
-					Log:     I.DeploymentLogger{UUID: "the uuid"},
+					Creator:      creator,
+					Log:          I.DeploymentLogger{UUID: "the uuid"},
+					EventManager: &mocks.EventManager{},
 				}
 				fetcher := rc.CreateFetcher()
 				Expect(reflect.TypeOf(fetcher)).To(Equal(reflect.TypeOf(&artifetcher.Artifetcher{})))
@@ -165,18 +166,95 @@ var _ = Describe("RequestCreator", func() {
 		Context("when mock constructor is not provided", func() {
 			It("should return the default implementation", func() {
 				creator := Creator{
-					eventManager: &mocks.EventManager{},
-					fileSystem:   &afero.Afero{},
+					fileSystem: &afero.Afero{},
 				}
 				rc := RequestCreator{
-					Creator: creator,
-					Log:     I.DeploymentLogger{UUID: "the uuid"},
+					Creator:      creator,
+					Log:          I.DeploymentLogger{UUID: "the uuid"},
+					EventManager: &mocks.EventManager{},
 				}
 				e := rc.CreateExtractor()
 				Expect(reflect.TypeOf(e)).To(Equal(reflect.TypeOf(&extractor.Extractor{})))
 				concrete := e.(*extractor.Extractor)
 				Expect(concrete.Log.UUID).To(Equal(rc.Log.UUID))
 				Expect(concrete.FileSystem).To(Equal(creator.fileSystem))
+			})
+		})
+	})
+
+	Describe("newRequestCreator", func() {
+
+		Context("when EventManager constructor is provided", func() {
+			It("should return with the provided EventManager", func() {
+				log, _ := NewLogger()
+
+				expectedEventManager := eventmanager.EventManager{
+					Log: log,
+				}
+
+				creator, err := New(CreatorModuleProvider{
+					NewConfig: func() (config.Config, error) {
+						return config.Config{}, nil
+					},
+					NewEventManager: func(logger I.DeploymentLogger, bindings []I.Binding) I.EventManager {
+						return &expectedEventManager
+					},
+				})
+
+				rc := newRequestCreator(creator, "the uuid", bytes.NewBuffer([]byte("")))
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(rc.EventManager).To(Equal(&expectedEventManager))
+			})
+		})
+
+		Context("when EventManager constructor is not provided", func() {
+			It("should return the default EventManager", func() {
+				creator, err := New(CreatorModuleProvider{
+					NewConfig: func() (config.Config, error) {
+						return config.Config{}, nil
+					},
+				})
+
+				rc := newRequestCreator(creator, "the uuid", bytes.NewBuffer([]byte("")))
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(reflect.TypeOf(rc.EventManager)).To(Equal(reflect.TypeOf(&eventmanager.EventManager{})))
+			})
+		})
+
+		It("should populate EventManager with bindings", func() {
+			creator, _ := New(CreatorModuleProvider{
+				NewConfig: func() (config.Config, error) {
+					return config.Config{}, nil
+				},
+			})
+
+			for i := 0; i < 3; i++ {
+				binding := &mocks.EventBinding{}
+				binding.EmitCall.Received.Event = "event " + strconv.Itoa(i)
+				creator.GetEventBindings().AddBinding(binding)
+			}
+
+			rc := newRequestCreator(creator, "the uuid", bytes.NewBuffer([]byte("")))
+
+			Expect(rc.EventManager.(*eventmanager.EventManager).Bindings).To(Equal(creator.GetEventBindings().GetBindings()))
+		})
+
+		Context("when adding bindings to event manager", func() {
+			It("doesn't modify the original bindings", func() {
+				c, _ := New(CreatorModuleProvider{
+					NewConfig: func() (config.Config, error) {
+						return config.Config{}, nil
+					},
+				})
+				c.GetEventBindings().AddBinding(&mocks.EventBinding{})
+				c.GetEventBindings().AddBinding(&mocks.EventBinding{})
+
+				rc := newRequestCreator(c, "the uuid", bytes.NewBuffer([]byte("")))
+				rc.EventManager.AddBinding(&mocks.EventBinding{})
+
+				Expect(len(c.GetEventBindings().GetBindings())).To(Equal(2))
 			})
 		})
 	})
@@ -261,13 +339,12 @@ var _ = Describe("RequestCreator", func() {
 
 			Context("when mock constructor is not provided", func() {
 				It("should return the default implementation", func() {
-					creator := Creator{
-						eventManager: &mocks.EventManager{},
-					}
+					creator := Creator{}
 					rc := PushRequestCreator{
 						RequestCreator: RequestCreator{
-							Creator: creator,
-							Log:     I.DeploymentLogger{UUID: "the uuid"},
+							Creator:      creator,
+							Log:          I.DeploymentLogger{UUID: "the uuid"},
+							EventManager: &mocks.EventManager{},
 						},
 					}
 					controller := rc.CreatePushController()
@@ -276,7 +353,7 @@ var _ = Describe("RequestCreator", func() {
 					Expect(concrete.Deployer).ToNot(BeNil())
 					Expect(concrete.SilentDeployer).ToNot(BeNil())
 					Expect(concrete.Log.UUID).To(Equal("the uuid"))
-					Expect(concrete.EventManager).To(Equal(creator.eventManager))
+					Expect(concrete.EventManager).To(Equal(rc.EventManager))
 					Expect(concrete.ErrorFinder).ToNot(BeNil())
 					Expect(concrete.PushManagerFactory).ToNot(BeNil())
 					Expect(concrete.AuthResolver).ToNot(BeNil())
@@ -310,13 +387,13 @@ var _ = Describe("RequestCreator", func() {
 			Context("when mock constructor is not provided", func() {
 				It("should return the default implementation", func() {
 					creator := Creator{
-						eventManager: &mocks.EventManager{},
-						fileSystem:   &afero.Afero{},
+						fileSystem: &afero.Afero{},
 					}
 					rc := PushRequestCreator{
 						RequestCreator: RequestCreator{
-							Creator: creator,
-							Log:     I.DeploymentLogger{UUID: "the uuid"},
+							Creator:      creator,
+							Log:          I.DeploymentLogger{UUID: "the uuid"},
+							EventManager: &mocks.EventManager{},
 						},
 						Request: I.PostDeploymentRequest{
 							Deployment: I.Deployment{
@@ -330,7 +407,7 @@ var _ = Describe("RequestCreator", func() {
 					Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(&push.PushManager{})))
 					concrete := controller.(*push.PushManager)
 					Expect(concrete.CourierCreator).To(Equal(creator))
-					Expect(concrete.EventManager).To(Equal(creator.eventManager))
+					Expect(concrete.EventManager).To(Equal(rc.EventManager))
 					Expect(concrete.Logger).To(Equal(rc.Log))
 					Expect(concrete.Fetcher).ToNot(BeNil())
 					Expect(concrete.DeployEventData).ToNot(BeNil())
@@ -424,13 +501,12 @@ var _ = Describe("RequestCreator", func() {
 
 			Context("when mock constructor is not provided", func() {
 				It("should return the default implementation", func() {
-					creator := Creator{
-						eventManager: &mocks.EventManager{},
-					}
+					creator := Creator{}
 					rc := StopRequestCreator{
 						RequestCreator: RequestCreator{
-							Creator: creator,
-							Log:     I.DeploymentLogger{UUID: "the uuid"},
+							Creator:      creator,
+							Log:          I.DeploymentLogger{UUID: "the uuid"},
+							EventManager: &mocks.EventManager{},
 						},
 					}
 					controller := rc.CreateStopController()
@@ -438,7 +514,7 @@ var _ = Describe("RequestCreator", func() {
 					concrete := controller.(*stop.StopController)
 					Expect(concrete.Deployer).ToNot(BeNil())
 					Expect(concrete.Log.UUID).To(Equal("the uuid"))
-					Expect(concrete.EventManager).To(Equal(creator.eventManager))
+					Expect(concrete.EventManager).To(Equal(rc.EventManager))
 					Expect(concrete.ErrorFinder).ToNot(BeNil())
 					Expect(concrete.StopManagerFactory).ToNot(BeNil())
 					Expect(concrete.AuthResolver).ToNot(BeNil())
@@ -471,13 +547,12 @@ var _ = Describe("RequestCreator", func() {
 
 			Context("when mock constructor is not provided", func() {
 				It("should return the default implementation", func() {
-					creator := Creator{
-						eventManager: &mocks.EventManager{},
-					}
+					creator := Creator{}
 					rc := StopRequestCreator{
 						RequestCreator: RequestCreator{
-							Creator: creator,
-							Log:     I.DeploymentLogger{UUID: "the uuid"},
+							Creator:      creator,
+							Log:          I.DeploymentLogger{UUID: "the uuid"},
+							EventManager: &mocks.EventManager{},
 						},
 						Request: I.PutDeploymentRequest{
 							Deployment: I.Deployment{
@@ -491,7 +566,7 @@ var _ = Describe("RequestCreator", func() {
 					Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(&stop.StopManager{})))
 					concrete := controller.(*stop.StopManager)
 					Expect(concrete.CourierCreator).To(Equal(creator))
-					Expect(concrete.EventManager).To(Equal(creator.eventManager))
+					Expect(concrete.EventManager).To(Equal(rc.EventManager))
 					Expect(concrete.DeployEventData).ToNot(BeNil())
 					Expect(concrete.Log).To(Equal(rc.Log))
 				})
@@ -580,13 +655,12 @@ var _ = Describe("RequestCreator", func() {
 
 			Context("when mock constructor is not provided", func() {
 				It("should return the default implementation", func() {
-					creator := Creator{
-						eventManager: &mocks.EventManager{},
-					}
+					creator := Creator{}
 					rc := StartRequestCreator{
 						RequestCreator: RequestCreator{
-							Creator: creator,
-							Log:     I.DeploymentLogger{UUID: "the uuid"},
+							Creator:      creator,
+							Log:          I.DeploymentLogger{UUID: "the uuid"},
+							EventManager: &mocks.EventManager{},
 						},
 					}
 					controller := rc.CreateStartController()
@@ -594,7 +668,7 @@ var _ = Describe("RequestCreator", func() {
 					concrete := controller.(*start.StartController)
 					Expect(concrete.Deployer).ToNot(BeNil())
 					Expect(concrete.Log.UUID).To(Equal("the uuid"))
-					Expect(concrete.EventManager).To(Equal(creator.eventManager))
+					Expect(concrete.EventManager).To(Equal(rc.EventManager))
 					Expect(concrete.ErrorFinder).ToNot(BeNil())
 					Expect(concrete.StartManagerFactory).ToNot(BeNil())
 					Expect(concrete.AuthResolver).ToNot(BeNil())
@@ -627,13 +701,12 @@ var _ = Describe("RequestCreator", func() {
 
 			Context("when mock constructor is not provided", func() {
 				It("should return the default implementation", func() {
-					creator := Creator{
-						eventManager: &mocks.EventManager{},
-					}
+					creator := Creator{}
 					rc := StartRequestCreator{
 						RequestCreator: RequestCreator{
-							Creator: creator,
-							Log:     I.DeploymentLogger{UUID: "the uuid"},
+							Creator:      creator,
+							Log:          I.DeploymentLogger{UUID: "the uuid"},
+							EventManager: &mocks.EventManager{},
 						},
 						Request: I.PutDeploymentRequest{
 							Deployment: I.Deployment{
@@ -647,12 +720,11 @@ var _ = Describe("RequestCreator", func() {
 					Expect(reflect.TypeOf(controller)).To(Equal(reflect.TypeOf(&start.StartManager{})))
 					concrete := controller.(*start.StartManager)
 					Expect(concrete.CourierCreator).To(Equal(creator))
-					Expect(concrete.EventManager).To(Equal(creator.eventManager))
+					Expect(concrete.EventManager).To(Equal(rc.EventManager))
 					Expect(concrete.DeployEventData).ToNot(BeNil())
 					Expect(concrete.Logger).To(Equal(rc.Log))
 				})
 			})
 		})
 	})
-
 })

@@ -7,6 +7,8 @@ import (
 	"github.com/compozed/deployadactyl/artifetcher/extractor"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
+	"github.com/compozed/deployadactyl/controller/deployer/prechecker"
+	"github.com/compozed/deployadactyl/eventmanager"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state/delete"
 	"github.com/compozed/deployadactyl/state/push"
@@ -15,10 +17,27 @@ import (
 	"github.com/compozed/deployadactyl/structs"
 )
 
+func newRequestCreator(c Creator, uuid string, b *bytes.Buffer) RequestCreator {
+	logger := I.DeploymentLogger{UUID: uuid, Log: c.GetLogger()}
+	var em I.EventManager
+	if c.provider.NewEventManager != nil {
+		em = c.provider.NewEventManager(logger, c.GetEventBindings().GetBindings())
+	} else {
+		em = eventmanager.NewEventManager(logger, c.GetEventBindings().GetBindings())
+	}
+	return RequestCreator{
+		Creator:      c,
+		EventManager: em,
+		Buffer:       b,
+		Log:          logger,
+	}
+}
+
 type RequestCreator struct {
 	Creator
-	Buffer *bytes.Buffer
-	Log    I.DeploymentLogger
+	EventManager I.EventManager
+	Buffer       *bytes.Buffer
+	Log          I.DeploymentLogger
 }
 
 func (r *RequestCreator) CreateDeployer() I.Deployer {
@@ -49,16 +68,23 @@ func (r RequestCreator) CreateExtractor() I.Extractor {
 	return extractor.NewExtractor(r.Log, r.CreateFileSystem())
 }
 
+func (r *RequestCreator) CreateEventManager() I.EventManager {
+	return r.EventManager
+}
+
+func (r *RequestCreator) createPrechecker() I.Prechecker {
+	if r.provider.NewPrechecker != nil {
+		return r.provider.NewPrechecker(r.CreateEventManager())
+	}
+	return prechecker.NewPrechecker(r.CreateEventManager())
+}
+
 type PushRequestCreatorConstructor func(creator Creator, uuid string, request I.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator
 
 func NewPushRequestCreator(creator Creator, uuid string, request I.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
 	return &PushRequestCreator{
-		RequestCreator: RequestCreator{
-			Creator: creator,
-			Buffer:  buffer,
-			Log:     I.DeploymentLogger{UUID: uuid, Log: creator.GetLogger()},
-		},
-		Request: request,
+		RequestCreator: newRequestCreator(creator, uuid, buffer),
+		Request:        request,
 	}
 }
 
@@ -93,12 +119,8 @@ type StopRequestCreatorConstructor func(creator Creator, uuid string, request I.
 
 func NewStopRequestCreator(creator Creator, uuid string, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
 	return &StopRequestCreator{
-		RequestCreator: RequestCreator{
-			Creator: creator,
-			Buffer:  buffer,
-			Log:     I.DeploymentLogger{UUID: uuid, Log: creator.GetLogger()},
-		},
-		Request: request,
+		RequestCreator: newRequestCreator(creator, uuid, buffer),
+		Request:        request,
 	}
 }
 
@@ -133,12 +155,8 @@ type StartRequestCreatorConstructor func(creator Creator, uuid string, request I
 
 func NewStartRequestCreator(creator Creator, uuid string, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
 	return &StartRequestCreator{
-		RequestCreator: RequestCreator{
-			Creator: creator,
-			Buffer:  buffer,
-			Log:     I.DeploymentLogger{UUID: uuid, Log: creator.GetLogger()},
-		},
-		Request: request,
+		RequestCreator: newRequestCreator(creator, uuid, buffer),
+		Request:        request,
 	}
 }
 
@@ -173,12 +191,8 @@ type DeleteRequestCreatorConstructor func(creator Creator, uuid string, request 
 
 func NewDeleteRequestCreator(creator Creator, uuid string, request I.DeleteDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
 	return &DeleteRequestCreator{
-		RequestCreator: RequestCreator{
-			Creator: creator,
-			Buffer:  buffer,
-			Log:     I.DeploymentLogger{UUID: uuid, Log: creator.GetLogger()},
-		},
-		Request: request,
+		RequestCreator: newRequestCreator(creator, uuid, buffer),
+		Request:        request,
 	}
 }
 

@@ -70,7 +70,6 @@ var _ = Describe("Controller", func() {
 		controller = &Controller{
 			Log: I.DefaultLogger(logBuffer, logging.DEBUG, "api_test"),
 			RequestProcessorFactory: requestFactory,
-			EventManager:            eventManager,
 			Config:                  config.Config{},
 			ErrorFinder:             errorFinder,
 		}
@@ -390,5 +389,4 @@ var _ = Describe("Controller", func() {
 			})
 		})
 	})
-
 })

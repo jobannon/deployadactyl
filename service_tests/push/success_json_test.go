@@ -83,6 +83,10 @@ applications:
 				courier := &mocks.Courier{}
 				couriers = append(couriers, courier)
 				courier.ExistsCall.Returns.Bool = true
+				courier.RenameCall.Raw.Output = make([][]byte, 0)
+				courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+				courier.RenameCall.Raw.Error = make([]error, 0)
+				courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, nil)
 
 				return courier
 			},

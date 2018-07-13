@@ -62,13 +62,14 @@ type Courier struct {
 	}
 
 	RenameCall struct {
-		Received struct {
+		TimesCalled int
+		Received    struct {
 			AppName          string
 			AppNameVenerable string
 		}
-		Returns struct {
-			Output []byte
-			Error  error
+		Raw struct {
+			Output [][]byte
+			Error  []error
 		}
 	}
 
@@ -229,7 +230,14 @@ func (c *Courier) Rename(appName, newAppName string) ([]byte, error) {
 	c.RenameCall.Received.AppName = appName
 	c.RenameCall.Received.AppNameVenerable = newAppName
 
-	return c.RenameCall.Returns.Output, c.RenameCall.Returns.Error
+	var output []byte
+	var error error
+
+	output = c.RenameCall.Raw.Output[c.RenameCall.TimesCalled]
+	error = c.RenameCall.Raw.Error[c.RenameCall.TimesCalled]
+	c.RenameCall.TimesCalled++
+
+	return output, error
 }
 
 // MapRoute mock method.

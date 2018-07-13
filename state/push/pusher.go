@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"time"
+
 	C "github.com/compozed/deployadactyl/constants"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
@@ -274,8 +276,14 @@ func (p Pusher) renameNewBuildToOriginalAppName() error {
 
 	out, err := p.Courier.Rename(p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
 	if err != nil {
-		p.Log.Errorf("could not rename %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
-		return state.RenameError{p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID, out}
+		p.Log.Error("Renaming app failed, trying again")
+		time.Sleep(4 * time.Second)
+
+		out, err = p.Courier.Rename(p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
+		if err != nil {
+			p.Log.Errorf("could not rename %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
+			return state.RenameError{p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID, out}
+		}
 	}
 
 	p.Log.Infof("renamed %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)

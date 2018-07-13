@@ -14,12 +14,13 @@ import (
 
 	"encoding/base64"
 
+	"reflect"
+
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
-	"reflect"
 )
 
 var _ = Describe("Pusher", func() {
@@ -422,6 +423,11 @@ var _ = Describe("Pusher", func() {
 
 	Describe("Success", func() {
 		It("renames the newly pushed app to the original name", func() {
+			courier.RenameCall.Raw.Output = make([][]byte, 0)
+			courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+			courier.RenameCall.Raw.Error = make([]error, 0)
+			courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, nil)
+
 			Expect(pusher.Success()).To(Succeed())
 
 			Expect(courier.RenameCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
@@ -430,10 +436,15 @@ var _ = Describe("Pusher", func() {
 			Eventually(logBuffer).Should(Say("renamed %s to %s", tempAppWithUUID, randomAppName))
 		})
 
-		Context("when rename fails", func() {
+		Context("when rename fails twice", func() {
 			It("returns an error", func() {
-				courier.RenameCall.Returns.Output = []byte("rename output")
-				courier.RenameCall.Returns.Error = errors.New("rename error")
+				courier.RenameCall.Raw.Output = make([][]byte, 0)
+				courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+				courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+				courier.RenameCall.Raw.Error = make([]error, 0)
+				courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, errors.New("first error"))
+				courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, errors.New("second error"))
+				courier.RenameCall.TimesCalled = 0
 
 				err := pusher.Success()
 				Expect(err).To(MatchError(state.RenameError{randomAppName + TemporaryNameSuffix + randomUUID, []byte("rename output")}))
@@ -445,18 +456,46 @@ var _ = Describe("Pusher", func() {
 			})
 		})
 
+		Context("when rename fails once but then succeeds on second try", func() {
+			It("returns nil", func() {
+				courier.RenameCall.Raw.Output = make([][]byte, 0)
+				courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output 1"))
+				courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output 2"))
+				courier.RenameCall.Raw.Error = make([]error, 0)
+				courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, errors.New("first error"))
+				courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, nil)
+				courier.RenameCall.TimesCalled = 0
+
+				err := pusher.Success()
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(logBuffer).Should(Say("Renaming app failed, trying again"))
+				Eventually(logBuffer).Should(Say("renamed %s to %s", tempAppWithUUID, randomAppName))
+			})
+		})
+
 		Context("when the app exists", func() {
 			BeforeEach(func() {
 				courier.ExistsCall.Returns.Bool = true
 			})
 
 			It("checks the application exists", func() {
+				courier.RenameCall.Raw.Output = make([][]byte, 0)
+				courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+				courier.RenameCall.Raw.Error = make([]error, 0)
+				courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, nil)
+
 				Expect(pusher.Success()).To(Succeed())
 
 				Expect(courier.ExistsCall.Received.AppName).To(Equal(randomAppName))
 			})
 
 			It("unmaps the load balanced route", func() {
+				courier.RenameCall.Raw.Output = make([][]byte, 0)
+				courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+				courier.RenameCall.Raw.Error = make([]error, 0)
+				courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, nil)
+
 				Expect(pusher.Success()).To(Succeed())
 
 				Expect(courier.UnmapRouteCall.Received.AppName).To(Equal(randomAppName))
@@ -467,6 +506,11 @@ var _ = Describe("Pusher", func() {
 			})
 
 			It("deletes the original application ", func() {
+				courier.RenameCall.Raw.Output = make([][]byte, 0)
+				courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+				courier.RenameCall.Raw.Error = make([]error, 0)
+				courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, nil)
+
 				Expect(pusher.Success()).To(Succeed())
 
 				Expect(courier.DeleteCall.Received.AppName).To(Equal(randomAppName))
@@ -476,6 +520,11 @@ var _ = Describe("Pusher", func() {
 
 			Context("when domain is not provided", func() {
 				It("does not call unmap route", func() {
+					courier.RenameCall.Raw.Output = make([][]byte, 0)
+					courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+					courier.RenameCall.Raw.Error = make([]error, 0)
+					courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, nil)
+
 					deploymentInfo.Domain = ""
 
 					pusher = Pusher{
@@ -496,6 +545,11 @@ var _ = Describe("Pusher", func() {
 
 			Context("when unmapping the route fails", func() {
 				It("only logs an error", func() {
+					courier.RenameCall.Raw.Output = make([][]byte, 0)
+					courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+					courier.RenameCall.Raw.Error = make([]error, 0)
+					courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, nil)
+
 					courier.UnmapRouteCall.Returns.Output = []byte("unmap output")
 					courier.UnmapRouteCall.Returns.Error = errors.New("Unmap Error")
 
@@ -508,6 +562,11 @@ var _ = Describe("Pusher", func() {
 
 			Context("when deleting the original app fails", func() {
 				It("returns an error", func() {
+					courier.RenameCall.Raw.Output = make([][]byte, 0)
+					courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+					courier.RenameCall.Raw.Error = make([]error, 0)
+					courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, nil)
+
 					courier.ExistsCall.Returns.Bool = true
 					courier.DeleteCall.Returns.Output = []byte("delete output")
 					courier.DeleteCall.Returns.Error = errors.New("delete error")
@@ -523,6 +582,10 @@ var _ = Describe("Pusher", func() {
 		Context("when the application does not exist", func() {
 			It("does not delete the non-existant original application", func() {
 				courier.ExistsCall.Returns.Bool = false
+				courier.RenameCall.Raw.Output = make([][]byte, 0)
+				courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+				courier.RenameCall.Raw.Error = make([]error, 0)
+				courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, nil)
 
 				err := pusher.Success()
 				Expect(err).ToNot(HaveOccurred())
@@ -570,6 +633,11 @@ var _ = Describe("Pusher", func() {
 
 		Context("when the app does not exist", func() {
 			It("renames the newly built app to the intended application name", func() {
+				courier.RenameCall.Raw.Output = make([][]byte, 0)
+				courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+				courier.RenameCall.Raw.Error = make([]error, 0)
+				courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, nil)
+
 				Expect(pusher.Undo()).To(Succeed())
 
 				Expect(courier.RenameCall.Received.AppName).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
@@ -580,11 +648,16 @@ var _ = Describe("Pusher", func() {
 
 			Context("when renaming fails", func() {
 				It("returns an error and writes a message to the info log", func() {
-					courier.RenameCall.Returns.Error = errors.New("rename error")
-					courier.RenameCall.Returns.Output = []byte("rename error")
+					courier.RenameCall.Raw.Output = make([][]byte, 0)
+					courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+					courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("rename output"))
+					courier.RenameCall.Raw.Error = make([]error, 0)
+					courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, errors.New("first error"))
+					courier.RenameCall.Raw.Error = append(courier.RenameCall.Raw.Error, errors.New("second error"))
+					courier.RenameCall.TimesCalled = 0
 
 					err := pusher.Undo()
-					Expect(err).To(MatchError(state.RenameError{tempAppWithUUID, []byte("rename error")}))
+					Expect(err).To(MatchError(state.RenameError{tempAppWithUUID, []byte("rename output")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not rename %s to %s", tempAppWithUUID, randomAppName)))
 				})

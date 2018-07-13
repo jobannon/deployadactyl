@@ -9,6 +9,9 @@ import (
 	"io"
 	"reflect"
 
+	"io/ioutil"
+	"net/http"
+
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
@@ -16,8 +19,6 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
-	"io/ioutil"
-	"net/http"
 )
 
 type courierCreator struct {
@@ -34,7 +35,8 @@ func (c courierCreator) CreateCourier() (interfaces.Courier, error) {
 	courier.LoginCall.Returns.Output = []byte("logged in\t")
 	courier.DeleteCall.Returns.Output = []byte("deleted app\t")
 	courier.PushCall.Returns.Output = []byte("pushed app\t")
-	courier.RenameCall.Returns.Output = []byte("renamed app\t")
+	courier.RenameCall.Raw.Output = make([][]byte, 0)
+	courier.RenameCall.Raw.Output = append(courier.RenameCall.Raw.Output, []byte("renamed app\t"))
 	courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route\t"))
 	courier.ExistsCall.Returns.Bool = true
 

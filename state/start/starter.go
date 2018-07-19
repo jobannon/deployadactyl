@@ -68,7 +68,7 @@ func (s Starter) Execute() error {
 		return state.ExistsError{ApplicationName: s.AppName}
 	}
 
-	s.Log.Infof("starting app %s", s.AppName)
+	s.Log.Infof("%s: starting app %s", s.FoundationURL, s.AppName)
 
 	output, err := s.Courier.Start(s.AppName)
 	if err != nil {
@@ -77,7 +77,7 @@ func (s Starter) Execute() error {
 	}
 	s.Response.Write(output)
 
-	s.Log.Infof("successfully started app %s", s.AppName)
+	s.Log.Infof("%s: successfully started app %s", s.FoundationURL, s.AppName)
 
 	return nil
 }
@@ -88,7 +88,7 @@ func (s Starter) Undo() error {
 		return state.ExistsError{ApplicationName: s.AppName}
 	}
 
-	s.Log.Infof("stopping app %s", s.AppName)
+	s.Log.Infof("%s: stopping app %s", s.FoundationURL, s.AppName)
 
 	output, err := s.Courier.Stop(s.AppName)
 	if err != nil {
@@ -96,7 +96,7 @@ func (s Starter) Undo() error {
 	}
 	s.Response.Write(output)
 
-	s.Log.Infof("successfully restopped app %s", s.AppName)
+	s.Log.Infof("%s: successfully restopped app %s", s.FoundationURL, s.AppName)
 
 	return nil
 }

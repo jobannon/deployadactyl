@@ -69,7 +69,7 @@ func (s Deleter) Execute() error {
 		return state.ExistsError{ApplicationName: s.AppName}
 	}
 
-	s.Log.Infof("deleting app %s", s.AppName)
+	s.Log.Infof("%s: deleting app %s", s.FoundationURL, s.AppName)
 
 	output, err := s.Courier.Delete(s.AppName)
 	if err != nil {
@@ -78,14 +78,14 @@ func (s Deleter) Execute() error {
 	}
 	s.Response.Write(output)
 
-	s.Log.Infof("successfully deleted app %s", s.AppName)
+	s.Log.Infof("%s: successfully deleted app %s", s.FoundationURL, s.AppName)
 
 	return nil
 }
 
 func (s Deleter) Undo() error {
 	s.Response.Write([]byte(fmt.Sprintf("delete feature is unable to rollback: %s", s.AppName)))
-	s.Log.Infof("delete feature is unable to rollback: %s", s.AppName)
+	s.Log.Infof("%s: delete feature is unable to rollback: %s", s.FoundationURL, s.AppName)
 
 	return nil
 }

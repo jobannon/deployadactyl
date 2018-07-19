@@ -179,6 +179,27 @@ var _ = Describe("Controller", func() {
 			Expect(requestProcessor.ProcessCall.TimesCalled).To(Equal(1))
 		})
 
+		Context("when no uuid is supplied", func() {
+			It("generates the uuid", func() {
+				foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+
+				body := []byte(`{"artifact_url": "the url",
+"environment_variables": {"foo": "bar"},
+"health_check_endpoint": "the healthcheck",
+"manifest": "the manifest",
+"data": {"puppy": "dachshund"}}`)
+
+				jsonBuffer = bytes.NewBuffer(body)
+
+				req, _ := http.NewRequest("POST", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				router.ServeHTTP(resp, req)
+
+				Expect(receivedUuid).ToNot(Equal(""))
+			})
+		})
+
 		Context("when Process fails", func() {
 			It("doesn't deploy and gives http.StatusInternalServerError", func() {
 				foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
@@ -354,6 +375,27 @@ var _ = Describe("Controller", func() {
 			router.ServeHTTP(resp, req)
 
 			Eventually(logBuffer).Should(Say("PUT Request originated from"))
+		})
+
+		Context("when no uuid is supplied", func() {
+			It("generates the uuid", func() {
+				foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
+
+				body := []byte(`{"artifact_url": "the url",
+"environment_variables": {"foo": "bar"},
+"health_check_endpoint": "the healthcheck",
+"manifest": "the manifest",
+"data": {"puppy": "dachshund"}}`)
+
+				jsonBuffer = bytes.NewBuffer(body)
+
+				req, _ := http.NewRequest("PUT", foundationURL, jsonBuffer)
+				req.Header.Set("Content-Type", "application/json")
+
+				router.ServeHTTP(resp, req)
+
+				Expect(receivedUuid).ToNot(Equal(""))
+			})
 		})
 
 		Context("when Process succeeds", func() {

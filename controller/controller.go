@@ -69,13 +69,16 @@ func (c *Controller) PostRequestHandler(g *gin.Context) {
 		}
 	}
 
-	log := I.DeploymentLogger{Log: c.Log, UUID: postRequest.UUID}
-	log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
-
 	postDeploymentRequest := I.PostDeploymentRequest{
 		Deployment: deployment,
 		Request:    postRequest,
 	}
+	if postRequest.UUID == "" {
+		postRequest.UUID = randomizer.StringRunes(10)
+	}
+
+	log := I.DeploymentLogger{Log: c.Log, UUID: postRequest.UUID}
+	log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
 
 	deployResponse := c.RequestProcessorFactory(postRequest.UUID, postDeploymentRequest, response).Process()
 
@@ -126,6 +129,10 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 	putDeploymentRequest := I.PutDeploymentRequest{
 		Deployment: deployment,
 		Request:    putRequest,
+	}
+
+	if putRequest.UUID == "" {
+		putRequest.UUID = randomizer.StringRunes(10)
 	}
 
 	log := I.DeploymentLogger{Log: c.Log, UUID: putRequest.UUID}

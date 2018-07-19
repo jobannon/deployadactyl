@@ -45,6 +45,7 @@ var _ = Describe("Controller", func() {
 		space       string
 		byteBody    []byte
 		server      *httptest.Server
+		testUuid    string
 	)
 
 	BeforeEach(func() {
@@ -53,6 +54,7 @@ var _ = Describe("Controller", func() {
 		environment = strings.ToLower("environment-" + randomizer.StringRunes(10))
 		org = strings.ToLower("org-" + randomizer.StringRunes(10))
 		space = strings.ToLower("non-prod")
+		testUuid = "uuid1234"
 
 		eventManager = &mocks.EventManager{}
 		requestProcessor = &mocks.RequestProcessor{}
@@ -121,10 +123,11 @@ var _ = Describe("Controller", func() {
 			foundationURL = fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
 
 			body := []byte(`{"artifact_url": "the url",
-                                                "environment_variables": {"foo": "bar"},
-                                                "health_check_endpoint": "the healthcheck",
-                                                "manifest": "the manifest",
-                                                "data": {"puppy": "dachshund"}}`)
+"environment_variables": {"foo": "bar"},
+"health_check_endpoint": "the healthcheck",
+"manifest": "the manifest",
+"data": {"puppy": "dachshund"},
+"uuid": "uuid1234"}`)
 
 			jsonBuffer = bytes.NewBuffer(body)
 
@@ -139,7 +142,6 @@ var _ = Describe("Controller", func() {
 			expectedData := make(map[string]interface{})
 			expectedData["puppy"] = "dachshund"
 
-			Expect(receivedUuid).ToNot(Equal(""))
 			Expect(*receivedBuffer).ToNot(BeNil())
 			Expect(receivedRequest).To(Equal(I.PostDeploymentRequest{
 				Deployment: I.Deployment{
@@ -158,8 +160,10 @@ var _ = Describe("Controller", func() {
 					EnvironmentVariables: expectedEnv,
 					Manifest:             "the manifest",
 					Data:                 expectedData,
+					UUID:                 testUuid,
 				},
 			}))
+			Expect(receivedUuid).To(Equal(testUuid))
 		})
 
 		It("calls Process on the RequestProcessor", func() {
@@ -290,7 +294,7 @@ var _ = Describe("Controller", func() {
 		It("creates the RequestProcessor", func() {
 			foundationURL := fmt.Sprintf("/v3/apps/%s/%s/%s/%s", environment, org, space, appName)
 
-			body := []byte(`{"state": "started", "data": {"puppy": "dachshund"}}`)
+			body := []byte(`{"state": "started", "data": {"puppy": "dachshund"}, "uuid": "uuid1234"}`)
 
 			jsonBuffer = bytes.NewBuffer(body)
 
@@ -304,7 +308,6 @@ var _ = Describe("Controller", func() {
 
 			router.ServeHTTP(resp, req)
 
-			Expect(receivedUuid).ToNot(Equal(""))
 			Expect(*receivedBuffer).ToNot(BeNil())
 			Expect(receivedRequest).To(Equal(I.PutDeploymentRequest{
 				Deployment: I.Deployment{
@@ -320,8 +323,10 @@ var _ = Describe("Controller", func() {
 				Request: I.PutRequest{
 					State: "started",
 					Data:  expectedData,
+					UUID:  testUuid,
 				},
 			}))
+			Expect(receivedUuid).To(Equal(testUuid))
 		})
 
 		It("calls Process on the RequestProcessor", func() {

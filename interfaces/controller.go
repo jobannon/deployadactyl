@@ -27,6 +27,7 @@ type CFContext struct {
 type PutRequest struct {
 	State string                 `json:"state"`
 	Data  map[string]interface{} `json:"data"`
+	UUID  string                 `json:"uuid"`
 }
 
 type PutDeploymentRequest struct {
@@ -40,6 +41,7 @@ type PostRequest struct {
 	EnvironmentVariables map[string]string      `json:"environment_variables"`
 	HealthCheckEndpoint  string                 `json:"health_check_endpoint"`
 	Data                 map[string]interface{} `json:"data"`
+	UUID                 string                 `json:"uuid"`
 }
 
 type PostDeploymentRequest struct {

@@ -30,10 +30,6 @@ type Controller struct {
 }
 
 func (c *Controller) PostRequestHandler(g *gin.Context) {
-	uuid := randomizer.StringRunes(10)
-	log := I.DeploymentLogger{Log: c.Log, UUID: uuid}
-	log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
-
 	cfContext := I.CFContext{
 		Environment:  strings.ToLower(g.Param("environment")),
 		Organization: strings.ToLower(g.Param("org")),
@@ -73,12 +69,15 @@ func (c *Controller) PostRequestHandler(g *gin.Context) {
 		}
 	}
 
+	log := I.DeploymentLogger{Log: c.Log, UUID: postRequest.UUID}
+	log.Debugf("Request originated from: %+v", g.Request.RemoteAddr)
+
 	postDeploymentRequest := I.PostDeploymentRequest{
 		Deployment: deployment,
 		Request:    postRequest,
 	}
 
-	deployResponse := c.RequestProcessorFactory(uuid, postDeploymentRequest, response).Process()
+	deployResponse := c.RequestProcessorFactory(postRequest.UUID, postDeploymentRequest, response).Process()
 
 	if deployResponse.Error != nil {
 		g.Writer.WriteHeader(deployResponse.StatusCode)
@@ -90,10 +89,6 @@ func (c *Controller) PostRequestHandler(g *gin.Context) {
 }
 
 func (c *Controller) PutRequestHandler(g *gin.Context) {
-	uuid := randomizer.StringRunes(10)
-	log := I.DeploymentLogger{Log: c.Log, UUID: uuid}
-	log.Debugf("PUT Request originated from: %+v", g.Request.RemoteAddr)
-
 	cfContext := I.CFContext{
 		Environment:  strings.ToLower(g.Param("environment")),
 		Organization: strings.ToLower(g.Param("org")),
@@ -133,7 +128,10 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 		Request:    putRequest,
 	}
 
-	deployResponse := c.RequestProcessorFactory(uuid, putDeploymentRequest, response).Process()
+	log := I.DeploymentLogger{Log: c.Log, UUID: putRequest.UUID}
+	log.Debugf("PUT Request originated from: %+v", g.Request.RemoteAddr)
+
+	deployResponse := c.RequestProcessorFactory(putRequest.UUID, putDeploymentRequest, response).Process()
 	if deployResponse.Error != nil {
 		fmt.Fprintf(response, "cannot deploy application: %s\n", deployResponse.Error)
 	}

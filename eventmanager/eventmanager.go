@@ -76,6 +76,7 @@ func (e *EventManager) AddBinding(binding I.Binding) {
 }
 
 func (e EventManager) EmitEvent(event I.IEvent) error {
+	defer e.PanicRecovery()
 	for _, binding := range e.Bindings {
 		if binding.Accepts(event) {
 			err := binding.Emit(event)
@@ -85,4 +86,10 @@ func (e EventManager) EmitEvent(event I.IEvent) error {
 		}
 	}
 	return nil
+}
+
+func (e EventManager) PanicRecovery() {
+	if r := recover(); r != nil {
+		e.Log.Errorf("recovered from panic")
+	}
 }

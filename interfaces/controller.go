@@ -52,6 +52,7 @@ type PostDeploymentRequest struct {
 type DeleteRequest struct {
 	State string                 `json:"state"`
 	Data  map[string]interface{} `json:"data"`
+	UUID  string                 `json:"uuid"`
 }
 
 type DeleteDeploymentRequest struct {

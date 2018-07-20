@@ -174,7 +174,8 @@ var _ = Describe("Events", func() {
 
 				err := eventManager.EmitEvent(stopStartedEvent)
 
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Recovered from a panic: "))
 			})
 		})
 	})

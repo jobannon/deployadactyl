@@ -12,13 +12,14 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/request"
 	"github.com/compozed/deployadactyl/structs"
 	"github.com/go-errors/errors"
 )
 
-type PushControllerConstructor func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.PushController
+type PushControllerConstructor func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) request.PushController
 
-func NewPushController(l I.DeploymentLogger, d, sd I.Deployer, em I.EventManager, ef I.ErrorFinder, pmf I.PushManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.PushController {
+func NewPushController(l I.DeploymentLogger, d, sd I.Deployer, em I.EventManager, ef I.ErrorFinder, pmf I.PushManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) request.PushController {
 	return &PushController{
 		Deployer:           d,
 		SilentDeployer:     sd,
@@ -51,7 +52,7 @@ type PushController struct {
 }
 
 // PUSH specific
-func (c *PushController) RunDeployment(deployment I.PostDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *PushController) RunDeployment(deployment request.PostDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 
 	if deployment.Type == "application/json" && deployment.Request.ArtifactUrl == "" {

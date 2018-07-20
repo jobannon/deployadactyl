@@ -16,6 +16,7 @@ import (
 
 	"github.com/compozed/deployadactyl/config"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/request"
 	"github.com/gin-gonic/gin"
 )
 
@@ -59,7 +60,7 @@ func (c *Controller) PostRequestHandler(g *gin.Context) {
 		Body:          &bodyBuffer,
 	}
 
-	postRequest := I.PostRequest{}
+	postRequest := request.PostRequest{}
 	if deploymentType == "application/json" {
 		err := json.Unmarshal(bodyBuffer, &postRequest)
 		if err != nil {
@@ -69,7 +70,7 @@ func (c *Controller) PostRequestHandler(g *gin.Context) {
 		}
 	}
 
-	postDeploymentRequest := I.PostDeploymentRequest{
+	postDeploymentRequest := request.PostDeploymentRequest{
 		Deployment: deployment,
 		Request:    postRequest,
 	}
@@ -111,7 +112,7 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
 	g.Request.Body.Close()
 
-	putRequest := I.PutRequest{}
+	putRequest := request.PutRequest{}
 	err := json.Unmarshal(bodyBuffer, &putRequest)
 	if err != nil {
 		response.Write([]byte("Invalid request body."))
@@ -126,7 +127,7 @@ func (c *Controller) PutRequestHandler(g *gin.Context) {
 		Type:          g.Request.Header.Get("Content-Type"),
 	}
 
-	putDeploymentRequest := I.PutDeploymentRequest{
+	putDeploymentRequest := request.PutDeploymentRequest{
 		Deployment: deployment,
 		Request:    putRequest,
 	}
@@ -170,7 +171,7 @@ func (c *Controller) DeleteRequestHandler(g *gin.Context) {
 	bodyBuffer, _ := ioutil.ReadAll(g.Request.Body)
 	g.Request.Body.Close()
 
-	deleteRequest := I.DeleteRequest{}
+	deleteRequest := request.DeleteRequest{}
 	err := json.Unmarshal(bodyBuffer, &deleteRequest)
 	if err != nil {
 		response.Write([]byte("Invalid request body."))
@@ -185,7 +186,7 @@ func (c *Controller) DeleteRequestHandler(g *gin.Context) {
 		Type:          g.Request.Header.Get("Content-Type"),
 	}
 
-	deleteDeploymentRequest := I.DeleteDeploymentRequest{
+	deleteDeploymentRequest := request.DeleteDeploymentRequest{
 		Deployment: deployment,
 		Request:    deleteRequest,
 	}

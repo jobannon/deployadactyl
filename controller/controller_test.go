@@ -18,6 +18,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/request"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -143,7 +144,7 @@ var _ = Describe("Controller", func() {
 			expectedData["puppy"] = "dachshund"
 
 			Expect(*receivedBuffer).ToNot(BeNil())
-			Expect(receivedRequest).To(Equal(I.PostDeploymentRequest{
+			Expect(receivedRequest).To(Equal(request.PostDeploymentRequest{
 				Deployment: I.Deployment{
 					CFContext: I.CFContext{
 						Environment:  environment,
@@ -154,7 +155,7 @@ var _ = Describe("Controller", func() {
 					Body: &body,
 					Type: "application/json",
 				},
-				Request: I.PostRequest{
+				Request: request.PostRequest{
 					HealthCheckEndpoint:  "the healthcheck",
 					ArtifactUrl:          "the url",
 					EnvironmentVariables: expectedEnv,
@@ -241,7 +242,7 @@ var _ = Describe("Controller", func() {
 				router.ServeHTTP(resp, req)
 
 				Eventually(resp.Code).Should(Equal(http.StatusOK))
-				Expect(receivedRequest.(I.PostDeploymentRequest).CFContext).To(Equal(I.CFContext{
+				Expect(receivedRequest.(request.PostDeploymentRequest).CFContext).To(Equal(I.CFContext{
 					Environment:  environment,
 					Organization: org,
 					Space:        space,
@@ -330,7 +331,7 @@ var _ = Describe("Controller", func() {
 			router.ServeHTTP(resp, req)
 
 			Expect(*receivedBuffer).ToNot(BeNil())
-			Expect(receivedRequest).To(Equal(I.PutDeploymentRequest{
+			Expect(receivedRequest).To(Equal(request.PutDeploymentRequest{
 				Deployment: I.Deployment{
 					CFContext: I.CFContext{
 						Environment:  environment,
@@ -341,7 +342,7 @@ var _ = Describe("Controller", func() {
 					Body: &body,
 					Type: "application/json",
 				},
-				Request: I.PutRequest{
+				Request: request.PutRequest{
 					State: "started",
 					Data:  expectedData,
 					UUID:  testUuid,

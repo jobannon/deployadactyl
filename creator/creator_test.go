@@ -14,6 +14,7 @@ import (
 	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
+	"github.com/compozed/deployadactyl/request"
 	"github.com/compozed/deployadactyl/state"
 	"github.com/compozed/deployadactyl/state/push"
 	. "github.com/onsi/ginkgo"
@@ -261,11 +262,11 @@ error_matchers:
 
 					expected := &mocks.RequestCreator{}
 					creator, _ := Custom(level, configPath, CreatorModuleProvider{
-						NewPushRequestCreator: func(creator Creator, uuid string, request I.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
+						NewPushRequestCreator: func(creator Creator, uuid string, request request.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
 							return expected
 						},
 					})
-					rc, _ := creator.CreateRequestCreator("the uuid", I.PostDeploymentRequest{}, bytes.NewBuffer([]byte{}))
+					rc, _ := creator.CreateRequestCreator("the uuid", request.PostDeploymentRequest{}, bytes.NewBuffer([]byte{}))
 					Expect(rc).To(Equal(expected))
 				})
 			})
@@ -279,7 +280,7 @@ error_matchers:
 					configPath := "./testconfig.yml"
 
 					response := bytes.NewBuffer([]byte("the response"))
-					request := I.PostDeploymentRequest{
+					request := request.PostDeploymentRequest{
 						Deployment: I.Deployment{
 							CFContext: I.CFContext{
 								Organization: "the org",
@@ -315,11 +316,11 @@ error_matchers:
 
 						expected := &mocks.RequestCreator{}
 						creator, _ := Custom(level, configPath, CreatorModuleProvider{
-							NewStopRequestCreator: func(creator Creator, uuid string, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
+							NewStopRequestCreator: func(creator Creator, uuid string, request request.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
 								return expected
 							},
 						})
-						rc, _ := creator.CreateRequestCreator("the uuid", I.PutDeploymentRequest{Request: I.PutRequest{State: "stopped"}}, bytes.NewBuffer([]byte{}))
+						rc, _ := creator.CreateRequestCreator("the uuid", request.PutDeploymentRequest{Request: request.PutRequest{State: "stopped"}}, bytes.NewBuffer([]byte{}))
 						Expect(rc).To(Equal(expected))
 					})
 				})
@@ -333,13 +334,13 @@ error_matchers:
 						configPath := "./testconfig.yml"
 
 						response := bytes.NewBuffer([]byte("the response"))
-						request := I.PutDeploymentRequest{
+						request := request.PutDeploymentRequest{
 							Deployment: I.Deployment{
 								CFContext: I.CFContext{
 									Organization: "the org",
 								},
 							},
-							Request: I.PutRequest{
+							Request: request.PutRequest{
 								State: "stopped",
 							},
 						}
@@ -371,11 +372,11 @@ error_matchers:
 
 						expected := &mocks.RequestCreator{}
 						creator, _ := Custom(level, configPath, CreatorModuleProvider{
-							NewStartRequestCreator: func(creator Creator, uuid string, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
+							NewStartRequestCreator: func(creator Creator, uuid string, request request.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
 								return expected
 							},
 						})
-						rc, _ := creator.CreateRequestCreator("the uuid", I.PutDeploymentRequest{Request: I.PutRequest{State: "started"}}, bytes.NewBuffer([]byte{}))
+						rc, _ := creator.CreateRequestCreator("the uuid", request.PutDeploymentRequest{Request: request.PutRequest{State: "started"}}, bytes.NewBuffer([]byte{}))
 						Expect(rc).To(Equal(expected))
 					})
 				})
@@ -389,13 +390,13 @@ error_matchers:
 						configPath := "./testconfig.yml"
 
 						response := bytes.NewBuffer([]byte("the response"))
-						request := I.PutDeploymentRequest{
+						request := request.PutDeploymentRequest{
 							Deployment: I.Deployment{
 								CFContext: I.CFContext{
 									Organization: "the org",
 								},
 							},
-							Request: I.PutRequest{
+							Request: request.PutRequest{
 								State: "started",
 							},
 						}
@@ -447,11 +448,11 @@ error_matchers:
 
 				expected := &mocks.RequestProcessor{}
 				creator, _ := Custom(level, configPath, CreatorModuleProvider{
-					NewPushRequestProcessor: func(log I.DeploymentLogger, controller I.PushController, request I.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestProcessor {
+					NewPushRequestProcessor: func(log I.DeploymentLogger, controller request.PushController, request request.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestProcessor {
 						return expected
 					},
 				})
-				processor := creator.CreateRequestProcessor("the uuid", I.PostDeploymentRequest{}, bytes.NewBuffer([]byte{}))
+				processor := creator.CreateRequestProcessor("the uuid", request.PostDeploymentRequest{}, bytes.NewBuffer([]byte{}))
 				Expect(processor).To(Equal(expected))
 			})
 		})
@@ -465,7 +466,7 @@ error_matchers:
 				configPath := "./testconfig.yml"
 
 				response := bytes.NewBuffer([]byte("the response"))
-				request := I.PostDeploymentRequest{
+				request := request.PostDeploymentRequest{
 					Deployment: I.Deployment{
 						CFContext: I.CFContext{
 							Organization: "the org",

@@ -4,11 +4,12 @@ import (
 	"bytes"
 
 	"github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/request"
 )
 
-type PushRequestProcessorConstructor func(log interfaces.DeploymentLogger, controller interfaces.PushController, request interfaces.PostDeploymentRequest, buffer *bytes.Buffer) interfaces.RequestProcessor
+type PushRequestProcessorConstructor func(log interfaces.DeploymentLogger, controller request.PushController, request request.PostDeploymentRequest, buffer *bytes.Buffer) interfaces.RequestProcessor
 
-func NewPushRequestProcessor(log interfaces.DeploymentLogger, pc interfaces.PushController, request interfaces.PostDeploymentRequest, buffer *bytes.Buffer) interfaces.RequestProcessor {
+func NewPushRequestProcessor(log interfaces.DeploymentLogger, pc request.PushController, request request.PostDeploymentRequest, buffer *bytes.Buffer) interfaces.RequestProcessor {
 	return &PushRequestProcessor{
 		PushController: pc,
 		Request:        request,
@@ -18,8 +19,8 @@ func NewPushRequestProcessor(log interfaces.DeploymentLogger, pc interfaces.Push
 }
 
 type PushRequestProcessor struct {
-	PushController interfaces.PushController
-	Request        interfaces.PostDeploymentRequest
+	PushController request.PushController
+	Request        request.PostDeploymentRequest
 	Response       *bytes.Buffer
 	Log            interfaces.DeploymentLogger
 }

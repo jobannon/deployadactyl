@@ -4,11 +4,12 @@ import (
 	"bytes"
 
 	"github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/request"
 )
 
-type DeleteRequestProcessorConstructor func(log interfaces.DeploymentLogger, controller interfaces.DeleteController, request interfaces.DeleteDeploymentRequest, buffer *bytes.Buffer) interfaces.RequestProcessor
+type DeleteRequestProcessorConstructor func(log interfaces.DeploymentLogger, controller request.DeleteController, request request.DeleteDeploymentRequest, buffer *bytes.Buffer) interfaces.RequestProcessor
 
-func NewDeleteRequestProcessor(log interfaces.DeploymentLogger, sc interfaces.DeleteController, request interfaces.DeleteDeploymentRequest, buffer *bytes.Buffer) interfaces.RequestProcessor {
+func NewDeleteRequestProcessor(log interfaces.DeploymentLogger, sc request.DeleteController, request request.DeleteDeploymentRequest, buffer *bytes.Buffer) interfaces.RequestProcessor {
 	return &DeleteRequestProcessor{
 		DeleteController: sc,
 		Request:          request,
@@ -18,8 +19,8 @@ func NewDeleteRequestProcessor(log interfaces.DeploymentLogger, sc interfaces.De
 }
 
 type DeleteRequestProcessor struct {
-	DeleteController interfaces.DeleteController
-	Request          interfaces.DeleteDeploymentRequest
+	DeleteController request.DeleteController
+	Request          request.DeleteDeploymentRequest
 	Response         *bytes.Buffer
 	Log              interfaces.DeploymentLogger
 }

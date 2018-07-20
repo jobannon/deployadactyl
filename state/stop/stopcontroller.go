@@ -9,12 +9,13 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/request"
 	"github.com/compozed/deployadactyl/structs"
 )
 
-type StopControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, stopManagerFactory I.StopManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StopController
+type StopControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, stopManagerFactory I.StopManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) request.StopController
 
-func NewStopController(l I.DeploymentLogger, d I.Deployer, em I.EventManager, ef I.ErrorFinder, smf I.StopManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StopController {
+func NewStopController(l I.DeploymentLogger, d I.Deployer, em I.EventManager, ef I.ErrorFinder, smf I.StopManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) request.StopController {
 	return &StopController{
 		Deployer:           d,
 		EventManager:       em,
@@ -36,7 +37,7 @@ type StopController struct {
 	EnvResolver        I.EnvResolver
 }
 
-func (c *StopController) StopDeployment(deployment I.PutDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *StopController) StopDeployment(deployment request.PutDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 	c.Log.Debugf("Preparing to stop %s with UUID %s", cf.Application, c.Log.UUID)
 

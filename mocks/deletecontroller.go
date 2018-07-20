@@ -4,12 +4,13 @@ import (
 	"bytes"
 
 	"github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/request"
 )
 
 type DeleteController struct {
 	DeleteDeploymentCall struct {
 		Received struct {
-			Deployment interfaces.DeleteDeploymentRequest
+			Deployment request.DeleteDeploymentRequest
 			Response   *bytes.Buffer
 		}
 		Returns struct {
@@ -20,7 +21,7 @@ type DeleteController struct {
 	}
 }
 
-func (c *DeleteController) DeleteDeployment(deployment interfaces.DeleteDeploymentRequest, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
+func (c *DeleteController) DeleteDeployment(deployment request.DeleteDeploymentRequest, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
 	c.DeleteDeploymentCall.Called = true
 	c.DeleteDeploymentCall.Received.Deployment = deployment
 	c.DeleteDeploymentCall.Received.Deployment.Request = deployment.Request

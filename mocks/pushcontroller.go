@@ -4,12 +4,13 @@ import (
 	"bytes"
 
 	"github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/request"
 )
 
 type PushController struct {
 	RunDeploymentCall struct {
 		Received struct {
-			Request  interfaces.PostDeploymentRequest
+			Request  request.PostDeploymentRequest
 			Response *bytes.Buffer
 		}
 		Returns struct {
@@ -20,7 +21,7 @@ type PushController struct {
 	}
 }
 
-func (c *PushController) RunDeployment(deployment interfaces.PostDeploymentRequest, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
+func (c *PushController) RunDeployment(deployment request.PostDeploymentRequest, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
 	c.RunDeploymentCall.Called = true
 	c.RunDeploymentCall.Received.Request = deployment
 	c.RunDeploymentCall.Received.Response = response

@@ -9,12 +9,13 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/request"
 	"github.com/compozed/deployadactyl/structs"
 )
 
-type DeleteControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, deleteManagerFactory I.DeleteManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.DeleteController
+type DeleteControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, deleteManagerFactory I.DeleteManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) request.DeleteController
 
-func NewDeleteController(l I.DeploymentLogger, d I.Deployer, em I.EventManager, ef I.ErrorFinder, smf I.DeleteManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.DeleteController {
+func NewDeleteController(l I.DeploymentLogger, d I.Deployer, em I.EventManager, ef I.ErrorFinder, smf I.DeleteManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) request.DeleteController {
 	return &DeleteController{
 		Deployer:             d,
 		EventManager:         em,
@@ -36,7 +37,7 @@ type DeleteController struct {
 	EnvResolver          I.EnvResolver
 }
 
-func (c *DeleteController) DeleteDeployment(deployment I.DeleteDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *DeleteController) DeleteDeployment(deployment request.DeleteDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 	c.Log.Debugf("Preparing to delete %s with UUID %s", cf.Application, c.Log.UUID)
 

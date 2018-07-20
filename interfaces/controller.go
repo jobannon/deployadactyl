@@ -24,42 +24,6 @@ type CFContext struct {
 	SkipSSL      bool
 }
 
-type PutRequest struct {
-	State string                 `json:"state"`
-	Data  map[string]interface{} `json:"data"`
-	UUID  string                 `json:"uuid"`
-}
-
-type PutDeploymentRequest struct {
-	Deployment
-	Request PutRequest
-}
-
-type PostRequest struct {
-	ArtifactUrl          string                 `json:"artifact_url"`
-	Manifest             string                 `json:"manifest"`
-	EnvironmentVariables map[string]string      `json:"environment_variables"`
-	HealthCheckEndpoint  string                 `json:"health_check_endpoint"`
-	Data                 map[string]interface{} `json:"data"`
-	UUID                 string                 `json:"uuid"`
-}
-
-type PostDeploymentRequest struct {
-	Deployment
-	Request PostRequest
-}
-
-type DeleteRequest struct {
-	State string                 `json:"state"`
-	Data  map[string]interface{} `json:"data"`
-	UUID  string                 `json:"uuid"`
-}
-
-type DeleteDeploymentRequest struct {
-	Deployment
-	Request DeleteRequest
-}
-
 type Controller interface {
 	PostRequestHandler(g *gin.Context)
 

@@ -15,6 +15,7 @@ import (
 	"github.com/compozed/deployadactyl/eventmanager"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
+	"github.com/compozed/deployadactyl/request"
 	"github.com/compozed/deployadactyl/state/push"
 	"github.com/compozed/deployadactyl/state/start"
 	"github.com/compozed/deployadactyl/state/stop"
@@ -268,7 +269,7 @@ var _ = Describe("RequestCreator", func() {
 					expected := &mocks.RequestProcessor{}
 					creator := Creator{
 						provider: CreatorModuleProvider{
-							NewPushRequestProcessor: func(log I.DeploymentLogger, pc I.PushController, request I.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestProcessor {
+							NewPushRequestProcessor: func(log I.DeploymentLogger, pc request.PushController, request request.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestProcessor {
 								return expected
 							},
 						},
@@ -287,7 +288,7 @@ var _ = Describe("RequestCreator", func() {
 				It("should return the default implementation", func() {
 
 					response := bytes.NewBuffer([]byte("the response"))
-					request := I.PostDeploymentRequest{
+					request := request.PostDeploymentRequest{
 						Deployment: I.Deployment{
 							CFContext: I.CFContext{
 								Organization: "the org",
@@ -322,7 +323,7 @@ var _ = Describe("RequestCreator", func() {
 					expected := &mocks.PushController{}
 					creator := Creator{
 						provider: CreatorModuleProvider{
-							NewPushController: func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, authResolver I.AuthResolver, resolver I.EnvResolver) I.PushController {
+							NewPushController: func(log I.DeploymentLogger, deployer, silentDeployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, pushManagerFactory I.PushManagerFactory, authResolver I.AuthResolver, resolver I.EnvResolver) request.PushController {
 								return expected
 							},
 						},
@@ -395,7 +396,7 @@ var _ = Describe("RequestCreator", func() {
 							Log:          I.DeploymentLogger{UUID: "the uuid"},
 							EventManager: &mocks.EventManager{},
 						},
-						Request: I.PostDeploymentRequest{
+						Request: request.PostDeploymentRequest{
 							Deployment: I.Deployment{
 								CFContext: I.CFContext{
 									Organization: "the org",
@@ -430,7 +431,7 @@ var _ = Describe("RequestCreator", func() {
 					expected := &mocks.RequestProcessor{}
 					creator := Creator{
 						provider: CreatorModuleProvider{
-							NewStopRequestProcessor: func(log I.DeploymentLogger, sc I.StopController, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestProcessor {
+							NewStopRequestProcessor: func(log I.DeploymentLogger, sc request.StopController, request request.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestProcessor {
 								return expected
 							},
 						},
@@ -449,7 +450,7 @@ var _ = Describe("RequestCreator", func() {
 				It("should return the default implementation", func() {
 
 					response := bytes.NewBuffer([]byte("the response"))
-					request := I.PutDeploymentRequest{
+					request := request.PutDeploymentRequest{
 						Deployment: I.Deployment{
 							CFContext: I.CFContext{
 								Organization: "the org",
@@ -484,7 +485,7 @@ var _ = Describe("RequestCreator", func() {
 					expected := &mocks.StopController{}
 					creator := Creator{
 						provider: CreatorModuleProvider{
-							NewStopController: func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, stopManagerFactory I.StopManagerFactory, authResolver I.AuthResolver, resolver I.EnvResolver) I.StopController {
+							NewStopController: func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, stopManagerFactory I.StopManagerFactory, authResolver I.AuthResolver, resolver I.EnvResolver) request.StopController {
 								return expected
 							},
 						},
@@ -554,7 +555,7 @@ var _ = Describe("RequestCreator", func() {
 							Log:          I.DeploymentLogger{UUID: "the uuid"},
 							EventManager: &mocks.EventManager{},
 						},
-						Request: I.PutDeploymentRequest{
+						Request: request.PutDeploymentRequest{
 							Deployment: I.Deployment{
 								CFContext: I.CFContext{
 									Organization: "the org",
@@ -584,7 +585,7 @@ var _ = Describe("RequestCreator", func() {
 					expected := &mocks.RequestProcessor{}
 					creator := Creator{
 						provider: CreatorModuleProvider{
-							NewStartRequestProcessor: func(log I.DeploymentLogger, sc I.StartController, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestProcessor {
+							NewStartRequestProcessor: func(log I.DeploymentLogger, sc request.StartController, request request.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestProcessor {
 								return expected
 							},
 						},
@@ -603,7 +604,7 @@ var _ = Describe("RequestCreator", func() {
 				It("should return the default implementation", func() {
 
 					response := bytes.NewBuffer([]byte("the response"))
-					request := I.PutDeploymentRequest{
+					request := request.PutDeploymentRequest{
 						Deployment: I.Deployment{
 							CFContext: I.CFContext{
 								Organization: "the org",
@@ -638,7 +639,7 @@ var _ = Describe("RequestCreator", func() {
 					expected := &mocks.StartController{}
 					creator := Creator{
 						provider: CreatorModuleProvider{
-							NewStartController: func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, authResolver I.AuthResolver, resolver I.EnvResolver) I.StartController {
+							NewStartController: func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, authResolver I.AuthResolver, resolver I.EnvResolver) request.StartController {
 								return expected
 							},
 						},
@@ -708,7 +709,7 @@ var _ = Describe("RequestCreator", func() {
 							Log:          I.DeploymentLogger{UUID: "the uuid"},
 							EventManager: &mocks.EventManager{},
 						},
-						Request: I.PutDeploymentRequest{
+						Request: request.PutDeploymentRequest{
 							Deployment: I.Deployment{
 								CFContext: I.CFContext{
 									Organization: "the org",

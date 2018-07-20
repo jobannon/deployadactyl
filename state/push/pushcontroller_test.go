@@ -16,6 +16,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/request"
 	"github.com/compozed/deployadactyl/state"
 	"github.com/compozed/deployadactyl/state/push"
 	"github.com/compozed/deployadactyl/structs"
@@ -114,9 +115,9 @@ var _ = Describe("RunDeployment", func() {
 				},
 				Type: "application/zip",
 			}
-			postRequest := I.PostRequest{ArtifactUrl: "fakeTest.url"}
+			postRequest := request.PostRequest{ArtifactUrl: "fakeTest.url"}
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: deployment,
 				Request:    postRequest,
 			}
@@ -157,9 +158,9 @@ var _ = Describe("RunDeployment", func() {
 			}
 			deployment.Type = "application/zip"
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.PostRequest{},
+				Request:    request.PostRequest{},
 			}
 
 			deployResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -183,9 +184,9 @@ var _ = Describe("RunDeployment", func() {
 			deployer.DeployCall.Returns.StatusCode = http.StatusOK
 			deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: deployment,
-				Request:    I.PostRequest{},
+				Request:    request.PostRequest{},
 			}
 
 			deployResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -216,9 +217,9 @@ var _ = Describe("RunDeployment", func() {
 			deployer.DeployCall.Returns.StatusCode = http.StatusInternalServerError
 			deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: deployment,
-				Request:    I.PostRequest{},
+				Request:    request.PostRequest{},
 			}
 
 			deployResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -259,9 +260,9 @@ var _ = Describe("RunDeployment", func() {
 				},
 			}
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.PostRequest{},
+				Request:    request.PostRequest{},
 			}
 
 			controller.RunDeployment(postDeploymentRequest, response)
@@ -281,9 +282,9 @@ var _ = Describe("RunDeployment", func() {
 				Password: "TestPassword",
 			}
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: deployment,
-				Request:    I.PostRequest{},
+				Request:    request.PostRequest{},
 			}
 
 			controller.RunDeployment(postDeploymentRequest, response)
@@ -306,9 +307,9 @@ var _ = Describe("RunDeployment", func() {
 			deployer.DeployCall.Returns.StatusCode = http.StatusOK
 			deployer.DeployCall.Write.Output = "little-timmy-env.zip"
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: deployment,
-				Request:    I.PostRequest{},
+				Request:    request.PostRequest{},
 			}
 
 			deployResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -348,9 +349,9 @@ var _ = Describe("RunDeployment", func() {
 			silentDeployUrl := server.URL + "/v1/apps/" + os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
 			os.Setenv("SILENT_DEPLOY_URL", silentDeployUrl)
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: deployment,
-				Request:    I.PostRequest{},
+				Request:    request.PostRequest{},
 			}
 
 			deployResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -375,9 +376,9 @@ var _ = Describe("RunDeployment", func() {
 		It("logs building deploymentInfo", func() {
 			deployment.CFContext.Environment = environment
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: deployment,
-				Request:    I.PostRequest{},
+				Request:    request.PostRequest{},
 			}
 
 			controller.RunDeployment(postDeploymentRequest, response)
@@ -387,9 +388,9 @@ var _ = Describe("RunDeployment", func() {
 			deployment.CFContext.Environment = environment
 			deployment.Type = "application/zip"
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: deployment,
-				Request:    I.PostRequest{},
+				Request:    request.PostRequest{},
 			}
 
 			controller.RunDeployment(postDeploymentRequest, response)
@@ -402,9 +403,9 @@ var _ = Describe("RunDeployment", func() {
 			deployment.Body = &bodyByte
 			deployment.Type = "application/zip"
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: deployment,
-				Request:    I.PostRequest{},
+				Request:    request.PostRequest{},
 			}
 
 			controller.RunDeployment(postDeploymentRequest, response)
@@ -417,9 +418,9 @@ var _ = Describe("RunDeployment", func() {
 
 			response = bytes.NewBuffer([]byte("hello"))
 
-			postDeploymentRequest := I.PostDeploymentRequest{
+			postDeploymentRequest := request.PostDeploymentRequest{
 				Deployment: deployment,
-				Request:    I.PostRequest{},
+				Request:    request.PostRequest{},
 			}
 
 			controller.RunDeployment(postDeploymentRequest, response)
@@ -433,9 +434,9 @@ var _ = Describe("RunDeployment", func() {
 				deployment.CFContext.Environment = environment
 				deployment.Type = "application/json"
 
-				postRequest := I.PostRequest{ArtifactUrl: "the artifact url"}
+				postRequest := request.PostRequest{ArtifactUrl: "the artifact url"}
 
-				postDeploymentRequest := I.PostDeploymentRequest{
+				postDeploymentRequest := request.PostDeploymentRequest{
 					Deployment: deployment,
 					Request:    postRequest,
 				}
@@ -449,9 +450,9 @@ var _ = Describe("RunDeployment", func() {
 				deployment.CFContext.Environment = environment
 				deployment.Type = "application/json"
 
-				postRequest := I.PostRequest{ArtifactUrl: "the artifact url", Manifest: "the manifest"}
+				postRequest := request.PostRequest{ArtifactUrl: "the artifact url", Manifest: "the manifest"}
 
-				postDeploymentRequest := I.PostDeploymentRequest{
+				postDeploymentRequest := request.PostDeploymentRequest{
 					Deployment: deployment,
 					Request:    postRequest,
 				}
@@ -468,9 +469,9 @@ var _ = Describe("RunDeployment", func() {
 				fakeData := make(map[string]interface{})
 				fakeData["avalue"] = "the data"
 
-				postRequest := I.PostRequest{ArtifactUrl: "a fake url", Data: fakeData}
+				postRequest := request.PostRequest{ArtifactUrl: "a fake url", Data: fakeData}
 
-				postDeploymentRequest := I.PostDeploymentRequest{
+				postDeploymentRequest := request.PostDeploymentRequest{
 					Deployment: deployment,
 					Request:    postRequest,
 				}
@@ -487,9 +488,9 @@ var _ = Describe("RunDeployment", func() {
 				deployment.CFContext.Environment = environment
 				deployment.Type = "application/x-tar"
 
-				postDeploymentRequest := I.PostDeploymentRequest{
+				postDeploymentRequest := request.PostDeploymentRequest{
 					Deployment: deployment,
-					Request:    I.PostRequest{ArtifactUrl: "the artifact url"},
+					Request:    request.PostRequest{ArtifactUrl: "the artifact url"},
 				}
 
 				controller.RunDeployment(postDeploymentRequest, response)
@@ -503,9 +504,9 @@ var _ = Describe("RunDeployment", func() {
 					deployment.CFContext.Environment = "bad env"
 					deployment.Type = "application/zip"
 
-					postDeploymentRequest := I.PostDeploymentRequest{
+					postDeploymentRequest := request.PostDeploymentRequest{
 						Deployment: deployment,
-						Request:    I.PostRequest{},
+						Request:    request.PostRequest{},
 					}
 
 					deploymentResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -526,9 +527,9 @@ var _ = Describe("RunDeployment", func() {
 							authResolver.Config.Username = "username-" + randomizer.StringRunes(10)
 							authResolver.Config.Password = "password-" + randomizer.StringRunes(10)
 
-							postDeploymentRequest := I.PostDeploymentRequest{
+							postDeploymentRequest := request.PostDeploymentRequest{
 								Deployment: deployment,
-								Request:    I.PostRequest{},
+								Request:    request.PostRequest{},
 							}
 
 							controller.RunDeployment(postDeploymentRequest, response)
@@ -549,9 +550,9 @@ var _ = Describe("RunDeployment", func() {
 								Authenticate: true,
 							}
 
-							postDeploymentRequest := I.PostDeploymentRequest{
+							postDeploymentRequest := request.PostDeploymentRequest{
 								Deployment: deployment,
-								Request:    I.PostRequest{},
+								Request:    request.PostRequest{},
 							}
 
 							deploymentResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -567,9 +568,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type = "application/zip"
 
-						postRequest := I.PostRequest{ArtifactUrl: "a fake url"}
+						postRequest := request.PostRequest{ArtifactUrl: "a fake url"}
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
 							Request:    postRequest,
 						}
@@ -585,9 +586,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.Authorization.Username = "username-" + randomizer.StringRunes(10)
 						deployment.Authorization.Password = "password-" + randomizer.StringRunes(10)
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -606,9 +607,9 @@ var _ = Describe("RunDeployment", func() {
 					deployment.CFContext.Application = appName
 					deployment.CFContext.Environment = environment
 
-					postDeploymentRequest := I.PostDeploymentRequest{
+					postDeploymentRequest := request.PostDeploymentRequest{
 						Deployment: deployment,
-						Request:    I.PostRequest{},
+						Request:    request.PostRequest{},
 					}
 
 					controller.RunDeployment(postDeploymentRequest, response)
@@ -637,9 +638,9 @@ var _ = Describe("RunDeployment", func() {
 					testData := make(map[string]interface{})
 					testData["my param"] = "request value"
 
-					postRequest := I.PostRequest{ArtifactUrl: "a fake url", Data: testData}
+					postRequest := request.PostRequest{ArtifactUrl: "a fake url", Data: testData}
 
-					postDeploymentRequest := I.PostDeploymentRequest{
+					postDeploymentRequest := request.PostDeploymentRequest{
 						Deployment: deployment,
 						Request:    postRequest,
 					}
@@ -657,9 +658,9 @@ var _ = Describe("RunDeployment", func() {
 					bodyByte := []byte(`{"artifact_url": "xyz"}`)
 					deployment.Body = &bodyByte
 
-					postRequest := I.PostRequest{ArtifactUrl: "a fake url"}
+					postRequest := request.PostRequest{ArtifactUrl: "a fake url"}
 
-					postDeploymentRequest := I.PostDeploymentRequest{
+					postDeploymentRequest := request.PostDeploymentRequest{
 						Deployment: deployment,
 						Request:    postRequest,
 					}
@@ -672,9 +673,9 @@ var _ = Describe("RunDeployment", func() {
 					deployment.CFContext.Environment = environment
 					deployment.Type = "application/zip"
 
-					postDeploymentRequest := I.PostDeploymentRequest{
+					postDeploymentRequest := request.PostDeploymentRequest{
 						Deployment: deployment,
-						Request:    I.PostRequest{},
+						Request:    request.PostRequest{},
 					}
 
 					controller.RunDeployment(postDeploymentRequest, response)
@@ -687,9 +688,9 @@ var _ = Describe("RunDeployment", func() {
 					bodyByte := []byte(`{"artifact_url": "xyz"}`)
 					deployment.Body = &bodyByte
 
-					postDeploymentRequest := I.PostDeploymentRequest{
+					postDeploymentRequest := request.PostDeploymentRequest{
 						Deployment: deployment,
-						Request:    I.PostRequest{},
+						Request:    request.PostRequest{},
 					}
 
 					controller.RunDeployment(postDeploymentRequest, response)
@@ -702,9 +703,9 @@ var _ = Describe("RunDeployment", func() {
 					It("returns an error", func() {
 						deployment.CFContext.Environment = environment
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						deployResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -718,9 +719,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -741,9 +742,9 @@ var _ = Describe("RunDeployment", func() {
 						SkipSSL: true,
 					}
 
-					postDeploymentRequest := I.PostDeploymentRequest{
+					postDeploymentRequest := request.PostDeploymentRequest{
 						Deployment: deployment,
-						Request:    I.PostRequest{},
+						Request:    request.PostRequest{},
 					}
 
 					controller.RunDeployment(postDeploymentRequest, response)
@@ -764,9 +765,9 @@ var _ = Describe("RunDeployment", func() {
 						CustomParams: customParams,
 					}
 
-					postDeploymentRequest := I.PostDeploymentRequest{
+					postDeploymentRequest := request.PostDeploymentRequest{
 						Deployment: deployment,
-						Request:    I.PostRequest{},
+						Request:    request.PostRequest{},
 					}
 
 					controller.RunDeployment(postDeploymentRequest, response)
@@ -780,9 +781,9 @@ var _ = Describe("RunDeployment", func() {
 					deployment.Authorization.Username = randomizer.StringRunes(10)
 					deployment.Type = "application/zip"
 
-					postDeploymentRequest := I.PostDeploymentRequest{
+					postDeploymentRequest := request.PostDeploymentRequest{
 						Deployment: deployment,
-						Request:    I.PostRequest{},
+						Request:    request.PostRequest{},
 					}
 
 					controller.RunDeployment(postDeploymentRequest, response)
@@ -799,9 +800,9 @@ var _ = Describe("RunDeployment", func() {
 					deployment.Body = &bodyByte
 					deployment.Type = "application/json"
 
-					postRequest := I.PostRequest{ArtifactUrl: artifactURL}
+					postRequest := request.PostRequest{ArtifactUrl: artifactURL}
 
-					postDeploymentRequest := I.PostDeploymentRequest{
+					postDeploymentRequest := request.PostDeploymentRequest{
 						Deployment: deployment,
 						Request:    postRequest,
 					}
@@ -819,9 +820,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.Body = &bodyByte
 						deployment.Type = "application/json"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						deploymentResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -836,9 +837,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -849,9 +850,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -862,9 +863,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -878,9 +879,9 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitCall.Returns.Error = []error{errors.New("a test error")}
 
-							postDeploymentRequest := I.PostDeploymentRequest{
+							postDeploymentRequest := request.PostDeploymentRequest{
 								Deployment: deployment,
-								Request:    I.PostRequest{},
+								Request:    request.PostRequest{},
 							}
 
 							deploymentResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -895,9 +896,9 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error")}
 
-							postDeploymentRequest := I.PostDeploymentRequest{
+							postDeploymentRequest := request.PostDeploymentRequest{
 								Deployment: deployment,
-								Request:    I.PostRequest{},
+								Request:    request.PostRequest{},
 							}
 
 							deploymentResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -912,9 +913,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Organization = org
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -933,9 +934,9 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -955,9 +956,9 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -975,9 +976,9 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -995,9 +996,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1007,9 +1008,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1023,9 +1024,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Organization = org
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1044,9 +1045,9 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1066,9 +1067,9 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1086,9 +1087,9 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1106,9 +1107,9 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitCall.Returns.Error = []error{nil, nil, errors.New("a test error")}
 
-							postDeploymentRequest := I.PostDeploymentRequest{
+							postDeploymentRequest := request.PostDeploymentRequest{
 								Deployment: deployment,
-								Request:    I.PostRequest{},
+								Request:    request.PostRequest{},
 							}
 
 							deploymentResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -1123,9 +1124,9 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitEventCall.Returns.Error = []error{nil, nil, errors.New("a test error")}
 
-							postDeploymentRequest := I.PostDeploymentRequest{
+							postDeploymentRequest := request.PostDeploymentRequest{
 								Deployment: deployment,
-								Request:    I.PostRequest{},
+								Request:    request.PostRequest{},
 							}
 
 							deploymentResponse := controller.RunDeployment(postDeploymentRequest, response)
@@ -1139,9 +1140,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1151,9 +1152,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1167,9 +1168,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Organization = org
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1188,9 +1189,9 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1210,9 +1211,9 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1230,9 +1231,9 @@ var _ = Describe("RunDeployment", func() {
 
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1247,9 +1248,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Environment = environment
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1262,9 +1263,9 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitCall.Returns.Error = []error{nil, errors.New("a test error"), nil}
 
-							postDeploymentRequest := I.PostDeploymentRequest{
+							postDeploymentRequest := request.PostDeploymentRequest{
 								Deployment: deployment,
-								Request:    I.PostRequest{},
+								Request:    request.PostRequest{},
 							}
 
 							controller.RunDeployment(postDeploymentRequest, response)
@@ -1278,9 +1279,9 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitEventCall.Returns.Error = []error{nil, errors.New("a test error")}
 
-							postDeploymentRequest := I.PostDeploymentRequest{
+							postDeploymentRequest := request.PostDeploymentRequest{
 								Deployment: deployment,
-								Request:    I.PostRequest{},
+								Request:    request.PostRequest{},
 							}
 
 							controller.RunDeployment(postDeploymentRequest, response)
@@ -1296,9 +1297,9 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1310,9 +1311,9 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1326,9 +1327,9 @@ var _ = Describe("RunDeployment", func() {
 						deployment.CFContext.Organization = org
 						deployment.Type = "application/zip"
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1348,9 +1349,9 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1371,9 +1372,9 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1391,9 +1392,9 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1410,9 +1411,9 @@ var _ = Describe("RunDeployment", func() {
 
 						eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), nil, nil}
 
-						postDeploymentRequest := I.PostDeploymentRequest{
+						postDeploymentRequest := request.PostDeploymentRequest{
 							Deployment: deployment,
-							Request:    I.PostRequest{},
+							Request:    request.PostRequest{},
 						}
 
 						controller.RunDeployment(postDeploymentRequest, response)
@@ -1425,9 +1426,9 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitCall.Returns.Error = []error{errors.New("a test error"), errors.New("a test error"), nil}
 
-							postRequest := I.PostRequest{ArtifactUrl: "a fake url"}
+							postRequest := request.PostRequest{ArtifactUrl: "a fake url"}
 
-							postDeploymentRequest := I.PostDeploymentRequest{
+							postDeploymentRequest := request.PostDeploymentRequest{
 								Deployment: deployment,
 								Request:    postRequest,
 							}
@@ -1443,9 +1444,9 @@ var _ = Describe("RunDeployment", func() {
 
 							eventManager.EmitEventCall.Returns.Error = []error{errors.New("a test error"), errors.New("a test error"), nil}
 
-							postDeploymentRequest := I.PostDeploymentRequest{
+							postDeploymentRequest := request.PostDeploymentRequest{
 								Deployment: deployment,
-								Request:    I.PostRequest{},
+								Request:    request.PostRequest{},
 							}
 
 							controller.RunDeployment(postDeploymentRequest, response)
@@ -1464,9 +1465,9 @@ var _ = Describe("RunDeployment", func() {
 					retError := error_finder.CreateLogMatchedError("a description", []string{"some details"}, "a solution", "a code")
 					errorFinder.FindErrorsCall.Returns.Errors = []I.LogMatchedError{retError}
 
-					postDeploymentRequest := I.PostDeploymentRequest{
+					postDeploymentRequest := request.PostDeploymentRequest{
 						Deployment: deployment,
-						Request:    I.PostRequest{},
+						Request:    request.PostRequest{},
 					}
 
 					controller.RunDeployment(postDeploymentRequest, response)

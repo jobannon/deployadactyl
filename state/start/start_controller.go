@@ -10,12 +10,13 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/request"
 	"github.com/compozed/deployadactyl/structs"
 )
 
-type StartControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StartController
+type StartControllerConstructor func(log I.DeploymentLogger, deployer I.Deployer, eventManager I.EventManager, errorFinder I.ErrorFinder, startManagerFactory I.StartManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) request.StartController
 
-func NewStartController(l I.DeploymentLogger, d I.Deployer, em I.EventManager, ef I.ErrorFinder, smf I.StartManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) I.StartController {
+func NewStartController(l I.DeploymentLogger, d I.Deployer, em I.EventManager, ef I.ErrorFinder, smf I.StartManagerFactory, resolver I.AuthResolver, envResolver I.EnvResolver) request.StartController {
 	return &StartController{
 		Deployer:            d,
 		EventManager:        em,
@@ -40,7 +41,7 @@ type StartController struct {
 
 //deployment *I.Deployment, data map[string]interface{}
 
-func (c *StartController) StartDeployment(deployment I.PutDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
+func (c *StartController) StartDeployment(deployment request.PutDeploymentRequest, response *bytes.Buffer) (deployResponse I.DeployResponse) {
 	cf := deployment.CFContext
 	c.Log.Debugf("Preparing to start %s with UUID %s", cf.Application, c.Log.UUID)
 

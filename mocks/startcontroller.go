@@ -3,12 +3,13 @@ package mocks
 import (
 	"bytes"
 	"github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/request"
 )
 
 type StartController struct {
 	StartDeploymentCall struct {
 		Received struct {
-			Deployment interfaces.PutDeploymentRequest
+			Deployment request.PutDeploymentRequest
 			Response   *bytes.Buffer
 		}
 		Returns struct {
@@ -19,7 +20,7 @@ type StartController struct {
 	}
 }
 
-func (c *StartController) StartDeployment(deployment interfaces.PutDeploymentRequest, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
+func (c *StartController) StartDeployment(deployment request.PutDeploymentRequest, response *bytes.Buffer) (deployResponse interfaces.DeployResponse) {
 	c.StartDeploymentCall.Called = true
 	c.StartDeploymentCall.Received.Deployment = deployment
 	c.StartDeploymentCall.Received.Deployment.Request.Data = deployment.Request.Data

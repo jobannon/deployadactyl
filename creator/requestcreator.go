@@ -10,6 +10,7 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer/prechecker"
 	"github.com/compozed/deployadactyl/eventmanager"
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/compozed/deployadactyl/request"
 	"github.com/compozed/deployadactyl/state/delete"
 	"github.com/compozed/deployadactyl/state/push"
 	"github.com/compozed/deployadactyl/state/start"
@@ -79,9 +80,9 @@ func (r *RequestCreator) createPrechecker() I.Prechecker {
 	return prechecker.NewPrechecker(r.CreateEventManager())
 }
 
-type PushRequestCreatorConstructor func(creator Creator, uuid string, request I.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator
+type PushRequestCreatorConstructor func(creator Creator, uuid string, request request.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator
 
-func NewPushRequestCreator(creator Creator, uuid string, request I.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
+func NewPushRequestCreator(creator Creator, uuid string, request request.PostDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
 	return &PushRequestCreator{
 		RequestCreator: newRequestCreator(creator, uuid, buffer),
 		Request:        request,
@@ -90,7 +91,7 @@ func NewPushRequestCreator(creator Creator, uuid string, request I.PostDeploymen
 
 type PushRequestCreator struct {
 	RequestCreator
-	Request I.PostDeploymentRequest
+	Request request.PostDeploymentRequest
 }
 
 func (r PushRequestCreator) CreateRequestProcessor() I.RequestProcessor {
@@ -100,7 +101,7 @@ func (r PushRequestCreator) CreateRequestProcessor() I.RequestProcessor {
 	return push.NewPushRequestProcessor(r.Log, r.CreatePushController(), r.Request, r.Buffer)
 }
 
-func (r PushRequestCreator) CreatePushController() I.PushController {
+func (r PushRequestCreator) CreatePushController() request.PushController {
 	if r.provider.NewPushController != nil {
 		return r.provider.NewPushController(r.Log, r.CreateDeployer(), r.createSilentDeployer(), r.CreateEventManager(), r.createErrorFinder(), r, r.CreateAuthResolver(), r.CreateEnvResolver())
 	}
@@ -115,9 +116,9 @@ func (r PushRequestCreator) PushManager(deployEventData structs.DeployEventData,
 	}
 }
 
-type StopRequestCreatorConstructor func(creator Creator, uuid string, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator
+type StopRequestCreatorConstructor func(creator Creator, uuid string, request request.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator
 
-func NewStopRequestCreator(creator Creator, uuid string, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
+func NewStopRequestCreator(creator Creator, uuid string, request request.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
 	return &StopRequestCreator{
 		RequestCreator: newRequestCreator(creator, uuid, buffer),
 		Request:        request,
@@ -126,7 +127,7 @@ func NewStopRequestCreator(creator Creator, uuid string, request I.PutDeployment
 
 type StopRequestCreator struct {
 	RequestCreator
-	Request I.PutDeploymentRequest
+	Request request.PutDeploymentRequest
 }
 
 func (r StopRequestCreator) CreateRequestProcessor() I.RequestProcessor {
@@ -136,7 +137,7 @@ func (r StopRequestCreator) CreateRequestProcessor() I.RequestProcessor {
 	return stop.NewStopRequestProcessor(r.Log, r.CreateStopController(), r.Request, r.Buffer)
 }
 
-func (r StopRequestCreator) CreateStopController() I.StopController {
+func (r StopRequestCreator) CreateStopController() request.StopController {
 	if r.provider.NewStopController != nil {
 		return r.provider.NewStopController(r.Log, r.CreateDeployer(), r.CreateEventManager(), r.createErrorFinder(), r, r.CreateAuthResolver(), r.CreateEnvResolver())
 	}
@@ -151,9 +152,9 @@ func (r StopRequestCreator) StopManager(deployEventData structs.DeployEventData)
 	}
 }
 
-type StartRequestCreatorConstructor func(creator Creator, uuid string, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator
+type StartRequestCreatorConstructor func(creator Creator, uuid string, request request.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator
 
-func NewStartRequestCreator(creator Creator, uuid string, request I.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
+func NewStartRequestCreator(creator Creator, uuid string, request request.PutDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
 	return &StartRequestCreator{
 		RequestCreator: newRequestCreator(creator, uuid, buffer),
 		Request:        request,
@@ -162,7 +163,7 @@ func NewStartRequestCreator(creator Creator, uuid string, request I.PutDeploymen
 
 type StartRequestCreator struct {
 	RequestCreator
-	Request I.PutDeploymentRequest
+	Request request.PutDeploymentRequest
 }
 
 func (r StartRequestCreator) CreateRequestProcessor() I.RequestProcessor {
@@ -172,7 +173,7 @@ func (r StartRequestCreator) CreateRequestProcessor() I.RequestProcessor {
 	return start.NewStartRequestProcessor(r.Log, r.CreateStartController(), r.Request, r.Buffer)
 }
 
-func (r StartRequestCreator) CreateStartController() I.StartController {
+func (r StartRequestCreator) CreateStartController() request.StartController {
 	if r.provider.NewStartController != nil {
 		return r.provider.NewStartController(r.Log, r.CreateDeployer(), r.CreateEventManager(), r.createErrorFinder(), r, r.CreateAuthResolver(), r.CreateEnvResolver())
 	}
@@ -187,9 +188,9 @@ func (r StartRequestCreator) StartManager(deployEventData structs.DeployEventDat
 	}
 }
 
-type DeleteRequestCreatorConstructor func(creator Creator, uuid string, request I.DeleteDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator
+type DeleteRequestCreatorConstructor func(creator Creator, uuid string, request request.DeleteDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator
 
-func NewDeleteRequestCreator(creator Creator, uuid string, request I.DeleteDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
+func NewDeleteRequestCreator(creator Creator, uuid string, request request.DeleteDeploymentRequest, buffer *bytes.Buffer) I.RequestCreator {
 	return &DeleteRequestCreator{
 		RequestCreator: newRequestCreator(creator, uuid, buffer),
 		Request:        request,
@@ -198,7 +199,7 @@ func NewDeleteRequestCreator(creator Creator, uuid string, request I.DeleteDeplo
 
 type DeleteRequestCreator struct {
 	RequestCreator
-	Request I.DeleteDeploymentRequest
+	Request request.DeleteDeploymentRequest
 }
 
 func (r DeleteRequestCreator) CreateRequestProcessor() I.RequestProcessor {
@@ -208,7 +209,7 @@ func (r DeleteRequestCreator) CreateRequestProcessor() I.RequestProcessor {
 	return delete.NewDeleteRequestProcessor(r.Log, r.CreateDeleteController(), r.Request, r.Buffer)
 }
 
-func (r DeleteRequestCreator) CreateDeleteController() I.DeleteController {
+func (r DeleteRequestCreator) CreateDeleteController() request.DeleteController {
 	if r.provider.NewDeleteController != nil {
 		return r.provider.NewDeleteController(r.Log, r.CreateDeployer(), r.CreateEventManager(), r.createErrorFinder(), r, r.CreateAuthResolver(), r.CreateEnvResolver())
 	}

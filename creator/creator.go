@@ -32,6 +32,7 @@ import (
 	"github.com/compozed/deployadactyl/eventmanager/handlers/routemapper"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/randomizer"
+	R "github.com/compozed/deployadactyl/request"
 	"github.com/compozed/deployadactyl/state"
 	"github.com/compozed/deployadactyl/state/delete"
 	"github.com/compozed/deployadactyl/state/start"
@@ -299,14 +300,14 @@ func (c Creator) CreateRequestProcessor(uuid string, request interface{}, buffer
 }
 
 func (c Creator) CreateRequestCreator(uuid string, request interface{}, buffer *bytes.Buffer) (I.RequestCreator, error) {
-	post, ok := request.(I.PostDeploymentRequest)
+	post, ok := request.(R.PostDeploymentRequest)
 	if ok {
 		if c.provider.NewPushRequestCreator != nil {
 			return c.provider.NewPushRequestCreator(c, uuid, post, buffer), nil
 		}
 		return NewPushRequestCreator(c, uuid, post, buffer), nil
 	}
-	put, ok := request.(I.PutDeploymentRequest)
+	put, ok := request.(R.PutDeploymentRequest)
 	if ok {
 		if put.Request.State == "stopped" {
 			if c.provider.NewStopRequestCreator != nil {
@@ -320,7 +321,7 @@ func (c Creator) CreateRequestCreator(uuid string, request interface{}, buffer *
 			return NewStartRequestCreator(c, uuid, put, buffer), nil
 		}
 	}
-	delete, ok := request.(I.DeleteDeploymentRequest)
+	delete, ok := request.(R.DeleteDeploymentRequest)
 	if ok {
 		if c.provider.NewDeleteRequestCreator != nil {
 			return c.provider.NewDeleteRequestCreator(c, uuid, delete, buffer), nil

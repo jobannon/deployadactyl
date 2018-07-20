@@ -6,6 +6,7 @@ import (
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 
+	"github.com/compozed/deployadactyl/request"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -18,7 +19,7 @@ var _ = Describe("StartRequestProcessor", func() {
 
 			processor := StartRequestProcessor{
 				StartController: startController,
-				Request: interfaces.PutDeploymentRequest{
+				Request: request.PutDeploymentRequest{
 					Deployment: interfaces.Deployment{
 						CFContext: interfaces.CFContext{
 							Environment:  "the environment",

@@ -10,6 +10,7 @@ import (
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
+	"github.com/compozed/deployadactyl/request"
 	"github.com/compozed/deployadactyl/state"
 	. "github.com/compozed/deployadactyl/state/delete"
 	"github.com/compozed/deployadactyl/structs"
@@ -89,9 +90,9 @@ var _ = Describe("DeleteDeployment", func() {
 					Environment: environment,
 				}}
 			response := bytes.NewBuffer([]byte{})
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: nil},
+				Request:    request.DeleteRequest{Data: nil},
 			}
 
 			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -110,9 +111,9 @@ var _ = Describe("DeleteDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		putDeploymentRequest := I.DeleteDeploymentRequest{
+		putDeploymentRequest := request.DeleteDeploymentRequest{
 			Deployment: *deployment,
-			Request:    I.DeleteRequest{Data: nil},
+			Request:    request.DeleteRequest{Data: nil},
 		}
 
 		deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -132,9 +133,9 @@ var _ = Describe("DeleteDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		putDeploymentRequest := I.DeleteDeploymentRequest{
+		putDeploymentRequest := request.DeleteDeploymentRequest{
 			Deployment: *deployment,
-			Request:    I.DeleteRequest{Data: nil},
+			Request:    request.DeleteRequest{Data: nil},
 		}
 
 		deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -156,9 +157,9 @@ var _ = Describe("DeleteDeployment", func() {
 				},
 			}
 
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: data},
+				Request:    request.DeleteRequest{Data: data},
 			}
 
 			controller.DeleteDeployment(putDeploymentRequest, response)
@@ -183,9 +184,9 @@ var _ = Describe("DeleteDeployment", func() {
 					Environment: environment,
 				},
 			}
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: nil},
+				Request:    request.DeleteRequest{Data: nil},
 			}
 
 			deployResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -204,9 +205,9 @@ var _ = Describe("DeleteDeployment", func() {
 					Environment: "bad environment",
 				}}
 			response := bytes.NewBuffer([]byte{})
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: nil},
+				Request:    request.DeleteRequest{Data: nil},
 			}
 
 			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -230,9 +231,9 @@ var _ = Describe("DeleteDeployment", func() {
 					Environment: environment,
 				}}
 			response := bytes.NewBuffer([]byte{})
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: nil},
+				Request:    request.DeleteRequest{Data: nil},
 			}
 
 			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -253,9 +254,9 @@ var _ = Describe("DeleteDeployment", func() {
 						Environment: environment,
 					}}
 				response := bytes.NewBuffer([]byte{})
-				putDeploymentRequest := I.DeleteDeploymentRequest{
+				putDeploymentRequest := request.DeleteDeploymentRequest{
 					Deployment: *deployment,
-					Request:    I.DeleteRequest{Data: nil},
+					Request:    request.DeleteRequest{Data: nil},
 				}
 
 				deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -276,9 +277,9 @@ var _ = Describe("DeleteDeployment", func() {
 						Environment: environment,
 					}}
 				response := bytes.NewBuffer([]byte{})
-				putDeploymentRequest := I.DeleteDeploymentRequest{
+				putDeploymentRequest := request.DeleteDeploymentRequest{
 					Deployment: *deployment,
-					Request:    I.DeleteRequest{Data: nil},
+					Request:    request.DeleteRequest{Data: nil},
 				}
 
 				deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -301,9 +302,9 @@ var _ = Describe("DeleteDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: nil},
+				Request:    request.DeleteRequest{Data: nil},
 			}
 
 			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -324,9 +325,9 @@ var _ = Describe("DeleteDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: nil},
+				Request:    request.DeleteRequest{Data: nil},
 			}
 
 			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -347,9 +348,9 @@ var _ = Describe("DeleteDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: data},
+				Request:    request.DeleteRequest{Data: data},
 			}
 
 			deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -369,9 +370,9 @@ var _ = Describe("DeleteDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		putDeploymentRequest := I.DeleteDeploymentRequest{
+		putDeploymentRequest := request.DeleteDeploymentRequest{
 			Deployment: *deployment,
-			Request:    I.DeleteRequest{Data: nil},
+			Request:    request.DeleteRequest{Data: nil},
 		}
 
 		controller.DeleteDeployment(putDeploymentRequest, response)
@@ -386,9 +387,9 @@ var _ = Describe("DeleteDeployment", func() {
 				Environment: environment,
 			},
 		}
-		putDeploymentRequest := I.DeleteDeploymentRequest{
+		putDeploymentRequest := request.DeleteDeploymentRequest{
 			Deployment: *deployment,
-			Request:    I.DeleteRequest{Data: nil},
+			Request:    request.DeleteRequest{Data: nil},
 		}
 
 		response := bytes.NewBuffer([]byte{})
@@ -405,9 +406,9 @@ var _ = Describe("DeleteDeployment", func() {
 			},
 		}
 		response := bytes.NewBuffer([]byte{})
-		putDeploymentRequest := I.DeleteDeploymentRequest{
+		putDeploymentRequest := request.DeleteDeploymentRequest{
 			Deployment: *deployment,
-			Request:    I.DeleteRequest{Data: nil},
+			Request:    request.DeleteRequest{Data: nil},
 		}
 
 		deploymentResponse := controller.DeleteDeployment(putDeploymentRequest, response)
@@ -441,9 +442,9 @@ var _ = Describe("DeleteDeployment", func() {
 					Name:         environment,
 					Authenticate: true,
 				}
-				putDeploymentRequest := I.DeleteDeploymentRequest{
+				putDeploymentRequest := request.DeleteDeploymentRequest{
 					Deployment: *deployment,
-					Request:    I.DeleteRequest{Data: data},
+					Request:    request.DeleteRequest{Data: data},
 				}
 
 				controller.DeleteDeployment(putDeploymentRequest, response)
@@ -473,9 +474,9 @@ var _ = Describe("DeleteDeployment", func() {
 						Environment:  environment,
 					},
 				}
-				putDeploymentRequest := I.DeleteDeploymentRequest{
+				putDeploymentRequest := request.DeleteDeploymentRequest{
 					Deployment: *deployment,
-					Request:    I.DeleteRequest{Data: data},
+					Request:    request.DeleteRequest{Data: data},
 				}
 
 				controller.DeleteDeployment(putDeploymentRequest, response)
@@ -499,9 +500,9 @@ var _ = Describe("DeleteDeployment", func() {
 					},
 				}
 				response := bytes.NewBuffer([]byte{})
-				putDeploymentRequest := I.DeleteDeploymentRequest{
+				putDeploymentRequest := request.DeleteDeploymentRequest{
 					Deployment: *deployment,
-					Request:    I.DeleteRequest{Data: nil},
+					Request:    request.DeleteRequest{Data: nil},
 				}
 
 				controller.DeleteDeployment(putDeploymentRequest, response)
@@ -522,9 +523,9 @@ var _ = Describe("DeleteDeployment", func() {
 			deployer.DeployCall.Returns.Error = errors.New("deploy error")
 			errorFinder.FindErrorsCall.Returns.Errors = []I.LogMatchedError{error_finder.CreateLogMatchedError("a test error", []string{"error 1", "error 2", "error 3"}, "error solution", "test code")}
 			response := bytes.NewBuffer([]byte{})
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: nil},
+				Request:    request.DeleteRequest{Data: nil},
 			}
 
 			controller.DeleteDeployment(putDeploymentRequest, response)
@@ -553,9 +554,9 @@ var _ = Describe("DeleteDeployment", func() {
 				Authenticate: true,
 			}
 			deployer.DeployCall.Returns.Error = errors.New("deploy error")
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: data},
+				Request:    request.DeleteRequest{Data: data},
 			}
 
 			controller.DeleteDeployment(putDeploymentRequest, response)
@@ -585,9 +586,9 @@ var _ = Describe("DeleteDeployment", func() {
 				deployer.DeployCall.Returns.Error = errors.New("deploy error")
 
 				response := bytes.NewBuffer([]byte{})
-				putDeploymentRequest := I.DeleteDeploymentRequest{
+				putDeploymentRequest := request.DeleteDeploymentRequest{
 					Deployment: *deployment,
-					Request:    I.DeleteRequest{Data: nil},
+					Request:    request.DeleteRequest{Data: nil},
 				}
 
 				controller.DeleteDeployment(putDeploymentRequest, response)
@@ -606,9 +607,9 @@ var _ = Describe("DeleteDeployment", func() {
 				},
 			}
 			response := bytes.NewBuffer([]byte{})
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: nil},
+				Request:    request.DeleteRequest{Data: nil},
 			}
 
 			controller.DeleteDeployment(putDeploymentRequest, response)
@@ -637,9 +638,9 @@ var _ = Describe("DeleteDeployment", func() {
 				Name:         environment,
 				Authenticate: true,
 			}
-			putDeploymentRequest := I.DeleteDeploymentRequest{
+			putDeploymentRequest := request.DeleteDeploymentRequest{
 				Deployment: *deployment,
-				Request:    I.DeleteRequest{Data: data},
+				Request:    request.DeleteRequest{Data: data},
 			}
 
 			controller.DeleteDeployment(putDeploymentRequest, response)

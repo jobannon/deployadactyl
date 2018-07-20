@@ -91,7 +91,7 @@ func (p Pusher) Execute() error {
 		}
 	}
 
-	p.Log.Debugf("emitting a %s event", C.PushFinishedEvent)
+	p.Log.Debugf("%s: emitting a %s event", p.FoundationURL, C.PushFinishedEvent)
 	pushData := S.PushEventData{
 		AppPath:         p.AppPath,
 		FoundationURL:   p.FoundationURL,
@@ -105,7 +105,6 @@ func (p Pusher) Execute() error {
 	if err != nil {
 		return err
 	}
-	p.Log.Infof("emitted a %s event", C.PushFinishedEvent)
 
 	event := PushFinishedEvent{
 		CFContext:           p.CFContext,
@@ -124,7 +123,8 @@ func (p Pusher) Execute() error {
 	if err != nil {
 		return err
 	}
-	p.Log.Infof("emitted a %s event", event.Name())
+
+	p.Log.Infof("%s: emitted a %s event", p.FoundationURL, event.Name())
 
 	return nil
 }
@@ -159,13 +159,13 @@ func (p Pusher) Undo() error {
 
 	tempAppWithUUID := p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID
 	if p.Environment.DisableRollback {
-		p.Log.Errorf("Failed to deploy, deployment not rolled back due to DisabledRollback=true")
+		p.Log.Errorf("%s: Failed to deploy, deployment not rolled back due to DisabledRollback=true", p.FoundationURL)
 
 		return p.Success()
 	} else {
 
 		if p.Courier.Exists(p.DeploymentInfo.AppName) {
-			p.Log.Errorf("rolling back deploy of %s", tempAppWithUUID)
+			p.Log.Errorf("%s: rolling back deploy of %s", p.FoundationURL, tempAppWithUUID)
 
 			err := p.deleteApplication(tempAppWithUUID)
 			if err != nil {
@@ -173,7 +173,7 @@ func (p Pusher) Undo() error {
 			}
 
 		} else {
-			p.Log.Errorf("app %s did not previously exist: not rolling back", p.DeploymentInfo.AppName)
+			p.Log.Errorf("%s: app %s did not previously exist: not rolling back", p.FoundationURL, p.DeploymentInfo.AppName)
 
 			err := p.renameNewBuildToOriginalAppName()
 			if err != nil {
@@ -190,8 +190,8 @@ func (p Pusher) Finally() error {
 }
 
 func (p Pusher) pushApplication(appName, appPath string) error {
-	p.Log.Debugf("pushing app %s to %s", appName, p.DeploymentInfo.Domain)
-	p.Log.Debugf("tempdir for app %s: %s", appName, appPath)
+	p.Log.Debugf("%s: pushing app %s to %s", p.FoundationURL, appName, p.DeploymentInfo.Domain)
+	p.Log.Debugf("%s: tempdir for app %s: %s", p.FoundationURL, appName, appPath)
 
 	var (
 		pushOutput          []byte
@@ -204,9 +204,9 @@ func (p Pusher) pushApplication(appName, appPath string) error {
 	defer func() { p.Response.Write(pushOutput) }()
 
 	pushOutput, err = p.Courier.Push(appName, appPath, p.DeploymentInfo.AppName, p.DeploymentInfo.Instances)
-	p.Log.Infof("output from Cloud Foundry: \n%s", pushOutput)
+	p.Log.Infof("%s: output from Cloud Foundry: \n%s", p.FoundationURL, pushOutput)
 	if err != nil {
-		defer func() { p.Log.Errorf("logs from %s: \n%s", appName, cloudFoundryLogs) }()
+		defer func() { p.Log.Errorf("%s: logs from %s: \n%s", p.FoundationURL, appName, cloudFoundryLogs) }()
 
 		cloudFoundryLogs, cloudFoundryLogsErr = p.Courier.Logs(appName)
 		if cloudFoundryLogsErr != nil {
@@ -216,21 +216,21 @@ func (p Pusher) pushApplication(appName, appPath string) error {
 		return state.PushError{}
 	}
 
-	p.Log.Infof("successfully deployed new build %s", appName)
+	p.Log.Infof("%s: successfully deployed new build %s", p.FoundationURL, appName)
 
 	return nil
 }
 
 func (p Pusher) mapTempAppToLoadBalancedDomain(appName string) error {
-	p.Log.Debugf("mapping route for %s to %s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
+	p.Log.Debugf("%s: mapping route for %s to %s", p.FoundationURL, p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
 
 	out, err := p.Courier.MapRoute(appName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
 	if err != nil {
-		p.Log.Errorf("could not map %s to %s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
+		p.Log.Errorf("%s: could not map %s to %s", p.FoundationURL, p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
 		return state.MapRouteError{out}
 	}
 
-	p.Log.Infof("application route created: %s.%s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
+	p.Log.Infof("%s: application route created: %s.%s", p.FoundationURL, p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
 
 	fmt.Fprintf(p.Response, "application route created: %s.%s", p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
 
@@ -239,46 +239,46 @@ func (p Pusher) mapTempAppToLoadBalancedDomain(appName string) error {
 
 func (p Pusher) unMapLoadBalancedRoute() error {
 	if p.DeploymentInfo.Domain != "" {
-		p.Log.Debugf("unmapping route %s", p.DeploymentInfo.AppName)
+		p.Log.Debugf("%s: unmapping route %s", p.FoundationURL, p.DeploymentInfo.AppName)
 
 		out, err := p.Courier.UnmapRoute(p.DeploymentInfo.AppName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
 		if err != nil {
-			p.Log.Errorf("could not unmap %s", p.DeploymentInfo.AppName)
+			p.Log.Errorf("%s: could not unmap %s", p.FoundationURL, p.DeploymentInfo.AppName)
 			return state.UnmapRouteError{p.DeploymentInfo.AppName, out}
 		}
 
-		p.Log.Infof("unmapped route %s", p.DeploymentInfo.AppName)
+		p.Log.Infof("%s: unmapped route %s", p.FoundationURL, p.DeploymentInfo.AppName)
 	}
 
 	return nil
 }
 
 func (p Pusher) deleteApplication(appName string) error {
-	p.Log.Debugf("deleting %s", appName)
+	p.Log.Debugf("%s: deleting %s", p.FoundationURL, appName)
 
 	out, err := p.Courier.Delete(appName)
 	if err != nil {
-		p.Log.Errorf("could not delete %s", appName)
-		p.Log.Errorf("deletion error %s", err.Error())
-		p.Log.Errorf("deletion output", string(out))
+		p.Log.Errorf("%s: could not delete %s", p.FoundationURL, appName)
+		p.Log.Errorf("%s: deletion error %s", p.FoundationURL, err.Error())
+		p.Log.Errorf("%s: deletion output", p.FoundationURL, string(out))
 		return state.DeleteApplicationError{appName, out}
 	}
 
-	p.Log.Infof("deleted %s", appName)
+	p.Log.Infof("%s: deleted %s", p.FoundationURL, appName)
 
 	return nil
 }
 
 func (p Pusher) renameNewBuildToOriginalAppName() error {
-	p.Log.Debugf("renaming %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
+	p.Log.Debugf("%s: renaming %s to %s", p.FoundationURL, p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
 
 	out, err := p.Courier.Rename(p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
 	if err != nil {
-		p.Log.Errorf("could not rename %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
+		p.Log.Errorf("%s: could not rename %s to %s", p.FoundationURL, p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
 		return state.RenameError{p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID, out}
 	}
 
-	p.Log.Infof("renamed %s to %s", p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
+	p.Log.Infof("%s: renamed %s to %s", p.FoundationURL, p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
 
 	return nil
 }

@@ -172,8 +172,8 @@ var _ = Describe("Deleter", func() {
 
 				Eventually(response).Should(Say("delete succeeded"))
 
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("deleting app %s", randomAppName)))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully deleted app %s", randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("%s: deleting app %s", randomFoundationURL, randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("%s: successfully deleted app %s", randomFoundationURL, randomAppName)))
 			})
 		})
 
@@ -206,6 +206,12 @@ var _ = Describe("Deleter", func() {
 				Expect(deleter.Undo()).To(Succeed())
 
 				Eventually(response).Should(Say("delete feature is unable to rollback"))
+			})
+
+			It("should write the message with the foundation URL to the log", func() {
+				Expect(deleter.Undo()).To(Succeed())
+
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": delete feature is unable to rollback"))
 			})
 		})
 	})

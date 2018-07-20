@@ -1,9 +1,10 @@
 package stop
 
 import (
+	"io"
+
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
-	"io"
 )
 
 type Stopper struct {
@@ -66,7 +67,7 @@ func (s Stopper) Execute() error {
 		return state.ExistsError{ApplicationName: s.AppName}
 	}
 
-	s.Log.Infof("stopping app %s", s.AppName)
+	s.Log.Infof("%s: stopping app %s", s.FoundationURL, s.AppName)
 
 	output, err := s.Courier.Stop(s.AppName)
 	if err != nil {
@@ -75,7 +76,7 @@ func (s Stopper) Execute() error {
 	}
 	s.Response.Write(output)
 
-	s.Log.Infof("successfully stopped app %s", s.AppName)
+	s.Log.Infof("%s: successfully stopped app %s", s.FoundationURL, s.AppName)
 
 	return nil
 }
@@ -86,7 +87,7 @@ func (s Stopper) Undo() error {
 		return nil
 	}
 
-	s.Log.Infof("starting app %s", s.AppName)
+	s.Log.Infof("%s: starting app %s", s.FoundationURL, s.AppName)
 
 	output, err := s.Courier.Start(s.AppName)
 	if err != nil {
@@ -94,7 +95,7 @@ func (s Stopper) Undo() error {
 	}
 	s.Response.Write(output)
 
-	s.Log.Infof("successfully restarted app %s", s.AppName)
+	s.Log.Infof("%s: successfully restarted app %s", s.FoundationURL, s.AppName)
 
 	return nil
 }

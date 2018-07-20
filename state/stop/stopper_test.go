@@ -13,6 +13,7 @@ import (
 	"github.com/op/go-logging"
 
 	"fmt"
+
 	"github.com/compozed/deployadactyl/state"
 
 	"github.com/compozed/deployadactyl/interfaces"
@@ -171,8 +172,8 @@ var _ = Describe("Stopper", func() {
 
 				Eventually(response).Should(Say("stop succeeded"))
 
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("stopping app %s", randomAppName)))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully stopped app %s", randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("%s: stopping app %s", randomFoundationURL, randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("%s: successfully stopped app %s", randomFoundationURL, randomAppName)))
 			})
 		})
 
@@ -230,8 +231,8 @@ var _ = Describe("Stopper", func() {
 				Expect(courier.StartCall.Received.AppName).To(Equal(randomAppName))
 
 				Eventually(response).Should(Say("start succeeded"))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("starting app %s", randomAppName)))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully restarted app %s", randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("%s: starting app %s", randomFoundationURL, randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("%s: successfully restarted app %s", randomFoundationURL, randomAppName)))
 			})
 		})
 	})

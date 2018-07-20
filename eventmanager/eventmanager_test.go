@@ -123,6 +123,7 @@ var _ = Describe("Events", func() {
 			eventManager.AddBinding(binding)
 			Expect(eventManager.(*EventManager).Bindings[0]).To(Equal(binding))
 		})
+
 		It("should emit each event", func() {
 			binding := &mocks.EventBinding{}
 			eventManager.AddBinding(binding)
@@ -133,6 +134,7 @@ var _ = Describe("Events", func() {
 			Expect(binding.AcceptsCall.Received.Event).To(Equal(stopStartedEvent))
 			Expect(binding.EmitCall.Received.Event).To(Equal(stopStartedEvent))
 		})
+
 		Context("when event is an incorrect type", func() {
 			It("should not emit", func() {
 				binding := &mocks.EventBinding{}
@@ -145,6 +147,7 @@ var _ = Describe("Events", func() {
 				Expect(binding.EmitCall.Called.Bool).To(Equal(false))
 			})
 		})
+
 		Context("when binding returns an error", func() {
 			It("emit should return error", func() {
 				binding := &mocks.EventBinding{}
@@ -160,5 +163,20 @@ var _ = Describe("Events", func() {
 			})
 		})
 
+		Context("when a panic happens in Emit", func() {
+			It("recovers", func() {
+				binding := &mocks.EventBinding{}
+				eventManager.AddBinding(binding)
+
+				stopStartedEvent := stop.StopStartedEvent{}
+				binding.AcceptsCall.Returns.Bool = true
+				binding.EmitCall.ShouldPanic = true
+
+				err := eventManager.EmitEvent(stopStartedEvent)
+
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Recovered from a panic: "))
+			})
+		})
 	})
 })

@@ -2,6 +2,8 @@
 package eventmanager
 
 import (
+	"fmt"
+
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/go-errors/errors"
 )
@@ -75,14 +77,21 @@ func (e *EventManager) AddBinding(binding I.Binding) {
 	e.Bindings = append(e.Bindings, binding)
 }
 
-func (e EventManager) EmitEvent(event I.IEvent) error {
+func (e EventManager) EmitEvent(event I.IEvent) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			e.Log.Errorf("recovered from panic")
+			err = errors.New(fmt.Sprintf("Recovered from a panic: %v", r))
+		}
+	}()
 	for _, binding := range e.Bindings {
 		if binding.Accepts(event) {
-			err := binding.Emit(event)
+			err = binding.Emit(event)
 			if err != nil {
 				return err
 			}
 		}
 	}
+
 	return nil
 }

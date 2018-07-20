@@ -172,8 +172,8 @@ var _ = Describe("Starter", func() {
 
 				Eventually(response).Should(Say("start succeeded"))
 
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("starting app %s", randomAppName)))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully started app %s", randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("%s: starting app %s", randomFoundationURL, randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("%s: successfully started app %s", randomFoundationURL, randomAppName)))
 			})
 		})
 
@@ -231,8 +231,8 @@ var _ = Describe("Starter", func() {
 				Expect(courier.StopCall.Received.AppName).To(Equal(randomAppName))
 
 				Eventually(response).Should(Say("stop succeeded"))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("stopping app %s", randomAppName)))
-				Eventually(logBuffer).Should(Say(fmt.Sprintf("successfully restopped app %s", randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("%s: stopping app %s", randomFoundationURL, randomAppName)))
+				Eventually(logBuffer).Should(Say(fmt.Sprintf("%s: successfully restopped app %s", randomFoundationURL, randomAppName)))
 			})
 		})
 	})

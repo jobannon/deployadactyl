@@ -19,6 +19,7 @@ type EventBinding struct {
 		Returns struct {
 			Error error
 		}
+		ShouldPanic bool
 	}
 }
 
@@ -32,6 +33,11 @@ func (b *EventBinding) Accepts(event interface{}) bool {
 func (b *EventBinding) Emit(gevent interface{}) error {
 	b.EmitCall.Called.Bool = true
 	b.EmitCall.Received.Event = gevent
+
+	if b.EmitCall.ShouldPanic {
+		panic("You messed up")
+	}
+
 	return b.EmitCall.Returns.Error
 
 }

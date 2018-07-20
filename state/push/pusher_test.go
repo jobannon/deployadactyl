@@ -14,12 +14,13 @@ import (
 
 	"encoding/base64"
 
+	"reflect"
+
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
-	"reflect"
 )
 
 var _ = Describe("Pusher", func() {
@@ -179,6 +180,7 @@ var _ = Describe("Pusher", func() {
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", tempAppWithUUID, randomAppPath)))
 					Eventually(logBuffer).Should(Say("output from Cloud Foundry"))
 					Eventually(logBuffer).Should(Say("successfully deployed new build"))
+					Eventually(logBuffer).Should(Say(randomFoundationURL))
 				})
 			})
 
@@ -418,6 +420,40 @@ var _ = Describe("Pusher", func() {
 				})
 			})
 		})
+
+		It("should write foundation URL to log", func() {
+			pusher.Execute()
+			Eventually(logBuffer).Should(Say(randomFoundationURL + ": pushing app"))
+			Eventually(logBuffer).Should(Say(randomFoundationURL + ": tempdir for app"))
+			Eventually(logBuffer).Should(Say(randomFoundationURL + ": output from Cloud Foundry"))
+			Eventually(logBuffer).Should(Say(randomFoundationURL + ": successfully deployed"))
+			Eventually(logBuffer).Should(Say(randomFoundationURL + ": emitted a"))
+		})
+
+		Context("when push call fails", func() {
+			It("should write foundation URL to log", func() {
+				courier.PushCall.Returns.Error = errors.New("an error")
+				pusher.Execute()
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": logs from"))
+			})
+		})
+
+		Context("when domain is not empty", func() {
+			It("should write foundation URL to log", func() {
+				pusher.Execute()
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": mapping route for"))
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": application route created"))
+			})
+
+			Context("when map route returns an error", func() {
+				It("should write foundation URL to log", func() {
+					courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
+					pusher.Execute()
+					Eventually(logBuffer).Should(Say(randomFoundationURL + ": could not map"))
+				})
+			})
+		})
+
 	})
 
 	Describe("Success", func() {
@@ -532,6 +568,64 @@ var _ = Describe("Pusher", func() {
 				Eventually(logBuffer).ShouldNot(Say("delete"))
 			})
 		})
+
+		It("should write the foundation URL to the log", func() {
+			courier.ExistsCall.Returns.Bool = true
+			pusher.Success()
+			Eventually(logBuffer).Should(Say(randomFoundationURL + ": unmapping route"))
+			Eventually(logBuffer).Should(Say(randomFoundationURL + ": unmapped route"))
+
+		})
+		Context("when UnmapRoute error returns an error", func() {
+			It("should write the error message to the log with the foundation URL", func() {
+				courier.ExistsCall.Returns.Bool = true
+				courier.UnmapRouteCall.Returns.Error = errors.New("an error")
+				pusher.Success()
+
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": could not unmap"))
+			})
+		})
+		Context("When deleteApplication is called", func() {
+			It("should write the foundation URL to the log", func() {
+				courier.ExistsCall.Returns.Bool = true
+				pusher.Success()
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": deleting"))
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": deleted"))
+
+			})
+		})
+
+		Context("When DeleteCall returns an error", func() {
+			It("should write the error message with foundation URL to the log", func() {
+				courier.ExistsCall.Returns.Bool = true
+				courier.DeleteCall.Returns.Error = errors.New("an error")
+				pusher.Success()
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": could not delete"))
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": deletion error"))
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": deletion output"))
+
+			})
+		})
+
+		Context("When renameNewBuildToOriginalAppName is called", func() {
+			It("should write the foundation URL to the log", func() {
+				courier.ExistsCall.Returns.Bool = true
+				pusher.Success()
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": renaming"))
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": renamed"))
+
+			})
+		})
+
+		Context("When RenameCall returns an error", func() {
+			It("should write the error message with foundation URL to the log", func() {
+				courier.ExistsCall.Returns.Bool = true
+				courier.RenameCall.Returns.Error = errors.New("an error")
+				pusher.Success()
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": could not rename"))
+
+			})
+		})
 	})
 
 	Describe("Undo", func() {
@@ -587,6 +681,37 @@ var _ = Describe("Pusher", func() {
 					Expect(err).To(MatchError(state.RenameError{tempAppWithUUID, []byte("rename error")}))
 
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("could not rename %s to %s", tempAppWithUUID, randomAppName)))
+				})
+			})
+		})
+
+		Context("when DisableRollback is true", func() {
+			It("should write message with Foundation url", func() {
+				pusher.Environment.DisableRollback = true
+				pusher.Undo()
+
+				Eventually(logBuffer).Should(Say(randomFoundationURL + ": Failed to deploy"))
+			})
+		})
+
+		Context("when DisableRollback is false", func() {
+			Context("when courier ExistCall returns true", func() {
+				It("should write the message to the log", func() {
+					pusher.Environment.DisableRollback = false
+					courier.ExistsCall.Returns.Bool = true
+					pusher.Undo()
+
+					Eventually(logBuffer).Should(Say(randomFoundationURL + ": rolling back deploy of"))
+				})
+			})
+
+			Context("when courier ExistCall returns false", func() {
+				It("should write the message to the log", func() {
+					pusher.Environment.DisableRollback = false
+					courier.ExistsCall.Returns.Bool = false
+					pusher.Undo()
+
+					Eventually(logBuffer).Should(Say(randomFoundationURL + ": app"))
 				})
 			})
 		})

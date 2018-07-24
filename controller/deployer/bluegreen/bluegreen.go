@@ -53,6 +53,13 @@ func (bg BlueGreen) Execute(actionCreator I.ActionCreator, environment S.Environ
 		fmt.Fprintf(response, "\n%s End Cloud Foundry Output %s\n", strings.Repeat("-", 17), strings.Repeat("-", 17))
 	}()
 
+	initLoginError := bg.commands(append(make([]actor, 0), actors[0]), func(action I.Action) error {
+		return action.Initially()
+	})
+	if len(initLoginError) != 0 {
+		return actionCreator.InitiallyError(initLoginError)
+	}
+
 	loginErrors := bg.commands(actors, func(action I.Action) error {
 		return action.Initially()
 	})
@@ -89,6 +96,7 @@ func (bg BlueGreen) Execute(actionCreator I.ActionCreator, environment S.Environ
 }
 
 func (bg BlueGreen) commands(actors []actor, doFunc ActorCommand) (manyErrors []error) {
+
 	for _, a := range actors {
 		a.Commands <- doFunc
 	}

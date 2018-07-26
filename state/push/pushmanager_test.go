@@ -3,6 +3,11 @@ package push_test
 import (
 	"bytes"
 	"encoding/base64"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"reflect"
+
 	"github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/interfaces"
@@ -16,10 +21,6 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 	"github.com/op/go-logging"
 	"github.com/spf13/afero"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"reflect"
 )
 
 var _ = Describe("Actioncreator", func() {
@@ -32,6 +33,7 @@ var _ = Describe("Actioncreator", func() {
 		fileSystemCleaner *mocks.FileSystemCleaner
 		response          io.ReadWriter
 	)
+
 	BeforeEach(func() {
 		logBuffer = bytes.NewBuffer([]byte{})
 		log = interfaces.DefaultLogger(logBuffer, logging.DEBUG, "deployer tests")
@@ -55,6 +57,7 @@ var _ = Describe("Actioncreator", func() {
 			Environment:       structs.Environment{Instances: 0},
 		}
 	})
+
 	Describe("Setup", func() {
 		Context("content-type is JSON", func() {
 

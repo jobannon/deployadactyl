@@ -26,6 +26,16 @@ type Pusher struct {
 			Error error
 		}
 	}
+
+	PostExecuteCall struct {
+		Write struct {
+			Output string
+		}
+		Returns struct {
+			Error error
+		}
+	}
+
 	VerifyCall struct {
 		Returns struct {
 			Error error
@@ -65,6 +75,13 @@ func (p *Pusher) Execute() error {
 	fmt.Fprint(p.Response, p.ExecuteCall.Write.Output)
 
 	return p.ExecuteCall.Returns.Error
+}
+
+func (p *Pusher) PostExecute() error {
+
+	fmt.Fprint(p.Response, p.PostExecuteCall.Write.Output)
+
+	return p.PostExecuteCall.Returns.Error
 }
 
 func (p *Pusher) Verify() error {

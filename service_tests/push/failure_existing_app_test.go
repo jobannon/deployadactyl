@@ -153,23 +153,13 @@ environments:
 			Expect(c.ExistsCall.Received.AppName).To(Equal(appName))
 		}
 	})
-	It("maps the new application routes", func() {
-		for i, c := range couriers {
-			if i != 1 {
-				Expect(len(c.MapRouteCall.Received.AppName)).To(Equal(1))
-				Expect(c.MapRouteCall.Received.AppName[0]).To(ContainSubstring(appName + "-new-build-"))
-				Expect(c.MapRouteCall.Received.Domain[0]).To(Equal("example.com"))
-				Expect(c.MapRouteCall.Received.Hostname[0]).To(Equal(appName))
-			}
-		}
-	})
 	It("deletes the new application", func() {
 		for _, c := range couriers {
 			Expect(c.DeleteCall.Received.AppName).To(ContainSubstring(appName + "-new-build-"))
 		}
 	})
 	It("calls Emit the correct number of times", func() {
-		Expect(len(eventManager.EmitCall.Received.Events)).To(Equal(7))
+		Expect(len(eventManager.EmitCall.Received.Events)).To(Equal(4))
 	})
 	It("emits a deploy.start event", func() {
 		Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal("deploy.start"))
@@ -177,19 +167,14 @@ environments:
 	It("emits a push.started event", func() {
 		Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal("push.started"))
 	})
-	It("emits a push.finished event", func() {
-		Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal("push.finished"))
-		Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal("push.finished"))
-		Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal("push.finished"))
-	})
 	It("emits a deploy.failure event", func() {
-		Expect(eventManager.EmitCall.Received.Events[5].Type).To(Equal("deploy.failure"))
+		Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal("deploy.failure"))
 	})
 	It("emits a deploy.finish event", func() {
-		Expect(eventManager.EmitCall.Received.Events[6].Type).To(Equal("deploy.finish"))
+		Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal("deploy.finish"))
 	})
 	It("calls EmitEvent the correct number of times", func() {
-		Expect(len(eventManager.EmitEventCall.Received.Events)).To(Equal(9))
+		Expect(len(eventManager.EmitEventCall.Received.Events)).To(Equal(6))
 	})
 	It("emits a DeployStartedEvent", func() {
 		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).To(Equal(reflect.TypeOf(push.DeployStartedEvent{})))
@@ -203,15 +188,10 @@ environments:
 	It("emits a PushStartedEvent", func() {
 		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[3])).To(Equal(reflect.TypeOf(push.PushStartedEvent{})))
 	})
-	It("emits a PushFinishedEvent for each foundation", func() {
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[4])).To(Equal(reflect.TypeOf(push.PushFinishedEvent{})))
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[5])).To(Equal(reflect.TypeOf(push.PushFinishedEvent{})))
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[6])).To(Equal(reflect.TypeOf(push.PushFinishedEvent{})))
-	})
 	It("emits a DeployFailureEvent", func() {
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[7])).To(Equal(reflect.TypeOf(push.DeployFailureEvent{})))
+		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[4])).To(Equal(reflect.TypeOf(push.DeployFailureEvent{})))
 	})
 	It("emits a DeployFinishedEvent", func() {
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[8])).To(Equal(reflect.TypeOf(push.DeployFinishedEvent{})))
+		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[5])).To(Equal(reflect.TypeOf(push.DeployFinishedEvent{})))
 	})
 })

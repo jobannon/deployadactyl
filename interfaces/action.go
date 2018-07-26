@@ -1,14 +1,16 @@
 package interfaces
 
 import (
-	S "github.com/compozed/deployadactyl/structs"
 	"io"
+
+	S "github.com/compozed/deployadactyl/structs"
 )
 
 type Action interface {
 	Initially() error
-	Execute() error
 	Verify() error
+	Execute() error
+	PostExecute() error
 	Success() error
 	Undo() error
 	Finally() error

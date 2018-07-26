@@ -5,22 +5,20 @@ import (
 	"fmt"
 	"math/rand"
 
-	C "github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	. "github.com/compozed/deployadactyl/state/push"
 	S "github.com/compozed/deployadactyl/structs"
 	"github.com/op/go-logging"
 
-	"encoding/base64"
-
-	"reflect"
-
+	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/routemapper"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
+	"github.com/spf13/afero"
 )
 
 var _ = Describe("Pusher", func() {
@@ -29,6 +27,7 @@ var _ = Describe("Pusher", func() {
 		courier      *mocks.Courier
 		eventManager *mocks.EventManager
 		fetcher      *mocks.Fetcher
+		client       *mocks.Client
 
 		randomUsername      string
 		randomPassword      string
@@ -42,8 +41,8 @@ var _ = Describe("Pusher", func() {
 		randomEndpoint      string
 		randomFoundationURL string
 		randomArtifactUrl   string
-		randomManifest      string
 		tempAppWithUUID     string
+		randomHostName      string
 		skipSSL             bool
 		deploymentInfo      S.DeploymentInfo
 		response            *Buffer
@@ -54,6 +53,7 @@ var _ = Describe("Pusher", func() {
 		courier = &mocks.Courier{}
 		eventManager = &mocks.EventManager{}
 		fetcher = &mocks.Fetcher{}
+		client = &mocks.Client{}
 
 		randomFoundationURL = "randomFoundationURL-" + randomizer.StringRunes(10)
 		randomUsername = "randomUsername-" + randomizer.StringRunes(10)
@@ -65,16 +65,45 @@ var _ = Describe("Pusher", func() {
 		randomAppName = "randomAppName-" + randomizer.StringRunes(10)
 		randomEndpoint = "randomEndpoint-" + randomizer.StringRunes(10)
 		randomArtifactUrl = "randomArtifactUrl-" + randomizer.StringRunes(10)
-		randomManifest = base64.StdEncoding.EncodeToString([]byte("randomManifest-" + randomizer.StringRunes(10)))
 		randomUUID = randomizer.StringRunes(10)
 		randomInstances = uint16(rand.Uint32())
+		randomHostName = "randomHostName" + randomizer.StringRunes(10)
 
 		tempAppWithUUID = randomAppName + TemporaryNameSuffix + randomUUID
+
+		manifest := fmt.Sprintf(`
+---
+applications:
+- name: example
+  custom-routes:
+  - route: %s
+  - route: %s
+  - route: %s
+
+  env:
+    CONVEYOR: 23432`,
+			fmt.Sprintf("%s0.%s0", randomAppName, randomDomain),
+			fmt.Sprintf("%s1.%s1", randomAppName, randomDomain),
+			fmt.Sprintf("%s2.%s2", randomAppName, randomDomain),
+		)
 
 		response = NewBuffer()
 		logBuffer = NewBuffer()
 
 		eventManager.EmitCall.Returns.Error = append(eventManager.EmitCall.Returns.Error, nil)
+		client.GetCall.Returns.Response.StatusCode = 200
+		courier.DomainsCall.Returns.Domains = []string{randomDomain + "0", randomDomain + "1", randomDomain + "2"}
+
+		healthChecker := healthchecker.HealthChecker{
+			Client: client,
+			OldURL: "api.cf",
+			NewURL: "apps",
+		}
+
+		routeMapper := routemapper.RouteMapper{
+			Courier:    courier,
+			FileSystem: &afero.Afero{Fs: afero.NewMemMapFs()},
+		}
 
 		deploymentInfo = S.DeploymentInfo{
 			Username:            randomUsername,
@@ -88,7 +117,7 @@ var _ = Describe("Pusher", func() {
 			UUID:                randomUUID,
 			HealthCheckEndpoint: randomEndpoint,
 			ArtifactURL:         randomArtifactUrl,
-			Manifest:            randomManifest,
+			Manifest:            manifest,
 			ContentType:         "JSON",
 			Data:                make(map[string]interface{}, 0),
 		}
@@ -105,6 +134,8 @@ var _ = Describe("Pusher", func() {
 			Fetcher:        fetcher,
 			CFContext:      interfaces.CFContext{},
 			Auth:           interfaces.Authorization{},
+			HealthChecker:  healthChecker,
+			RouteMapper:    routeMapper,
 		}
 	})
 
@@ -180,7 +211,6 @@ var _ = Describe("Pusher", func() {
 					Eventually(logBuffer).Should(Say(fmt.Sprintf("tempdir for app %s: %s", tempAppWithUUID, randomAppPath)))
 					Eventually(logBuffer).Should(Say("output from Cloud Foundry"))
 					Eventually(logBuffer).Should(Say("successfully deployed new build"))
-					Eventually(logBuffer).Should(Say(randomFoundationURL))
 				})
 			})
 
@@ -273,161 +303,23 @@ var _ = Describe("Pusher", func() {
 			})
 		})
 
-		Describe("mapping the load balanced route to the temporary application", func() {
-			Context("when a domain is provided", func() {
-				It("maps the route to the app", func() {
-					fetcher.FetchCall.Returns.AppPath = randomAppPath
-					Expect(pusher.Execute()).To(Succeed())
-
-					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-					Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
-
-					Eventually(response).Should(Say(fmt.Sprintf("application route created: %s.%s", randomAppName, randomDomain)))
-
-					Eventually(logBuffer).Should(Say(fmt.Sprintf("mapping route for %s to %s", randomAppName, randomDomain)))
-				})
-			})
-
-			Context("when a randomDomain is not provided", func() {
-				It("does not map the randomDomain", func() {
-					courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("mapped route"))
-					deploymentInfo.Domain = ""
-					fetcher.FetchCall.Returns.AppPath = randomAppPath
-
-					pusher = Pusher{
-						Courier:        courier,
-						DeploymentInfo: deploymentInfo,
-						EventManager:   eventManager,
-						Response:       response,
-						Log:            interfaces.DeploymentLogger{Log: interfaces.DefaultLogger(logBuffer, logging.DEBUG, "pusher_test")},
-						Fetcher:        fetcher,
-					}
-
-					Expect(pusher.Execute()).To(Succeed())
-
-					Expect(courier.MapRouteCall.Received.AppName).To(BeEmpty())
-					Expect(courier.MapRouteCall.Received.Domain).To(BeEmpty())
-
-					Eventually(response).ShouldNot(Say("mapped route"))
-
-					Eventually(logBuffer).ShouldNot(Say(fmt.Sprintf("mapping route for %s to", randomAppName)))
-				})
-			})
-
-			Context("when MapRoute fails", func() {
-				It("returns an error", func() {
-					fetcher.FetchCall.Returns.AppPath = randomAppPath
-					courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("unable to map route"))
-					courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
-
-					err := pusher.Execute()
-					Expect(err).To(MatchError(state.MapRouteError{[]byte("unable to map route")}))
-
-					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-					Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
-
-					Eventually(logBuffer).Should(Say(fmt.Sprintf("mapping route for %s to %s", randomAppName, randomDomain)))
-				})
-			})
-		})
-
-		Context("push.finished event", func() {
-			It("calls Emit", func() {
-				pusher.Execute()
-
-				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal("push.finished"))
-			})
-			It("does not return an error", func() {
-				fetcher.FetchCall.Returns.AppPath = randomAppPath
-				Expect(pusher.Execute()).To(Succeed())
-
-				Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal(C.PushFinishedEvent))
-			})
-
-			It("has the temporary app name on the event", func() {
-				fetcher.FetchCall.Returns.AppPath = randomAppPath
-				Expect(pusher.Execute()).To(Succeed())
-
-				Expect(eventManager.EmitCall.Received.Events[0].Data.(S.PushEventData).TempAppWithUUID).To(Equal(randomAppName + TemporaryNameSuffix + randomUUID))
-			})
-			Context("when Emit fails", func() {
-				It("returns an error", func() {
-					fetcher.FetchCall.Returns.AppPath = randomAppPath
-					eventManager.EmitCall.Returns.Error[0] = errors.New("event manager error")
-
-					err := pusher.Execute()
-					Expect(err).To(MatchError("event manager error"))
-				})
-			})
-		})
-
-		Context("PushFinishedEvent", func() {
-			It("calls EmitEvent", func() {
-				pusher.Execute()
-
-				Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).To(Equal(reflect.TypeOf(PushFinishedEvent{})))
-			})
-			It("provides CFContext", func() {
-				pusher.CFContext = interfaces.CFContext{
-					Organization: randomizer.StringRunes(10),
-					Space:        randomizer.StringRunes(10),
-					Application:  randomizer.StringRunes(10),
-					Environment:  randomizer.StringRunes(10),
-				}
-
-				pusher.Execute()
-
-				event := eventManager.EmitEventCall.Received.Events[0].(PushFinishedEvent)
-				Expect(event.CFContext).To(Equal(pusher.CFContext))
-			})
-			It("provides Auth", func() {
-				pusher.Auth = interfaces.Authorization{
-					Username: randomizer.StringRunes(10),
-					Password: randomizer.StringRunes(10),
-				}
-
-				pusher.Execute()
-
-				event := eventManager.EmitEventCall.Received.Events[0].(PushFinishedEvent)
-				Expect(event.Auth).To(Equal(pusher.Auth))
-			})
-			It("provides other info", func() {
-				pusher.Response = response
-				pusher.AppPath = randomAppName
-				pusher.FoundationURL = randomFoundationURL
-
-				pusher.Execute()
-
-				event := eventManager.EmitEventCall.Received.Events[0].(PushFinishedEvent)
-
-				Expect(event.Response).To(Equal(pusher.Response))
-				Expect(event.AppPath).To(Equal(pusher.AppPath))
-				Expect(event.FoundationURL).To(Equal(pusher.FoundationURL))
-				Expect(event.TempAppWithUUID).ToNot(BeNil())
-				Expect(event.Log).To(Equal(pusher.Log))
-				Expect(event.Courier).ToNot(BeNil())
-				Expect(event.Data).To(Equal(deploymentInfo.Data))
-				Expect(event.Manifest).To(Equal(deploymentInfo.Manifest))
-				Expect(event.HealthCheckEndpoint).To(Equal(deploymentInfo.HealthCheckEndpoint))
-			})
-			Context("when Emit fails", func() {
-				It("returns an error", func() {
-					fetcher.FetchCall.Returns.AppPath = randomAppPath
-					eventManager.EmitEventCall.Returns.Error = []error{errors.New("event manager error")}
-
-					err := pusher.Execute()
-					Expect(err).To(MatchError("event manager error"))
-				})
-			})
-		})
-
 		It("should write foundation URL to log", func() {
 			pusher.Execute()
 			Eventually(logBuffer).Should(Say(randomFoundationURL + ": pushing app"))
 			Eventually(logBuffer).Should(Say(randomFoundationURL + ": tempdir for app"))
 			Eventually(logBuffer).Should(Say(randomFoundationURL + ": output from Cloud Foundry"))
 			Eventually(logBuffer).Should(Say(randomFoundationURL + ": successfully deployed"))
-			Eventually(logBuffer).Should(Say(randomFoundationURL + ": emitted a"))
+		})
+
+		Context("when healthcheck route is created", func() {
+			It("should call the healthchecker", func() {
+				courier.PushCall.Returns.Output = []byte("push succeeded")
+
+				Expect(pusher.Execute()).To(Succeed())
+
+				Expect(client.GetCall.Received.URL).To(ContainSubstring(randomFoundationURL))
+				Expect(client.GetCall.Received.URL).To(ContainSubstring(randomEndpoint))
+			})
 		})
 
 		Context("when push call fails", func() {
@@ -437,23 +329,83 @@ var _ = Describe("Pusher", func() {
 				Eventually(logBuffer).Should(Say(randomFoundationURL + ": logs from"))
 			})
 		})
+	})
 
-		Context("when domain is not empty", func() {
-			It("should write foundation URL to log", func() {
-				pusher.Execute()
-				Eventually(logBuffer).Should(Say(randomFoundationURL + ": mapping route for"))
-				Eventually(logBuffer).Should(Say(randomFoundationURL + ": application route created"))
-			})
+	Describe("PostExecute", func() {
+		It("calls MapRoute with the correct input", func() {
+			courier.ExistsCall.Returns.Bool = true
+			pusher.PostExecute()
 
-			Context("when map route returns an error", func() {
-				It("should write foundation URL to log", func() {
-					courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
-					pusher.Execute()
-					Eventually(logBuffer).Should(Say(randomFoundationURL + ": could not map"))
-				})
+			Expect(courier.MapRouteCall.Received.Hostname[0]).To(Equal(randomAppName + "0"))
+			Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName + "-new-build-" + randomUUID))
+			Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain + "0"))
+		})
+
+		It("writes logs about mapping routes", func() {
+			courier.ExistsCall.Returns.Bool = true
+			pusher.PostExecute()
+
+			Eventually(logBuffer).Should(Say("mapping route for"))
+			Eventually(logBuffer).Should(Say("application route created"))
+		})
+
+		Context("when no domain is set on the pusher struct", func() {
+			It("calls MapRoute with the correct input", func() {
+				courier.ExistsCall.Returns.Bool = true
+				pusher.DeploymentInfo.Domain = ""
+				pusher.PostExecute()
+
+				Expect(courier.MapRouteCall.TimesCalled).To(Equal(3))
 			})
 		})
 
+		It("calls CustomRouteMapper with correct input", func() {
+			manifest := fmt.Sprintf(`
+---
+applications:
+- name: example
+  custom-routes:
+  - route: %s
+  - route: %s
+  - route: %s
+
+  env:
+    CONVEYOR: 23432`,
+				fmt.Sprintf("%s0.%s0", randomHostName, randomDomain),
+				fmt.Sprintf("%s1.%s1", randomHostName, randomDomain),
+				fmt.Sprintf("%s2.%s2", randomHostName, randomDomain),
+			)
+
+			pusher.DeploymentInfo.Manifest = manifest
+			courier.ExistsCall.Returns.Bool = true
+			courier.DomainsCall.Returns.Domains = []string{randomDomain + "0", randomDomain + "1", randomDomain + "2"}
+
+			pusher.PostExecute()
+
+			Expect(courier.DomainsCall.TimesCalled).To(Equal(1))
+			Expect(courier.MapRouteCall.TimesCalled).To(Equal(4))
+			Expect(courier.MapRouteCall.Received.AppName[0]).To(ContainSubstring(randomAppName + "-new-build-"))
+			Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain + "0"))
+			Expect(courier.MapRouteCall.Received.Hostname[0]).To(Equal(randomHostName + "0"))
+		})
+
+		Context("when an error is returned from CustomRouteMapper", func() {
+			It("returns the error", func() {
+				manifest := fmt.Sprintf(`
+---
+applications:
+- name: example
+  custom-routes:`)
+
+				pusher.DeploymentInfo.Manifest = manifest
+				courier.ExistsCall.Returns.Bool = true
+				courier.DomainsCall.Returns.Domains = []string{randomDomain + "0", randomDomain + "1", randomDomain + "2"}
+
+				err := pusher.PostExecute()
+
+				Expect(err).To(HaveOccurred())
+			})
+		})
 	})
 
 	Describe("Success", func() {

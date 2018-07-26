@@ -22,7 +22,6 @@ func main() {
 	var (
 		config               = flag.String("config", defaultConfigFilePath, "location of the config file")
 		envVarHandlerEnabled = flag.Bool("env", false, "enable environment variable handling")
-		routeMapperEnabled   = flag.Bool("route-mapper", false, "enables route mapper to map additional routes from a manifest")
 	)
 	flag.Parse()
 
@@ -50,17 +49,6 @@ func main() {
 		envVarHandler := c.CreateEnvVarHandler()
 		log.Infof("registering environment variable event handler")
 		eventBindings.AddBinding(push.NewArtifactRetrievalSuccessEventBinding(envVarHandler.ArtifactRetrievalSuccessEventHandler))
-	}
-
-	healthHandler := c.CreateHealthChecker()
-	log.Infof("registering health check handler")
-	eventBindings.AddBinding(push.NewPushFinishedEventBinding(healthHandler.PushFinishedEventHandler))
-
-	if *routeMapperEnabled {
-		routeMapper := c.CreateRouteMapper()
-
-		log.Infof("registering health check handler")
-		eventBindings.AddBinding(push.NewPushFinishedEventBinding(routeMapper.PushFinishedEventHandler))
 	}
 
 	l := c.CreateListener()

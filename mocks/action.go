@@ -12,6 +12,11 @@ type Action struct {
 			Error error
 		}
 	}
+	PostExecuteCall struct {
+		Returns struct {
+			Error error
+		}
+	}
 	VerifyCall struct {
 		Returns struct {
 			Error error
@@ -41,6 +46,10 @@ func (a *Action) Initially() error {
 }
 
 func (a *Action) Execute() error {
+	return a.ExecuteCall.Returns.Error
+}
+
+func (a *Action) PostExecute() error {
 	return a.ExecuteCall.Returns.Error
 }
 

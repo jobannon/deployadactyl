@@ -13,6 +13,7 @@ import (
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/eventmanager"
+	"github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/request"
@@ -370,7 +371,7 @@ var _ = Describe("RequestCreator", func() {
 					expected := &mocks.PushManager{}
 					creator := Creator{
 						provider: CreatorModuleProvider{
-							NewPushManager: func(courierCreator I.CourierCreator, eventManager I.EventManager, log I.DeploymentLogger, fetcher I.Fetcher, deployEventData structs.DeployEventData, fileSystemCleaner push.FileSystemCleaner, cfContext I.CFContext, auth I.Authorization, environment structs.Environment, envVars map[string]string) I.ActionCreator {
+							NewPushManager: func(courierCreator I.CourierCreator, eventManager I.EventManager, log I.DeploymentLogger, fetcher I.Fetcher, deployEventData structs.DeployEventData, fileSystemCleaner push.FileSystemCleaner, cfContext I.CFContext, auth I.Authorization, environment structs.Environment, envVars map[string]string, checker healthchecker.HealthChecker) I.ActionCreator {
 								return expected
 							},
 						},

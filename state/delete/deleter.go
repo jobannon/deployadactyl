@@ -83,6 +83,10 @@ func (s Deleter) Execute() error {
 	return nil
 }
 
+func (s Deleter) PostExecute() error {
+	return nil
+}
+
 func (s Deleter) Undo() error {
 	s.Response.Write([]byte(fmt.Sprintf("delete feature is unable to rollback: %s", s.AppName)))
 	s.Log.Infof("%s: delete feature is unable to rollback: %s", s.FoundationURL, s.AppName)

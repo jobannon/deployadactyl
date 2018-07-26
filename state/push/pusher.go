@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	C "github.com/compozed/deployadactyl/constants"
+	H "github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
+	R "github.com/compozed/deployadactyl/eventmanager/handlers/routemapper"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
 	S "github.com/compozed/deployadactyl/structs"
@@ -29,6 +30,8 @@ type Pusher struct {
 	Fetcher        I.Fetcher
 	CFContext      I.CFContext
 	Auth           I.Authorization
+	HealthChecker  H.HealthChecker
+	RouteMapper    R.RouteMapper
 }
 
 // Login will login to a Cloud Foundry instance.
@@ -84,47 +87,51 @@ func (p Pusher) Execute() error {
 		return err
 	}
 
-	if p.DeploymentInfo.Domain != "" {
-		err = p.mapTempAppToLoadBalancedDomain(tempAppWithUUID)
+	if p.DeploymentInfo.HealthCheckEndpoint != "" {
+		healthCheckRequest := H.HealthCheckRequest{
+			HealthCheckEndpoint: p.DeploymentInfo.HealthCheckEndpoint,
+			Courier:             p.Courier,
+			Logger:              p.Log,
+			Environment:         p.DeploymentInfo.Environment,
+			FoundationUrl:       p.FoundationURL,
+			TempAppWithUUID:     tempAppWithUUID,
+			UUID:                p.DeploymentInfo.UUID,
+		}
+
+		err = p.HealthChecker.HealthChecker(healthCheckRequest)
 		if err != nil {
 			return err
 		}
 	}
 
-	p.Log.Debugf("%s: emitting a %s event", p.FoundationURL, C.PushFinishedEvent)
-	pushData := S.PushEventData{
-		AppPath:         p.AppPath,
-		FoundationURL:   p.FoundationURL,
-		TempAppWithUUID: tempAppWithUUID,
-		DeploymentInfo:  &p.DeploymentInfo,
+	return nil
+}
+
+func (p Pusher) PostExecute() error {
+	tempAppWithUUID := p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID
+
+	routeMapperRequest := R.RouteMapperRequest{
+		Logger:          p.Log,
 		Courier:         p.Courier,
-		Response:        p.Response,
+		Manifest:        p.DeploymentInfo.Manifest,
+		AppPath:         p.DeploymentInfo.AppPath,
+		TempAppWithUUID: tempAppWithUUID,
+		Application:     p.DeploymentInfo.AppName,
+		UUID:            p.DeploymentInfo.UUID,
+		FoundationUrl:   p.FoundationURL,
 	}
 
-	err = p.EventManager.Emit(I.Event{Type: C.PushFinishedEvent, Data: pushData})
+	err := p.RouteMapper.CustomRouteMapper(routeMapperRequest)
 	if err != nil {
 		return err
 	}
 
-	event := PushFinishedEvent{
-		CFContext:           p.CFContext,
-		Auth:                p.Auth,
-		Response:            p.Response,
-		AppPath:             p.AppPath,
-		FoundationURL:       p.FoundationURL,
-		TempAppWithUUID:     tempAppWithUUID,
-		Data:                p.DeploymentInfo.Data,
-		Courier:             p.Courier,
-		Manifest:            p.DeploymentInfo.Manifest,
-		HealthCheckEndpoint: p.DeploymentInfo.HealthCheckEndpoint,
-		Log:                 p.Log,
+	if p.DeploymentInfo.Domain != "" && p.Courier.Exists(p.DeploymentInfo.AppName) {
+		err := p.mapTempAppToLoadBalancedDomain(tempAppWithUUID)
+		if err != nil {
+			return err
+		}
 	}
-	err = p.EventManager.EmitEvent(event)
-	if err != nil {
-		return err
-	}
-
-	p.Log.Infof("%s: emitted a %s event", p.FoundationURL, event.Name())
 
 	return nil
 }
@@ -281,4 +288,66 @@ func (p Pusher) renameNewBuildToOriginalAppName() error {
 	p.Log.Infof("%s: renamed %s to %s", p.FoundationURL, p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
 
 	return nil
+}
+
+func (p Pusher) healthChecker(tempAppWithUUID string) error {
+	//https://conveyor-jenkinsfile-test-new-build-SNRGVjLrbK.apps.nonprod-mpn.ro11.allstate.com/health
+	//var (
+	//	newFoundationURL string
+	//	domain           string
+	//)
+	//
+	//p.Log.Debugf("starting health check")
+	//
+	//if p.CFContext.Environment != p.HealthChecker.SilentDeployEnvironment {
+	//	newFoundationURL = strings.Replace(p.FoundationURL, p.HealthChecker.OldURL, p.HealthChecker.NewURL, 1)
+	//	domain = regexp.MustCompile(fmt.Sprintf("%s.*", p.HealthChecker.NewURL)).FindString(newFoundationURL)
+	//} else {
+	//	newFoundationURL = strings.Replace(p.FoundationURL, p.HealthChecker.OldURL, p.HealthChecker.SilentDeployURL, 1)
+	//	domain = regexp.MustCompile(fmt.Sprintf("%s.*", p.HealthChecker.SilentDeployURL)).FindString(newFoundationURL)
+	//}
+	//
+	//p.HealthChecker.Check(newFoundationURL, p.DeploymentInfo.HealthCheckEndpoint, p.Log)
+
+	return nil
+}
+
+func (p Pusher) mapTemporaryRoute(tempAppWithUUID, domain string, log I.DeploymentLogger) error {
+	log.Debugf("mapping temporary route %s.%s", tempAppWithUUID, domain)
+
+	out, err := p.Courier.MapRoute(tempAppWithUUID, domain, tempAppWithUUID)
+	if err != nil {
+		log.Errorf("failed to map temporary route: %s", out)
+		return state.MapRouteError{out}
+	}
+	log.Infof("mapped temporary route %s.%s", tempAppWithUUID, domain)
+
+	return nil
+}
+
+func (p Pusher) deleteTemporaryRoute(tempAppWithUUID, domain string, log I.DeploymentLogger) error {
+	log.Debugf("deleting temporary route %s.%s", tempAppWithUUID, domain)
+
+	out, err := p.Courier.DeleteRoute(domain, tempAppWithUUID)
+	if err != nil {
+		log.Errorf("failed to delete temporary route: %s", out)
+		return state.MapRouteError{out}
+	}
+
+	log.Infof("deleted temporary route %s.%s", tempAppWithUUID, domain)
+
+	return nil
+}
+
+func (p Pusher) unmapTemporaryRoute(tempAppWithUUID, domain string, log I.DeploymentLogger) {
+	log.Debugf("unmapping temporary route %s.%s", tempAppWithUUID, domain)
+
+	out, err := p.Courier.UnmapRoute(tempAppWithUUID, domain, tempAppWithUUID)
+	if err != nil {
+		log.Errorf("failed to unmap temporary route: %s", out)
+	} else {
+		log.Infof("unmapped temporary route %s.%s", tempAppWithUUID, domain)
+	}
+
+	log.Infof("finished health check")
 }

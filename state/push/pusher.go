@@ -290,28 +290,6 @@ func (p Pusher) renameNewBuildToOriginalAppName() error {
 	return nil
 }
 
-func (p Pusher) healthChecker(tempAppWithUUID string) error {
-	//https://conveyor-jenkinsfile-test-new-build-SNRGVjLrbK.apps.nonprod-mpn.ro11.allstate.com/health
-	//var (
-	//	newFoundationURL string
-	//	domain           string
-	//)
-	//
-	//p.Log.Debugf("starting health check")
-	//
-	//if p.CFContext.Environment != p.HealthChecker.SilentDeployEnvironment {
-	//	newFoundationURL = strings.Replace(p.FoundationURL, p.HealthChecker.OldURL, p.HealthChecker.NewURL, 1)
-	//	domain = regexp.MustCompile(fmt.Sprintf("%s.*", p.HealthChecker.NewURL)).FindString(newFoundationURL)
-	//} else {
-	//	newFoundationURL = strings.Replace(p.FoundationURL, p.HealthChecker.OldURL, p.HealthChecker.SilentDeployURL, 1)
-	//	domain = regexp.MustCompile(fmt.Sprintf("%s.*", p.HealthChecker.SilentDeployURL)).FindString(newFoundationURL)
-	//}
-	//
-	//p.HealthChecker.Check(newFoundationURL, p.DeploymentInfo.HealthCheckEndpoint, p.Log)
-
-	return nil
-}
-
 func (p Pusher) mapTemporaryRoute(tempAppWithUUID, domain string, log I.DeploymentLogger) error {
 	log.Debugf("mapping temporary route %s.%s", tempAppWithUUID, domain)
 

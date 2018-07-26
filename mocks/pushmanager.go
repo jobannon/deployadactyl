@@ -43,6 +43,14 @@ type PushManager struct {
 	CleanUpCall struct {
 		Called bool
 	}
+	InitiallyErrorCall struct {
+		Received struct {
+			Errs []error
+		}
+		Returns struct {
+			Err error
+		}
+	}
 }
 
 type FileSystemCleaner struct {
@@ -98,7 +106,9 @@ func (p *PushManager) Create(environment S.Environment, response io.ReadWriter, 
 }
 
 func (p *PushManager) InitiallyError(initiallyErrors []error) error {
-	return bluegreen.LoginError{LoginErrors: initiallyErrors}
+	p.InitiallyErrorCall.Received.Errs = initiallyErrors
+
+	return p.InitiallyErrorCall.Returns.Err
 }
 
 func (p *PushManager) ExecuteError(executeErrors []error) error {

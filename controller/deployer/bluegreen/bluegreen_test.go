@@ -86,39 +86,74 @@ var _ = Describe("Bluegreen", func() {
 		})
 	})
 
-	Context("when a login command is called", func() {
-		It("starts a deployment when successful", func() {
+	Context("when Initially fails on the first AZ", func() {
+		It("should not call Initially on the other AZs", func() {
+			pushers[0].InitiallyCall.Returns.Error = errors.New("a test error")
+
+			blueGreen.Execute(pusherCreator, environment, response)
+
 			for i, pusher := range pushers {
-				pusher.InitiallyCall.Write.Output = loginOutput
-
-				if i == 0 {
-					pusher.InitiallyCall.Returns.Error = nil
+				if i > 0 {
+					Expect(pusher.InitiallyCall.TimesCalled).To(Equal(0))
 				}
-			}
-
-			err := blueGreen.Execute(pusherCreator, environment, response)
-			Expect(err).ToNot(HaveOccurred())
-
-			for range environment.Foundations {
-				Eventually(response).Should(Say(loginOutput))
 			}
 		})
 
-		It("does not start a deployment when failed", func() {
-			for i, pusher := range pushers {
-				pusher.InitiallyCall.Write.Output = loginOutput
+		It("should call InitiallyError", func() {
+			expect := errors.New("a test error")
+			pushers[0].InitiallyCall.Returns.Error = expect
 
-				if i == 0 {
-					pusher.InitiallyCall.Returns.Error = errors.New(loginOutput)
-				}
-			}
+			blueGreen.Execute(pusherCreator, environment, response)
+
+			Expect(pusherCreator.InitiallyErrorCall.Received.Errs[0]).To(Equal(expect))
+		})
+
+		It("should return the InitiallyError error", func() {
+			expect := errors.New("the initiallyerror error")
+			pushers[0].InitiallyCall.Returns.Error = errors.New("a test error")
+			pusherCreator.InitiallyErrorCall.Returns.Err = expect
 
 			err := blueGreen.Execute(pusherCreator, environment, response)
-			Expect(err).To(MatchError(LoginError{[]error{errors.New(loginOutput)}}))
 
-			for range environment.Foundations {
-				Eventually(response).Should(Say(loginOutput))
+			Expect(err).To(Equal(expect))
+		})
+	})
+
+	It("starts a deployment when successful", func() {
+		for i, pusher := range pushers {
+			pusher.InitiallyCall.Write.Output = loginOutput
+
+			if i == 0 {
+				pusher.InitiallyCall.Returns.Error = nil
 			}
+		}
+
+		err := blueGreen.Execute(pusherCreator, environment, response)
+		Expect(err).ToNot(HaveOccurred())
+
+		for range environment.Foundations {
+			Eventually(response).Should(Say(loginOutput))
+		}
+	})
+
+	Context("when any Initially call returns an error", func() {
+		It("should call InitiallyError", func() {
+			expect := errors.New("a test error")
+			pushers[1].InitiallyCall.Returns.Error = expect
+
+			blueGreen.Execute(pusherCreator, environment, response)
+
+			Expect(pusherCreator.InitiallyErrorCall.Received.Errs[0]).To(Equal(expect))
+		})
+
+		It("should return the InitiallyError error", func() {
+			expect := errors.New("the initiallyerror error")
+			pushers[1].InitiallyCall.Returns.Error = errors.New("a test error")
+			pusherCreator.InitiallyErrorCall.Returns.Err = expect
+
+			err := blueGreen.Execute(pusherCreator, environment, response)
+
+			Expect(err).To(Equal(expect))
 		})
 	})
 
@@ -388,7 +423,7 @@ var _ = Describe("Bluegreen", func() {
 				blueGreen = BlueGreen{}
 				err := blueGreen.Execute(stopperFactory, environment, NewBuffer())
 
-				Expect(err.Error()).To(Equal("login failed: login 0 to stop failed: login 1 to stop failed"))
+				Expect(err.Error()).To(Equal("login failed: login 0 to stop failed"))
 			})
 
 			It("calls Stop for each foundation", func() {

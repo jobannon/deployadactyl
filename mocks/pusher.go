@@ -10,7 +10,8 @@ type Pusher struct {
 	Response io.ReadWriter
 
 	InitiallyCall struct {
-		Write struct {
+		TimesCalled int
+		Write       struct {
 			Output string
 		}
 		Returns struct {
@@ -63,7 +64,7 @@ type Pusher struct {
 
 // Login mock method.
 func (p *Pusher) Initially() error {
-
+	p.InitiallyCall.TimesCalled++
 	fmt.Fprint(p.Response, p.InitiallyCall.Write.Output)
 
 	return p.InitiallyCall.Returns.Error

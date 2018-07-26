@@ -126,7 +126,7 @@ func (p Pusher) PostExecute() error {
 		return err
 	}
 
-	if p.DeploymentInfo.Domain != "" && p.Courier.Exists(p.DeploymentInfo.AppName) {
+	if p.DeploymentInfo.Domain != "" {
 		err := p.mapTempAppToLoadBalancedDomain(tempAppWithUUID)
 		if err != nil {
 			return err

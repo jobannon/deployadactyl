@@ -520,4 +520,14 @@ error_matchers:
 			Expect(len(c.GetEventBindings().GetBindings())).To(Equal(1))
 		})
 	})
+
+	Describe("CreateNewLogger", func() {
+		It("should return a new logger", func() {
+			provider := CreatorModuleProvider{}
+			expectedLog, _ := NewLogger()
+			creator, _ := New(provider)
+
+			Expect(reflect.TypeOf((I.Logger)(creator.CreateNewLogger()))).To(Equal(reflect.TypeOf((I.Logger)(expectedLog))))
+		})
+	})
 })

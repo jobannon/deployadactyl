@@ -150,11 +150,8 @@ func New(provider CreatorModuleProvider) (Creator, error) {
 	}
 
 	var logger I.Logger
-	if provider.NewLogger != nil {
-		logger, err = provider.NewLogger()
-	} else {
-		logger = I.DefaultLogger(os.Stdout, logging.DEBUG, "controller")
-	}
+	logger, err = createNewLogger(provider)
+
 	if err != nil {
 		return Creator{}, err
 	}
@@ -179,6 +176,21 @@ func New(provider CreatorModuleProvider) (Creator, error) {
 	}, nil
 }
 
+func (c Creator) CreateNewLogger() I.Logger {
+	logger, _ := createNewLogger(c.provider)
+	return logger
+}
+
+func createNewLogger(provider CreatorModuleProvider) (I.Logger, error) {
+	var logger I.Logger
+	var err error
+	if provider.NewLogger != nil {
+		logger, err = provider.NewLogger()
+	} else {
+		logger, _ = NewLogger()
+	}
+	return logger, err
+}
 func (c Creator) GetEventBindings() *eventmanager.EventBindings {
 	return c.bindings
 }

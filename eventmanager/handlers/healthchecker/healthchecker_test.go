@@ -14,7 +14,6 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/state/push"
 	"github.com/op/go-logging"
 )
 
@@ -31,12 +30,14 @@ var _ = Describe("Healthchecker", func() {
 		randomSpace         string
 		randomHostname      string
 		randomEnvironment   string
+		randomUUID          string
+		tempAppWithUUID     string
 
-		ievent        push.PushFinishedEvent
-		healthchecker HealthChecker
-		client        *mocks.Client
-		courier       *mocks.Courier
-		logBuffer     *Buffer
+		healthchecker      HealthChecker
+		healthCheckRequest HealthCheckRequest
+		client             *mocks.Client
+		courier            *mocks.Courier
+		logBuffer          *Buffer
 	)
 
 	BeforeEach(func() {
@@ -55,27 +56,13 @@ var _ = Describe("Healthchecker", func() {
 		randomOrg = "randomOrg" + randomizer.StringRunes(10)
 		randomSpace = "randomSpace" + randomizer.StringRunes(10)
 		randomEnvironment = "randomEnvironment" + randomizer.StringRunes(10)
+		randomUUID = "randomUUID" + randomizer.StringRunes(10)
+		tempAppWithUUID = randomAppName + "-new-build-" + randomUUID
 
 		courier = &mocks.Courier{}
 		client = &mocks.Client{}
 
 		logBuffer = NewBuffer()
-		ievent = push.PushFinishedEvent{
-			TempAppWithUUID:     randomAppName,
-			FoundationURL:       randomFoundationURL,
-			Courier:             courier,
-			HealthCheckEndpoint: randomEndpoint,
-			Auth: I.Authorization{
-				Username: randomUsername,
-				Password: randomPassword,
-			},
-			CFContext: I.CFContext{
-				Organization: randomOrg,
-				Space:        randomSpace,
-				Environment:  randomEnvironment,
-			},
-			Log: I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test")},
-		}
 
 		healthchecker = HealthChecker{
 			OldURL:                  "api.cf",
@@ -85,54 +72,63 @@ var _ = Describe("Healthchecker", func() {
 			Client:                  client,
 		}
 
+		healthCheckRequest = HealthCheckRequest{
+			HealthCheckEndpoint: randomEndpoint,
+			Courier:             courier,
+			Logger:              I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test")},
+			Environment:         randomEnvironment,
+			FoundationUrl:       randomFoundationURL,
+			TempAppWithUUID:     tempAppWithUUID,
+		}
+
 		client.GetCall.Returns.Response = http.Response{
 			StatusCode: http.StatusOK,
 			Body:       NewBuffer(),
 		}
 	})
 
-	Describe("OnEvent", func() {
+	Describe("HealthChecker", func() {
 		Context("the new build application is healthy", func() {
 			Context("the endpoint provided is valid", func() {
 				It("does not return an error", func() {
 					client.GetCall.Returns.Response = http.Response{StatusCode: http.StatusOK}
 
-					err := healthchecker.PushFinishedEventHandler(ievent)
+					err := healthchecker.HealthChecker(healthCheckRequest)
 
 					Expect(err).ToNot(HaveOccurred())
 				})
 
 				It("maps a new temporary route", func() {
-					healthchecker.PushFinishedEventHandler(ievent)
+					healthchecker.HealthChecker(healthCheckRequest)
 
-					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(randomAppName))
+					Expect(courier.MapRouteCall.Received.AppName[0]).To(Equal(tempAppWithUUID))
 					Expect(courier.MapRouteCall.Received.Domain[0]).To(Equal(randomDomain))
-					Expect(courier.MapRouteCall.Received.Hostname[0]).To(Equal(randomAppName))
+					Expect(courier.MapRouteCall.Received.Hostname[0]).To(Equal(tempAppWithUUID))
 				})
 
 				It("formats the foundation url", func() {
-					healthchecker.PushFinishedEventHandler(ievent)
+					healthchecker.HealthChecker(healthCheckRequest)
 
-					Expect(client.GetCall.Received.URL).To(Equal(fmt.Sprintf("https://%s.%s%s", randomAppName, randomDomain, randomEndpoint)))
+					Expect(client.GetCall.Received.URL).To(Equal(fmt.Sprintf("https://%s.%s%s", tempAppWithUUID, randomDomain, randomEndpoint)))
 				})
 
 				It("unmaps the temporary route", func() {
-					healthchecker.PushFinishedEventHandler(ievent)
+					healthchecker.HealthChecker(healthCheckRequest)
 
-					Expect(courier.UnmapRouteCall.Received.AppName).To(Equal(randomAppName))
+					Expect(courier.UnmapRouteCall.Received.AppName).To(Equal(tempAppWithUUID))
 					Expect(courier.UnmapRouteCall.Received.Domain).To(Equal(randomDomain))
-					Expect(courier.UnmapRouteCall.Received.Hostname).To(Equal(randomAppName))
+					Expect(courier.UnmapRouteCall.Received.Hostname).To(Equal(tempAppWithUUID))
 				})
 
 				It("deletes the temporary routes", func() {
-					healthchecker.PushFinishedEventHandler(ievent)
+					healthchecker.HealthChecker(healthCheckRequest)
 
 					Expect(courier.DeleteRouteCall.Received.Domain).To(Equal(randomDomain))
-					Expect(courier.DeleteRouteCall.Received.Hostname).To(Equal(randomHostname))
+					Expect(courier.DeleteRouteCall.Received.Hostname).To(Equal(tempAppWithUUID))
 				})
 
 				It("unmaps the temporary route before deleting it", func() {
-					healthchecker.PushFinishedEventHandler(ievent)
+					healthchecker.HealthChecker(healthCheckRequest)
 
 					Expect(courier.UnmapRouteCall.OrderCalled < courier.DeleteRouteCall.OrderCalled).To(Equal(true))
 				})
@@ -140,15 +136,15 @@ var _ = Describe("Healthchecker", func() {
 				It("prints success logs to the console", func() {
 					client.GetCall.Returns.Response = http.Response{StatusCode: http.StatusOK}
 
-					healthchecker.PushFinishedEventHandler(ievent)
+					healthchecker.HealthChecker(healthCheckRequest)
 
 					Eventually(logBuffer).Should(Say("starting health check"))
-					Eventually(logBuffer).Should(Say("mapping temporary route %s.%s", randomAppName, randomDomain))
-					Eventually(logBuffer).Should(Say("mapped temporary route %s.%s", randomAppName, randomDomain))
-					Eventually(logBuffer).Should(Say("checking route https://%s.%s%s", randomAppName, randomDomain, randomEndpoint))
-					Eventually(logBuffer).Should(Say("health check successful for https://%s.%s%s", randomAppName, randomDomain, randomEndpoint))
-					Eventually(logBuffer).Should(Say("unmapping temporary route %s.%s", randomAppName, randomDomain))
-					Eventually(logBuffer).Should(Say("unmapped temporary route %s.%s", randomAppName, randomDomain))
+					Eventually(logBuffer).Should(Say("mapping temporary route %s.%s", tempAppWithUUID, randomDomain))
+					Eventually(logBuffer).Should(Say("mapped temporary route %s.%s", tempAppWithUUID, randomDomain))
+					Eventually(logBuffer).Should(Say("checking route https://%s.%s%s", tempAppWithUUID, randomDomain, randomEndpoint))
+					Eventually(logBuffer).Should(Say("health check successful for https://%s.%s%s", tempAppWithUUID, randomDomain, randomEndpoint))
+					Eventually(logBuffer).Should(Say("unmapping temporary route %s.%s", tempAppWithUUID, randomDomain))
+					Eventually(logBuffer).Should(Say("unmapped temporary route %s.%s", tempAppWithUUID, randomDomain))
 					Eventually(logBuffer).Should(Say("finished health check"))
 				})
 
@@ -161,7 +157,7 @@ var _ = Describe("Healthchecker", func() {
 						Client:                  client,
 					}
 
-					healthchecker.PushFinishedEventHandler(ievent)
+					healthchecker.HealthChecker(healthCheckRequest)
 
 					Expect(courier.MapRouteCall.Received.Domain[0]).To(ContainSubstring("silentapps"))
 					Eventually(logBuffer).Should(Say("finished health check"))
@@ -187,18 +183,18 @@ var _ = Describe("Healthchecker", func() {
 						Body:       buf,
 					}
 
-					err := healthchecker.PushFinishedEventHandler(ievent)
+					err := healthchecker.HealthChecker(healthCheckRequest)
 
 					Expect(err).To(MatchError(HealthCheckError{http.StatusNotFound, randomEndpoint, body}))
 				})
 
 				It("prints the endpoint error to the console", func() {
-					healthchecker.PushFinishedEventHandler(ievent)
+					healthchecker.HealthChecker(healthCheckRequest)
 
 					Eventually(logBuffer).Should(Say("starting health check"))
-					Eventually(logBuffer).Should(Say("mapping temporary route %s.%s", randomAppName, randomDomain))
-					Eventually(logBuffer).Should(Say("mapped temporary route %s.%s", randomAppName, randomDomain))
-					Eventually(logBuffer).Should(Say("checking route https://%s.%s%s", randomAppName, randomDomain, randomEndpoint))
+					Eventually(logBuffer).Should(Say("mapping temporary route %s.%s", tempAppWithUUID, randomDomain))
+					Eventually(logBuffer).Should(Say("mapped temporary route %s.%s", tempAppWithUUID, randomDomain))
+					Eventually(logBuffer).Should(Say("checking route https://%s.%s%s", tempAppWithUUID, randomDomain, randomEndpoint))
 					Eventually(logBuffer).Should(Say("health check failed"))
 					Eventually(logBuffer).Should(Say(randomEndpoint))
 				})
@@ -212,7 +208,7 @@ var _ = Describe("Healthchecker", func() {
 					Body:       NewBuffer(),
 				}
 
-				err := healthchecker.PushFinishedEventHandler(ievent)
+				err := healthchecker.HealthChecker(healthCheckRequest)
 				Expect(err).To(MatchError(HealthCheckError{http.StatusNotFound, randomEndpoint, []byte{}}))
 			})
 		})
@@ -222,7 +218,7 @@ var _ = Describe("Healthchecker", func() {
 				courier.MapRouteCall.Returns.Output = append(courier.MapRouteCall.Returns.Output, []byte("map route output"))
 				courier.MapRouteCall.Returns.Error = append(courier.MapRouteCall.Returns.Error, errors.New("map route error"))
 
-				healthchecker.PushFinishedEventHandler(ievent)
+				healthchecker.HealthChecker(healthCheckRequest)
 
 				Eventually(logBuffer).Should(Say("mapping temporary route"))
 				Eventually(logBuffer).Should(Say("failed to map temporary route"))
@@ -234,7 +230,7 @@ var _ = Describe("Healthchecker", func() {
 			It("returns an error", func() {
 				client.GetCall.Returns.Error = errors.New("client GET error")
 
-				err := healthchecker.PushFinishedEventHandler(ievent)
+				err := healthchecker.HealthChecker(healthCheckRequest)
 
 				Expect(err).To(MatchError(ClientError{errors.New("client GET error")}))
 			})
@@ -242,7 +238,7 @@ var _ = Describe("Healthchecker", func() {
 			It("prints the error to the logs", func() {
 				client.GetCall.Returns.Error = errors.New("client GET error")
 
-				healthchecker.PushFinishedEventHandler(ievent)
+				healthchecker.HealthChecker(healthCheckRequest)
 
 				Eventually(logBuffer).Should(Say("checking route"))
 				Eventually(logBuffer).Should(Say("client GET error"))
@@ -251,14 +247,7 @@ var _ = Describe("Healthchecker", func() {
 
 		Context("when a health check endpoint is not provided", func() {
 			It("returns nil", func() {
-				ievent = push.PushFinishedEvent{
-					Courier:             courier,
-					TempAppWithUUID:     randomAppName,
-					FoundationURL:       randomFoundationURL,
-					HealthCheckEndpoint: "",
-				}
-
-				err := healthchecker.PushFinishedEventHandler(ievent)
+				err := healthchecker.HealthChecker(healthCheckRequest)
 
 				Expect(err).To(BeNil())
 			})
@@ -269,7 +258,7 @@ var _ = Describe("Healthchecker", func() {
 				courier.UnmapRouteCall.Returns.Output = []byte("unmap route output")
 				courier.UnmapRouteCall.Returns.Error = errors.New("unmap route error")
 
-				healthchecker.PushFinishedEventHandler(ievent)
+				healthchecker.HealthChecker(healthCheckRequest)
 
 				Eventually(logBuffer).Should(Say("unmapping temporary route"))
 				Eventually(logBuffer).Should(Say("failed to unmap temporary route"))
@@ -284,7 +273,7 @@ var _ = Describe("Healthchecker", func() {
 			It("adds the leading '/'", func() {
 				endpoint := "health"
 
-				healthchecker.Check(randomFoundationURL, endpoint, I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test")})
+				healthchecker.Check(randomFoundationURL, endpoint, I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test")}, randomUUID, randomFoundationURL)
 
 				Expect(client.GetCall.Received.URL).To(Equal(fmt.Sprintf("%s/%s", randomFoundationURL, endpoint)))
 			})
@@ -294,7 +283,7 @@ var _ = Describe("Healthchecker", func() {
 			It("does not add the leading '/'", func() {
 				endpoint := "/health"
 
-				healthchecker.Check(randomFoundationURL, endpoint, I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test")})
+				healthchecker.Check(randomFoundationURL, endpoint, I.DeploymentLogger{Log: I.DefaultLogger(logBuffer, logging.DEBUG, "healthchecker_test")}, randomUUID, randomFoundationURL)
 
 				Expect(client.GetCall.Received.URL).To(Equal(fmt.Sprintf("%s%s", randomFoundationURL, endpoint)))
 			})

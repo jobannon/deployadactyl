@@ -20,6 +20,7 @@ import (
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/compozed/deployadactyl/state/push"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -113,9 +114,8 @@ applications:
 		deployadactylServer = httptest.NewServer(deployadactylHandler)
 
 		j, err := json.Marshal(gin.H{
-			"artifact_url":          "the artifact url",
-			"health_check_endpoint": "/health",
-			"manifest":              base64.StdEncoding.EncodeToString([]byte(manifest)),
+			"artifact_url": "the artifact url",
+			"manifest":     base64.StdEncoding.EncodeToString([]byte(manifest)),
 		})
 		Expect(err).ToNot(HaveOccurred())
 		jsonBuffer := bytes.NewBuffer(j)
@@ -211,7 +211,8 @@ applications:
 		}
 	})
 	It("calls Emit the correct number of times", func() {
-		Expect(len(eventManager.EmitCall.Received.Events)).To(Equal(8))
+		spew.Dump("eventManager.EmitCall.Received.Events", eventManager.EmitCall.Received.Events)
+		Expect(len(eventManager.EmitCall.Received.Events)).To(Equal(4))
 	})
 	It("emits a deploy.start event", func() {
 		Expect(eventManager.EmitCall.Received.Events[0].Type).To(Equal("deploy.start"))
@@ -219,20 +220,14 @@ applications:
 	It("emits a push.started event", func() {
 		Expect(eventManager.EmitCall.Received.Events[1].Type).To(Equal("push.started"))
 	})
-	It("emits a push.finished event", func() {
-		Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal("push.finished"))
-		Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal("push.finished"))
-		Expect(eventManager.EmitCall.Received.Events[4].Type).To(Equal("push.finished"))
-		Expect(eventManager.EmitCall.Received.Events[5].Type).To(Equal("push.finished"))
-	})
 	It("emits a deploy.success event", func() {
-		Expect(eventManager.EmitCall.Received.Events[6].Type).To(Equal("deploy.success"))
+		Expect(eventManager.EmitCall.Received.Events[2].Type).To(Equal("deploy.success"))
 	})
 	It("emits a deploy.finish event", func() {
-		Expect(eventManager.EmitCall.Received.Events[7].Type).To(Equal("deploy.finish"))
+		Expect(eventManager.EmitCall.Received.Events[3].Type).To(Equal("deploy.finish"))
 	})
 	It("calls EmitEvent the correct number of times", func() {
-		Expect(len(eventManager.EmitEventCall.Received.Events)).To(Equal(10))
+		Expect(len(eventManager.EmitEventCall.Received.Events)).To(Equal(6))
 	})
 	It("emits a DeployStartedEvent", func() {
 		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[0])).To(Equal(reflect.TypeOf(push.DeployStartedEvent{})))
@@ -246,16 +241,10 @@ applications:
 	It("emits a PushStartedEvent", func() {
 		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[3])).To(Equal(reflect.TypeOf(push.PushStartedEvent{})))
 	})
-	It("emits a PushFinishedEvent for each foundation", func() {
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[4])).To(Equal(reflect.TypeOf(push.PushFinishedEvent{})))
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[5])).To(Equal(reflect.TypeOf(push.PushFinishedEvent{})))
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[6])).To(Equal(reflect.TypeOf(push.PushFinishedEvent{})))
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[7])).To(Equal(reflect.TypeOf(push.PushFinishedEvent{})))
-	})
 	It("emits a DeploySuccessEvent", func() {
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[8])).To(Equal(reflect.TypeOf(push.DeploySuccessEvent{})))
+		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[4])).To(Equal(reflect.TypeOf(push.DeploySuccessEvent{})))
 	})
 	It("emits a DeployFinishedEvent", func() {
-		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[9])).To(Equal(reflect.TypeOf(push.DeployFinishedEvent{})))
+		Expect(reflect.TypeOf(eventManager.EmitEventCall.Received.Events[5])).To(Equal(reflect.TypeOf(push.DeployFinishedEvent{})))
 	})
 })

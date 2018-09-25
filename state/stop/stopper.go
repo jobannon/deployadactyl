@@ -81,6 +81,10 @@ func (s Stopper) Execute() error {
 	return nil
 }
 
+func (s Stopper) PostExecute() error {
+	return nil
+}
+
 func (s Stopper) Undo() error {
 
 	if s.Courier.Exists(s.AppName) != true {

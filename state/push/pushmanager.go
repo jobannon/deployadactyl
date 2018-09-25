@@ -3,16 +3,19 @@ package push
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
+	"net/http"
+	"regexp"
+
 	"github.com/compozed/deployadactyl/constants"
 	"github.com/compozed/deployadactyl/controller/deployer"
 	"github.com/compozed/deployadactyl/controller/deployer/bluegreen"
 	"github.com/compozed/deployadactyl/controller/deployer/manifestro"
+	H "github.com/compozed/deployadactyl/eventmanager/handlers/healthchecker"
+	R "github.com/compozed/deployadactyl/eventmanager/handlers/routemapper"
 	I "github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/state"
 	S "github.com/compozed/deployadactyl/structs"
-	"io"
-	"net/http"
-	"regexp"
 )
 
 const deploymentOutput = `Deployment Parameters:
@@ -30,9 +33,9 @@ Thanks for using Deployadactyl! Please push down pull up on your lap bar and exi
 
 `
 
-type PushManagerConstructor func(courierCreator I.CourierCreator, eventManager I.EventManager, log I.DeploymentLogger, fetcher I.Fetcher, deployEventData S.DeployEventData, fileSystemCleaner FileSystemCleaner, cfContext I.CFContext, auth I.Authorization, environment S.Environment, envVars map[string]string) I.ActionCreator
+type PushManagerConstructor func(courierCreator I.CourierCreator, eventManager I.EventManager, log I.DeploymentLogger, fetcher I.Fetcher, deployEventData S.DeployEventData, fileSystemCleaner FileSystemCleaner, cfContext I.CFContext, auth I.Authorization, environment S.Environment, envVars map[string]string, healthChecker H.HealthChecker, routeMapper R.RouteMapper) I.ActionCreator
 
-func NewPushManager(c I.CourierCreator, em I.EventManager, log I.DeploymentLogger, f I.Fetcher, ded S.DeployEventData, fcs FileSystemCleaner, cf I.CFContext, auth I.Authorization, env S.Environment, envVars map[string]string) I.ActionCreator {
+func NewPushManager(c I.CourierCreator, em I.EventManager, log I.DeploymentLogger, f I.Fetcher, ded S.DeployEventData, fcs FileSystemCleaner, cf I.CFContext, auth I.Authorization, env S.Environment, envVars map[string]string, healthChecker H.HealthChecker, routeMapper R.RouteMapper) I.ActionCreator {
 	return &PushManager{
 		CourierCreator:       c,
 		EventManager:         em,
@@ -44,6 +47,8 @@ func NewPushManager(c I.CourierCreator, em I.EventManager, log I.DeploymentLogge
 		Auth:                 auth,
 		Environment:          env,
 		EnvironmentVariables: envVars,
+		HealthChecker:        healthChecker,
+		RouteMapper:          routeMapper,
 	}
 }
 
@@ -62,6 +67,8 @@ type PushManager struct {
 	Auth                 I.Authorization
 	Environment          S.Environment
 	EnvironmentVariables map[string]string
+	HealthChecker        H.HealthChecker
+	RouteMapper          R.RouteMapper
 }
 
 func (a *PushManager) SetUp() error {
@@ -261,6 +268,8 @@ func (a PushManager) Create(environment S.Environment, response io.ReadWriter, f
 		Fetcher:        a.Fetcher,
 		CFContext:      a.CFContext,
 		Auth:           a.Auth,
+		HealthChecker:  a.HealthChecker,
+		RouteMapper:    a.RouteMapper,
 	}
 
 	return p, nil

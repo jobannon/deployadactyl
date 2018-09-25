@@ -10,6 +10,7 @@ import (
 	"github.com/op/go-logging"
 
 	"fmt"
+
 	"github.com/compozed/deployadactyl/interfaces"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,20 +20,21 @@ import (
 var _ = Describe("Bluegreen", func() {
 
 	var (
-		appName        string
-		appPath        string
-		pushOutput     string
-		loginOutput    string
-		pusherCreator  *mocks.PushManager
-		pushers        []*mocks.Pusher
-		log            interfaces.DeploymentLogger
-		blueGreen      BlueGreen
-		environment    S.Environment
-		deploymentInfo S.DeploymentInfo
-		response       *Buffer
-		logBuffer      *Buffer
-		pushError      = errors.New("push error")
-		rollbackError  = errors.New("rollback error")
+		appName            string
+		appPath            string
+		pushOutput         string
+		loginOutput        string
+		routeMappingOutput string
+		pusherCreator      *mocks.PushManager
+		pushers            []*mocks.Pusher
+		log                interfaces.DeploymentLogger
+		blueGreen          BlueGreen
+		environment        S.Environment
+		deploymentInfo     S.DeploymentInfo
+		response           *Buffer
+		logBuffer          *Buffer
+		pushError          = errors.New("push error")
+		rollbackError      = errors.New("rollback error")
 	)
 
 	BeforeEach(func() {
@@ -40,6 +42,7 @@ var _ = Describe("Bluegreen", func() {
 		appPath = "appPath-" + randomizer.StringRunes(10)
 		pushOutput = "pushOutput-" + randomizer.StringRunes(10)
 		loginOutput = "loginOutput-" + randomizer.StringRunes(10)
+		routeMappingOutput = "routeMappingOutput-" + randomizer.StringRunes(10)
 		response = NewBuffer()
 		logBuffer = NewBuffer()
 
@@ -173,6 +176,7 @@ var _ = Describe("Bluegreen", func() {
 
 			pusher.InitiallyCall.Write.Output = loginOutput
 			pusher.ExecuteCall.Write.Output = pushOutput
+			pusher.PostExecuteCall.Write.Output = routeMappingOutput
 
 			blueGreen = BlueGreen{Log: log}
 
@@ -180,6 +184,7 @@ var _ = Describe("Bluegreen", func() {
 
 			Eventually(response).Should(Say(loginOutput))
 			Eventually(response).Should(Say(pushOutput))
+			Eventually(response).Should(Say(routeMappingOutput))
 		})
 
 		It("can push an app to multiple foundations", func() {
@@ -189,6 +194,7 @@ var _ = Describe("Bluegreen", func() {
 			for _, pusher := range pushers {
 				pusher.InitiallyCall.Write.Output = loginOutput
 				pusher.ExecuteCall.Write.Output = pushOutput
+				pusher.PostExecuteCall.Write.Output = routeMappingOutput
 			}
 
 			Expect(blueGreen.Execute(pusherCreator, environment, response)).To(Succeed())
@@ -197,6 +203,8 @@ var _ = Describe("Bluegreen", func() {
 			Eventually(response).Should(Say(loginOutput))
 			Eventually(response).Should(Say(pushOutput))
 			Eventually(response).Should(Say(pushOutput))
+			Eventually(response).Should(Say(routeMappingOutput))
+			Eventually(response).Should(Say(routeMappingOutput))
 		})
 
 		Context("when DisableRollback is true", func() {

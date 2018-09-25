@@ -73,16 +73,15 @@ func (bg BlueGreen) Execute(actionCreator I.ActionCreator, environment S.Environ
 	})
 
 	if len(actionErrors) != 0 {
-		bg.Log.Errorf("failed to execute action against all foundations - rolling back action")
-		rollbackErrors := bg.commands(actors, func(action I.Action) error {
-			return action.Undo()
-		})
+		return bg.processErrors(actionErrors, actors, actionCreator)
+	}
 
-		if len(rollbackErrors) != 0 {
-			return actionCreator.UndoError(actionErrors, rollbackErrors)
-		}
+	actionErrors = bg.commands(actors, func(action I.Action) error {
+		return action.PostExecute()
+	})
 
-		return actionCreator.ExecuteError(actionErrors)
+	if len(actionErrors) != 0 {
+		return bg.processErrors(actionErrors, actors, actionCreator)
 	}
 
 	finishActionErrors := bg.commands(actors, func(action I.Action) error {
@@ -106,4 +105,17 @@ func (bg BlueGreen) commands(actors []actor, doFunc ActorCommand) (manyErrors []
 		}
 	}
 	return
+}
+
+func (bg BlueGreen) processErrors(actionErrors []error, actors []actor, actionCreator I.ActionCreator) error {
+	bg.Log.Errorf("failed to execute action against all foundations - rolling back action")
+	rollbackErrors := bg.commands(actors, func(action I.Action) error {
+		return action.Undo()
+	})
+
+	if len(rollbackErrors) != 0 {
+		return actionCreator.UndoError(actionErrors, rollbackErrors)
+	}
+
+	return actionCreator.ExecuteError(actionErrors)
 }

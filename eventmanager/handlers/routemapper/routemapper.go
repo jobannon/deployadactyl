@@ -5,7 +5,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/state/push"
 	"github.com/spf13/afero"
 )
 
@@ -14,7 +13,6 @@ import (
 type RouteMapper struct {
 	Courier    I.Courier
 	FileSystem *afero.Afero
-	//Log        I.Logger
 }
 
 type manifest struct {
@@ -29,39 +27,52 @@ type route struct {
 	Route string
 }
 
-func (r RouteMapper) PushFinishedEventHandler(event push.PushFinishedEvent) error {
-	event.Log.Debugf("starting route mapper")
+type RouteMapperRequest struct {
+	Logger          I.DeploymentLogger
+	Courier         I.Courier
+	Manifest        string
+	AppPath         string
+	TempAppWithUUID string
+	Application     string
+	UUID            string
+	FoundationUrl   string
+}
 
-	r.Courier = event.Courier
+func (r RouteMapper) CustomRouteMapper(request RouteMapperRequest) error {
+	log := request.Logger.Log
+	log.Debugf("%s %s: starting route mapper", request.UUID, request.FoundationUrl)
 
-	manifestBytes, err := r.readManifest(event.Manifest, event.AppPath, event.Log)
+	r.Courier = request.Courier
+
+	manifestBytes, err := r.readManifest(request.Manifest, request.AppPath, request.Logger, request.UUID, request.FoundationUrl)
 	if err != nil || manifestBytes == nil {
 		return err
 	}
 	m := &manifest{}
 
-	event.Log.Debugf("looking for routes in the manifest")
+	log.Debugf("%s %s: looking for routes in the manifest", request.UUID, request.FoundationUrl)
 	err = candiedyaml.Unmarshal(manifestBytes, m)
 	if err != nil {
-		event.Log.Errorf("failed to parse manifest: %s", err.Error())
+		log.Errorf("%s %s: failed to parse manifest: %s", request.UUID, request.FoundationUrl, err.Error())
 		return err
 	}
 
 	if m.Applications == nil || len(m.Applications[0].CustomRoutes) == 0 {
-		event.Log.Info("finished mapping routes: no routes to map")
+		log.Infof("%s %s: finished mapping routes: no routes to map", request.UUID, request.FoundationUrl)
 		return nil
 	}
 
-	event.Log.Infof("found %d routes in the manifest", len(m.Applications[0].CustomRoutes))
+	log.Infof("%s %s: found %d routes in the manifest", request.UUID, request.FoundationUrl, len(m.Applications[0].CustomRoutes))
 
 	domains, _ := r.Courier.Domains()
 
-	event.Log.Debugf("mapping routes to %s", event.TempAppWithUUID)
-	return r.routeMapper(m, event.TempAppWithUUID, domains, event.CFContext.Application, event.Log)
+	log.Debugf("%s %s: mapping routes to %s", request.UUID, request.FoundationUrl, request.TempAppWithUUID)
+	return r.routeMapper(m, request.TempAppWithUUID, domains, request.Application, request.Logger, request.UUID, request.FoundationUrl)
 }
 
 func isRouteADomainInTheFoundation(route string, domains []string) bool {
 	for _, domain := range domains {
+
 		if route == domain {
 			return true
 		}
@@ -69,7 +80,7 @@ func isRouteADomainInTheFoundation(route string, domains []string) bool {
 	return false
 }
 
-func (r RouteMapper) readManifest(manifest, appPath string, log I.DeploymentLogger) ([]byte, error) {
+func (r RouteMapper) readManifest(manifest, appPath string, log I.DeploymentLogger, uuid, foundationUrl string) ([]byte, error) {
 	var (
 		manifestBytes []byte
 		err           error
@@ -80,12 +91,12 @@ func (r RouteMapper) readManifest(manifest, appPath string, log I.DeploymentLogg
 	} else if appPath != "" {
 		manifestBytes, err = r.FileSystem.ReadFile(appPath + "/manifest.yml")
 		if err != nil {
-			log.Errorf("failed to read manifest file: %s", err.Error())
+			log.Errorf("%s %s: failed to read manifest file: %s", uuid, foundationUrl, err.Error())
 			return nil, ReadFileError{err}
 		}
 		return manifestBytes, nil
 	} else {
-		log.Info("finished mapping routes: no manifest found")
+		log.Infof("%s %s: finished mapping routes: no manifest found", uuid, foundationUrl)
 		return nil, nil
 	}
 }
@@ -94,8 +105,7 @@ func (r RouteMapper) readManifest(manifest, appPath string, log I.DeploymentLogg
 // if the route does not include appname or path it will map the given domain to the given application by default
 // if the route has an app name it will remove the app name so it can map it with the given domain
 // if the route has an app name and a path it will remove the app name so it can map it with the given domain and the path as well
-func (r RouteMapper) routeMapper(manifest *manifest, tempAppWithUUID string, domains []string, appName string, log I.DeploymentLogger) error {
-
+func (r RouteMapper) routeMapper(manifest *manifest, tempAppWithUUID string, domains []string, appName string, log I.DeploymentLogger, uuid, foundationUrl string) error {
 	for _, route := range manifest.Applications[0].CustomRoutes {
 		var domainAndPath []string
 
@@ -127,9 +137,9 @@ func (r RouteMapper) routeMapper(manifest *manifest, tempAppWithUUID string, dom
 			return InvalidRouteError{route.Route}
 		}
 
-		log.Infof("mapped route %s to %s", route.Route, tempAppWithUUID)
+		log.Infof("%s %s: mapped route %s to %s", uuid, foundationUrl, route.Route, tempAppWithUUID)
 	}
 
-	log.Info("route mapping successful: finished mapping routes")
+	log.Infof("%s %s: route mapping successful: finished mapping routes", uuid, foundationUrl)
 	return nil
 }

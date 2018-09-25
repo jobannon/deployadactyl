@@ -11,6 +11,11 @@ type StartStopper struct {
 			Error error
 		}
 	}
+	PostExecuteCall struct {
+		Returns struct {
+			Error error
+		}
+	}
 	UndoCall struct {
 		Write   string
 		Returns struct {
@@ -60,6 +65,11 @@ func (s *StartStopper) Success() error {
 func (s *StartStopper) Execute() error {
 
 	return s.ExecuteCall.Returns.Error
+}
+
+func (s *StartStopper) PostExecute() error {
+
+	return s.PostExecuteCall.Returns.Error
 }
 
 func (s *StartStopper) Undo() error {

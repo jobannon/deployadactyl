@@ -8,8 +8,9 @@ import (
 	"strings"
 
 	I "github.com/compozed/deployadactyl/interfaces"
-	"github.com/compozed/deployadactyl/state/push"
 )
+
+type HealthCheckerConstructor func(oldURL, newURL, silentDeployURL, silentDeployEnvironment string, client I.Client) HealthChecker
 
 func NewHealthChecker(oldURL, newURL, silentDeployURL, silentDeployEnvironment string, client I.Client) HealthChecker {
 	return HealthChecker{
@@ -39,49 +40,54 @@ type HealthChecker struct {
 	Courier I.Courier
 }
 
-func (h HealthChecker) PushFinishedEventHandler(event push.PushFinishedEvent) error {
+type HealthCheckRequest struct {
+	HealthCheckEndpoint string
+	Courier             I.Courier
+	Logger              I.DeploymentLogger
+	Environment         string
+	FoundationUrl       string
+	TempAppWithUUID     string
+	UUID                string
+}
 
+func (h HealthChecker) HealthChecker(healthCheckRequest HealthCheckRequest) error {
 	var (
 		newFoundationURL string
 		domain           string
 	)
 
-	if event.HealthCheckEndpoint == "" {
-		return nil
-	}
+	h.Courier = healthCheckRequest.Courier
 
-	h.Courier = event.Courier
+	healthCheckRequest.Logger.Log.Debugf("%s %s: starting health check", healthCheckRequest.UUID, healthCheckRequest.FoundationUrl)
 
-	event.Log.Debugf("starting health check")
-
-	if event.CFContext.Environment != h.SilentDeployEnvironment {
-		newFoundationURL = strings.Replace(event.FoundationURL, h.OldURL, h.NewURL, 1)
+	if healthCheckRequest.Environment != h.SilentDeployEnvironment {
+		newFoundationURL = strings.Replace(healthCheckRequest.FoundationUrl, h.OldURL, h.NewURL, 1)
 		domain = regexp.MustCompile(fmt.Sprintf("%s.*", h.NewURL)).FindString(newFoundationURL)
 	} else {
-		newFoundationURL = strings.Replace(event.FoundationURL, h.OldURL, h.SilentDeployURL, 1)
+		newFoundationURL = strings.Replace(healthCheckRequest.FoundationUrl, h.OldURL, h.SilentDeployURL, 1)
 		domain = regexp.MustCompile(fmt.Sprintf("%s.*", h.SilentDeployURL)).FindString(newFoundationURL)
 	}
 
-	err := h.mapTemporaryRoute(event.TempAppWithUUID, domain, event.Log)
+	err := h.mapTemporaryRoute(healthCheckRequest.TempAppWithUUID, domain, healthCheckRequest.Logger, healthCheckRequest.UUID, healthCheckRequest.FoundationUrl)
 	if err != nil {
 		return err
 	}
 
 	// unmapTemporaryRoute will be called before deleteTemporaryRoute
-	defer h.deleteTemporaryRoute(event.TempAppWithUUID, domain, event.Log)
-	defer h.unmapTemporaryRoute(event.TempAppWithUUID, domain, event.Log)
+	defer h.deleteTemporaryRoute(healthCheckRequest.TempAppWithUUID, domain, healthCheckRequest.Logger, healthCheckRequest.UUID, healthCheckRequest.FoundationUrl)
+	defer h.unmapTemporaryRoute(healthCheckRequest.TempAppWithUUID, domain, healthCheckRequest.Logger, healthCheckRequest.UUID, healthCheckRequest.FoundationUrl)
 
-	newFoundationURL = strings.Replace(newFoundationURL, h.NewURL, fmt.Sprintf("%s.%s", event.TempAppWithUUID, h.NewURL), 1)
+	newFoundationURL = strings.Replace(newFoundationURL, h.NewURL, fmt.Sprintf("%s.%s", healthCheckRequest.TempAppWithUUID, h.NewURL), 1)
 
-	return h.Check(newFoundationURL, event.HealthCheckEndpoint, event.Log)
+	return h.Check(newFoundationURL, healthCheckRequest.HealthCheckEndpoint, healthCheckRequest.Logger, healthCheckRequest.UUID, healthCheckRequest.FoundationUrl)
 }
 
 // Check takes a url and endpoint. It does an http.Get to get the response
 // status and returns an error if it is not http.StatusOK.
-func (h HealthChecker) Check(url, endpoint string, log I.DeploymentLogger) error {
+func (h HealthChecker) Check(url, endpoint string, log I.DeploymentLogger, uuid, foundationUrl string) error {
 	trimmedEndpoint := strings.TrimPrefix(endpoint, "/")
 
-	log.Debugf("checking route %s%s", url, endpoint)
+	log.Debugf("%s %s: checking route %s%s", uuid, foundationUrl, url, endpoint)
 
 	resp, err := h.Client.Get(fmt.Sprintf("%s/%s", url, trimmedEndpoint))
 	if err != nil {
@@ -91,50 +97,50 @@ func (h HealthChecker) Check(url, endpoint string, log I.DeploymentLogger) error
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
-		log.Errorf("health check failed for %s/%s", url, trimmedEndpoint)
+		log.Errorf("%s %s: health check failed for %s/%s", uuid, foundationUrl, url, trimmedEndpoint)
 		return HealthCheckError{resp.StatusCode, endpoint, body}
 	}
 
-	log.Infof("health check successful for %s%s", url, endpoint)
+	log.Infof("%s %s: health check successful for %s%s", uuid, foundationUrl, url, endpoint)
 	return nil
 }
 
-func (h HealthChecker) mapTemporaryRoute(tempAppWithUUID, domain string, log I.DeploymentLogger) error {
-	log.Debugf("mapping temporary route %s.%s", tempAppWithUUID, domain)
+func (h HealthChecker) mapTemporaryRoute(tempAppWithUUID, domain string, log I.DeploymentLogger, uuid, foundationUrl string) error {
+	log.Debugf("%s %s: mapping temporary route %s.%s", uuid, foundationUrl, tempAppWithUUID, domain)
 
 	out, err := h.Courier.MapRoute(tempAppWithUUID, domain, tempAppWithUUID)
 	if err != nil {
-		log.Errorf("failed to map temporary route: %s", out)
+		log.Errorf("%s %s: failed to map temporary route: %s", uuid, foundationUrl, out)
 		return MapRouteError{tempAppWithUUID, domain}
 	}
-	log.Infof("mapped temporary route %s.%s", tempAppWithUUID, domain)
+	log.Infof("%s %s: mapped temporary route %s.%s", uuid, foundationUrl, tempAppWithUUID, domain)
 
 	return nil
 }
 
-func (h HealthChecker) deleteTemporaryRoute(tempAppWithUUID, domain string, log I.DeploymentLogger) error {
-	log.Debugf("deleting temporary route %s.%s", tempAppWithUUID, domain)
+func (h HealthChecker) deleteTemporaryRoute(tempAppWithUUID, domain string, log I.DeploymentLogger, uuid, foundationUrl string) error {
+	log.Debugf("%s %s: deleting temporary route %s.%s", uuid, foundationUrl, tempAppWithUUID, domain)
 
 	out, err := h.Courier.DeleteRoute(domain, tempAppWithUUID)
 	if err != nil {
-		log.Errorf("failed to delete temporary route: %s", out)
+		log.Errorf("%s %s: failed to delete temporary route: %s", uuid, foundationUrl, out)
 		return DeleteRouteError{tempAppWithUUID, domain}
 	}
 
-	log.Infof("deleted temporary route %s.%s", tempAppWithUUID, domain)
+	log.Infof("%s %s: deleted temporary route %s.%s", uuid, foundationUrl, tempAppWithUUID, domain)
 
 	return nil
 }
 
-func (h HealthChecker) unmapTemporaryRoute(tempAppWithUUID, domain string, log I.DeploymentLogger) {
-	log.Debugf("unmapping temporary route %s.%s", tempAppWithUUID, domain)
+func (h HealthChecker) unmapTemporaryRoute(tempAppWithUUID, domain string, log I.DeploymentLogger, uuid, foundationUrl string) {
+	log.Debugf("%s %s: unmapping temporary route %s.%s", uuid, foundationUrl, tempAppWithUUID, domain)
 
 	out, err := h.Courier.UnmapRoute(tempAppWithUUID, domain, tempAppWithUUID)
 	if err != nil {
-		log.Errorf("failed to unmap temporary route: %s", out)
+		log.Errorf("%s %s: failed to unmap temporary route: %s", uuid, foundationUrl, out)
 	} else {
-		log.Infof("unmapped temporary route %s.%s", tempAppWithUUID, domain)
+		log.Infof("%s %s: unmapped temporary route %s.%s", uuid, foundationUrl, tempAppWithUUID, domain)
 	}
 
-	log.Infof("finished health check")
+	log.Infof("%s %s: finished health check", uuid, foundationUrl)
 }

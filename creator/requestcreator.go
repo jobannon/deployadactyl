@@ -110,9 +110,9 @@ func (r PushRequestCreator) CreatePushController() request.PushController {
 
 func (r PushRequestCreator) PushManager(deployEventData structs.DeployEventData, auth I.Authorization, env structs.Environment, envVars map[string]string) I.ActionCreator {
 	if r.provider.NewPushManager != nil {
-		return r.provider.NewPushManager(r.Creator, r.CreateEventManager(), r.Log, r.CreateFetcher(), deployEventData, r.CreateFileSystem(), r.Request.CFContext, auth, env, envVars)
+		return r.provider.NewPushManager(r.Creator, r.CreateEventManager(), r.Log, r.CreateFetcher(), deployEventData, r.CreateFileSystem(), r.Request.CFContext, auth, env, envVars, r.CreateHealthChecker(), r.CreateRouteMapper())
 	} else {
-		return push.NewPushManager(r.Creator, r.CreateEventManager(), r.Log, r.CreateFetcher(), deployEventData, r.CreateFileSystem(), r.Request.CFContext, auth, env, envVars)
+		return push.NewPushManager(r.Creator, r.CreateEventManager(), r.Log, r.CreateFetcher(), deployEventData, r.CreateFileSystem(), r.Request.CFContext, auth, env, envVars, r.CreateHealthChecker(), r.CreateRouteMapper())
 	}
 }
 

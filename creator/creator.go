@@ -97,6 +97,7 @@ type CreatorModuleProvider struct {
 	NewDeleteManager          delete.DeleteManagerConstructor
 	NewConfig                 config.ConfigConstructor
 	NewLogger                 LoggerConstructor
+	NewHealthChecker          healthchecker.HealthCheckerConstructor
 	CLIChecker                func() error
 }
 
@@ -294,7 +295,13 @@ func (c Creator) CreateEnvVarHandler() envvar.Envvarhandler {
 func (c Creator) CreateHealthChecker() healthchecker.HealthChecker {
 	silentUrl := os.Getenv("SILENT_DEPLOY_URL")
 	silentEnv := os.Getenv("SILENT_DEPLOY_ENVIRONMENT")
-	return healthchecker.NewHealthChecker("api.cf", "apps", silentUrl, silentEnv, c.CreateHTTPClient())
+
+	if c.provider.NewHealthChecker != nil {
+		return c.provider.NewHealthChecker("api.cf", "apps", silentUrl, silentEnv, c.CreateHTTPClient())
+	} else {
+		return healthchecker.NewHealthChecker("api.cf", "apps", silentUrl, silentEnv, c.CreateHTTPClient())
+	}
+
 }
 
 func (c Creator) CreateRouteMapper() routemapper.RouteMapper {

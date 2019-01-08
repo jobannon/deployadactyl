@@ -135,6 +135,15 @@ type Courier struct {
 	}
 
 	CreateServiceCall struct {
+		Received struct {
+			Service string
+			Plan    string
+			Name    string
+		}
+		Returns struct {
+			Output []byte
+			Error  error
+		}
 	}
 
 	ExistsCall struct {
@@ -344,7 +353,11 @@ func (c *Courier) Domains() ([]string, error) {
 }
 
 func (c *Courier) CreateService(service, plan, name string) ([]byte, error) {
-	panic("Mock not implemented.")
+	c.CreateServiceCall.Received.Name = name
+	c.CreateServiceCall.Received.Plan = plan
+	c.CreateServiceCall.Received.Service = service
+
+	return c.CreateServiceCall.Returns.Output, c.CreateServiceCall.Returns.Error
 }
 
 func (c *Courier) BindService(appName, serviceName string) ([]byte, error) {

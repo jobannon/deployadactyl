@@ -293,7 +293,7 @@ var _ = Describe("Courier", func() {
 	})
 
 	Describe("creating a service", func() {
-		It("should create the database", func() {
+		It("should create the service", func() {
 			var (
 				service      = "service-" + randomizer.StringRunes(10)
 				plan         = "plan-" + randomizer.StringRunes(10)

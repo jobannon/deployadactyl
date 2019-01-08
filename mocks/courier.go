@@ -183,7 +183,8 @@ type Courier struct {
 	}
 
 	ServicesCall struct {
-		Returns struct {
+		TimesCalled int
+		Returns     struct {
 			Services []string
 			Error    error
 		}
@@ -368,5 +369,6 @@ func (c *Courier) CleanUp() error {
 }
 
 func (c *Courier) Services() ([]string, error) {
+	c.ServicesCall.TimesCalled++
 	return c.ServicesCall.Returns.Services, c.ServicesCall.Returns.Error
 }

@@ -181,6 +181,13 @@ type Courier struct {
 			Error error
 		}
 	}
+
+	ServicesCall struct {
+		Returns struct {
+			Services []string
+			Error    error
+		}
+	}
 }
 
 // Login mock method.
@@ -358,4 +365,8 @@ func (c *Courier) Restage(appName string) ([]byte, error) {
 // CleanUp mock method.
 func (c *Courier) CleanUp() error {
 	return c.CleanUpCall.Returns.Error
+}
+
+func (c *Courier) Services() ([]string, error) {
+	return c.ServicesCall.Returns.Services, c.ServicesCall.Returns.Error
 }

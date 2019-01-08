@@ -1,0 +1,294 @@
+---
+environments:
+  - name: ro98
+    service_now_endpoint: https://allstateuat.service-now.com
+    authenticate: false
+    skip_ssl: true
+    instances: 1
+    rollback_disabled: false
+    allow_invalid_user: true
+    change_freeze_enabled: false
+    foundations:
+    - https://api.cf.sandbox-mpn.ro98.allstate.com
+
+  - name: ro99
+    service_now_endpoint: https://allstateuat.service-now.com
+    authenticate: false
+    skip_ssl: true
+    instances: 1
+    rollback_disabled: false
+    allow_invalid_user: true
+    change_freeze_enabled: false
+    foundations:
+    - https://api.cf.sandbox-mpn.ro99.allstate.com
+
+  - name: sandbox
+    service_now_endpoint: https://allstateuat.service-now.com
+    domain: platformtest.allstate.com
+    authenticate: false
+    skip_ssl: true
+    instances: 1
+    rollback_disabled: false
+    allow_invalid_user: true
+    change_freeze_enabled: false
+    foundations:
+    - https://api.cf.sandbox-mpn.ro98.allstate.com
+    - https://api.cf.sandbox-mpn.ro99.allstate.com
+
+  - name: ro10
+    service_now_endpoint: https://allstateuat.service-now.com
+    authenticate: false
+    skip_ssl: true
+    instances: 1
+    rollback_disabled: false
+    allow_invalid_user: true
+    change_freeze_enabled: false
+    foundations:
+    - https://api.cf.nonprod-mpn.ro10.allstate.com
+
+  - name: ro11
+    service_now_endpoint: https://allstateuat.service-now.com
+    authenticate: false
+    skip_ssl: true
+    instances: 1
+    rollback_disabled: false
+    allow_invalid_user: true
+    change_freeze_enabled: false
+    foundations:
+    - https://api.cf.nonprod-mpn.ro11.allstate.com
+
+  - name: non-prod
+    service_now_endpoint: https://allstateuat.service-now.com
+    domain: platform-test.allstate.com
+    authenticate: false
+    skip_ssl: true
+    instances: 1
+    allow_invalid_user: true
+    rollback_disabled: false
+    change_freeze_enabled: false
+    foundations:
+    - https://api.cf.nonprod-mpn.ro10.allstate.com
+    - https://api.cf.nonprod-mpn.ro11.allstate.com
+
+  - name: prod-mpn
+    service_now_endpoint: https://allstate.service-now.com
+    domain: platform.allstate.com
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_disabled: false
+    allow_invalid_user: false
+    change_freeze_enabled: true
+    foundations:
+    - https://api.cf.prod-mpn.ro1.allstate.com
+    - https://api.cf.prod-mpn.ro2.allstate.com
+    - https://api.cf.prod-mpn.gl1.allstate.com
+    - https://api.cf.prod-mpn.gl2.allstate.com
+
+  - name: prod-dmz
+    service_now_endpoint: https://allstate.service-now.com
+    domain: cws.allstate.com
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_disabled: false
+    allow_invalid_user: false
+    change_freeze_enabled: true
+    foundations:
+    - https://api.cf.prod-dmz.ro1.allstate.com
+    - https://api.cf.prod-dmz.ro2.allstate.com
+    - https://api.cf.prod-dmz.gl1.allstate.com
+    - https://api.cf.prod-dmz.gl2.allstate.com
+
+  - name: prod-infra
+    service_now_endpoint: https://allstate.service-now.com
+    domain: mgmt.allstate.com
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_disabled: false
+    allow_invalid_user: false
+    change_freeze_enabled: true
+    foundations:
+    - https://api.cf.prod-infra.ro1.allstate.com
+    - https://api.cf.prod-infra.ro2.allstate.com
+    - https://api.cf.prod-infra.gl1.allstate.com
+    - https://api.cf.prod-infra.gl2.allstate.com
+
+  - name: non-prod-aws
+    service_now_endpoint: https://allstateuat.service-now.com
+    authenticate: true
+    skip_ssl: true
+    instances: 1
+    rollback_disabled: true
+    allow_invalid_user: true
+    change_freeze_enabled: false
+    foundations:
+    - https://api.cf.nonprod.us-east-1.allstate.com
+
+  - name: arity-non-prod-internal
+    service_now_endpoint: https://allstateuat.service-now.com
+    domain: apps.us-east-1.nonprod.cf.arityplatform.io
+    authenticate: true
+    skip_ssl: true
+    instances: 1
+    rollback_disabled: false
+    allow_invalid_user: true
+    change_freeze_enabled: false
+    foundations:
+    - https://api.sys.us-east-1.nonprod.cf.arityplatform.io
+
+  - name: arity-prod-internal
+    service_now_endpoint: https://allstate.service-now.com
+    domain: apps.arityplatform.io
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_disabled: false
+    allow_invalid_user: false
+    change_freeze_enabled: true
+    foundations:
+    - https://api.sys.us-east-1.prod.cf.arityplatform.io
+    - https://api.sys.us-west-2.prod.cf.arityplatform.io
+
+  - name: arity-prod-public
+    service_now_endpoint: https://allstate.service-now.com
+    domain: apps.arity.cloud
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_disabled: false
+    allow_invalid_user: false
+    change_freeze_enabled: true
+    foundations:
+    - https://api.sys.us-east-1.prod.cf.arityplatform.io
+    - https://api.sys.us-west-2.prod.cf.arityplatform.io
+
+  - name: arity-prod-public-api
+    service_now_endpoint: https://allstate.service-now.com
+    domain: api.arity.cloud
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_disabled: false
+    allow_invalid_user: false
+    change_freeze_enabled: true
+    foundations:
+    - https://api.sys.us-east-1.prod.cf.arityplatform.io
+    - https://api.sys.us-west-2.prod.cf.arityplatform.io
+
+  - name: octo-non-prod
+    service_now_endpoint: https://allstateuat.service-now.com
+    change_freeze_enabled: false
+    domain: platform-test.allstate.com
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_disabled: false
+    allow_invalid_user: true
+    foundations:
+      - https://api.cf.nonprod-mpn.ro10.allstate.com
+      - https://api.cf.nonprod-mpn.ro11.allstate.com
+
+  - name: octo-prod
+    service_now_endpoint: https://allstate.service-now.com
+    change_freeze_enabled: true
+    domain: platform-test.allstate.com
+    authenticate: true
+    skip_ssl: true
+    instances: 2
+    rollback_disabled: false
+    allow_invalid_user: true
+    foundations:
+      - https://api.cf.nonprod-mpn.ro10.allstate.com
+      - https://api.cf.nonprod-mpn.ro11.allstate.com
+
+error_matchers:
+  - description: This is a test error matcher and should never be encountered other than in conveyor tests
+    pattern: "This app doesn't start intentionally"
+    code: TEST_FAILURE_CODE
+  - description: NPM deployment error
+    pattern: '(?i)npm ERR!\s*[^\n]*'
+    solution: "Ensure that all node_modules listed in your package.json are either already in your node_modules directory or are available from the Allstate Artifactory NPM registry."
+    code: NPM_ERR
+  - description: Expired authentication error
+    pattern: '(?i){1,200}\s*FAILED\nAuthentication has expired\. Please log back in to re-authenticate\.'
+    code: EXPIRED_AUTH
+  - description: Incorrect authentication error
+    pattern: '(?i)FAILED\s*\n\s*Unable to authenticate.'
+    solution: "Ensure that the credentials you are using to deploy are valid."
+    code: INVALID_AUTH
+  - description: NPM version error
+    pattern: '(?i)Unable to install node[^\n]*'
+    solution: "Check the 'engines'->'node' version specified in your package.json file and ensure that it is a supported version."
+    code: NPM_VERSION_ERR
+  - description: Spring bean error
+    pattern: 'org\.springframework\.beans\.factory\.BeanCreationException[^\n]{1,200}'
+    code: SPRING_BEAN_ERR
+  - description: TrustStore certificate error
+    pattern: '(?i)Creating TrustStore with container certificates\nFAILED'
+    code: TRUST_STORE_ERR
+  - description: Rejected credentials error
+    pattern: '(?i)Credentials were rejected, please try again.'
+    solution: "Ensure that the credentials you are using to deploy are valid."
+    code: REJECTED_AUTH
+  - description: Insufficient resources
+    pattern: '(?i)Disk quota exceeded'
+    solution: "Check the resources allocated for this application - you may need to increase the 'applications'->'disk_quota' value specified in your CF manifest.yml."
+    code: OUT_OF_SPACE
+  - description: Missing service
+    pattern: '(?i)Could not find service [^\s]* to bind to'
+    solution: "Ensure that the services that your application requires are available and provisioned within the deployment space before deploying.  It must be provisioned on all servers (AZs) to which the application is being deployed."
+    code: MISSING_SERVICE
+  - description: Insufficient resources
+    pattern: "restarting application: InsufficientResources"
+    solution: "Contact platform - resource allocation for your org/space may be incorrectly configured."
+    code: INSUFFICIENT_RESOURCES
+  - description: Organization memory limit reached
+    pattern: "You have exceeded your organization's memory limit"
+    solution: "Talk to the platform team to increase your memory limit"
+    code: ORG_MEM_LIMIT
+  - description: Long route name error
+    pattern: "The route is invalid: host must be no more than 63 characters"
+    solution: "Reduce the length of your route name to be no more than 40 characters."
+    code: LONG_ROUTE_ERR
+  - description: App path does not exist
+    pattern: 'Error processing app files: lstat [^\s]* no such file or directory'
+    solution: "Check your manifest for 'path' or other entries that may specify a file path that doesn't exist"
+    code: PATH_DOES_NOT_EXIST
+  - desription: Datastax could not make a connection
+    pattern: 'Error creating (connection|pool) to(\n| )*\/?\d+\.\d+\.\d+\.\d+:\d+com\.datastax\.driver\.core\.exceptions\.(Connection|Transport)Exception:?'
+    solution: "Check your datastax database connection. If it is accurate confirm that your database is running and that the firewall rules allow access."
+    code: DATASTAX_CONNECTION_ERROR
+  - description: Unknown buildpack name
+    pattern: 'Specified unknown buildpack name: \".+\"'
+    solution: "Check that the buildpack you are using exists in CF, This is the process for finding the current buildpacks: \n 1) In the terminal login to cf space you are trying to deploy to\nexample: cf login -a https://api.cf.nonprod-mpn.ro11.allstate.com --skip-ssl-validation\n2) Enter your credentials when prompted\n3) Select an org\n4) Select a space\n5)Type in \"cf buildpacks\" "
+    code: UNKNOWN_BUILDPACK_NAME
+  - description: The host is taken
+    pattern: '.+: The host is taken: .+'
+    solution: "Confirm that your application name is unique in either your manifest or your push command"
+    code: HOST_IS_TAKEN_ERROR
+  - description: Unable to stage a application restart attempt
+    pattern: 'Error restarting application: .+ failed to stage within (\d+|\d+\.\d+) minutes'
+    solution: "Check logs for further information before attempting to restart again"
+    code: STAGE_RESTART_TIMEOUT
+  - description: JDBC connection failed
+    pattern: '(.|\n?)*org\.springframework\.jdbc\.CannotGetJdbcConnectionException:? (.|\n?)*'
+    solution: "Check your JDBC database connection url. If it is accurate confirm that your database is running and that the firewall rules allow access."
+    code: JDBC_CONNECTION_FAILURE_ERROR
+  - description: Bulletin Board System failed to connect
+    pattern: 'Server error, status code: 503, error code: 170010, message: Stager is unavailable: getaddrinfo: Name or service not known '
+    solution: "Try https://github.com/cloudfoundry/cf-deployment/issues/425 for further assistance"
+    code: BBS_STAGER_UNAVAILABLE_ERROR
+  - description: Generic Staging Error
+    pattern: 'Error restarting application( ?): StagingError( ?):'
+    solution: "Contact Compozed-Platform for further assistance"
+    code: STAGE_RESTART_GENERIC_ERROR
+  - description: JVM not enough memory
+    pattern: 'ERR Cannot calculate JVM memory configuration: There is insufficient memory remaining for heap'
+    solution: "The simplest solution is to scale the available memory to your application. The command might look something like: cf scale my-application -m 1G"
+    code: JVM_INSUFFICIENT_MEMORY
+  - description: No appenders for log4j logger
+    pattern: 'ERR log4j:WARN No appenders could be found for logger'
+    solution: "two potential solutions can be found here: \n 1) BasicConfigurator.configure(); should be added to your main method OR \n 2) Add the log4j.properties file to your classpath."
+    code: LOG_FOUR_J_APPENDERS_ERROR

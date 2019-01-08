@@ -28,4 +28,5 @@ type Courier interface {
 	Uups(appName string, body string) ([]byte, error)
 	Domains() ([]string, error)
 	CleanUp() error
+	Services() ([]string, error)
 }

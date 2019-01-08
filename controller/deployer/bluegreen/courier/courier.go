@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	I "github.com/compozed/deployadactyl/interfaces"
+	"github.com/go-errors/errors"
 )
 
 type CourierConstructor func(executor I.Executor) I.Courier
@@ -159,4 +160,20 @@ func (c Courier) Domains() ([]string, error) {
 // CleanUp removes the temporary directory created by the Executor.
 func (c Courier) CleanUp() error {
 	return c.Executor.CleanUp()
+}
+
+// Lists all services in current space
+//
+// Returns a list of services available
+func (c Courier) Services() ([]string, error) {
+	output, err := c.Executor.Execute("services")
+	if err != nil {
+		return []string{}, errors.New(fmt.Sprintf("Execution of services call failed: %s", err.Error()))
+	}
+
+	services := strings.Split(string(output), "\n")[3:]
+	for i, domain := range services {
+		services[i] = strings.Split(domain, " ")[0]
+	}
+	return services, nil
 }

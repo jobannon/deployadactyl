@@ -5,6 +5,7 @@ import (
 	. "github.com/compozed/deployadactyl/controller/deployer/bluegreen/courier"
 	"math/rand"
 
+	"errors"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
 	"github.com/compozed/deployadactyl/randomizer"
@@ -31,7 +32,7 @@ var _ = Describe("Courier", func() {
 		}
 	})
 
-	Describe("logging in", func() {
+	Describe("Login", func() {
 		It("should get a valid Cloud Foundry login command", func() {
 			var (
 				foundationURL = "foundationURL-" + randomizer.StringRunes(10)
@@ -425,6 +426,35 @@ var _ = Describe("Courier", func() {
 			executor.CleanUpCall.Returns.Error = nil
 
 			Expect(courier.CleanUp()).To(Succeed())
+		})
+	})
+
+	Describe("Services", func() {
+		It("should call Executor with the correct inputs", func() {
+			executor.ExecuteCall.Returns.Output = []byte("\n\n\n")
+
+			courier.Services()
+
+			Expect(executor.ExecuteCall.Received.Args).To(Equal([]string{"services"}))
+		})
+
+		It("returns an array of service names", func() {
+			executor.ExecuteCall.Returns.Output = []byte("getting services in org\n\nname service plan\ntest-service-1 service-1 aplan\ntest-service-2 service-2 anotherplan\ntest-service-3 service-3 yetanotherplan")
+
+			services, _ := courier.Services()
+
+			Expect(services).To(Equal([]string{"test-service-1", "test-service-2", "test-service-3"}))
+		})
+
+		Context("when execute fails", func() {
+			It("should return an error", func() {
+				executor.ExecuteCall.Returns.Error = errors.New("the most wonderful error")
+
+				_, err := courier.Services()
+
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Execution of services call failed: the most wonderful error"))
+			})
 		})
 	})
 })

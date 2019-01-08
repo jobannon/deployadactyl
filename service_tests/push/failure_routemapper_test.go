@@ -16,7 +16,7 @@ import (
 	"github.com/compozed/deployadactyl/creator"
 	"github.com/compozed/deployadactyl/interfaces"
 	"github.com/compozed/deployadactyl/mocks"
-	"github.com/compozed/randomizer"
+	"github.com/compozed/deployadactyl/randomizer"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

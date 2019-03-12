@@ -211,7 +211,7 @@ func (p Pusher) pushApplication(appName, appPath string) error {
 	defer func() { p.Response.Write(pushOutput) }()
 
 	pushOutput, err = p.Courier.Push(appName, appPath, p.DeploymentInfo.AppName, p.DeploymentInfo.Instances)
-	p.Log.Infof("%s: output from Cloud Foundry: \n%s", p.FoundationURL, pushOutput)
+	p.Log.Infof("%s: push output from Cloud Foundry: \n%s", p.FoundationURL, pushOutput)
 	if err != nil {
 		defer func() { p.Log.Errorf("%s: logs from %s: \n%s", p.FoundationURL, appName, cloudFoundryLogs) }()
 
@@ -232,6 +232,7 @@ func (p Pusher) mapTempAppToLoadBalancedDomain(appName string) error {
 	p.Log.Debugf("%s: mapping route for %s to %s", p.FoundationURL, p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
 
 	out, err := p.Courier.MapRoute(appName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
+	p.Log.Infof("%s: mapping output from Cloud Foundry: \n%s", p.FoundationURL, out)
 	if err != nil {
 		p.Log.Errorf("%s: could not map %s to %s", p.FoundationURL, p.DeploymentInfo.AppName, p.DeploymentInfo.Domain)
 		return state.MapRouteError{out}
@@ -249,6 +250,7 @@ func (p Pusher) unMapLoadBalancedRoute() error {
 		p.Log.Debugf("%s: unmapping route %s", p.FoundationURL, p.DeploymentInfo.AppName)
 
 		out, err := p.Courier.UnmapRoute(p.DeploymentInfo.AppName, p.DeploymentInfo.Domain, p.DeploymentInfo.AppName)
+		p.Log.Infof("%s: unmapping output from Cloud Foundry: \n%s", p.FoundationURL, out)
 		if err != nil {
 			p.Log.Errorf("%s: could not unmap %s", p.FoundationURL, p.DeploymentInfo.AppName)
 			return state.UnmapRouteError{p.DeploymentInfo.AppName, out}
@@ -264,6 +266,7 @@ func (p Pusher) deleteApplication(appName string) error {
 	p.Log.Debugf("%s: deleting %s", p.FoundationURL, appName)
 
 	out, err := p.Courier.Delete(appName)
+	p.Log.Infof("%s: deletion output from Cloud Foundry: \n%s", p.FoundationURL, out)
 	if err != nil {
 		p.Log.Errorf("%s: could not delete %s", p.FoundationURL, appName)
 		p.Log.Errorf("%s: deletion error %s", p.FoundationURL, err.Error())
@@ -280,6 +283,7 @@ func (p Pusher) renameNewBuildToOriginalAppName() error {
 	p.Log.Debugf("%s: renaming %s to %s", p.FoundationURL, p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
 
 	out, err := p.Courier.Rename(p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
+	p.Log.Infof("%s: rename output from Cloud Foundry: \n%s", p.FoundationURL, out)
 	if err != nil {
 		p.Log.Errorf("%s: could not rename %s to %s", p.FoundationURL, p.DeploymentInfo.AppName+TemporaryNameSuffix+p.DeploymentInfo.UUID, p.DeploymentInfo.AppName)
 		return state.RenameError{p.DeploymentInfo.AppName + TemporaryNameSuffix + p.DeploymentInfo.UUID, out}
@@ -294,6 +298,7 @@ func (p Pusher) mapTemporaryRoute(tempAppWithUUID, domain string, log I.Deployme
 	log.Debugf("mapping temporary route %s.%s", tempAppWithUUID, domain)
 
 	out, err := p.Courier.MapRoute(tempAppWithUUID, domain, tempAppWithUUID)
+	p.Log.Infof("%s: mapping output from Cloud Foundry: \n%s", p.FoundationURL, out)
 	if err != nil {
 		log.Errorf("failed to map temporary route: %s", out)
 		return state.MapRouteError{out}
@@ -307,6 +312,7 @@ func (p Pusher) deleteTemporaryRoute(tempAppWithUUID, domain string, log I.Deplo
 	log.Debugf("deleting temporary route %s.%s", tempAppWithUUID, domain)
 
 	out, err := p.Courier.DeleteRoute(domain, tempAppWithUUID)
+	p.Log.Infof("%s: route deletion output from Cloud Foundry: \n%s", p.FoundationURL, out)
 	if err != nil {
 		log.Errorf("failed to delete temporary route: %s", out)
 		return state.MapRouteError{out}
@@ -321,6 +327,7 @@ func (p Pusher) unmapTemporaryRoute(tempAppWithUUID, domain string, log I.Deploy
 	log.Debugf("unmapping temporary route %s.%s", tempAppWithUUID, domain)
 
 	out, err := p.Courier.UnmapRoute(tempAppWithUUID, domain, tempAppWithUUID)
+	p.Log.Infof("%s: unmapping output from Cloud Foundry: \n%s", p.FoundationURL, out)
 	if err != nil {
 		log.Errorf("failed to unmap temporary route: %s", out)
 	} else {

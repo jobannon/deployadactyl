@@ -160,10 +160,11 @@ func (c StartController) printErrors(response io.ReadWriter, err *error) {
 
 	errors := c.ErrorFinder.FindErrors(tempBuffer.String())
 	if len(errors) > 0 {
+		fmt.Fprintln(response)
+		fmt.Fprintln(response, "********** Deployment Failure Detected **********")
 		*err = errors[0]
 		for _, error := range errors {
-			fmt.Fprintln(response)
-			fmt.Fprintln(response, "*******************")
+			fmt.Fprintln(response, "****")
 			fmt.Fprintln(response)
 			fmt.Fprintln(response, "The following error was found in the above logs: "+error.Error())
 			fmt.Fprintln(response)
@@ -171,7 +172,9 @@ func (c StartController) printErrors(response io.ReadWriter, err *error) {
 			fmt.Fprintln(response)
 			fmt.Fprintln(response, "Potential solution: "+error.Solution())
 			fmt.Fprintln(response)
-			fmt.Fprintln(response, "*******************")
+			fmt.Fprintln(response, "****")
 		}
+
+		fmt.Fprintln(response, "*************************************************")
 	}
 }

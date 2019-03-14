@@ -307,7 +307,7 @@ applications:
 			pusher.Execute()
 			Eventually(logBuffer).Should(Say(randomFoundationURL + ": pushing app"))
 			Eventually(logBuffer).Should(Say(randomFoundationURL + ": tempdir for app"))
-			Eventually(logBuffer).Should(Say(randomFoundationURL + ": output from Cloud Foundry"))
+			Eventually(logBuffer).Should(Say(randomFoundationURL + ": push output from Cloud Foundry"))
 			Eventually(logBuffer).Should(Say(randomFoundationURL + ": successfully deployed"))
 		})
 

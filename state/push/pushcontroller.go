@@ -286,5 +286,7 @@ func (c PushController) printErrors(response io.ReadWriter, err *error) {
 		}
 
 		fmt.Fprintln(response, "*************************************************")
+	} else {
+		c.Log.Info("Unknown Error in Cloud Foundry logs")
 	}
 }

@@ -157,6 +157,7 @@ func (c DeleteController) printErrors(response io.ReadWriter, err *error) {
 	errors := c.ErrorFinder.FindErrors(tempBuffer.String())
 	if len(errors) > 0 {
 		fmt.Fprintln(response)
+		fmt.Fprintln(response, "<conveyor-error>")
 		fmt.Fprintln(response, "********** Deployment Failure Detected **********")
 		*err = errors[0]
 		for _, error := range errors {
@@ -172,5 +173,6 @@ func (c DeleteController) printErrors(response io.ReadWriter, err *error) {
 		}
 
 		fmt.Fprintln(response, "*************************************************")
+		fmt.Fprintln(response, "</conveyor-error>")
 	}
 }

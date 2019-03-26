@@ -269,10 +269,10 @@ func (c PushController) printErrors(response io.ReadWriter, err *error) {
 	fmt.Fprint(response, tempBuffer.String())
 
 	errors := c.ErrorFinder.FindErrors(tempBuffer.String())
+	fmt.Fprintln(response)
+	fmt.Fprintln(response, "<conveyor-error>")
+	fmt.Fprintln(response, "********** Deployment Failure Detected **********")
 	if len(errors) > 0 {
-		fmt.Fprintln(response)
-		fmt.Fprintln(response, "<conveyor-error>")
-		fmt.Fprintln(response, "********** Deployment Failure Detected **********")
 		*err = errors[0]
 		for _, error := range errors {
 			fmt.Fprintln(response, "****")
@@ -285,9 +285,16 @@ func (c PushController) printErrors(response io.ReadWriter, err *error) {
 			fmt.Fprintln(response)
 			fmt.Fprintln(response, "****")
 		}
-		fmt.Fprintln(response, "*************************************************")
-		fmt.Fprintln(response, "</conveyor-error>")
 	} else {
 		c.Log.Info("Unknown Error in Cloud Foundry logs")
+		fmt.Fprintln(response, "****")
+		fmt.Fprintln(response)
+		fmt.Fprintln(response, "Error: Your application failed to start")
+		fmt.Fprintln(response)
+		fmt.Fprintln(response, "Logs can be found in your console output above")
+		fmt.Fprintln(response)
+		fmt.Fprintln(response, "****")
 	}
+	fmt.Fprintln(response, "*************************************************")
+	fmt.Fprintln(response, "</conveyor-error>")
 }
